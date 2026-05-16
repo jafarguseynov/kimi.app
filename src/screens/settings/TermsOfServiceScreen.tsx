@@ -1,0 +1,184 @@
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import { Colors } from '../../constants/colors';
+
+const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+const BULLETS = [
+  'Xidmətlərimiz yalnız 13 yaşdan yuxarı şəxslər və ya valideyn nəzarəti olan istifadəçilər üçün nəzərdə tutulub.',
+  'Hesab məlumatlarınızın məxfiliyinə görə birbaşa siz məsuliyyət daşıyırsınız.',
+  'Platforma resurslarından yalnız şəxsi və qeyri-kommersiya məqsədləri üçün istifadə oluna bilər.',
+];
+
+export default function TermsOfServiceScreen() {
+  const navigation = useNavigation<any>();
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>İstifadə şərtləri</Text>
+        <View style={styles.headerBtn} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Hero */}
+        <View style={styles.hero}>
+          <Text style={styles.heroDate}>SON YENİLƏNMƏ: 24 MAY 2024</Text>
+          <Text style={styles.heroTitle}>Xidmətlərimizdən istifadə qaydaları</Text>
+          <LinearGradient colors={GRADIENT} style={styles.heroDivider} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
+        </View>
+
+        {/* Section 1 */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: Colors.primaryLight }]}>
+              <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>Xidmətdən istifadə</Text>
+          </View>
+          <View style={[styles.sectionCard, styles.shadow]}>
+            <Text style={styles.cardPara}>
+              Kimi.az təhsil platformasına xoş gəlmisiniz. Bizim xidmətlərimizdən istifadə etməklə siz aşağıdakı şərtləri qəbul etmiş sayılırsınız. Platforma süni intellekt əsaslı öyrənmə təcrübəsi təqdim edir.
+            </Text>
+            <View style={styles.bulletList}>
+              {BULLETS.map((text, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>{text}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* Section 2 */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: Colors.secondaryContainer }]}>
+              <Ionicons name="person-outline" size={18} color={Colors.secondary} />
+            </View>
+            <Text style={styles.sectionTitle}>İstifadəçi öhdəlikləri</Text>
+          </View>
+          <View style={[styles.sectionCard, { backgroundColor: Colors.surfaceLow }]}>
+            <Text style={styles.cardPara}>
+              İstifadəçilər platformanın təhlükəsizliyini və dürüstlüyünü qorumalıdırlar. Aşağıdakı hərəkətlər qəti qadağandır:
+            </Text>
+            <View style={styles.twoColGrid}>
+              <View style={[styles.gridCard, styles.shadow]}>
+                <Text style={styles.gridCardTitle}>Resursların surəti</Text>
+                <Text style={styles.gridCardDesc}>Dərs materiallarını icazəsiz kopyalamaq, yaymaq və ya satmaq qadağandır.</Text>
+              </View>
+              <View style={[styles.gridCard, styles.shadow]}>
+                <Text style={styles.gridCardTitle}>Etik davranış</Text>
+                <Text style={styles.gridCardDesc}>Süni intellekt və digər istifadəçilərlə qarşılıqlı əlaqədə etik qaydalara riayət olunmalıdır.</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Section 3 */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: Colors.tertiaryContainer + '40' }]}>
+              <Ionicons name="hammer-outline" size={18} color={Colors.tertiary} />
+            </View>
+            <Text style={styles.sectionTitle}>Məsuliyyətin məhdudlaşdırılması</Text>
+          </View>
+          <View style={[styles.sectionCard, styles.shadow, styles.accentCard]}>
+            <View style={styles.accentStripe} />
+            <Text style={styles.italicText}>
+              "Kimi.az texniki xətalar, məlumat itkisi və ya süni intellekt tərəfindən yaradılan məzmunun mütləq dəqiqliyinə görə hüquqi məsuliyyət daşımır. İstifadəçi təqdim olunan məlumatları öz riski ilə istifadə edir."
+            </Text>
+            <View style={styles.infoBox}>
+              <Text style={styles.infoBoxText}>
+                Biz mütəmadi olaraq xidmət keyfiyyətini artırırıq, lakin sistemin 100% fasiləsiz işləməsinə zəmanət vermirik.
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* CTA */}
+        <View style={styles.ctaWrap}>
+          <LinearGradient colors={GRADIENT} style={styles.ctaCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <View style={styles.ctaGlow} />
+            <Text style={styles.ctaTitle}>Sualınız var?</Text>
+            <Text style={styles.ctaSub}>Şərtlərimizlə bağlı əlavə məlumat almaq üçün dəstək komandamızla əlaqə saxlaya bilərsiniz.</Text>
+            <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
+              <Text style={styles.ctaBtnText}>Bizimlə əlaqə</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.background },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '600', color: Colors.primary },
+
+  scroll: { padding: 24, gap: 24, paddingBottom: 48 },
+
+  hero: { gap: 12 },
+  heroDate: { fontSize: 11, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 1.2 },
+  heroTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, lineHeight: 36, letterSpacing: -0.5 },
+  heroDivider: { width: 80, height: 4, borderRadius: 99 },
+
+  section: { gap: 12 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionIconWrap: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, flex: 1 },
+
+  sectionCard: { backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 24, gap: 16 },
+  shadow: {
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.04, shadowRadius: 24, elevation: 2,
+  },
+
+  cardPara: { fontSize: 15, color: Colors.textSecondary, lineHeight: 24 },
+
+  bulletList: { gap: 12 },
+  bulletRow: { flexDirection: 'row', gap: 10 },
+  bulletDot: { fontSize: 15, fontWeight: '700', color: Colors.primary, marginTop: 1 },
+  bulletText: { flex: 1, fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
+
+  twoColGrid: { flexDirection: 'row', gap: 12 },
+  gridCard: { flex: 1, backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16, gap: 6 },
+  gridCardTitle: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  gridCardDesc: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18 },
+
+  accentCard: { overflow: 'hidden' },
+  accentStripe: { position: 'absolute', top: 0, left: 0, bottom: 0, width: 4, backgroundColor: Colors.primary },
+  italicText: { fontSize: 15, fontStyle: 'italic', color: Colors.textSecondary, lineHeight: 24, paddingLeft: 8 },
+  infoBox: { backgroundColor: Colors.surfaceSecondary, borderRadius: 12, padding: 14 },
+  infoBoxText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+
+  ctaWrap: { borderRadius: 20, overflow: 'hidden' },
+  ctaCard: { padding: 28, gap: 8, overflow: 'hidden', position: 'relative' },
+  ctaGlow: {
+    position: 'absolute', bottom: -40, right: -40,
+    width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.10)',
+  },
+  ctaTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  ctaSub: { fontSize: 14, color: 'rgba(255,255,255,0.8)', lineHeight: 22 },
+  ctaBtn: {
+    marginTop: 8, alignSelf: 'flex-start', backgroundColor: '#fff',
+    borderRadius: 999, paddingHorizontal: 28, paddingVertical: 12,
+  },
+  ctaBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+});
