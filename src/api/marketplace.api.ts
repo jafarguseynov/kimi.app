@@ -21,7 +21,7 @@ export interface MarketAnswer {
 
 export const getQuestions = async (subject?: string): Promise<MarketQuestion[]> => {
   const res = await client.get('/marketplace/questions', { params: subject ? { subject } : {} });
-  return res.data;
+  return res.data.map((q: any) => ({ ...q, price: parseFloat(q.price) || 0 }));
 };
 
 export const getQuestion = async (
@@ -38,7 +38,7 @@ export const createQuestion = async (data: {
   price: number;
 }): Promise<MarketQuestion> => {
   const res = await client.post('/marketplace/question', data);
-  return res.data;
+  return { ...res.data, price: parseFloat(res.data.price) || 0 };
 };
 
 export const createAnswer = async (questionId: string, body: string): Promise<MarketAnswer> => {
