@@ -9,3 +9,6 @@ export const loginUser = (data: LoginPayload) =>
 
 export const verifyOTP = (data: OTPPayload) =>
   apiClient.post<AuthResponse>('/auth/verify', data).then((r) => r.data);
+
+export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
+  apiClient.post<{ message: string }>('/auth/change-password', data).then((r) => r.data);

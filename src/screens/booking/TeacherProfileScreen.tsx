@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,9 +15,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { getTeacherSlots, TeacherSlot } from '../../api/booking.api';
+import { getTeacherSlots, getTeacherReviews, getStudentBookings, TeacherSlot, Review } from '../../api/booking.api';
+import { getOrCreateChat } from '../../api/chat.api';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useRecentTeachersStore } from '../../store/recentTeachers.store';
 
 const { width } = Dimensions.get('window');
 const PHOTO_SIZE = Math.min(width - 40, 320);
@@ -26,33 +28,118 @@ const DAY_LABELS: Record<number, string> = {
   0: 'B.E', 1: 'Ç.Ə', 2: 'ÇƏR', 3: 'CÜM.Ə', 4: 'CÜM', 5: 'ŞƏN', 6: 'BAZ',
 };
 
-const MOCK_REVIEWS = [
-  { initial: 'F', color: Colors.primaryLight, textColor: Colors.primary, name: 'Fərid Əliyev', time: '2 gün əvvəl', stars: 5, text: '"Mükəmməl müəllimdir! Çətin mövzuları çox asan başa salır. Təşəkkür edirəm!"' },
-  { initial: 'L', color: '#D1FAE5', textColor: '#059669', name: 'Leyla Qasımova', time: '1 həftə əvvəl', stars: 5, text: '"Dərslər çox maraqlı keçir, müəllim çox səbrlidir və hər kəsə uyğun proqram hazırlayır."' },
+const AVATAR_PALETTE = [
+  { bg: Colors.primaryLight, text: Colors.primary },
+  { bg: '#D1FAE5', text: '#059669' },
+  { bg: '#FEF3C7', text: '#D97706' },
+  { bg: '#FCE7F3', text: '#DB2777' },
+  { bg: '#E0E7FF', text: '#4F46E5' },
 ];
 
-const RATING_BARS = [
-  { star: 5, pct: 85 },
-  { star: 4, pct: 10 },
-  { star: 3, pct: 3 },
-  { star: 2, pct: 2 },
-  { star: 1, pct: 0 },
-];
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const day = 24 * 60 * 60 * 1000;
+  if (diff < day) return 'Bu gün';
+  if (diff < 2 * day) return 'Dünən';
+  if (diff < 7 * day) return `${Math.floor(diff / day)} gün əvvəl`;
+  if (diff < 30 * day) return `${Math.floor(diff / (7 * day))} həftə əvvəl`;
+  return `${Math.floor(diff / (30 * day))} ay əvvəl`;
+}
 
 export default function TeacherProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<any>();
   const teacher = route.params?.teacher;
+  const teacherId: string | undefined = teacher?.id;
+  const pushRecent = useRecentTeachersStore((s) => s.push);
 
-  const { data: slots = [], isLoading } = useQuery<TeacherSlot[]>({
-    queryKey: ['teacherSlots', teacher?.id],
-    queryFn: () => getTeacherSlots(teacher.id),
-    enabled: !!teacher?.id,
+  useEffect(() => {
+    if (teacher?.id && teacher?.name) {
+      pushRecent({
+        id: teacher.id,
+        name: teacher.name,
+        avatarUrl: teacher.avatarUrl,
+        subject: teacher.subjects?.[0],
+        hourlyRate: teacher.hourlyRate,
+        rating: teacher.rating,
+        experience: teacher.experience,
+        isVerified: teacher.isVerified,
+      });
+    }
+  }, [teacher?.id]);
+
+  const { data: slotsData, isLoading } = useQuery<TeacherSlot[]>({
+    queryKey: ['teacherSlots', teacherId],
+    queryFn: () => getTeacherSlots(teacherId as string).catch(() => [] as TeacherSlot[]),
+    enabled: !!teacherId,
   });
 
+  const { data: reviewsData } = useQuery<Review[]>({
+    queryKey: ['teacherReviews', teacherId],
+    queryFn: () => getTeacherReviews(teacherId as string).catch(() => [] as Review[]),
+    enabled: !!teacherId,
+  });
+
+  const { data: myBookings = [] } = useQuery({
+    queryKey: ['myBookings'],
+    queryFn: () => getStudentBookings().catch(() => []),
+  });
+
+  const handleWriteReview = () => {
+    if (!teacherId) return;
+    const booking = myBookings.find((b) => b.teacher?.id === teacherId);
+    if (!booking) {
+      Alert.alert(
+        'Rezervasiya tələb olunur',
+        'Bu müəllimə rəy yazmaq üçün əvvəlcə dərs sifariş etməlisən.',
+      );
+      return;
+    }
+    navigation.navigate(Routes.LeaveReview, {
+      bookingId: booking.id,
+      teacherId,
+      teacherName: teacher?.name,
+      teacherSubject: booking.subject ?? teacher?.subjects?.[0],
+    });
+  };
+
+  const slots: TeacherSlot[] = Array.isArray(slotsData) ? slotsData : [];
+  const reviews: Review[] = Array.isArray(reviewsData) ? reviewsData : [];
   const displaySlots = slots.slice(0, 4);
+  const reviewCount = reviews.length;
+  const avgRating = reviewCount > 0
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviewCount
+    : (teacher?.rating ?? 0);
+  const ratingBars = [5, 4, 3, 2, 1].map((star) => ({
+    star,
+    pct: reviewCount > 0 ? Math.round((reviews.filter((r) => r.rating === star).length / reviewCount) * 100) : 0,
+  }));
+  const topReviews = reviews.slice(0, 2);
   const initial = teacher?.name?.[0]?.toUpperCase() ?? '?';
   const subject = teacher?.subjects?.[0] ?? 'Riyaziyyat';
+
+  if (!teacher) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Müəllim Profili</Text>
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
+          <Ionicons name="alert-circle-outline" size={48} color={Colors.textMuted} />
+          <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' }}>
+            Müəllim məlumatı tapılmadı
+          </Text>
+          <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center' }}>
+            Müəllim siyahısından bir müəllim seçin
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -122,6 +209,20 @@ export default function TeacherProfileScreen() {
               <Text style={styles.statVal}>Online, Evdə</Text>
             </View>
           </View>
+          <View style={styles.statCard}>
+            <View style={styles.statIconBox}>
+              <Ionicons name="location-outline" size={20} color={Colors.primary} />
+            </View>
+            <Text style={styles.statMeta}>ŞƏHƏR</Text>
+            <Text style={styles.statVal}>{teacher?.city ?? 'Qeyd olunmayıb'}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statIconBox}>
+              <Ionicons name="person-outline" size={20} color={Colors.primary} />
+            </View>
+            <Text style={styles.statMeta}>YAŞ</Text>
+            <Text style={styles.statVal}>{teacher?.age != null ? `${teacher.age} yaş` : 'Qeyd olunmayıb'}</Text>
+          </View>
         </View>
 
         {/* Subjects */}
@@ -190,7 +291,7 @@ export default function TeacherProfileScreen() {
         <View style={styles.reviewsSection}>
           <View style={styles.reviewsHeader}>
             <Text style={styles.sectionLabel}>ŞAGİRD RƏYLƏRİ</Text>
-            <TouchableOpacity activeOpacity={0.7}>
+            <TouchableOpacity activeOpacity={0.7} onPress={handleWriteReview}>
               <Text style={styles.writeReview}>Rəy yaz</Text>
             </TouchableOpacity>
           </View>
@@ -198,18 +299,23 @@ export default function TeacherProfileScreen() {
           <View style={styles.reviewsCard}>
             {/* Summary */}
             <View style={styles.reviewSummary}>
-              <Text style={styles.reviewBigRating}>{teacher?.rating?.toFixed(1) ?? '4.9'}</Text>
+              <Text style={styles.reviewBigRating}>{avgRating.toFixed(1)}</Text>
               <View style={styles.starsRow}>
                 {[1,2,3,4,5].map((i) => (
-                  <Ionicons key={i} name={i <= 4 ? 'star' : 'star-half'} size={22} color="#F59E0B" />
+                  <Ionicons
+                    key={i}
+                    name={i <= Math.floor(avgRating) ? 'star' : i - 0.5 <= avgRating ? 'star-half' : 'star-outline'}
+                    size={22}
+                    color="#F59E0B"
+                  />
                 ))}
               </View>
-              <Text style={styles.reviewCount}>120 rəy əsasında</Text>
+              <Text style={styles.reviewCount}>{reviewCount} rəy əsasında</Text>
             </View>
 
             {/* Progress bars */}
             <View style={styles.ratingBars}>
-              {RATING_BARS.map((b) => (
+              {ratingBars.map((b) => (
                 <View key={b.star} style={styles.ratingBarRow}>
                   <Text style={styles.ratingBarNum}>{b.star}</Text>
                   <View style={styles.ratingBarBg}>
@@ -222,37 +328,53 @@ export default function TeacherProfileScreen() {
 
             {/* Review items */}
             <View style={styles.reviewItems}>
-              {MOCK_REVIEWS.map((r, i) => (
-                <View key={r.name}>
-                  {i > 0 && <View style={styles.reviewDivider} />}
-                  <View style={styles.reviewItem}>
-                    <View style={styles.reviewTop}>
-                      <View style={styles.reviewerInfo}>
-                        <View style={[styles.reviewerAvatar, { backgroundColor: r.color }]}>
-                          <Text style={[styles.reviewerInitial, { color: r.textColor }]}>{r.initial}</Text>
+              {topReviews.length === 0 ? (
+                <Text style={{ textAlign: 'center', color: Colors.textMuted, paddingVertical: 16 }}>
+                  Hələ rəy yoxdur
+                </Text>
+              ) : topReviews.map((r, i) => {
+                const palette = AVATAR_PALETTE[i % AVATAR_PALETTE.length];
+                const name = r.student?.name ?? 'Anonim';
+                return (
+                  <View key={r.id}>
+                    {i > 0 && <View style={styles.reviewDivider} />}
+                    <View style={styles.reviewItem}>
+                      <View style={styles.reviewTop}>
+                        <View style={styles.reviewerInfo}>
+                          <View style={[styles.reviewerAvatar, { backgroundColor: palette.bg }]}>
+                            <Text style={[styles.reviewerInitial, { color: palette.text }]}>
+                              {name[0]?.toUpperCase() ?? '?'}
+                            </Text>
+                          </View>
+                          <View>
+                            <Text style={styles.reviewerName}>{name}</Text>
+                            <Text style={styles.reviewerTime}>{relativeTime(r.createdAt)}</Text>
+                          </View>
                         </View>
-                        <View>
-                          <Text style={styles.reviewerName}>{r.name}</Text>
-                          <Text style={styles.reviewerTime}>{r.time}</Text>
+                        <View style={styles.reviewStars}>
+                          {[1,2,3,4,5].map((i2) => (
+                            <Ionicons
+                              key={i2}
+                              name={i2 <= r.rating ? 'star' : 'star-outline'}
+                              size={14}
+                              color="#F59E0B"
+                            />
+                          ))}
                         </View>
                       </View>
-                      <View style={styles.reviewStars}>
-                        {[1,2,3,4,5].map((i2) => (
-                          <Ionicons key={i2} name="star" size={14} color="#F59E0B" />
-                        ))}
-                      </View>
+                      {r.comment ? <Text style={styles.reviewText}>{r.comment}</Text> : null}
                     </View>
-                    <Text style={styles.reviewText}>{r.text}</Text>
                   </View>
-                </View>
-              ))}
+                );
+              })}
             </View>
 
             <View style={styles.reviewActions}>
-              <TouchableOpacity style={styles.writeReviewBtn} activeOpacity={0.7}>
-                <Text style={styles.writeReviewBtnText}>Rəy yaz</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.allReviewsBtn} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.allReviewsBtn}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate(Routes.AllReviews, { teacherId: teacher?.id })}
+              >
                 <Text style={styles.allReviewsBtnText}>Bütün rəylərə bax</Text>
               </TouchableOpacity>
             </View>
@@ -265,7 +387,7 @@ export default function TeacherProfileScreen() {
         <TouchableOpacity
           style={{ flex: 4 }}
           activeOpacity={0.85}
-          onPress={() => Alert.alert('Dərs tələbi', 'Tezliklə əlavə olunacaq')}
+          onPress={() => navigation.navigate(Routes.BookingConfirm, { teacher })}
         >
           <LinearGradient
             colors={[Colors.gradientStart, Colors.gradientEnd]}
@@ -280,7 +402,19 @@ export default function TeacherProfileScreen() {
         <TouchableOpacity
           style={styles.chatBtn}
           activeOpacity={0.7}
-          onPress={() => Alert.alert('Mesaj', 'Chat funksiyası tezliklə əlavə olunacaq')}
+          onPress={async () => {
+            if (!teacherId) return;
+            try {
+              const chat = await getOrCreateChat(teacherId);
+              const parent = navigation.getParent() as any;
+              parent?.navigate('Chat', {
+                screen: Routes.ChatRoom,
+                params: { chatId: chat.id, name: teacher?.name ?? 'Müəllim' },
+              });
+            } catch (e: any) {
+              Alert.alert('Xəta', e?.response?.data?.message || 'Söhbət açıla bilmədi');
+            }
+          }}
         >
           <Ionicons name="chatbubble-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>

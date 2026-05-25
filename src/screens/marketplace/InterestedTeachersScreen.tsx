@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,14 +6,18 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { getOrCreateChat } from '../../api/chat.api';
+import { listMyRequests } from '../../api/lessonRequest.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -31,33 +35,21 @@ type Teacher = {
   highlight?: boolean;
 };
 
-const TEACHERS: Teacher[] = [
-  {
-    id: '1', name: 'Aygün Məmmədova', rating: 4.9, reviewCount: 42,
-    subject: 'Riyaziyyat', subjectType: 'math',
-    bio: '10 illik təcrübəyə malik riyaziyyat müəllimiyəm. Abituriyent hazırlığı və olimpiada məsələləri üzrə ixtisaslaşmışam.',
-    gradientColors: [Colors.gradientStart, Colors.gradientEnd],
-  },
-  {
-    id: '2', name: 'Rəşad Əliyev', rating: 5.0, reviewCount: 18,
-    subject: 'Fizika', subjectType: 'physics',
-    bio: 'Mürəkkəb fizika qanunlarını sadə dildə izah edirəm. Hazırlıqlarım tamamilə interaktiv keçir.',
-    gradientColors: ['#7C3AED', '#A78BFA'],
-    highlight: true,
-  },
-  {
-    id: '3', name: 'Nigar Qasımova', rating: 4.8, reviewCount: 29,
-    subject: 'İngilis dili', subjectType: 'english',
-    bio: 'IELTS və Danışıq (Speaking) dərsləri üzrə mütəxəssis. Sizinlə qısa müddətdə nəticə əldə edəcəyik.',
-    gradientColors: [Colors.tertiary, '#58e7ab'],
-  },
-  {
-    id: '4', name: 'Elvin Muradov', rating: 4.7, reviewCount: 12,
-    subject: 'Kimya', subjectType: 'chemistry',
-    bio: 'Laboratoriya təcrübələri və nəzəriyyənin vəhdəti. Kimyanı sevdirmək mənim işimdir.',
-    gradientColors: [Colors.gradientStart, Colors.gradientEnd],
-  },
+const CARD_GRADIENTS: [string, string][] = [
+  [Colors.gradientStart, Colors.gradientEnd],
+  ['#7C3AED', '#A78BFA'],
+  [Colors.tertiary, '#58e7ab'],
+  ['#EA580C', '#FCA372'],
+  ['#0369A1', '#38BDF8'],
 ];
+
+function subjectTypeFromText(text: string): SubjectType {
+  const t = text.toLowerCase();
+  if (/fiz|phys/.test(t)) return 'physics';
+  if (/ing|english/.test(t)) return 'english';
+  if (/kim|chem/.test(t)) return 'chemistry';
+  return 'math';
+}
 
 const SUBJECT_BADGE: Record<SubjectType, { bg: string; color: string }> = {
   math: { bg: Colors.tertiaryContainer + '40', color: Colors.tertiary },
@@ -71,7 +63,35 @@ export default function InterestedTeachersScreen() {
   const route = useRoute<RouteProp<{
     params: { requestId?: string; requestTitle?: string }
   }, 'params'>>();
-  const { requestTitle = 'Müəllim Sorğunuz' } = route.params ?? {};
+  const { requestId } = route.params ?? {};
+
+  const { data: myRequests = [], isLoading } = useQuery({
+    queryKey: ['myLessonRequests'],
+    queryFn: () => listMyRequests().catch(() => []),
+  });
+
+  const activeRequest = useMemo(() => {
+    if (!myRequests.length) return undefined;
+    if (requestId) return myRequests.find((r) => r.id === requestId);
+    return myRequests[0];
+  }, [myRequests, requestId]);
+
+  const teachers: Teacher[] = useMemo(() => {
+    if (!activeRequest) return [];
+    const subject = activeRequest.subject ?? 'Ümumi';
+    const subjectType = subjectTypeFromText(subject);
+    return activeRequest.interestedTeachers.map((t, i) => ({
+      id: t.id,
+      name: t.name,
+      rating: 4.8,
+      reviewCount: 0,
+      subject,
+      subjectType,
+      bio: 'Bu müəllim sorğunuzla maraqlanıb. Tələbinizə uyğun olub-olmadığını söhbətdə dəqiqləşdirə bilərsiniz.',
+      gradientColors: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
+      highlight: i === 0,
+    }));
+  }, [activeRequest]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -117,9 +137,15 @@ export default function InterestedTeachersScreen() {
           </View>
         </View>
 
+        {isLoading && (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+          </View>
+        )}
+
         {/* Teacher Cards */}
         <View style={styles.cardsGrid}>
-          {TEACHERS.map(teacher => {
+          {teachers.map(teacher => {
             const initial = teacher.name[0]?.toUpperCase() ?? '?';
             const badge = SUBJECT_BADGE[teacher.subjectType];
             return (
@@ -174,7 +200,22 @@ export default function InterestedTeachersScreen() {
                   <TouchableOpacity
                     style={[styles.msgBtn, { flex: 1 }]}
                     activeOpacity={0.7}
-                    onPress={() => Alert.alert('Mesaj', 'Chat funksiyası tezliklə əlavə olunacaq')}
+                    onPress={async () => {
+                      try {
+                        const chat = await getOrCreateChat(teacher.id);
+                        const parent = navigation.getParent() as any;
+                        if (parent?.navigate) {
+                          parent.navigate('Chat', {
+                            screen: Routes.ChatRoom,
+                            params: { chatId: chat.id, name: teacher.name },
+                          });
+                        } else {
+                          navigation.navigate(Routes.ChatRoom as any, { chatId: chat.id, name: teacher.name });
+                        }
+                      } catch (e: any) {
+                        Alert.alert('Xəta', e?.response?.data?.message || 'Söhbət açıla bilmədi');
+                      }
+                    }}
                   >
                     <Text style={styles.msgBtnText}>Mesaj yaz</Text>
                   </TouchableOpacity>

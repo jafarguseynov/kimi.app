@@ -15,7 +15,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useQuery } from '@tanstack/react-query';
-import { getTeacherReviews, Review } from '../../api/booking.api';
+import { Alert } from 'react-native';
+import { getTeacherReviews, getStudentBookings, Review } from '../../api/booking.api';
 
 const FILTER_CHIPS = ['Hamısı', '5 ulduz', '4 ulduz', '3 ulduz', '2 ulduz', '1 ulduz'];
 
@@ -47,6 +48,26 @@ export default function AllReviewsScreen() {
     queryFn: () => getTeacherReviews(teacherId),
     enabled: !!teacherId,
   });
+
+  const { data: myBookings = [] } = useQuery({
+    queryKey: ['myBookings'],
+    queryFn: () => getStudentBookings().catch(() => []),
+  });
+
+  const handleWriteReview = () => {
+    if (!teacherId) return;
+    const booking = myBookings.find((b) => b.teacher?.id === teacherId);
+    if (!booking) {
+      Alert.alert('Rezervasiya tələb olunur', 'Bu müəllimə rəy yazmaq üçün əvvəlcə dərs sifariş etməlisən.');
+      return;
+    }
+    navigation.navigate(Routes.LeaveReview, {
+      bookingId: booking.id,
+      teacherId,
+      teacherName,
+      teacherSubject: booking.subject,
+    });
+  };
 
   const filterStar = activeFilter === 'Hamısı' ? 0 : parseInt(activeFilter[0], 10);
   const displayed = filterStar ? reviews.filter((r) => r.rating === filterStar) : reviews;
@@ -90,7 +111,7 @@ export default function AllReviewsScreen() {
             <TouchableOpacity
               style={{ width: '100%' }}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate(Routes.LeaveReview, { teacherId, teacherName })}
+              onPress={handleWriteReview}
             >
               <LinearGradient
                 colors={[Colors.gradientStart, Colors.gradientEnd]}

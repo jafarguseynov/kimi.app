@@ -13,8 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
 import client from '../../api/client';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 
 interface SearchResults {
   exams: { id: string; title: string; subject: string; difficulty: string }[];
@@ -34,6 +36,11 @@ const TABS: { key: TabKey; label: string }[] = [
 ];
 
 export default function SearchScreen() {
+  const navigation = useNavigation<any>();
+  const goTab = (tab: string, params?: any) => {
+    const parent = navigation.getParent() as any;
+    parent?.navigate(tab, params);
+  };
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>('all');
@@ -203,7 +210,11 @@ export default function SearchScreen() {
           <Text style={styles.sectionLabel}>KATEQORİYALAR</Text>
 
           {/* Wide featured card */}
-          <TouchableOpacity style={styles.bentoWide} activeOpacity={0.85}>
+          <TouchableOpacity
+            style={styles.bentoWide}
+            activeOpacity={0.85}
+            onPress={() => goTab('Booking', { screen: Routes.TeacherList })}
+          >
             <View style={styles.bentoWideInner}>
               <View style={styles.bentoWideLeft}>
                 <Text style={styles.bentoWideTitle}>Müəllimlər</Text>
@@ -217,7 +228,7 @@ export default function SearchScreen() {
 
           {/* 2-col grid */}
           <View style={styles.bentoGrid}>
-            <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85} onPress={() => goTab('Exams')}>
               <LinearGradient
                 colors={[Colors.gradientStart, Colors.gradientEnd]}
                 style={styles.bentoCardIcon}
@@ -230,7 +241,7 @@ export default function SearchScreen() {
               <Text style={styles.bentoCardSub}>Sınaq və testlər</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85} onPress={() => goTab('Marketplace')}>
               <View style={[styles.bentoCardIcon, { backgroundColor: '#d1fae5' }]}>
                 <Ionicons name="chatbubbles-outline" size={22} color="#059669" />
               </View>
@@ -238,7 +249,7 @@ export default function SearchScreen() {
               <Text style={styles.bentoCardSub}>İcma sualları</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85} onPress={() => goTab('Calculators')}>
               <View style={[styles.bentoCardIcon, { backgroundColor: '#e0e7ff' }]}>
                 <Ionicons name="calculator-outline" size={22} color="#4f46e5" />
               </View>
@@ -246,7 +257,11 @@ export default function SearchScreen() {
               <Text style={styles.bentoCardSub}>Bal hesablama</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.bentoCard}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate(Routes.SchoolRanking)}
+            >
               <View style={[styles.bentoCardIcon, { backgroundColor: '#ffe4e6' }]}>
                 <Ionicons name="business-outline" size={22} color="#f43f5e" />
               </View>
@@ -272,7 +287,11 @@ export default function SearchScreen() {
                 <Text style={styles.aiCardSub}>
                   Axtardığınızı tapa bilmirsiniz? Məndən soruşun, sizə uyğun resursları dərhal təklif edim.
                 </Text>
-                <TouchableOpacity activeOpacity={0.85} style={styles.aiBtnWrap}>
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.aiBtnWrap}
+                  onPress={() => goTab(Routes.AIMentor)}
+                >
                   <LinearGradient
                     colors={[Colors.gradientStart, Colors.gradientEnd]}
                     style={styles.aiBtn}

@@ -31,4 +31,9 @@ export interface ExamResult {
   total: number;
   percentage: number;
   timeSpent: number;
+  examTitle?: string;
+  subject?: string;
+  categoryKey?: string;
+  subKey?: string;
+  grade?: string;
 }

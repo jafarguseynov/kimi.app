@@ -13,185 +13,191 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { getAiRecommendations } from '../../api/ai.api';
+import { useExamList } from '../../hooks/useExams';
+import { useUserStore } from '../../store/user.store';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const MOCK_EXAM_CARDS = [
-  {
-    id: '1',
-    subjectBadge: 'Riyaziyyat',
-    typeBadge: 'AI SEÇİMİ' as const,
-    typeBadgeBg: Colors.tertiaryContainer + '4D',
-    typeBadgeColor: Colors.tertiary,
-    title: 'Funksiyalar və Qrafiklər',
-    duration: 25,
-    difficulty: 'Orta',
-    questions: 20,
-    icon: 'calculator-outline' as const,
-    iconBg: Colors.primaryFixed + '33',
-    iconColor: Colors.primary,
-  },
-  {
-    id: '2',
-    subjectBadge: 'Azərbaycan dili',
-    typeBadge: 'YENİ' as const,
-    typeBadgeBg: Colors.primaryFixed + '1A',
-    typeBadgeColor: Colors.primary,
-    title: 'Sintaktik əlaqələr',
-    duration: 15,
-    difficulty: 'Asan',
-    questions: 15,
-    icon: 'language-outline' as const,
-    iconBg: Colors.secondaryContainer + '80',
-    iconColor: Colors.secondary,
-  },
-  {
-    id: '3',
-    subjectBadge: 'Fizika',
-    typeBadge: 'AI SEÇİMİ' as const,
-    typeBadgeBg: Colors.tertiaryContainer + '4D',
-    typeBadgeColor: Colors.tertiary,
-    title: 'Elektrodinamika',
-    duration: 35,
-    difficulty: 'Çətin',
-    questions: 30,
-    icon: 'flash-outline' as const,
-    iconBg: Colors.warningLight,
-    iconColor: Colors.warning,
-  },
-];
-
 export default function AIRecommendationsScreen() {
   const navigation = useNavigation<any>();
+  const { user } = useUserStore();
 
-  const { isLoading } = useQuery({
+  const { data: aiRec, isLoading: aiLoading } = useQuery({
     queryKey: ['aiRecommendations'],
     queryFn: getAiRecommendations,
   });
+  const { data: exams = [], isLoading: examsLoading } = useExamList();
+  const isLoading = aiLoading || examsLoading;
+
+  const weak = aiRec?.weakTopics ?? [];
+  const weakSubjects = weak.map((t) => t.subject.toLowerCase());
+  const recommendedExam = exams.find((e) => weakSubjects.some((s) => e.subject.toLowerCase().includes(s))) ?? exams[0];
+
+  const weakTopics = weak.length > 0
+    ? weak.slice(0, 3).map((w) => w.subject)
+    : ['Kəsrlər', 'Sifətin dərəcələri', 'Bölmə'];
+
+  const strongTopics = ['Vurma cədvəli', 'İsim', 'Tənliklər'];
+
+  const growthPercent = weak.length > 0
+    ? Math.max(5, Math.min(50, Math.round(100 - (weak[0]?.avg ?? 50))))
+    : 15;
+
+  const userName = (user?.name ?? 'Şagird').split(' ')[0];
+
+  const aiTip = recommendedExam
+    ? `${userName}, ${weakTopics[0]?.toLowerCase()} mövzusunda çətinliyin var. Bu gün 15 dəqiqə işləsən, növbəti sınaqda nəticən 20% arta bilər!`
+    : `${userName}, sənin üçün tövsiyə hazırlayırıq. İlk imtahanını həll et!`;
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <View style={{ width: 40 }} />
+          <Text style={styles.headerTitle}>AI Analiz</Text>
+          <View style={{ width: 40 }} />
+        </View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          hitSlop={8}
-        >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İmtahanlar</Text>
-        <Text style={styles.brandText}>Kimi.az</Text>
+        <Text style={styles.headerTitle}>AI Analiz</Text>
+        <View style={styles.headerAvatar}>
+          <Text style={styles.headerAvatarText}>{(user?.name ?? 'K').charAt(0).toUpperCase()}</Text>
+        </View>
       </View>
 
-      {isLoading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginTop: 60 }} />
-      ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          {/* Aura decoration */}
-          <View style={styles.auraBlob} pointerEvents="none" />
-
-          {/* Hero */}
-          <View style={styles.heroSection}>
-            <Text style={styles.heroTitle}>
-              Sənin üçün{' '}
-              <Text style={{ color: Colors.primary }}>ən yaxşı</Text>
-              {' '}sınaqlar!
-            </Text>
-            <Text style={styles.heroSub}>
-              AI sənin performansını analiz edərək bu imtahanları seçdi.
-            </Text>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Hero card */}
+        <LinearGradient
+          colors={GRADIENT}
+          style={styles.heroCard}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.heroBadge}>
+            <Text style={styles.heroBadgeText}>Həftəlik Hesabat</Text>
           </View>
+          <Text style={styles.heroTitle}>Möhtəşəm irəliləyiş, {userName}!</Text>
+          <Text style={styles.heroSub}>
+            Bu həftə aktivliyin {growthPercent}% artıb. Gəl zəif tərəflərini birlikdə gücləndirək.
+          </Text>
+        </LinearGradient>
 
-          {/* AI Analysis Card */}
-          <View style={styles.analysisCard}>
-            <View style={styles.analysisTop}>
-              <View style={styles.analyticsIconCircle}>
-                <Ionicons name="analytics-outline" size={26} color={Colors.primary} />
-              </View>
-              <View style={styles.analysisTextCol}>
-                <Text style={styles.analysisLabel}>Hazırlıq səviyyəsi</Text>
-                <Text style={styles.analysisTitle}>Analiz: 82% hazır</Text>
-              </View>
+        {/* Growth + Weak bento */}
+        <View style={styles.bentoRow}>
+          <View style={styles.growthCard}>
+            <View style={styles.growthTop}>
+              <Text style={styles.growthLabel}>İnkişaf göstəricisi</Text>
+              <Ionicons name="trending-up" size={20} color={Colors.tertiary} />
             </View>
-            <View style={styles.progressTrack}>
+            <View style={styles.growthValueRow}>
+              <Text style={styles.growthValue}>+{growthPercent}%</Text>
+              <Text style={styles.growthSub}>yüksəliş</Text>
+            </View>
+            <View style={styles.growthTrack}>
               <LinearGradient
                 colors={GRADIENT}
-                style={[styles.progressFill, { width: '82%' }]}
+                style={[styles.growthFill, { width: `${Math.min(95, growthPercent * 4)}%` }]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               />
             </View>
+            <Text style={styles.growthCaption}>Keçən ayla müqayisədə</Text>
           </View>
 
-          {/* Section header */}
-          <View style={styles.secHeader}>
-            <Text style={styles.secTitle}>Sənə uyğun imtahanlar</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.secMore}>Buna da bax →</Text>
-            </TouchableOpacity>
+          <View style={styles.weakCard}>
+            <View style={styles.cardHeaderRow}>
+              <Ionicons name="alert-circle-outline" size={20} color={Colors.danger} />
+              <Text style={styles.cardTitle}>Zəif mövzular</Text>
+            </View>
+            <View style={styles.chipRow}>
+              {weakTopics.map((t, i) => (
+                <View key={t} style={[styles.chip, i === 2 ? styles.chipMuted : styles.chipDanger]}>
+                  <Text style={[styles.chipText, i === 2 ? styles.chipTextMuted : styles.chipTextDanger]}>{t}</Text>
+                </View>
+              ))}
+            </View>
           </View>
+        </View>
 
-          {/* Exam Cards */}
-          {MOCK_EXAM_CARDS.map((card) => (
-            <View key={card.id} style={styles.examCard}>
-              <View style={styles.examCardTop}>
-                <View style={styles.examBadgeRow}>
-                  <View style={styles.subjectBadge}>
-                    <Text style={styles.subjectBadgeText}>{card.subjectBadge}</Text>
-                  </View>
-                  <View style={[styles.typeBadge, { backgroundColor: card.typeBadgeBg }]}>
-                    {card.typeBadge === 'AI SEÇİMİ' && (
-                      <Ionicons name="sparkles" size={12} color={card.typeBadgeColor} />
-                    )}
-                    <Text style={[styles.typeBadgeText, { color: card.typeBadgeColor }]}>
-                      {card.typeBadge}
-                    </Text>
-                  </View>
+        {/* Strong + AI tip */}
+        <View style={styles.strongCard}>
+          <View style={styles.cardHeaderRow}>
+            <Ionicons name="checkmark-circle" size={20} color={Colors.tertiary} />
+            <Text style={styles.cardTitle}>Güclü mövzular</Text>
+          </View>
+          <View style={styles.chipRow}>
+            {strongTopics.map((t) => (
+              <View key={t} style={styles.chipSuccess}>
+                <Text style={styles.chipTextSuccess}>{t}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.aiTipCard}>
+          <View style={styles.aiTipIcon}>
+            <Ionicons name="bulb" size={22} color={Colors.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.aiTipTitle}>AI Tövsiyəsi</Text>
+            <Text style={styles.aiTipText}>"{aiTip}"</Text>
+          </View>
+        </View>
+
+        {/* Next step */}
+        {recommendedExam && (
+          <View style={{ gap: 12 }}>
+            <Text style={styles.sectionLabel}>Növbəti addım</Text>
+            <View style={styles.nextStepCard}>
+              <View style={{ flex: 1, gap: 8 }}>
+                <View style={styles.recRow}>
+                  <View style={styles.recDot} />
+                  <Text style={styles.recText}>Tövsiyə olunur</Text>
                 </View>
-                <View style={[styles.thumbBox, { backgroundColor: card.iconBg }]}>
-                  <Ionicons name={card.icon} size={28} color={card.iconColor} />
+                <Text style={styles.nextStepTitle}>{recommendedExam.title}</Text>
+                <View style={styles.metaRow}>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+                    <Text style={styles.metaText}>{recommendedExam.duration} dəq</Text>
+                  </View>
+                  <View style={styles.metaItem}>
+                    <Ionicons name="help-circle-outline" size={14} color={Colors.textMuted} />
+                    <Text style={styles.metaText}>{recommendedExam.questionCount ?? '?'} sual</Text>
+                  </View>
                 </View>
               </View>
-
-              <Text style={styles.examTitle}>{card.title}</Text>
-
-              {/* Metadata with top/bottom separator lines */}
-              <View style={styles.examMetaRow}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-                  <Text style={styles.metaText}>{card.duration} dəq</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="bar-chart-outline" size={14} color={Colors.textMuted} />
-                  <Text style={styles.metaText}>{card.difficulty}</Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="document-text-outline" size={14} color={Colors.textMuted} />
-                  <Text style={styles.metaText}>{card.questions} sual</Text>
-                </View>
-              </View>
-
               <TouchableOpacity
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate(Routes.ExamList)}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate(Routes.ExamDetail, { examId: recommendedExam.id, title: recommendedExam.title })}
               >
                 <LinearGradient
                   colors={GRADIENT}
-                  style={styles.startBtn}
+                  style={styles.playBtn}
                   start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                 >
-                  <Text style={styles.startBtnText}>Başla</Text>
+                  <Ionicons name="play" size={22} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-          ))}
-        </ScrollView>
-      )}
+          </View>
+        )}
+
+        <View style={{ height: 24 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -200,77 +206,101 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
 
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, height: 64,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: Colors.primary },
-  brandText: { fontSize: 20, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primaryFixed, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  headerAvatarText: { fontSize: 14, fontWeight: '800', color: Colors.primary },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 48, gap: 24 },
+  scroll: { padding: 20, gap: 20 },
 
-  auraBlob: {
-    position: 'absolute', top: -40, right: -24,
-    width: 160, height: 160, borderRadius: 80,
-    backgroundColor: Colors.primary, opacity: 0.05,
+  heroCard: {
+    borderRadius: 20, padding: 28, gap: 12,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.15, shadowRadius: 32, elevation: 6,
   },
-
-  heroSection: { gap: 10 },
-  heroTitle: { fontSize: 34, fontWeight: '800', color: Colors.textPrimary, lineHeight: 44, letterSpacing: -0.8 },
-  heroSub: { fontSize: 15, color: Colors.textSecondary, lineHeight: 24, opacity: 0.8 },
-
-  analysisCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 24, gap: 16,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.06, shadowRadius: 32, elevation: 2,
-    overflow: 'hidden',
+  heroBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999,
   },
-  analysisTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  analyticsIconCircle: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.primaryFixed + '33',
+  heroBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 1.5 },
+  heroTitle: { fontSize: 26, fontWeight: '800', color: '#fff', lineHeight: 32, letterSpacing: -0.4 },
+  heroSub: { fontSize: 14, color: 'rgba(255,255,255,0.9)', lineHeight: 20 },
+
+  bentoRow: { gap: 12 },
+  growthCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 20,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.04, shadowRadius: 28, elevation: 2,
+  },
+  growthTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  growthLabel: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 },
+  growthValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 14 },
+  growthValue: { fontSize: 44, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -1 },
+  growthSub: { fontSize: 13, fontWeight: '800', color: Colors.tertiary },
+  growthTrack: { height: 8, backgroundColor: Colors.surfaceLow, borderRadius: 999, overflow: 'hidden', marginTop: 18 },
+  growthFill: { height: '100%', borderRadius: 999 },
+  growthCaption: { fontSize: 11, color: Colors.textMuted, marginTop: 10, fontStyle: 'italic' },
+
+  weakCard: {
+    backgroundColor: Colors.surfaceLow, borderRadius: 18, padding: 20, gap: 12,
+  },
+  cardHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  cardTitle: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary },
+
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1 },
+  chipDanger: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  chipMuted: { backgroundColor: Colors.surfaceHigh, borderColor: 'transparent' },
+  chipText: { fontSize: 12, fontWeight: '600' },
+  chipTextDanger: { color: '#B91C1C' },
+  chipTextMuted: { color: Colors.textSecondary },
+
+  strongCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 20, gap: 12,
+    borderWidth: 1, borderColor: Colors.primary + '0D',
+  },
+  chipSuccess: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#BBF7D0',
+  },
+  chipTextSuccess: { fontSize: 12, fontWeight: '600', color: Colors.tertiary },
+
+  aiTipCard: {
+    backgroundColor: Colors.primaryLight, borderRadius: 18, padding: 20,
+    flexDirection: 'row', gap: 14,
+    borderLeftWidth: 4, borderLeftColor: Colors.primary,
+  },
+  aiTipIcon: {
+    width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2,
   },
-  analysisTextCol: { gap: 4 },
-  analysisLabel: { fontSize: 10, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 1.5 },
-  analysisTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
-  progressTrack: { height: 10, backgroundColor: Colors.surfaceLow, borderRadius: 999, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 999 },
+  aiTipTitle: { fontSize: 13, fontWeight: '800', color: Colors.primary, marginBottom: 4 },
+  aiTipText: { fontSize: 12, color: Colors.textSecondary, lineHeight: 18, fontStyle: 'italic' },
 
-  secHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  secTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
-  secMore: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 2, marginLeft: 4 },
 
-  examCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 20, gap: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 1,
+  nextStepCard: {
+    backgroundColor: '#fff', borderRadius: 18, padding: 20,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.03, shadowRadius: 40, elevation: 2,
   },
-  examCardTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  examBadgeRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', flex: 1, marginRight: 12 },
-  subjectBadge: {
-    backgroundColor: Colors.secondaryContainer,
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5,
-  },
-  subjectBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.secondary, textTransform: 'uppercase', letterSpacing: 0.5 },
-  typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  typeBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
-  thumbBox: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-
-  examTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, lineHeight: 28 },
-
-  examMetaRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
-    paddingVertical: 12,
-    borderTopWidth: 1, borderBottomWidth: 1,
-    borderTopColor: Colors.surfaceLow, borderBottomColor: Colors.surfaceLow,
-  },
+  recRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger },
+  recText: { fontSize: 10, fontWeight: '800', color: Colors.danger, textTransform: 'uppercase', letterSpacing: 1 },
+  nextStepTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  metaText: { fontSize: 12, color: Colors.textSecondary },
+  metaText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
 
-  startBtn: {
-    height: 52, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 3,
+  playBtn: {
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 4,
   },
-  startBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
 });

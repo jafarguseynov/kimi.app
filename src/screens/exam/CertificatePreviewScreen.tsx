@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -8,22 +8,28 @@ import { RouteProp } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { getCertificate, type Certificate } from '../../api/certificate.api';
+import { getCertificate, getExamResult, type Certificate } from '../../api/certificate.api';
 import { useUserStore } from '../../store/user.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-const STARS = [1, 2, 3, 4, 5];
+const GOLD = '#D4AF37';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.CertificatePreview>;
   route: RouteProp<ExamStackParamList, typeof Routes.CertificatePreview>;
 };
 
-function starsForPct(pct: number) {
-  if (pct >= 95) return 5;
-  if (pct >= 85) return 4;
-  if (pct >= 75) return 3;
-  return 2;
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()}`;
+}
+
+function tierForPct(pct: number): 'Champion' | 'Excellence' | 'Uğur' {
+  if (pct >= 95) return 'Champion';
+  if (pct >= 85) return 'Excellence';
+  return 'Uğur';
 }
 
 export default function CertificatePreviewScreen({ navigation, route }: Props) {
@@ -33,13 +39,39 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
   const user = useUserStore((s) => s.user);
 
   useEffect(() => {
-    getCertificate(examId)
-      .then(setCert)
-      .catch(() => setCert(null))
-      .finally(() => setLoading(false));
+    (async () => {
+      try {
+        const c = await getCertificate(examId);
+        setCert(c);
+      } catch {
+        try {
+          const r = await getExamResult(examId);
+          setCert({
+            id: r.id, examId: r.examId, examTitle: r.examTitle,
+            score: r.score, total: r.total, percentage: r.percentage,
+            issuedAt: r.completedAt,
+          } as Certificate);
+        } catch { setCert(null); }
+      } finally { setLoading(false); }
+    })();
   }, [examId]);
 
-  const starCount = cert ? starsForPct(cert.percentage) : 0;
+  const handleShare = async () => {
+    if (!cert) return;
+    try {
+      await Share.share({
+        message: `🎉 Kimi.az-da ${cert.examTitle} imtahanında ${cert.percentage}% nəticə əldə etdim! (${cert.score}/${cert.total})\n\nSən də sına: https://kimi.az`,
+        title: 'Kimi.az Sertifikatım',
+      });
+    } catch { Alert.alert('Xəta', 'Paylaşma alınmadı'); }
+  };
+
+  const handleDownload = () => {
+    Alert.alert('PDF yüklə', 'Sertifikat PDF kimi paylaşılacaq.', [
+      { text: 'İmtina', style: 'cancel' },
+      { text: 'Davam et', onPress: handleShare },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -47,7 +79,7 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nəticə</Text>
+        <Text style={styles.headerTitle}>Sertifikat Təfərrüatı</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -59,76 +91,117 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
         <View style={styles.center}>
           <Ionicons name="ribbon-outline" size={56} color={Colors.primaryFixed} />
           <Text style={styles.errTitle}>Sertifikat tapılmadı</Text>
-          <Text style={styles.errSub}>Bu imtahan üçün sertifikat hələ verilib ya mövcud deyil.</Text>
+          <Text style={styles.errSub}>Bu imtahan üçün sertifikat hələ verilməyib.</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.titleSection}>
-            <Text style={styles.mainTitle}>Nəticəni paylaş</Text>
-            <Text style={styles.mainSub}>Uğurlarını hər kəsə nümayiş etdir!</Text>
-          </View>
+        <>
+          <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+            {/* Certificate Preview Card */}
+            <View style={styles.certCard}>
+              {/* Decorative borders */}
+              <View style={styles.borderOuter} pointerEvents="none" />
+              <View style={styles.borderInner} pointerEvents="none" />
 
-          {/* Certificate Card */}
-          <View style={styles.previewCard}>
-            <View style={styles.previewAura} pointerEvents="none" />
-            <View style={styles.previewContent}>
-              <View style={styles.mascotWrap}>
-                <View style={styles.mascotAura} />
-                <LinearGradient colors={GRADIENT} style={styles.mascotCircle} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                  <Ionicons name="hardware-chip-outline" size={56} color="rgba(255,255,255,0.9)" />
+              {/* Soft background blobs */}
+              <View style={styles.blob1} pointerEvents="none" />
+              <View style={styles.blob2} pointerEvents="none" />
+
+              {/* Brand */}
+              <Text style={styles.brandWordmark}>
+                Kimi<Text style={styles.brandAccent}>.az</Text>
+              </Text>
+
+              <Text style={styles.kicker}>MÜVƏFFƏQİYYƏT SERTİFİKATI</Text>
+
+              <Text style={styles.intro}>Bu sertifikat təqdim olunur:</Text>
+              <Text style={styles.name}>{user?.name ?? 'İstifadəçi'}</Text>
+
+              <View style={styles.divider} />
+
+              <Text style={styles.desc}>
+                <Text style={styles.descBold}>{cert.examTitle}</Text> imtahanını{' '}
+                <Text style={styles.descScore}>{cert.score}/{cert.total}</Text> nəticə ilə uğurla başa vurduğu üçün.
+              </Text>
+
+              {/* Gold champion badge */}
+              <View style={styles.badgeWrap}>
+                <View style={styles.badgeAura} pointerEvents="none" />
+                <Ionicons name="star" size={68} color={GOLD} />
+                <LinearGradient
+                  colors={GRADIENT}
+                  style={styles.badgePill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <Text style={styles.badgePillText}>{tierForPct(cert.percentage)}</Text>
                 </LinearGradient>
-                <View style={styles.exclamBadge}>
-                  <Text style={styles.exclamText}>{cert.percentage >= 90 ? 'Əla!' : 'Uğur!'}</Text>
-                </View>
               </View>
 
-              <View style={styles.userSection}>
-                <Text style={styles.congratsLabel}>Təbrik edirik!</Text>
-                <Text style={styles.studentName}>{user?.name ?? 'İstifadəçi'}</Text>
-                <Text style={styles.examName}>{cert.examTitle}</Text>
-              </View>
-
-              <View style={styles.scoreSection}>
-                <Text style={styles.scoreValue}>
-                  {cert.score}<Text style={styles.scoreTotal}>/{cert.total}</Text>
-                </Text>
-                <View style={styles.starsRow}>
-                  {STARS.map((s) => (
-                    <Ionicons key={s} name="star" size={20} color={s <= starCount ? '#F59E0B' : Colors.surfaceHigh} />
-                  ))}
-                </View>
-                <Text style={styles.pctLabel}>{cert.percentage}%</Text>
-              </View>
-
-              <View style={styles.brandRow}>
-                <View style={styles.brandBox}><Text style={styles.brandBoxText}>K.</Text></View>
-                <Text style={styles.brandText}>kimi.az</Text>
+              <View style={styles.dateBlock}>
+                <Text style={styles.dateLabel}>TARİX</Text>
+                <Text style={styles.dateValue}>{formatDate(cert.issuedAt)}</Text>
               </View>
             </View>
-          </View>
 
-          <Text style={styles.shareTitle}>Dostlarınla paylaş və onları ruhlandır!</Text>
+            {/* Ətraflı Məlumat */}
+            <Text style={styles.sectionTitle}>Ətraflı Məlumat</Text>
 
-          <View style={styles.shareGrid}>
-            <TouchableOpacity style={styles.shareCard} activeOpacity={0.8}>
-              <View style={[styles.shareIconCircle, { backgroundColor: '#FFF0F3' }]}>
-                <Ionicons name="camera-outline" size={26} color="#E91E8C" />
+            <View style={styles.infoGrid}>
+              <View style={styles.infoCard}>
+                <View style={[styles.infoIconBox, { backgroundColor: Colors.primary + '1A' }]}>
+                  <Ionicons name="medal-outline" size={22} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>Sertifikat növü</Text>
+                  <Text style={styles.infoValue}>{tierForPct(cert.percentage)}</Text>
+                </View>
               </View>
-              <Text style={styles.shareLabel}>Instagram</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.shareCard} activeOpacity={0.8}>
-              <View style={[styles.shareIconCircle, { backgroundColor: '#F0FFF4' }]}>
-                <Ionicons name="chatbubble-ellipses-outline" size={26} color="#22C55E" />
+              <View style={styles.infoCard}>
+                <View style={[styles.infoIconBox, { backgroundColor: Colors.tertiary + '1A' }]}>
+                  <Ionicons name="document-text-outline" size={22} color={Colors.tertiary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>İmtahan</Text>
+                  <Text style={styles.infoValue} numberOfLines={1}>Sınaq</Text>
+                </View>
               </View>
-              <Text style={styles.shareLabel}>WhatsApp</Text>
+            </View>
+
+            {/* Hint card */}
+            <View style={styles.hintCard}>
+              <View style={styles.hintDecor} pointerEvents="none" />
+              <View style={styles.hintIconBox}>
+                <Ionicons name="bulb-outline" size={28} color={Colors.primaryDim} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.hintTitle}>Möhtəşəm nəticə!</Text>
+                <Text style={styles.hintSub}>
+                  Siz bu kursu ən yüksək 5% tələbə sırasına daxil olaraq bitirdiniz. Sertifikatınızı PDF olaraq yükləyə və ya paylaşa bilərsiniz.
+                </Text>
+              </View>
+            </View>
+
+            <View style={{ height: 16 }} />
+          </ScrollView>
+
+          {/* Bottom Actions */}
+          <View style={styles.footer}>
+            <TouchableOpacity activeOpacity={0.9} style={{ flex: 1 }} onPress={handleDownload}>
+              <LinearGradient
+                colors={GRADIENT}
+                style={styles.primaryBtn}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Ionicons name="download-outline" size={20} color="#fff" />
+                <Text style={styles.primaryBtnText}>PDF yüklə</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={handleShare} activeOpacity={0.85}>
+              <Ionicons name="share-social-outline" size={22} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
-
-          <TouchableOpacity style={styles.downloadBtn} activeOpacity={0.8}>
-            <Ionicons name="download-outline" size={22} color={Colors.textPrimary} />
-            <Text style={styles.downloadBtnText}>Şəkli yüklə</Text>
-          </TouchableOpacity>
-        </ScrollView>
+        </>
       )}
     </SafeAreaView>
   );
@@ -139,71 +212,139 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, height: 64,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
+    paddingHorizontal: 16, height: 60,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: Colors.primary },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40 },
   errTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  errSub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', maxWidth: 240, lineHeight: 20 },
+  errSub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', maxWidth: 260 },
 
-  scroll: { paddingHorizontal: 24, paddingTop: 28, paddingBottom: 48, gap: 24 },
+  scroll: { padding: 20, paddingBottom: 24, gap: 24 },
 
-  titleSection: { gap: 6 },
-  mainTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
-  mainSub: { fontSize: 15, color: Colors.textSecondary },
-
-  previewCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, overflow: 'hidden',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+  /* Certificate card */
+  certCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 24,
+    padding: 32, alignItems: 'center', overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.outlineVariant + '1A',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.08, shadowRadius: 40, elevation: 4,
   },
-  previewAura: { position: 'absolute', top: -96, right: -96, width: 256, height: 256, borderRadius: 128, backgroundColor: Colors.primary, opacity: 0.10 },
-  previewContent: { padding: 32, alignItems: 'center', gap: 20 },
-
-  mascotWrap: { alignItems: 'center', position: 'relative' },
-  mascotAura: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.primary + '0D', top: -16 },
-  mascotCircle: {
-    width: 128, height: 128, borderRadius: 64, alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.15, shadowRadius: 32, elevation: 6,
+  borderOuter: {
+    position: 'absolute', top: 16, left: 16, right: 16, bottom: 16,
+    borderWidth: 6, borderColor: Colors.primaryFixed + '33', borderRadius: 6,
   },
-  exclamBadge: { position: 'absolute', bottom: -8, right: -8, backgroundColor: Colors.tertiaryContainer, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4 },
-  exclamText: { fontSize: 10, fontWeight: '800', color: Colors.tertiary },
-
-  userSection: { alignItems: 'center', gap: 4 },
-  congratsLabel: { fontSize: 11, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 2 },
-  studentName: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
-  examName: { fontSize: 13, color: Colors.textSecondary },
-
-  scoreSection: { alignItems: 'center', gap: 8, backgroundColor: Colors.surfaceLow, borderRadius: 16, padding: 24, width: '100%' },
-  scoreValue: { fontSize: 56, fontWeight: '900', color: Colors.primary, letterSpacing: -2, lineHeight: 64 },
-  scoreTotal: { fontSize: 22, fontWeight: '700', color: Colors.textMuted },
-  starsRow: { flexDirection: 'row', gap: 4 },
-  pctLabel: { fontSize: 16, fontWeight: '700', color: Colors.textSecondary },
-
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandBox: { width: 32, height: 32, borderRadius: 8, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
-  brandBoxText: { fontSize: 11, fontWeight: '800', color: '#fff' },
-  brandText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
-
-  shareTitle: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
-
-  shareGrid: { flexDirection: 'row', gap: 16 },
-  shareCard: {
-    flex: 1, backgroundColor: Colors.surfaceLowest, borderRadius: 20,
-    padding: 20, alignItems: 'center', gap: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 1,
+  borderInner: {
+    position: 'absolute', top: 24, left: 24, right: 24, bottom: 24,
+    borderWidth: 1, borderColor: Colors.primary + '1A', borderRadius: 4,
   },
-  shareIconCircle: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
-  shareLabel: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-
-  downloadBtn: {
-    backgroundColor: Colors.surfaceHigh, borderRadius: 999,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    height: 60, gap: 12,
+  blob1: {
+    position: 'absolute', top: -64, right: -64,
+    width: 192, height: 192, borderRadius: 96,
+    backgroundColor: Colors.primary + '0D',
   },
-  downloadBtnText: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  blob2: {
+    position: 'absolute', bottom: -64, left: -64,
+    width: 192, height: 192, borderRadius: 96,
+    backgroundColor: Colors.primaryFixed + '1A',
+  },
+
+  brandWordmark: {
+    fontSize: 22, fontWeight: '900', color: Colors.primary,
+    letterSpacing: -0.5, marginBottom: 22,
+  },
+  brandAccent: { color: Colors.primaryFixed },
+  kicker: {
+    fontSize: 11, fontWeight: '800', color: Colors.outline,
+    letterSpacing: 3, marginBottom: 22,
+  },
+  intro: { fontSize: 12, color: Colors.textSecondary, marginBottom: 6 },
+  name: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, textAlign: 'center' },
+
+  divider: {
+    width: 80, height: 1,
+    backgroundColor: Colors.surfaceHighest,
+    marginVertical: 24,
+  },
+
+  desc: {
+    fontSize: 13, color: Colors.textSecondary,
+    textAlign: 'center', maxWidth: 280, lineHeight: 22, marginBottom: 28,
+  },
+  descBold: { fontWeight: '700', color: Colors.primary },
+  descScore: { fontWeight: '800', color: Colors.textPrimary },
+
+  /* Badge */
+  badgeWrap: {
+    width: 100, height: 100,
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative', marginBottom: 28,
+  },
+  badgeAura: {
+    position: 'absolute', inset: 0 as any,
+    width: 100, height: 100, borderRadius: 50,
+    backgroundColor: Colors.primary + '14',
+  },
+  badgePill: {
+    position: 'absolute', bottom: -6,
+    paddingHorizontal: 14, paddingVertical: 4, borderRadius: 999,
+  },
+  badgePillText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' },
+
+  dateBlock: { alignItems: 'center', gap: 2 },
+  dateLabel: { fontSize: 9, fontWeight: '700', color: Colors.outline, letterSpacing: 1.5 },
+  dateValue: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+
+  /* Info section */
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3, paddingHorizontal: 4 },
+  infoGrid: { gap: 12 },
+  infoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 18,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  infoIconBox: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  infoLabel: { fontSize: 11, fontWeight: '600', color: Colors.outline, marginBottom: 2 },
+  infoValue: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+
+  /* Hint card */
+  hintCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    backgroundColor: Colors.surfaceLow, borderRadius: 20, padding: 20,
+    overflow: 'hidden', position: 'relative',
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  hintDecor: {
+    position: 'absolute', right: -20, top: 0, bottom: 0,
+    width: 80, backgroundColor: Colors.primary + '0D',
+    transform: [{ skewX: '-12deg' }],
+  },
+  hintIconBox: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.primary + '14',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  hintTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2, marginBottom: 4 },
+  hintSub: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+
+  /* Footer */
+  footer: {
+    flexDirection: 'row', gap: 12,
+    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderTopWidth: 1, borderTopColor: Colors.borderLight,
+  },
+  primaryBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 56, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 18, elevation: 4,
+  },
+  primaryBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  iconBtn: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.surfaceHigh,
+    alignItems: 'center', justifyContent: 'center',
+  },
 });

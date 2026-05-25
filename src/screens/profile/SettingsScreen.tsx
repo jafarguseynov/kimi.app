@@ -13,8 +13,10 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useLogout } from '../../hooks/useAuth';
+import { useSettingsStore } from '../../store/settings.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -22,16 +24,31 @@ export default function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { user } = useUserStore();
   const logout = useLogout();
-  const [pushEnabled, setPushEnabled] = useState(true);
-  const [emailEnabled, setEmailEnabled] = useState(false);
+  const { pushEnabled, emailEnabled, setPushEnabled, setEmailEnabled, language } = useSettingsStore();
 
   const name = user?.name ?? 'İstifadəçi';
   const initial = name[0]?.toUpperCase() ?? '?';
+  const languageLabel = language === 'en' ? 'English' : language === 'ru' ? 'Русский' : 'Azərbaycan dili';
 
   const SECURITY_ITEMS = [
-    { icon: 'lock-closed-outline' as const, label: 'Şifrəni dəyiş' },
-    { icon: 'shield-checkmark-outline' as const, label: 'İki-faktorlu təsdiqləmə' },
+    { icon: 'lock-closed-outline' as const, label: 'Şifrəni dəyiş', route: Routes.ChangePassword },
+    { icon: 'shield-checkmark-outline' as const, label: 'İki-faktorlu təsdiqləmə', route: Routes.TwoFactor },
+    { icon: 'ban-outline' as const, label: 'Bloklanmış istifadəçilər', route: Routes.BlockedUsers },
+    { icon: 'person-remove-outline' as const, label: 'Hesabın idarəetməsi', route: Routes.AccountManagement },
   ];
+
+  const HELP_ITEMS = [
+    { icon: 'help-buoy-outline' as const, label: 'Yardım Mərkəzi', route: Routes.HelpCenter },
+    { icon: 'chatbubbles-outline' as const, label: 'Dəstək və Əlaqə', route: Routes.Support },
+    { icon: 'bug-outline' as const, label: 'Problemi bildir', route: Routes.ReportProblem },
+    { icon: 'document-text-outline' as const, label: 'İstifadə şərtləri', route: Routes.TermsOfService },
+    { icon: 'information-circle-outline' as const, label: 'Tətbiq haqqında', route: Routes.AboutApp },
+  ];
+
+  const goEditProfile = () => {
+    const parent = navigation.getParent() as any;
+    parent?.navigate(Routes.Profile, { screen: Routes.EditProfile });
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -51,7 +68,7 @@ export default function SettingsScreen() {
           <View style={styles.profileRow}>
             <LinearGradient colors={GRADIENT} style={styles.avatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <Text style={styles.avatarInitial}>{initial}</Text>
-              <TouchableOpacity style={styles.editBadge} activeOpacity={0.8}>
+              <TouchableOpacity style={styles.editBadge} activeOpacity={0.8} onPress={goEditProfile}>
                 <Ionicons name="pencil" size={12} color="#fff" />
               </TouchableOpacity>
             </LinearGradient>
@@ -60,7 +77,7 @@ export default function SettingsScreen() {
               <Text style={styles.profileEmail}>{user?.phone ?? 'kimi.az hesabı'}</Text>
             </View>
           </View>
-          <TouchableOpacity style={styles.editProfileBtn} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.editProfileBtn} activeOpacity={0.8} onPress={goEditProfile}>
             <Text style={styles.editProfileText}>Profili redaktə et</Text>
           </TouchableOpacity>
         </View>
@@ -97,17 +114,35 @@ export default function SettingsScreen() {
               thumbColor="#fff"
             />
           </View>
+          <View style={styles.divider} />
+          <TouchableOpacity
+            style={styles.settingRow}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate(Routes.NotificationSettings)}
+          >
+            <View style={styles.settingLeft}>
+              <View style={styles.iconBox}>
+                <Ionicons name="options-outline" size={20} color={Colors.primary} />
+              </View>
+              <Text style={styles.settingText}>Detallı bildiriş tənzimləmələri</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
+          </TouchableOpacity>
         </View>
 
         {/* Language */}
         <Text style={styles.sectionLabel}>Dil</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.settingRow}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate(Routes.LanguageSelect)}
+          >
             <View style={styles.settingLeft}>
               <View style={styles.iconBox}>
                 <Ionicons name="language-outline" size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.settingText}>Azərbaycan dili</Text>
+              <Text style={styles.settingText}>{languageLabel}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
           </TouchableOpacity>
@@ -118,7 +153,11 @@ export default function SettingsScreen() {
         <View style={styles.card}>
           {SECURITY_ITEMS.map((item, i) => (
             <React.Fragment key={item.label}>
-              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate(item.route)}
+              >
                 <View style={styles.settingLeft}>
                   <View style={styles.iconBox}>
                     <Ionicons name={item.icon} size={20} color={Colors.primary} />
@@ -128,6 +167,29 @@ export default function SettingsScreen() {
                 <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
               </TouchableOpacity>
               {i < SECURITY_ITEMS.length - 1 && <View style={styles.divider} />}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* Help & support */}
+        <Text style={styles.sectionLabel}>Yardım və Dəstək</Text>
+        <View style={styles.card}>
+          {HELP_ITEMS.map((item, i) => (
+            <React.Fragment key={item.label}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                activeOpacity={0.7}
+                onPress={() => navigation.navigate(item.route)}
+              >
+                <View style={styles.settingLeft}>
+                  <View style={styles.iconBox}>
+                    <Ionicons name={item.icon} size={20} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.settingText}>{item.label}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
+              </TouchableOpacity>
+              {i < HELP_ITEMS.length - 1 && <View style={styles.divider} />}
             </React.Fragment>
           ))}
         </View>

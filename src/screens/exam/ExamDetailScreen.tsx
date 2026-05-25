@@ -124,8 +124,18 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
           </TouchableOpacity>
           <Text style={styles.logoText}>Kimi.az</Text>
         </View>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>{initials}</Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.settingsBtn}
+            onPress={() => navigation.navigate(Routes.ExamSettings, { examId, title: exam?.title ?? title })}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
+            <Ionicons name="settings-outline" size={20} color={Colors.primary} />
+          </TouchableOpacity>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{initials}</Text>
+          </View>
         </View>
       </View>
 
@@ -198,6 +208,8 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontSize: 20, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  settingsBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryFixed, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 

@@ -118,7 +118,11 @@ export default function ParentChildrenScreen() {
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.viewBtn} activeOpacity={0.85}>
+              <TouchableOpacity
+                style={styles.viewBtn}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate(Routes.ChildAcademicReport, { childName: child.name })}
+              >
                 <Text style={styles.viewBtnText}>Tərəqqiyə bax</Text>
                 <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
               </TouchableOpacity>

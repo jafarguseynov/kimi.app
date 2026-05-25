@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, KeyboardAvoidingView, Platform,
+  TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useMutation } from '@tanstack/react-query';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { changePassword } from '../../api/auth.api';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.ChangePassword>;
@@ -23,7 +25,18 @@ export default function ChangePasswordScreen({ navigation }: Props) {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const onSubmit = () => navigation.navigate(Routes.PasswordChanged);
+  const { mutate, isPending } = useMutation({
+    mutationFn: () => changePassword({ currentPassword: current, newPassword: newPass }),
+    onSuccess: () => navigation.navigate(Routes.PasswordChanged),
+    onError: (e: any) => Alert.alert('Xəta', e?.response?.data?.message || 'Şifrə dəyişdirilə bilmədi'),
+  });
+
+  const onSubmit = () => {
+    if (!current) return Alert.alert('Cari şifrə', 'Cari şifrənizi daxil edin');
+    if (newPass.length < 8) return Alert.alert('Yeni şifrə', 'Yeni şifrə minimum 8 simvol olmalıdır');
+    if (newPass !== confirm) return Alert.alert('Təsdiq', 'Yeni şifrə və təsdiq uyğun gəlmir');
+    mutate();
+  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -118,13 +131,13 @@ export default function ChangePasswordScreen({ navigation }: Props) {
 
             {/* Actions */}
             <View style={styles.actions}>
-              <TouchableOpacity style={{ width: '100%' }} activeOpacity={0.85} onPress={onSubmit}>
+              <TouchableOpacity style={{ width: '100%' }} activeOpacity={0.85} onPress={onSubmit} disabled={isPending}>
                 <LinearGradient
                   colors={[Colors.gradientStart, Colors.gradientEnd]}
                   style={styles.submitBtn}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.submitBtnText}>Şifrəni dəyiş</Text>
+                  {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Şifrəni dəyiş</Text>}
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>

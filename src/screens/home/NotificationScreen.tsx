@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +14,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { useNotifications, useMarkRead, useMarkAllRead } from '../../hooks/useFeed';
 import { NotificationItem } from '../../api/notification.api';
 import { formatDate } from '../../utils/formatters';
@@ -65,6 +67,25 @@ export default function NotificationScreen() {
 
   const unread = notifications.filter((n) => !n.isRead).length;
 
+  const openMenu = () => {
+    Alert.alert(
+      'Bildirişlər',
+      'Hansı əməliyyatı seçirsiniz?',
+      [
+        {
+          text: 'Hamısını oxunmuş et',
+          onPress: () => markAll(),
+        },
+        {
+          text: 'Bildiriş tənzimləmələri',
+          onPress: () => navigation.navigate(Routes.NotificationSettings),
+        },
+        { text: 'Ləğv et', style: 'cancel' },
+      ],
+      { cancelable: true },
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -74,7 +95,7 @@ export default function NotificationScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Bildirişlər</Text>
         </View>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => markAll()} activeOpacity={0.7} hitSlop={8}>
+        <TouchableOpacity style={styles.headerBtn} onPress={openMenu} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>

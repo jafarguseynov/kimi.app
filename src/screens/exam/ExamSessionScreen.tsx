@@ -28,7 +28,9 @@ export default function ExamSessionScreen({ navigation }: Props) {
     currentIndex,
     answers,
     timeRemaining,
+    durationSeconds,
     examId,
+    submissionType,
     setAnswer,
     nextQuestion,
     previousQuestion,
@@ -45,9 +47,20 @@ export default function ExamSessionScreen({ navigation }: Props) {
 
   const submit = () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (!examId) {
+      Alert.alert('Xəta', 'İmtahan sessiyası tapılmadı. Yenidən cəhd edin.');
+      navigation.goBack();
+      return;
+    }
+    const timeSpent = Math.max(0, durationSeconds - timeRemaining);
     mutate(
-      { examId: examId!, answers, timeSpent: 0 },
-      { onSuccess: () => navigation.replace(Routes.ExamResult) },
+      { examId, answers, timeSpent, type: submissionType ?? undefined },
+      {
+        onSuccess: () => navigation.replace(Routes.ExamResult),
+        onError: (err: any) => {
+          Alert.alert('Xəta', err?.response?.data?.message ?? 'Nəticə saxlanıla bilmədi. Yenidən cəhd edin.');
+        },
+      },
     );
   };
 
@@ -121,7 +134,6 @@ export default function ExamSessionScreen({ navigation }: Props) {
         {/* Question Card */}
         <View style={styles.questionCard}>
           <View style={styles.cardAccent} />
-          <Text style={styles.questionText}>{currentQuestion.text}</Text>
           <View style={styles.formulaBox}>
             <Text style={styles.formulaText}>{currentQuestion.text}</Text>
           </View>

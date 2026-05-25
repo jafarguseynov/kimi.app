@@ -21,25 +21,76 @@ import { Colors } from '../../constants/colors';
 import { registerSchema, RegisterFormData } from '../../utils/validation';
 import { useRegister } from '../../hooks/useAuth';
 import Input from '../../components/common/Input';
+import { UserRole } from '../../types/auth.types';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Register> };
+
+const ROLE_OPTIONS: { id: Exclude<UserRole, 'admin'>; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'student', label: 'Şagird', icon: 'school-outline' },
+  { id: 'teacher', label: 'Müəllim', icon: 'person-circle-outline' },
+  { id: 'parent', label: 'Valideyn', icon: 'people-outline' },
+];
+
+const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif', 'Abituriyent'];
+const GOALS: { id: string; label: string }[] = [
+  { id: 'university', label: 'Universitet hazırlığı' },
+  { id: 'school', label: 'Məktəb dərsləri' },
+  { id: 'olympiad', label: 'Olimpiada hazırlığı' },
+  { id: 'general', label: 'Ümumi bilik' },
+];
 
 export default function RegisterScreen({ navigation }: Props) {
   const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
   });
   const { mutate, isPending } = useRegister();
+  const [role, setRole] = React.useState<Exclude<UserRole, 'admin'>>('student');
+  const [grade, setGrade] = React.useState('');
+  const [school, setSchool] = React.useState('');
+  const [goal, setGoal] = React.useState('');
+  const [childName, setChildName] = React.useState('');
+
+  const pickGrade = () =>
+    Alert.alert('Sinif seçin', '', [
+      ...GRADES.map((g) => ({ text: g, onPress: () => setGrade(g) })),
+      { text: 'Ləğv et', style: 'cancel' as const, onPress: () => {} },
+    ]);
+
+  const pickGoal = () =>
+    Alert.alert('Məqsəd seçin', '', [
+      ...GOALS.map((g) => ({ text: g.label, onPress: () => setGoal(g.id) })),
+      { text: 'Ləğv et', style: 'cancel' as const, onPress: () => {} },
+    ]);
 
   const onSubmit = (data: RegisterFormData) => {
-    mutate(data, {
-      onSuccess: () => {
-        navigation.navigate(Routes.OTP, { phone: data.phone });
+    if (role === 'student') {
+      if (!grade) return Alert.alert('Sinif', 'Zəhmət olmasa sinif seçin');
+      if (!school.trim()) return Alert.alert('Məktəb', 'Məktəb adını daxil edin');
+      if (!goal) return Alert.alert('Məqsəd', 'Məqsəd seçin');
+    }
+    if (role === 'parent') {
+      if (!childName.trim()) return Alert.alert('Övlad', 'Övladınızın adını daxil edin');
+      if (!grade) return Alert.alert('Sinif', 'Övladınızın sinfini seçin');
+    }
+
+    mutate(
+      {
+        ...data,
+        role,
+        school: school || undefined,
+        grade: grade || undefined,
+        goal: role === 'student' ? goal || undefined : undefined,
+        childName: role === 'parent' ? childName || undefined : undefined,
       },
-      onError: (err: any) => {
-        Alert.alert('Xəta', err?.response?.data?.message || 'Qeydiyyat zamanı xəta baş verdi');
+      {
+        onError: (err: any) => {
+          Alert.alert('Xəta', err?.response?.data?.message || 'Qeydiyyat zamanı xəta baş verdi');
+        },
       },
-    });
+    );
   };
+
+  const goalLabel = GOALS.find((g) => g.id === goal)?.label;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -68,8 +119,35 @@ export default function RegisterScreen({ navigation }: Props) {
           <Text style={styles.cardSub}>Məlumatları daxil edərək qeydiyyatdan keçin</Text>
 
           <View style={styles.form}>
-            {/* Name */}
+            {/* Role */}
             <View style={styles.labelWrap}>
+              <Text style={styles.fieldLabel}>ROL</Text>
+            </View>
+            <View style={styles.roleRow}>
+              {ROLE_OPTIONS.map((opt) => {
+                const active = role === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[styles.roleChip, active && styles.roleChipActive]}
+                    activeOpacity={0.85}
+                    onPress={() => setRole(opt.id)}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={18}
+                      color={active ? '#fff' : Colors.primary}
+                    />
+                    <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Name */}
+            <View style={[styles.labelWrap, { marginTop: 16 }]}>
               <Text style={styles.fieldLabel}>AD SOYAD</Text>
             </View>
             <Controller
@@ -138,6 +216,72 @@ export default function RegisterScreen({ navigation }: Props) {
                 />
               )}
             />
+
+            {/* Role-specific extra fields */}
+            {role === 'student' && (
+              <>
+                <View style={styles.labelWrap}>
+                  <Text style={styles.fieldLabel}>SİNİF</Text>
+                </View>
+                <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={pickGrade}>
+                  <Text style={[styles.selectText, !grade && styles.selectPlaceholder]}>
+                    {grade || 'Sinif seçin'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={Colors.primary} />
+                </TouchableOpacity>
+
+                <View style={styles.labelWrap}>
+                  <Text style={styles.fieldLabel}>MƏKTƏB</Text>
+                </View>
+                <Input
+                  placeholder="Məs: 132 saylı tam orta məktəb"
+                  value={school}
+                  onChangeText={setSchool}
+                />
+
+                <View style={styles.labelWrap}>
+                  <Text style={styles.fieldLabel}>MƏQSƏD</Text>
+                </View>
+                <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={pickGoal}>
+                  <Text style={[styles.selectText, !goal && styles.selectPlaceholder]}>
+                    {goalLabel || 'Məqsəd seçin'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={Colors.primary} />
+                </TouchableOpacity>
+              </>
+            )}
+
+            {role === 'parent' && (
+              <>
+                <View style={styles.labelWrap}>
+                  <Text style={styles.fieldLabel}>ÖVLADIN ADI</Text>
+                </View>
+                <Input
+                  placeholder="Məs: Cəfər Yusifov"
+                  value={childName}
+                  onChangeText={setChildName}
+                />
+
+                <View style={styles.labelWrap}>
+                  <Text style={styles.fieldLabel}>ÖVLADIN SİNFİ</Text>
+                </View>
+                <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={pickGrade}>
+                  <Text style={[styles.selectText, !grade && styles.selectPlaceholder]}>
+                    {grade || 'Sinif seçin'}
+                  </Text>
+                  <Ionicons name="chevron-down" size={18} color={Colors.primary} />
+                </TouchableOpacity>
+
+                <View style={styles.labelWrap}>
+                  <Text style={styles.fieldLabel}>ÖVLADIN MƏKTƏBİ (opsional)</Text>
+                </View>
+                <Input
+                  placeholder="Məktəb adı"
+                  value={school}
+                  onChangeText={setSchool}
+                />
+              </>
+            )}
 
             {/* Submit */}
             <TouchableOpacity
@@ -254,7 +398,33 @@ const styles = StyleSheet.create({
 
   form: { gap: 0 },
 
-  labelWrap: { marginBottom: 4 },
+  roleRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  roleChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    backgroundColor: Colors.surfaceLow,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  roleChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  roleChipText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  roleChipTextActive: { color: '#fff' },
+
+  labelWrap: { marginBottom: 4, marginTop: 12 },
   fieldLabel: {
     fontSize: 11,
     fontWeight: '700',
@@ -262,6 +432,16 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginLeft: 2,
   },
+
+  selectBox: {
+    backgroundColor: Colors.surfaceLow,
+    borderRadius: 14, height: 52,
+    paddingHorizontal: 14,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  selectText: { fontSize: 14, color: Colors.textPrimary, flex: 1 },
+  selectPlaceholder: { color: Colors.textMuted },
 
   submitBtn: {
     flexDirection: 'row',

@@ -16,6 +16,11 @@ export interface RegisterPayload {
   email: string;
   phone: string;
   password: string;
+  role?: UserRole;
+  school?: string;
+  grade?: string;
+  goal?: string;
+  childName?: string;
 }
 
 export interface LoginPayload {

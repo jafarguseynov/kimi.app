@@ -1,20 +1,70 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
-import { useQuery } from '@tanstack/react-query';
 import { getQuestions, MarketQuestion } from '../../api/marketplace.api';
+import { useUserStore } from '../../store/user.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
+type TabKey = 'active' | 'mine';
+
+type IconName = keyof typeof Ionicons.glyphMap;
+const SUBJECT_ICON: Record<string, IconName> = {
+  Riyaziyyat: 'calculator-outline',
+  Kimya: 'flask-outline',
+  Fizika: 'planet-outline',
+  Biologiya: 'leaf-outline',
+  Tarix: 'book-outline',
+  Coğrafiya: 'globe-outline',
+  Ədəbiyyat: 'library-outline',
+  İngilis: 'language-outline',
+  Azərbaycan: 'create-outline',
+  İnformatika: 'desktop-outline',
+};
+
+const subjectIcon = (subject: string): IconName => {
+  for (const key of Object.keys(SUBJECT_ICON)) {
+    if (subject?.toLowerCase().includes(key.toLowerCase())) return SUBJECT_ICON[key];
+  }
+  return 'help-circle-outline';
+};
+
+const timeAgo = (iso: string): string => {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'indi';
+  if (m < 60) return `${m} dəqiqə əvvəl`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} saat əvvəl`;
+  const d = Math.floor(h / 24);
+  return `${d} gün əvvəl`;
+};
+
+const isUrgent = (q: MarketQuestion): boolean => {
+  const ageMin = (Date.now() - new Date(q.createdAt).getTime()) / 60000;
+  return q.price >= 1 || (!q.isResolved && ageMin < 60);
+};
+
 export default function MarketplaceHomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [refreshing, setRefreshing] = React.useState(false);
+  const { user } = useUserStore();
+  const [tab, setTab] = useState<TabKey>('active');
+  const [refreshing, setRefreshing] = useState(false);
 
   const { data: questions = [], isLoading, refetch } = useQuery({
     queryKey: ['marketplace-questions'],
@@ -27,16 +77,25 @@ export default function MarketplaceHomeScreen() {
     setRefreshing(false);
   };
 
+  const visible = (() => {
+    if (tab === 'mine') return questions.filter((q) => q.author?.id === user?.id);
+    return questions.filter((q) => !q.isResolved);
+  })();
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.avatarCircle}>
           <Ionicons name="person" size={18} color={Colors.primary} />
         </View>
-        <Text style={styles.headerTitle}>Xüsusi suallar</Text>
-        <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
+        <Text style={styles.headerTitle}>Sual Bazarı</Text>
+        <TouchableOpacity
+          style={styles.bellBtn}
+          onPress={() => (navigation.getParent() as any)?.navigate('Home', { screen: Routes.Notifications })}
+          activeOpacity={0.7}
+          hitSlop={8}
+        >
+          <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
       </View>
 
@@ -45,80 +104,98 @@ export default function MarketplaceHomeScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        {/* Intro text */}
-        <Text style={styles.introText}>
-          Sizin ekspertizanıza uyğun, yüksək büdcəli suallar.
-        </Text>
+        <View style={styles.tabs}>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'active' && styles.tabActive]}
+            activeOpacity={0.8}
+            onPress={() => setTab('active')}
+          >
+            <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>Aktiv suallar</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, tab === 'mine' && styles.tabActive]}
+            activeOpacity={0.8}
+            onPress={() => setTab('mine')}
+          >
+            <Text style={[styles.tabText, tab === 'mine' && styles.tabTextActive]}>Mənim suallarım</Text>
+          </TouchableOpacity>
+        </View>
 
         {isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
-        ) : questions.length === 0 ? (
+        ) : visible.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="help-circle-outline" size={48} color={Colors.primaryFixed} />
-            <Text style={styles.emptyText}>Hələ sual yoxdur</Text>
+            <Text style={styles.emptyText}>
+              {tab === 'mine' ? 'Hələ sual paylaşmamısınız' : 'Aktiv sual yoxdur'}
+            </Text>
           </View>
         ) : (
-          questions.map((q: MarketQuestion, idx: number) => (
-          <View key={q.id} style={styles.card}>
-            {idx === 0 && <View style={styles.cardAura} pointerEvents="none" />}
-
-            <View style={styles.cardTopRow}>
-              <Text style={styles.cardTitle}>{q.title}</Text>
-              {q.price > 0 && (
-                <View style={styles.priceBadge}>
-                  <Text style={styles.priceText}>{q.price.toFixed(2)} AZN</Text>
-                </View>
-              )}
-            </View>
-
-            <View style={styles.badgesRow}>
-              {q.price > 0 && (
-                <View style={styles.premiumBadge}>
-                  <Ionicons name="star" size={12} color={Colors.primary} />
-                  <Text style={styles.premiumBadgeText}>Premium</Text>
-                </View>
-              )}
-              <View style={styles.subjectBadge}>
-                <Text style={styles.subjectBadgeText}>{q.subject}</Text>
-              </View>
-              {q.isResolved && (
-                <View style={[styles.subjectBadge, { backgroundColor: Colors.tertiary + '18' }]}>
-                  <Text style={[styles.subjectBadgeText, { color: Colors.tertiary }]}>Həll edildi</Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={styles.cardDesc} numberOfLines={3}>{q.body}</Text>
-
-            <View style={styles.verifiedRow}>
-              <Ionicons name="person-outline" size={16} color={Colors.textSecondary} />
-              <Text style={styles.verifiedText}>{q.author.name}</Text>
-            </View>
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate(Routes.QuestionDetail, { questionId: q.id })}
-            >
-              <LinearGradient
-                colors={GRADIENT}
-                style={styles.answerBtn}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
+          visible.map((q) => {
+            const urgent = isUrgent(q);
+            return (
+              <TouchableOpacity
+                key={q.id}
+                activeOpacity={0.9}
+                style={styles.card}
+                onPress={() => navigation.navigate(Routes.QuestionDetail, { questionId: q.id })}
               >
-                <Text style={styles.answerBtnText}>Cavabla</Text>
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-          ))
+                <LinearGradient
+                  colors={[Colors.primaryFixed + '33', Colors.primary + '22']}
+                  style={styles.thumb}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Ionicons name={subjectIcon(q.subject)} size={36} color={Colors.primary} />
+                </LinearGradient>
+
+                <View style={styles.cardBody}>
+                  <View style={styles.badgeRow}>
+                    <View style={styles.subjectChip}>
+                      <Text style={styles.subjectChipText} numberOfLines={1}>{q.subject}</Text>
+                    </View>
+                    {urgent && (
+                      <View style={styles.urgentChip}>
+                        <Text style={styles.urgentChipText}>TƏCİLİ</Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={styles.metaRow}>
+                    <Ionicons name="time-outline" size={12} color={Colors.outline} />
+                    <Text style={styles.metaText}>{timeAgo(q.createdAt)}</Text>
+                    <Text style={styles.metaDot}>•</Text>
+                    <Ionicons name="chatbubble-outline" size={12} color={Colors.outline} />
+                    <Text style={styles.metaText}>{q.isResolved ? 'Həll edildi' : 'Açıq'}</Text>
+                  </View>
+
+                  <View style={styles.bottomRow}>
+                    <Text style={styles.price}>{q.price.toFixed(2)} AZN</Text>
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => navigation.navigate(Routes.QuestionDetail, { questionId: q.id })}
+                    >
+                      <LinearGradient
+                        colors={GRADIENT}
+                        style={styles.answerBtn}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 0 }}
+                      >
+                        <Text style={styles.answerBtnText}>Cavabla</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
-      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
         activeOpacity={0.85}
@@ -143,91 +220,95 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, height: 64,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+    paddingHorizontal: 20, height: 60,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
   avatarCircle: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.surfaceContainer,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
+    borderWidth: 2, borderColor: Colors.primaryFixed + '33',
   },
   headerTitle: {
-    flex: 1, textAlign: 'center',
-    fontSize: 18, fontWeight: '700', color: Colors.primary,
+    fontSize: 18, fontWeight: '700', color: Colors.primary, letterSpacing: -0.3,
+  },
+  bellBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.surfaceLow,
+    alignItems: 'center', justifyContent: 'center',
   },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 120, gap: 20 },
+  scroll: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 40, gap: 16 },
 
-  center: { paddingTop: 40, alignItems: 'center', gap: 12 },
+  tabs: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surfaceLow,
+    padding: 6, borderRadius: 16, gap: 4,
+  },
+  tab: {
+    flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 12,
+  },
+  tabActive: {
+    backgroundColor: Colors.surfaceLowest,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  tabText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
+  tabTextActive: { color: Colors.primary, fontWeight: '700' },
+
+  center: { paddingTop: 60, alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 14, color: Colors.textSecondary },
 
-  introText: {
-    fontSize: 16, color: Colors.textSecondary, lineHeight: 24,
-    paddingHorizontal: 4,
-  },
-
   card: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 24, gap: 20,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
-    overflow: 'hidden',
+    flexDirection: 'row', gap: 14,
+    backgroundColor: Colors.surfaceLowest,
+    borderRadius: 18, padding: 14,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.06, shadowRadius: 24, elevation: 2,
   },
-  cardAura: {
-    position: 'absolute', top: -40, right: -40,
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: Colors.primaryFixed,
-    opacity: 0.3,
-  },
-
-  cardTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 16 },
-  cardTitle: {
-    flex: 1, fontSize: 18, fontWeight: '700', color: Colors.textPrimary,
-    lineHeight: 26,
-  },
-  priceBadge: {
-    backgroundColor: Colors.primaryFixed + '33',
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7,
+  thumb: {
+    width: 88, height: 88, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  priceText: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  cardBody: { flex: 1, justifyContent: 'space-between' },
 
-  badgesRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  premiumBadge: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: Colors.surfaceLow,
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  subjectChip: {
+    backgroundColor: Colors.primary + '1A',
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+    maxWidth: '70%',
   },
-  premiumBadgeText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
-  subjectBadge: {
-    backgroundColor: Colors.background,
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
+  subjectChipText: { fontSize: 10, fontWeight: '700', color: Colors.primary },
+  urgentChip: {
+    backgroundColor: Colors.error + '1A',
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
   },
-  subjectBadgeText: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
-
-  cardDesc: {
-    fontSize: 15, color: Colors.textSecondary, lineHeight: 24,
+  urgentChipText: {
+    fontSize: 9, fontWeight: '800', color: Colors.error,
+    letterSpacing: 0.8,
   },
 
-  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  verifiedText: { fontSize: 13, color: Colors.textSecondary },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  metaText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500' },
+  metaDot: { fontSize: 11, color: Colors.outline, marginHorizontal: 2 },
 
+  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  price: { fontSize: 17, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
   answerBtn: {
-    height: 60, borderRadius: 999,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 15 }, shadowOpacity: 0.15, shadowRadius: 30, elevation: 4,
-    marginTop: 4,
+    paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 3,
   },
-  answerBtnText: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  answerBtnText: { fontSize: 12, fontWeight: '800', color: '#fff' },
 
   fab: {
-    position: 'absolute', bottom: 100, right: 20,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 8,
+    position: 'absolute', right: 20, bottom: 28,
     borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 20, elevation: 8,
   },
   fabGrad: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 20, paddingVertical: 14,
+    paddingHorizontal: 22, paddingVertical: 14,
     borderRadius: 999,
   },
   fabText: { fontSize: 14, fontWeight: '700', color: '#fff' },

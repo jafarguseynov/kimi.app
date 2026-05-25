@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -7,201 +7,255 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
+import { useUserStore } from '../../store/user.store';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.LiveLeaderboard> };
 
-const PARTICIPANTS = [
-  { rank: 1, name: 'Aysel Məmmədova', score: 85, answered: 17, isUser: false },
-  { rank: 2, name: 'Ömər Rəsulov', score: 80, answered: 16, isUser: false },
-  { rank: 3, name: 'Leyla Əliyeva', score: 75, answered: 15, isUser: false },
-  { rank: 4, name: 'Sən', score: 70, answered: 14, isUser: true },
-  { rank: 5, name: 'Nihad Quliyev', score: 65, answered: 13, isUser: false },
-  { rank: 6, name: 'Fidan Hüseynova', score: 60, answered: 12, isUser: false },
-  { rank: 7, name: 'Kamran Babayev', score: 55, answered: 11, isUser: false },
-  { rank: 8, name: 'Türkan Əhmədova', score: 50, answered: 10, isUser: false },
-];
+interface Participant {
+  rank: number;
+  name: string;
+  short: string;
+  score: number;
+  trend: number;
+  isUser: boolean;
+}
 
-const MEDAL_COLORS: Record<number, string> = {
-  1: '#F59E0B',
-  2: '#94A3B8',
-  3: '#D97706',
-};
+const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+function Avatar({ initial, size, gradient = false, border, borderColor }: { initial: string; size: number; gradient?: boolean; border?: number; borderColor?: string }) {
+  const inner = (
+    <LinearGradient
+      colors={GRADIENT}
+      style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <Text style={{ fontSize: size * 0.36, fontWeight: '800', color: '#fff' }}>{initial}</Text>
+    </LinearGradient>
+  );
+  if (gradient) {
+    return (
+      <LinearGradient
+        colors={GRADIENT}
+        style={{ width: size + 8, height: size + 8, borderRadius: (size + 8) / 2, padding: 4, alignItems: 'center', justifyContent: 'center' }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#fff', padding: 2 }}>
+          <View style={{ flex: 1, borderRadius: size / 2, overflow: 'hidden' }}>{inner}</View>
+        </View>
+      </LinearGradient>
+    );
+  }
+  if (border) {
+    return (
+      <View style={{ width: size + border * 2, height: size + border * 2, borderRadius: (size + border * 2) / 2, borderWidth: border, borderColor: borderColor ?? Colors.surfaceHigh, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }}>{inner}</View>
+      </View>
+    );
+  }
+  return <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }}>{inner}</View>;
+}
 
 export default function LiveLeaderboardScreen({ navigation }: Props) {
-  const [seconds, setSeconds] = useState(892);
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const user = useUserStore((s) => s.user);
+
+  const fetchData = async () => {
+    try {
+      const data = await getGlobalLeaderboard();
+      setEntries(Array.isArray(data) ? data : []);
+    } catch {
+      setEntries([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const t = setInterval(() => setSeconds(s => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(t);
+    fetchData();
+    const refresh = setInterval(fetchData, 5000);
+    return () => clearInterval(refresh);
   }, []);
 
-  const mins = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const secs = (seconds % 60).toString().padStart(2, '0');
+  const participants: Participant[] = useMemo(() => {
+    return entries.map((e) => ({
+      rank: e.rank,
+      name: e.name,
+      short: e.name.split(' ').map((p, i) => i === 0 ? p : p[0] + '.').slice(0, 2).join(' '),
+      score: Math.round(e.totalScore),
+      trend: 0,
+      isUser: e.userId === user?.id,
+    }));
+  }, [entries, user?.id]);
+
+  const top3 = participants.slice(0, 3);
+  const rest = participants.slice(3, 9);
+  const me = participants.find((p) => p.isUser);
+  const initialOf = (name: string) => name.charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
-        </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>Canlı Liderlər Lövhəsi</Text>
-          <View style={styles.liveIndicator}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Canlı İmtahan</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <View style={styles.livePill}>
             <View style={styles.liveDot} />
             <Text style={styles.liveText}>CANLI</Text>
           </View>
-        </View>
-        <View style={styles.headerTimer}>
-          <Text style={styles.headerTimerLabel}>Qalan</Text>
-          <Text style={styles.headerTimerValue}>{mins}:{secs}</Text>
+          <TouchableOpacity style={styles.helpBtn} activeOpacity={0.7} hitSlop={8}>
+            <Ionicons name="help-circle-outline" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* User Position Card */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          style={styles.userCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.userCardGlow} />
-          <Text style={styles.userCardLabel}>Sizin mövqeyiniz</Text>
-          <View style={styles.userRankRow}>
-            <Text style={styles.userRankValue}>4-cü</Text>
-            <Text style={styles.userRankTotal}>/ {PARTICIPANTS.length} iştirakçı</Text>
-          </View>
-          <View style={styles.userCardStats}>
-            <View style={styles.userStatItem}>
-              <Text style={styles.userStatValue}>70</Text>
-              <Text style={styles.userStatLabel}>BAL</Text>
-            </View>
-            <View style={styles.userStatDivider} />
-            <View style={styles.userStatItem}>
-              <Text style={styles.userStatValue}>14/20</Text>
-              <Text style={styles.userStatLabel}>CAVAB</Text>
-            </View>
-            <View style={styles.userStatDivider} />
-            <View style={styles.userStatItem}>
-              <Text style={styles.userStatValue}>Top 50%</Text>
-              <Text style={styles.userStatLabel}>MÖVQE</Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        {/* Participants Count */}
-        <View style={styles.countRow}>
-          <View style={styles.countBadge}>
-            <View style={styles.countDot} />
-            <Text style={styles.countText}>1,248 aktiv iştirakçı</Text>
-          </View>
-          <Text style={styles.countSub}>Real vaxt rejimindədir</Text>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={Colors.primary} />
         </View>
-
-        {/* Top 3 Podium */}
-        <View style={styles.podiumSection}>
-          <View style={styles.podiumTitleRow}>
-            <View style={styles.accentBar} />
-            <Text style={styles.podiumTitle}>Top 3</Text>
-            <Ionicons name="trophy" size={18} color="#F59E0B" style={{ marginLeft: 8 }} />
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Hero */}
+          <View style={styles.hero}>
+            <Text style={styles.heroTitle}>Liderlər Lövhəsi</Text>
+            <Text style={styles.heroSub}>Zirvəyə doğru addımla! Hazırda imtahanın ən güclüləri arasındasan.</Text>
           </View>
 
-          <View style={styles.podiumRow}>
-            {/* 2nd place */}
-            <View style={[styles.podiumItem, styles.podiumSecond]}>
-              <View style={[styles.podiumCircle, { backgroundColor: '#E2E8F0' }]}>
-                <Text style={[styles.podiumRankNum, { color: '#64748B' }]}>2</Text>
-              </View>
-              <Text style={styles.podiumName} numberOfLines={1}>{PARTICIPANTS[1].name.split(' ')[0]}</Text>
-              <Text style={[styles.podiumScore, { color: '#64748B' }]}>{PARTICIPANTS[1].score} bal</Text>
-              <View style={[styles.podiumBar, { height: 64, backgroundColor: '#CBD5E1' }]} />
-            </View>
-
-            {/* 1st place */}
-            <View style={[styles.podiumItem, styles.podiumFirst]}>
-              <Ionicons name="trophy" size={20} color="#F59E0B" style={{ marginBottom: 4 }} />
-              <LinearGradient
-                colors={[Colors.gradientStart, Colors.gradientEnd]}
-                style={styles.podiumCircle}
-              >
-                <Text style={[styles.podiumRankNum, { color: '#fff' }]}>1</Text>
-              </LinearGradient>
-              <Text style={styles.podiumName} numberOfLines={1}>{PARTICIPANTS[0].name.split(' ')[0]}</Text>
-              <Text style={[styles.podiumScore, { color: Colors.primary }]}>{PARTICIPANTS[0].score} bal</Text>
-              <LinearGradient
-                colors={[Colors.gradientStart, Colors.gradientEnd]}
-                style={[styles.podiumBar, { height: 88 }]}
-              />
-            </View>
-
-            {/* 3rd place */}
-            <View style={[styles.podiumItem, styles.podiumThird]}>
-              <View style={[styles.podiumCircle, { backgroundColor: '#FEF3C7' }]}>
-                <Text style={[styles.podiumRankNum, { color: '#D97706' }]}>3</Text>
-              </View>
-              <Text style={styles.podiumName} numberOfLines={1}>{PARTICIPANTS[2].name.split(' ')[0]}</Text>
-              <Text style={[styles.podiumScore, { color: '#D97706' }]}>{PARTICIPANTS[2].score} bal</Text>
-              <View style={[styles.podiumBar, { height: 48, backgroundColor: '#FDE68A' }]} />
-            </View>
-          </View>
-        </View>
-
-        {/* Full Ranking List */}
-        <View style={styles.rankList}>
-          <Text style={styles.rankListTitle}>Tam Sıralama</Text>
-          {PARTICIPANTS.map((p) => (
-            <View
-              key={p.rank}
-              style={[
-                styles.rankRow,
-                p.isUser && styles.rankRowUser,
-              ]}
-            >
-              <View style={[styles.rankNumBox, p.rank <= 3 && { backgroundColor: MEDAL_COLORS[p.rank] + '22' }]}>
-                {p.rank <= 3 ? (
-                  <Ionicons
-                    name="trophy"
-                    size={14}
-                    color={MEDAL_COLORS[p.rank]}
-                  />
-                ) : (
-                  <Text style={[styles.rankNum, p.isUser && { color: Colors.primary }]}>{p.rank}</Text>
-                )}
-              </View>
-              <View style={styles.rankInfo}>
-                <Text style={[styles.rankName, p.isUser && styles.rankNameUser]}>{p.name}</Text>
-                <Text style={styles.rankAnswered}>{p.answered}/20 cavab</Text>
-              </View>
-              <View style={styles.rankScoreCol}>
-                <Text style={[styles.rankScore, p.isUser && { color: Colors.primary }]}>{p.score}</Text>
-                <Text style={styles.rankScoreUnit}>BAL</Text>
-              </View>
-              {p.isUser && (
-                <View style={styles.youBadge}>
-                  <Text style={styles.youBadgeText}>SƏN</Text>
+          {/* Podium */}
+          {top3.length >= 3 && (
+            <View style={styles.podium}>
+              {/* Rank 2 */}
+              <View style={styles.podiumCol}>
+                <View>
+                  <Avatar initial={initialOf(top3[1].name)} size={56} border={4} borderColor={Colors.surfaceHighest} />
+                  <View style={[styles.rankPill, { backgroundColor: Colors.surfaceHighest }]}>
+                    <Text style={[styles.rankPillText, { color: Colors.textPrimary }]}>2</Text>
+                  </View>
                 </View>
-              )}
+                <Text style={styles.podiumName} numberOfLines={1}>{top3[1].short}</Text>
+                <Text style={[styles.podiumScore, { color: Colors.primary }]}>{top3[1].score} XP</Text>
+              </View>
+
+              {/* Rank 1 (raised) */}
+              <View style={[styles.podiumCol, styles.podiumColFirst]}>
+                <View>
+                  <Avatar initial={initialOf(top3[0].name)} size={84} gradient />
+                  <View style={styles.rankPillFirst}>
+                    <LinearGradient colors={GRADIENT} style={styles.rankPillFirstGrad}>
+                      <Text style={styles.rankPillFirstText}>1</Text>
+                    </LinearGradient>
+                  </View>
+                </View>
+                <Text style={[styles.podiumName, styles.podiumNameFirst]} numberOfLines={1}>{top3[0].short}</Text>
+                <Text style={[styles.podiumScore, styles.podiumScoreFirst]}>{top3[0].score} XP</Text>
+              </View>
+
+              {/* Rank 3 */}
+              <View style={styles.podiumCol}>
+                <View>
+                  <Avatar initial={initialOf(top3[2].name)} size={56} border={4} borderColor={Colors.tertiaryContainer} />
+                  <View style={[styles.rankPill, { backgroundColor: Colors.tertiaryContainer }]}>
+                    <Text style={[styles.rankPillText, { color: Colors.tertiary }]}>3</Text>
+                  </View>
+                </View>
+                <Text style={styles.podiumName} numberOfLines={1}>{top3[2].short}</Text>
+                <Text style={[styles.podiumScore, { color: Colors.tertiary }]}>{top3[2].score} XP</Text>
+              </View>
             </View>
-          ))}
-        </View>
+          )}
 
-        <View style={{ height: 20 }} />
-      </ScrollView>
+          {/* List */}
+          <View style={styles.list}>
+            {rest.map((p) => (
+              <View key={p.rank} style={styles.listRow}>
+                <Text style={styles.listRank}>{p.rank}</Text>
+                <Avatar initial={initialOf(p.name)} size={40} />
+                <View style={styles.listInfo}>
+                  <Text style={styles.listName} numberOfLines={1}>{p.name}</Text>
+                  <Text style={styles.listUnit}>{p.score} XAL</Text>
+                </View>
+                {p.trend > 0 && (
+                  <View style={styles.trendUp}>
+                    <Ionicons name="caret-up" size={14} color={Colors.tertiary} />
+                    <Text style={styles.trendUpText}>{p.trend}</Text>
+                  </View>
+                )}
+                {p.trend < 0 && (
+                  <View style={styles.trendDown}>
+                    <Ionicons name="caret-down" size={14} color={Colors.danger} />
+                    <Text style={styles.trendDownText}>{Math.abs(p.trend)}</Text>
+                  </View>
+                )}
+                {p.trend === 0 && <Ionicons name="remove" size={16} color={Colors.textLight} />}
+              </View>
+            ))}
 
-      {/* Back to Exam */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.85}>
-          <LinearGradient
-            colors={[Colors.gradientStart, Colors.gradientEnd]}
-            style={styles.backBtn}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-          >
-            <Ionicons name="arrow-back" size={20} color="#fff" />
-            <Text style={styles.backBtnText}>İmtahana qayıt</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+            {/* Ellipsis */}
+            {me && me.rank > 9 && (
+              <View style={styles.ellipsis}>
+                <View style={styles.dot} />
+                <View style={styles.dot} />
+                <View style={styles.dot} />
+              </View>
+            )}
+
+            {/* Me highlighted */}
+            {me && me.rank > 9 && (
+              <LinearGradient
+                colors={GRADIENT}
+                style={styles.meRow}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Text style={styles.meRank}>{me.rank}</Text>
+                <View style={styles.meAvatarWrap}>
+                  <View style={styles.meAvatarInner}>
+                    <Avatar initial={initialOf(me.name)} size={44} />
+                  </View>
+                  <View style={styles.youBadge}>
+                    <Text style={styles.youBadgeText}>SƏN</Text>
+                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.meName}>{me.name}</Text>
+                  <Text style={styles.meUnit}>{me.score} XAL</Text>
+                </View>
+                <View style={styles.meTrend}>
+                  <Ionicons name="trending-up" size={14} color="#fff" />
+                  <Text style={styles.meTrendText}>+{me.trend || 5}</Text>
+                </View>
+              </LinearGradient>
+            )}
+          </View>
+
+          {/* Summary chip */}
+          <View style={styles.summary}>
+            <View style={styles.summaryChip}>
+              <Ionicons name="people" size={18} color={Colors.primary} />
+              <Text style={styles.summaryText}>
+                Cəmi <Text style={styles.summaryBold}>{entries.length.toLocaleString('az-AZ')}</Text> iştirakçı
+              </Text>
+            </View>
+          </View>
+
+          {participants.length === 0 && (
+            <View style={styles.emptyBlock}>
+              <Ionicons name="podium-outline" size={48} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>Hələ iştirakçı yoxdur</Text>
+              <Text style={styles.emptySub}>Yeni imtahan başlayanda canlı sıralama burada görünəcək.</Text>
+            </View>
+          )}
+
+          <View style={{ height: 24 }} />
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -210,186 +264,113 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
 
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 12,
     backgroundColor: 'rgba(255,255,255,0.75)',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.borderLight,
   },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.surfaceLow,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.primary },
+  livePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.tertiaryContainer + '4D',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6,
   },
-  headerCenter: { flex: 1, alignItems: 'center', gap: 4 },
-  headerTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  liveIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#FEE2E2',
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  liveDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#EF4444',
-  },
-  liveText: { fontSize: 9, fontWeight: '800', color: '#DC2626', letterSpacing: 1 },
-  headerTimer: { alignItems: 'flex-end' },
-  headerTimerLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
-  headerTimerValue: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.tertiary },
+  liveText: { fontSize: 10, fontWeight: '700', color: Colors.tertiary, letterSpacing: 1 },
+  helpBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 20, gap: 16 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  userCard: {
+  scroll: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 24, gap: 28 },
+
+  hero: {
+    backgroundColor: Colors.surfaceLowest,
     borderRadius: 24,
-    padding: 24,
-    overflow: 'hidden',
+    padding: 32,
+    alignItems: 'center',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.06,
     shadowRadius: 24,
-    elevation: 5,
+    elevation: 2,
   },
-  userCardGlow: {
-    position: 'absolute',
-    top: -24,
-    right: -24,
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  userCardLabel: { fontSize: 12, fontWeight: '500', color: 'rgba(255,255,255,0.8)', marginBottom: 6 },
-  userRankRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 16 },
-  userRankValue: { fontSize: 44, fontWeight: '800', color: '#fff', letterSpacing: -1 },
-  userRankTotal: { fontSize: 15, fontWeight: '500', color: 'rgba(255,255,255,0.7)' },
-  userCardStats: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
-    padding: 14,
-    gap: 12,
-  },
-  userStatItem: { flex: 1, alignItems: 'center', gap: 2 },
-  userStatValue: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  userStatLabel: { fontSize: 8, fontWeight: '700', color: 'rgba(255,255,255,0.65)', letterSpacing: 1, textTransform: 'uppercase' },
-  userStatDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
+  heroTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, marginBottom: 8, textAlign: 'center' },
+  heroSub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', lineHeight: 19, maxWidth: 320 },
 
-  countRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 4,
+  podium: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 14, paddingTop: 20 },
+  podiumCol: { alignItems: 'center', gap: 10, flex: 1 },
+  podiumColFirst: { marginBottom: 18 },
+  rankPill: {
+    position: 'absolute', bottom: -6, right: -4,
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
   },
-  countBadge: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  countDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22C55E' },
-  countText: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
-  countSub: { fontSize: 11, color: Colors.textSecondary, fontStyle: 'italic' },
-
-  podiumSection: { gap: 16 },
-  podiumTitleRow: { flexDirection: 'row', alignItems: 'center' },
-  accentBar: { width: 4, height: 20, backgroundColor: Colors.primary, borderRadius: 2, marginRight: 10 },
-  podiumTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-
-  podiumRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    gap: 12,
-    paddingBottom: 8,
+  rankPillText: { fontSize: 11, fontWeight: '800' },
+  rankPillFirst: { position: 'absolute', bottom: -10, left: '50%', marginLeft: -16 },
+  rankPillFirstGrad: {
+    width: 32, height: 32, borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: '#fff',
   },
-  podiumItem: { alignItems: 'center', flex: 1, gap: 6 },
-  podiumFirst: { paddingBottom: 0 },
-  podiumSecond: { paddingBottom: 0 },
-  podiumThird: { paddingBottom: 0 },
-  podiumCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  podiumRankNum: { fontSize: 18, fontWeight: '800' },
-  podiumName: { fontSize: 11, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
+  rankPillFirstText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  podiumName: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary, maxWidth: 96 },
+  podiumNameFirst: { fontSize: 15, fontWeight: '800' },
   podiumScore: { fontSize: 12, fontWeight: '700' },
-  podiumBar: { width: '100%', borderRadius: 8 },
+  podiumScoreFirst: { fontSize: 14, fontWeight: '800', color: Colors.primary },
 
-  rankList: { gap: 8 },
-  rankListTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4 },
+  list: { gap: 12 },
+  listRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 14,
+  },
+  listRank: { width: 22, fontSize: 14, fontWeight: '800', color: Colors.textSecondary, textAlign: 'center' },
+  listInfo: { flex: 1 },
+  listName: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  listUnit: { fontSize: 9, fontWeight: '600', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 2 },
+  trendUp: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  trendUpText: { fontSize: 12, fontWeight: '700', color: Colors.tertiary },
+  trendDown: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  trendDownText: { fontSize: 12, fontWeight: '700', color: Colors.danger },
 
-  rankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 1,
+  ellipsis: { flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.surfaceHighest },
+
+  meRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    borderRadius: 18, padding: 14,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 4,
   },
-  rankRowUser: {
-    backgroundColor: Colors.primaryLight,
-    borderWidth: 1.5,
-    borderColor: Colors.primaryFixed,
-  },
-  rankNumBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: Colors.surfaceLow,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rankNum: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
-  rankInfo: { flex: 1 },
-  rankName: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
-  rankNameUser: { color: Colors.primary, fontWeight: '700' },
-  rankAnswered: { fontSize: 11, color: Colors.textSecondary, marginTop: 1 },
-  rankScoreCol: { alignItems: 'flex-end' },
-  rankScore: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  rankScoreUnit: { fontSize: 8, fontWeight: '700', color: Colors.textMuted, letterSpacing: 1, textTransform: 'uppercase' },
+  meRank: { width: 22, fontSize: 14, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  meAvatarWrap: { position: 'relative' },
+  meAvatarInner: { borderWidth: 2, borderColor: '#fff', borderRadius: 999, overflow: 'hidden' },
   youBadge: {
-    backgroundColor: Colors.primary,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: '#fff', borderRadius: 999,
+    paddingHorizontal: 6, paddingVertical: 2,
   },
-  youBadgeText: { fontSize: 8, fontWeight: '800', color: '#fff', letterSpacing: 1 },
+  youBadgeText: { fontSize: 8, fontWeight: '800', color: Colors.primary, letterSpacing: 0.8 },
+  meName: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  meUnit: { fontSize: 9, fontWeight: '600', color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase', letterSpacing: 1, marginTop: 2 },
+  meTrend: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6,
+  },
+  meTrendText: { fontSize: 11, fontWeight: '700', color: '#fff' },
 
-  bottomBar: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
+  summary: { alignItems: 'center' },
+  summaryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.surfaceHigh,
+    borderRadius: 999, paddingHorizontal: 22, paddingVertical: 12,
   },
-  backBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    borderRadius: 999,
-    paddingVertical: 18,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 4,
-  },
-  backBtnText: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  summaryText: { fontSize: 13, color: Colors.textPrimary },
+  summaryBold: { fontWeight: '800' },
+
+  emptyBlock: { alignItems: 'center', padding: 32, gap: 8 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  emptySub: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center' },
 });

@@ -1,167 +1,180 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
-import { getLeague, type LeagueEntry } from '../../api/leaderboard.api';
+import { Routes } from '../../constants/routes';
+import { getExamResults, getCertificates } from '../../api/certificate.api';
+import { useUserStore } from '../../store/user.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <View style={styles.rankBadgeWrap}><Ionicons name="trophy" size={28} color="#FFD700" /></View>;
-  if (rank === 2) return <View style={styles.rankBadgeWrap}><Ionicons name="ribbon" size={24} color="#C0C0C0" /></View>;
-  if (rank === 3) return <View style={styles.rankBadgeWrap}><Ionicons name="ribbon" size={22} color="#CD7F32" /></View>;
-  return <Text style={styles.rankNum}>{rank}</Text>;
+type Tier = {
+  key: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+  name: string;
+  min: number;
+  max: number;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconBg: string;
+  iconColor: string;
+};
+
+const TIERS: Tier[] = [
+  { key: 'bronze',   name: 'Bürünc',  min: 0,    max: 500,        icon: 'medal',    iconBg: '#FFEDD5', iconColor: '#C2410C' },
+  { key: 'silver',   name: 'Gümüş',   min: 500,  max: 1000,       icon: 'medal',    iconBg: '#E2E8F0', iconColor: '#475569' },
+  { key: 'gold',     name: 'Qızıl',   min: 1000, max: 2000,       icon: 'trophy',   iconBg: '#FEF3C7', iconColor: '#D97706' },
+  { key: 'platinum', name: 'Platin',  min: 2000, max: 5000,       icon: 'diamond',  iconBg: '#E0E7FF', iconColor: '#6366F1' },
+  { key: 'diamond',  name: 'Almaz',   min: 5000, max: Infinity,   icon: 'sparkles', iconBg: '#CFFAFE', iconColor: '#0891B2' },
+];
+
+function tierFor(xp: number): Tier {
+  for (let i = TIERS.length - 1; i >= 0; i--) {
+    if (xp >= TIERS[i].min) return TIERS[i];
+  }
+  return TIERS[0];
 }
 
 export default function LeagueScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [leaders, setLeaders] = useState<LeagueEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const user = useUserStore((s) => s.user);
 
-  const load = async (refresh = false) => {
-    if (refresh) setRefreshing(true);
-    try {
-      const data = await getLeague();
-      setLeaders(data);
-    } catch {
-      setLeaders([]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
+  const { data: certs = [] } = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
+
+  const totalXp = useMemo(() => {
+    const examXp = results.reduce((s, r) => s + r.score * 10, 0);
+    const certXp = certs.length * 100;
+    return examXp + certXp;
+  }, [results, certs]);
+
+  const totalScore = useMemo(() => results.reduce((s, r) => s + r.score, 0), [results]);
+
+  const current = tierFor(totalXp);
+  const nextIdx = TIERS.findIndex((t) => t.key === current.key) + 1;
+  const next = nextIdx < TIERS.length ? TIERS[nextIdx] : null;
+  const tierProgress = next
+    ? Math.min(100, Math.round(((totalXp - current.min) / (current.max - current.min)) * 100))
+    : 100;
+  const xpToNext = next ? Math.max(0, next.min - totalXp) : 0;
+
+  const goToExams = () => {
+    navigation.getParent()?.navigate('Exams');
   };
-
-  useEffect(() => { load(); }, []);
-
-  const me = leaders.find((l) => l.isCurrentUser);
-  const maxScore = leaders.length > 0 ? leaders[0].weeklyScore : 1;
-  const myScore = me?.weeklyScore ?? 0;
-  const progress = maxScore > 0 ? Math.min(myScore / maxScore, 1) : 0;
-  const toNext = maxScore - myScore;
-
-  const initial = (name: string) => name.charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Liqa Təfərrüatları</Text>
-        <Ionicons name="trophy" size={22} color={Colors.primary} />
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="trophy" size={20} color={Colors.primary} />
+            <Text style={styles.headerTitle}>Liqa Təsnifatı</Text>
+          </View>
+        </View>
+        <View style={styles.avatarSmall}>
+          <Text style={styles.avatarSmallText}>{user?.name?.[0]?.toUpperCase() ?? '?'}</Text>
+        </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.primary} />}
-      >
-        {/* Progress Card */}
-        <View style={styles.progressCard}>
-          <View style={styles.progressCardWatermark} pointerEvents="none">
-            <Ionicons name="sparkles" size={120} color={Colors.primary} style={{ opacity: 0.08 }} />
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Hero: current league */}
+        <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCard}>
+          <View style={styles.heroAura} pointerEvents="none" />
+          <View style={styles.heroIconCircle}>
+            <Ionicons name={current.icon} size={68} color="#FCD34D" />
           </View>
-          <View style={styles.shieldsRow}>
-            <View style={styles.shieldItem}>
-              <View style={[styles.shieldCircle, { backgroundColor: '#FFD70019' }]}>
-                <Ionicons name="shield" size={32} color="#D4AF37" />
-              </View>
-              <Text style={styles.shieldLabel}>Qızıl</Text>
+          <View style={{ alignItems: 'center', marginTop: 12 }}>
+            <Text style={styles.heroKicker}>SƏNİN CARİ LİQAN</Text>
+            <Text style={styles.heroTier}>{current.name} Liqa</Text>
+          </View>
+          <View style={{ width: '100%', gap: 10, marginTop: 24 }}>
+            <View style={styles.heroXpRow}>
+              <Text style={styles.heroXpValue}>{totalXp.toLocaleString()} XP</Text>
+              {next && (
+                <Text style={styles.heroXpNext}>{next.name}: {next.min.toLocaleString()} XP</Text>
+              )}
             </View>
-            <View style={styles.progressWrap}>
-              <View style={styles.progressTrack}>
-                <LinearGradient
-                  colors={GRADIENT}
-                  style={[styles.progressFill, { width: `${Math.round(progress * 100)}%` as any }]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                />
-              </View>
+            <View style={styles.heroTrack}>
+              <View style={[styles.heroFill, { width: `${tierProgress}%` }]} />
             </View>
-            <View style={[styles.shieldItem, { opacity: 0.4 }]}>
-              <View style={[styles.shieldCircle, { backgroundColor: Colors.surfaceContainer }]}>
-                <Ionicons name="shield" size={32} color={Colors.textSecondary} />
-              </View>
-              <Text style={styles.shieldLabel}>Platin</Text>
+            <View style={styles.heroHintPill}>
+              <Text style={styles.heroHintText}>
+                {next
+                  ? `Növbəti liqaya ${xpToNext.toLocaleString()} XP qaldı`
+                  : 'Ən yüksək liqaya çatdın!'}
+              </Text>
             </View>
           </View>
+        </LinearGradient>
 
-          <View style={styles.progressTextWrap}>
-            <Text style={styles.progressTitle}>
-              Platin liqasına{' '}
-              <Text style={{ color: Colors.primary }}>{toNext > 0 ? `${toNext} XP` : '0 XP'}</Text>
-              {' '}qalıb
-            </Text>
-            <Text style={styles.progressSub}>Zirvəyə gedən yolda daha bir addım!</Text>
+        {/* Stats bento */}
+        <View style={styles.statsRow}>
+          <View style={[styles.statCard, { borderBottomColor: Colors.primaryFixed + '33' }]}>
+            <Ionicons name="star" size={22} color={Colors.primary} />
+            <Text style={styles.statLabel}>ÜMUMİ XP</Text>
+            <Text style={styles.statValue}>{totalXp.toLocaleString()}</Text>
+          </View>
+          <View style={[styles.statCard, { borderBottomColor: Colors.tertiary + '33' }]}>
+            <Ionicons name="podium" size={22} color={Colors.tertiary} />
+            <Text style={styles.statLabel}>ÜMUMİ BAL</Text>
+            <Text style={styles.statValue}>{totalScore}</Text>
           </View>
         </View>
 
-        {/* Leaderboard Header */}
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Liqa Liderləri</Text>
-          <Text style={styles.listSubLabel}>Həftəlik Sıralama</Text>
-        </View>
-
-        {loading ? (
-          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 40 }} />
-        ) : (
-          <View style={styles.leaderList}>
-            {leaders.map((leader) => (
+        {/* Tier progression */}
+        <View style={{ gap: 12 }}>
+          <Text style={styles.sectionTitle}>Liqa Səviyyələri</Text>
+          {TIERS.map((t) => {
+            const passed = totalXp >= t.max;
+            const active = t.key === current.key;
+            const locked = totalXp < t.min;
+            return (
               <View
-                key={leader.userId}
+                key={t.key}
                 style={[
-                  styles.leaderRow,
-                  leader.isCurrentUser && styles.leaderRowCurrent,
-                  !leader.isCurrentUser && leader.rank > 3 && styles.leaderRowDimmed,
+                  styles.tierRow,
+                  active && styles.tierRowActive,
+                  locked && styles.tierRowLocked,
                 ]}
               >
-                <View style={styles.rankWrap}>
-                  <RankBadge rank={leader.rank} />
+                <View style={[styles.tierIconCircle, { backgroundColor: t.iconBg }]}>
+                  <Ionicons name={t.icon} size={22} color={t.iconColor} />
                 </View>
-
-                {leader.isCurrentUser ? (
-                  <LinearGradient colors={GRADIENT} style={styles.avatarGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                    <Text style={styles.avatarLetter}>{initial(leader.name)}</Text>
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.avatarCircle}>
-                    <Ionicons name="person" size={22} color={Colors.textSecondary} />
-                  </View>
-                )}
-
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.leaderName, leader.isCurrentUser && { color: Colors.textPrimary, fontWeight: '700' }]}>
-                    {leader.isCurrentUser ? 'Sən' : leader.name}
+                  <Text style={[styles.tierName, active && { color: Colors.primary }]}>{t.name}</Text>
+                  <Text style={[styles.tierRange, active && { color: Colors.primary }]}>
+                    {t.min.toLocaleString()} - {t.max === Infinity ? '∞' : t.max.toLocaleString()} XP
+                    {active && ' • İndi buradasan'}
                   </Text>
-                  {leader.isCurrentUser && (
-                    <View style={styles.risingBadge}>
-                      <View style={styles.risingDot} />
-                      <Text style={styles.risingText}>Yüksəlir</Text>
-                    </View>
-                  )}
-                  {leader.rank === 1 && (
-                    <Text style={styles.leaderSub}>Liderlik zirvəsində</Text>
-                  )}
                 </View>
-
-                <View style={{ alignItems: 'flex-end' }}>
-                  <Text style={[styles.leaderXP, leader.isCurrentUser && { color: Colors.primary, fontWeight: '800' }]}>
-                    {leader.weeklyScore.toLocaleString()}
-                  </Text>
-                  <Text style={styles.xpLabel}>XP</Text>
-                </View>
+                {active ? (
+                  <View style={styles.activeBadge}>
+                    <Text style={styles.activeBadgeText}>AKTİV</Text>
+                  </View>
+                ) : passed ? (
+                  <Ionicons name="checkmark-circle" size={22} color={Colors.tertiary} />
+                ) : (
+                  <Ionicons name="lock-closed" size={20} color={Colors.outlineVariant} />
+                )}
               </View>
-            ))}
-            {leaders.length === 0 && (
-              <Text style={styles.empty}>Bu həftə hələ heç kim imtahan verməyib.</Text>
-            )}
-          </View>
-        )}
+            );
+          })}
+        </View>
+
+        {/* CTA */}
+        <TouchableOpacity activeOpacity={0.9} onPress={goToExams} style={{ marginTop: 4 }}>
+          <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
+            <Ionicons name="flash" size={22} color="#fff" />
+            <Text style={styles.ctaText}>Xal qazanmağa davam et</Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
         <View style={{ height: 24 }} />
       </ScrollView>
@@ -171,66 +184,108 @@ export default function LeagueScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, height: 56,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: Colors.primary },
-
-  scroll: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24, gap: 20 },
-
-  progressCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 32,
-    gap: 24, overflow: 'hidden',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.surfaceLow,
   },
-  progressCardWatermark: { position: 'absolute', top: -16, right: -16 },
-  shieldsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  shieldItem: { alignItems: 'center', gap: 8 },
-  shieldCircle: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
-  shieldLabel: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  progressWrap: { flex: 1, paddingHorizontal: 16 },
-  progressTrack: { height: 12, backgroundColor: Colors.surfaceLow, borderRadius: 999, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 999 },
-  progressTextWrap: { alignItems: 'center', gap: 6 },
-  progressTitle: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, textAlign: 'center' },
-  progressSub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  avatarSmall: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  avatarSmallText: { fontSize: 13, fontWeight: '800', color: Colors.primary },
 
-  listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  listTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
-  listSubLabel: { fontSize: 10, fontWeight: '700', color: Colors.outlineVariant, textTransform: 'uppercase', letterSpacing: 1 },
+  scroll: { padding: 20, paddingBottom: 32, gap: 24 },
 
-  leaderList: { gap: 10 },
-  leaderRow: {
+  /* Hero */
+  heroCard: {
+    borderRadius: 28, padding: 28, alignItems: 'center', overflow: 'hidden',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.2, shadowRadius: 32, elevation: 6,
+  },
+  heroAura: {
+    position: 'absolute', top: -60, right: -60,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  heroIconCircle: {
+    width: 128, height: 128, borderRadius: 64,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  heroKicker: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.75)', letterSpacing: 2 },
+  heroTier: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5, marginTop: 6 },
+  heroXpRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
+  heroXpValue: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  heroXpNext: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  heroTrack: { width: '100%', height: 10, backgroundColor: 'rgba(0,0,0,0.18)', borderRadius: 999, overflow: 'hidden' },
+  heroFill: { height: '100%', backgroundColor: '#fff', borderRadius: 999 },
+  heroHintPill: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 999,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  heroHintText: { fontSize: 12, fontWeight: '600', color: '#fff' },
+
+  /* Stats */
+  statsRow: { flexDirection: 'row', gap: 12 },
+  statCard: {
+    flex: 1, backgroundColor: Colors.surfaceLowest, borderRadius: 18,
+    padding: 18, alignItems: 'center', gap: 4,
+    borderBottomWidth: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.03, shadowRadius: 14, elevation: 2,
+  },
+  statLabel: { fontSize: 10, fontWeight: '800', color: Colors.textSecondary, letterSpacing: 0.8 },
+  statValue: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, marginTop: 2 },
+
+  /* Tier list */
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, paddingHorizontal: 4 },
+  tierRow: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1,
-    borderWidth: 1, borderColor: 'transparent',
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
-  leaderRowCurrent: { backgroundColor: Colors.primary + '0D', borderWidth: 2, borderColor: Colors.primary + '33' },
-  leaderRowDimmed: { opacity: 0.8 },
+  tierRowActive: {
+    backgroundColor: Colors.primaryLight,
+    borderColor: Colors.primaryFixed + '66',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.12, shadowRadius: 16, elevation: 4,
+  },
+  tierRowLocked: { opacity: 0.55 },
+  tierIconCircle: {
+    width: 48, height: 48, borderRadius: 24,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tierName: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  tierRange: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  activeBadge: {
+    backgroundColor: Colors.primary, borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 4,
+  },
+  activeBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1.2 },
 
-  rankWrap: { width: 40, alignItems: 'center', justifyContent: 'center' },
-  rankBadgeWrap: { width: 40, alignItems: 'center' },
-  rankNum: { fontSize: 18, fontWeight: '800', color: Colors.outlineVariant, textAlign: 'center' },
+  /* CTA */
+  ctaBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    paddingVertical: 18, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 6,
+  },
+  ctaText: { fontSize: 16, fontWeight: '800', color: '#fff' },
 
-  avatarCircle: { width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.surfaceLow, alignItems: 'center', justifyContent: 'center' },
-  avatarGrad: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  avatarLetter: { fontSize: 20, fontWeight: '700', color: '#fff' },
-
-  leaderName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  leaderSub: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 },
-
-  risingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  risingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#22c55e' },
-  risingText: { fontSize: 10, fontWeight: '700', color: '#16a34a', textTransform: 'uppercase', letterSpacing: 0.5 },
-
-  leaderXP: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  xpLabel: { fontSize: 10, color: Colors.textMuted, fontWeight: '700', textTransform: 'uppercase' },
-
-  empty: { textAlign: 'center', color: Colors.textSecondary, paddingVertical: 40, fontSize: 14 },
+  demoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14, borderRadius: 999,
+    backgroundColor: Colors.surfaceLowest,
+    borderWidth: 1, borderColor: Colors.primary + '33',
+    borderStyle: 'dashed',
+  },
+  demoBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 });

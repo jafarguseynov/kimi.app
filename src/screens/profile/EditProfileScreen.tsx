@@ -2,11 +2,12 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, KeyboardAvoidingView, Platform, Switch,
-  ActivityIndicator,
+  ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as ImagePicker from 'expo-image-picker';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { ProfileStackParamList } from '../../navigation/types';
@@ -44,9 +45,41 @@ const FORMATS: { key: LessonFormat; label: string }[] = [
 ];
 
 export default function EditProfileScreen({ navigation, route }: Props) {
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
   const role = route.params?.role ?? (user?.role === 'teacher' ? 'teacher' : user?.role === 'parent' ? 'parent' : 'student');
   const userAny = user as any;
+  const [avatarUri, setAvatarUri] = useState<string | undefined>(userAny?.avatarUrl);
+
+  const pickImage = async (fromCamera: boolean) => {
+    const perm = fromCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('İcazə yoxdur', fromCamera ? 'Kamera icazəsi verilməyib' : 'Qalereya icazəsi verilməyib');
+      return;
+    }
+    const result = fromCamera
+      ? await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] })
+      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7, allowsEditing: true, aspect: [1, 1] });
+    if (!result.canceled && result.assets?.[0]) {
+      const uri = result.assets[0].uri;
+      setAvatarUri(uri);
+      if (user) setUser({ ...(user as any), avatarUrl: uri });
+    }
+  };
+
+  const onChangePhoto = () => {
+    Alert.alert(
+      'Şəkil seç',
+      'Şəkli haradan seçmək istəyirsən?',
+      [
+        { text: 'Kamera', onPress: () => pickImage(true) },
+        { text: 'Qalereya', onPress: () => pickImage(false) },
+        { text: 'Ləğv et', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
+  };
 
   // shared
   const nameParts = (user?.name ?? '').split(' ');
@@ -140,18 +173,21 @@ export default function EditProfileScreen({ navigation, route }: Props) {
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               >
                 <View style={styles.avatarInner}>
-                  <Ionicons name="person" size={52} color={Colors.primary} />
+                  {avatarUri ? (
+                    <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+                  ) : (
+                    <Ionicons name="person" size={52} color={Colors.primary} />
+                  )}
                 </View>
               </LinearGradient>
-              <TouchableOpacity style={styles.cameraBtn} activeOpacity={0.8}
-                onPress={() => Alert.alert('Şəkil', 'Şəkil seçimi tezliklə əlavə olunacaq')}>
+              <TouchableOpacity style={styles.cameraBtn} activeOpacity={0.8} onPress={onChangePhoto}>
                 <LinearGradient colors={[Colors.gradientStart, Colors.gradientEnd]} style={styles.cameraBtnInner}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                   <Ionicons name="camera" size={16} color="#fff" />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
-            <TouchableOpacity activeOpacity={0.7}>
+            <TouchableOpacity activeOpacity={0.7} onPress={onChangePhoto}>
               <Text style={styles.changePhotoText}>Şəkli dəyiş</Text>
             </TouchableOpacity>
           </View>
@@ -628,7 +664,9 @@ const styles = StyleSheet.create({
     flex: 1, borderRadius: 64, backgroundColor: Colors.surfaceLow,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 4, borderColor: Colors.surfaceLowest,
+    overflow: 'hidden',
   },
+  avatarImage: { width: '100%', height: '100%' },
   cameraBtn: { position: 'absolute', bottom: 4, right: 4 },
   cameraBtnInner: {
     width: 36, height: 36, borderRadius: 18,

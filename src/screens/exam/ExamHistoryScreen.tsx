@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,36 +7,100 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useQuery } from '@tanstack/react-query';
-import { getCertificates, type Certificate } from '../../api/certificate.api';
+import { getExamResults, type ExamResultRow } from '../../api/certificate.api';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamHistory> };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' });
+type DateBucket = 'month' | '3months' | 'all';
+
+const SUBJECT_FILTERS = ['Hamısı', 'Riyaziyyat', 'Azərbaycan dili', 'İngilis dili'] as const;
+const CATEGORY_FILTERS = ['Hamısı', 'Orta Məktəb', 'Abituriyent', 'Magistratura', 'MİQ', 'Sınaqlar'] as const;
+
+function matchCategory(cat: string, title: string, subject?: string): boolean {
+  if (cat === 'Hamısı') return true;
+  const hay = `${title} ${subject ?? ''}`.toLowerCase();
+  switch (cat) {
+    case 'Orta Məktəb': return /\b(sinif|orta|məkt[əe]b|5-ci|6-ci|7-ci|8-ci|9-cu)/.test(hay);
+    case 'Abituriyent': return /(abituri|d[ıi]m|qəbul|11-ci)/.test(hay);
+    case 'Magistratura': return /(magistr)/.test(hay);
+    case 'MİQ': return /(miq|m[ıi]q|m[üu][əe]llim)/.test(hay);
+    case 'Sınaqlar': return /(s[ıi]naq|aylıq|həft[əe]lik)/.test(hay);
+    default: return true;
+  }
 }
 
-function gradeLabel(pct: number): { label: string; color: string; bg: string } {
-  if (pct >= 90) return { label: 'Əla', color: Colors.tertiary, bg: Colors.tertiary + '18' };
-  if (pct >= 70) return { label: 'Yaxşı', color: Colors.primary, bg: Colors.primaryFixed + '33' };
-  return { label: 'Kafi', color: Colors.danger, bg: Colors.danger + '18' };
+function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()}`;
+}
+
+function subjectIcon(subject?: string): keyof typeof Ionicons.glyphMap {
+  const s = (subject ?? '').toLowerCase();
+  if (s.includes('riyaz')) return 'calculator-outline';
+  if (s.includes('ingil') || s.includes('engl')) return 'language-outline';
+  if (s.includes('azərb') || s.includes('azer')) return 'book-outline';
+  if (s.includes('fizik')) return 'flash-outline';
+  if (s.includes('kimya')) return 'flask-outline';
+  if (s.includes('biolog')) return 'leaf-outline';
+  if (s.includes('tarix')) return 'time-outline';
+  if (s.includes('coğraf') || s.includes('coqraf')) return 'globe-outline';
+  return 'document-text-outline';
+}
+
+function subjectTone(subject?: string): { bg: string; fg: string } {
+  const s = (subject ?? '').toLowerCase();
+  if (s.includes('riyaz')) return { bg: Colors.primary + '1A', fg: Colors.primary };
+  if (s.includes('ingil') || s.includes('engl')) return { bg: '#DCFCE7', fg: Colors.tertiary };
+  if (s.includes('azərb') || s.includes('azer')) return { bg: '#EDE9FE', fg: '#7C3AED' };
+  return { bg: Colors.primary + '1A', fg: Colors.primary };
+}
+
+function ringColor(pct: number): { ring: string; track: string; text: string } {
+  if (pct >= 70) return { ring: Colors.primary, track: Colors.primary + '33', text: Colors.primary };
+  if (pct >= 50) return { ring: Colors.warning, track: Colors.warning + '33', text: Colors.warning };
+  return { ring: Colors.danger, track: Colors.danger + '33', text: Colors.danger };
+}
+
+function ScoreRing({ pct }: { pct: number }) {
+  const c = ringColor(pct);
+  return (
+    <View style={[styles.scoreRing, { borderColor: c.track }]}>
+      <Text style={[styles.scoreRingText, { color: c.text }]}>{pct}%</Text>
+    </View>
+  );
 }
 
 export default function ExamHistoryScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
+  const [query, setQuery] = useState('');
+  const [subject, setSubject] = useState<(typeof SUBJECT_FILTERS)[number]>('Hamısı');
+  const [category, setCategory] = useState<(typeof CATEGORY_FILTERS)[number]>('Hamısı');
+  const [dateBucket, setDateBucket] = useState<DateBucket>('month');
+
   const { data: certs = [], isLoading, refetch } = useQuery({
-    queryKey: ['certificates'],
-    queryFn: getCertificates,
+    queryKey: ['examResults'],
+    queryFn: getExamResults,
+    staleTime: 0,
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -44,10 +108,31 @@ export default function ExamHistoryScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
+  const filtered = useMemo(() => {
+    const now = Date.now();
+    const ms30 = 30 * 24 * 60 * 60 * 1000;
+    const ms90 = 90 * 24 * 60 * 60 * 1000;
+    return certs.filter((c) => {
+      if (query) {
+        const q = query.toLowerCase();
+        if (!c.examTitle.toLowerCase().includes(q) && !(c.subject ?? '').toLowerCase().includes(q)) return false;
+      }
+      if (subject !== 'Hamısı') {
+        if (!(c.subject ?? '').toLowerCase().includes(subject.toLowerCase().split(' ')[0])) return false;
+      }
+      if (!matchCategory(category, c.examTitle, c.subject)) return false;
+      if (dateBucket !== 'all') {
+        const age = now - new Date(c.completedAt).getTime();
+        if (dateBucket === 'month' && age > ms30) return false;
+        if (dateBucket === '3months' && age > ms90) return false;
+      }
+      return true;
+    });
+  }, [certs, query, subject, category, dateBucket]);
+
   const avgPct = certs.length
-    ? Math.round(certs.reduce((s, c) => s + c.percentage, 0) / certs.length)
+    ? Math.round(certs.reduce((s, c) => s + c.percentage, 0) / certs.length * 10) / 10
     : 0;
-  const bestPct = certs.length ? Math.max(...certs.map((c) => c.percentage)) : 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -64,75 +149,150 @@ export default function ExamHistoryScreen({ navigation }: Props) {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
-        {/* Hero stats */}
-        <LinearGradient colors={[Colors.gradientStart, Colors.gradientEnd]} style={styles.heroCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View style={styles.heroAura} />
-          <View style={styles.heroTop}>
-            <View>
-              <Text style={styles.heroMeta}>Ümumi Performans</Text>
-              <Text style={styles.heroTitle}>Nəticələrin</Text>
-            </View>
-            <View style={styles.heroScoreCircle}>
-              <Text style={styles.heroScoreNum}>{avgPct}<Text style={styles.heroScorePercent}>%</Text></Text>
-            </View>
-          </View>
-          <View style={styles.heroStats}>
-            <View style={styles.heroStatItem}>
-              <Text style={styles.heroStatMeta}>Ümumi İmtahan</Text>
-              <Text style={styles.heroStatNum}>{certs.length}</Text>
-            </View>
-            <View style={styles.heroStatItem}>
-              <Text style={styles.heroStatMeta}>Ən yüksək</Text>
-              <Text style={styles.heroStatNum}>{bestPct}%</Text>
-            </View>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Sertifikatlar</Text>
+        {/* Search */}
+        <View style={styles.searchWrap}>
+          <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="İmtahan axtar..."
+            placeholderTextColor={Colors.textMuted}
+            style={styles.searchInput}
+          />
         </View>
 
+        {/* Category pills */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catPillsRow}>
+          {CATEGORY_FILTERS.map((c) => {
+            const active = category === c;
+            if (active) {
+              return (
+                <TouchableOpacity key={c} activeOpacity={0.85} onPress={() => setCategory(c)}>
+                  <LinearGradient
+                    colors={[Colors.gradientStart, Colors.gradientEnd]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={styles.catPillActive}
+                  >
+                    <Text style={styles.catPillActiveText}>{c}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              );
+            }
+            return (
+              <TouchableOpacity key={c} style={styles.catPill} activeOpacity={0.85} onPress={() => setCategory(c)}>
+                <Text style={styles.catPillText}>{c}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Stats grid (asymmetric 3/2) */}
+        <View style={styles.statsGrid}>
+          <View style={styles.statBig}>
+            <Text style={styles.statBigKicker}>Ümumi Orta Nəticə</Text>
+            <Text style={styles.statBigValue}>{avgPct}%</Text>
+            <Ionicons name="trending-up" size={88} color={Colors.primary + '14'} style={styles.statBigIcon} />
+          </View>
+          <View style={styles.statSmall}>
+            <Text style={styles.statSmallKicker}>Tamamlanıb</Text>
+            <Text style={styles.statSmallValue}>{certs.length} İmtahan</Text>
+          </View>
+        </View>
+
+        {/* Subject filter */}
+        <View style={styles.filterSection}>
+          <Text style={styles.filterLabel}>Fənn üzrə</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+            {SUBJECT_FILTERS.map((s) => {
+              const active = subject === s;
+              if (active) {
+                return (
+                  <TouchableOpacity key={s} activeOpacity={0.85} onPress={() => setSubject(s)}>
+                    <LinearGradient
+                      colors={[Colors.gradientStart, Colors.gradientEnd]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={styles.chipActive}
+                    >
+                      <Text style={styles.chipActiveText}>{s}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                );
+              }
+              return (
+                <TouchableOpacity key={s} style={styles.chip} activeOpacity={0.85} onPress={() => setSubject(s)}>
+                  <Text style={styles.chipText}>{s}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Date segmented */}
+        <View style={styles.filterSection}>
+          <Text style={styles.filterLabel}>Tarix üzrə</Text>
+          <View style={styles.segmented}>
+            {([
+              { id: 'month', label: 'Bu ay' },
+              { id: '3months', label: 'Son 3 ay' },
+              { id: 'all', label: 'Hamısı' },
+            ] as { id: DateBucket; label: string }[]).map((opt) => {
+              const active = dateBucket === opt.id;
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  activeOpacity={0.85}
+                  onPress={() => setDateBucket(opt.id)}
+                  style={[styles.segItem, active && styles.segItemActive]}
+                >
+                  <Text style={[styles.segText, active && styles.segTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* List */}
         {isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
-        ) : certs.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="ribbon-outline" size={48} color={Colors.primaryFixed} />
-            <Text style={styles.emptyText}>Hələ heç bir imtahan verməmisən.</Text>
+            <Text style={styles.emptyText}>
+              {certs.length === 0 ? 'Hələ heç bir imtahan verməmisən.' : 'Filterə uyğun nəticə tapılmadı.'}
+            </Text>
           </View>
         ) : (
-          certs.map((cert: Certificate) => {
-            const grade = gradeLabel(cert.percentage);
-            return (
-              <TouchableOpacity
-                key={cert.id}
-                style={styles.certCard}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate(Routes.CertificatePreview, { examId: cert.examId })}
-              >
-                <View style={styles.certTop}>
-                  <View style={styles.certInfo}>
-                    <Text style={styles.certTitle} numberOfLines={2}>{cert.examTitle}</Text>
-                    <Text style={styles.certDate}>{formatDate(cert.issuedAt)}</Text>
+          <View style={{ gap: 14 }}>
+            {filtered.map((cert) => {
+              const tone = subjectTone(cert.subject);
+              return (
+                <View key={cert.id} style={styles.examCard}>
+                  <View style={styles.examTop}>
+                    <View style={styles.examLeft}>
+                      <View style={[styles.subjectIconBox, { backgroundColor: tone.bg }]}>
+                        <Ionicons name={subjectIcon(cert.subject)} size={22} color={tone.fg} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.examTitle} numberOfLines={2}>{cert.examTitle}</Text>
+                        <Text style={styles.examDate}>{formatShortDate(cert.completedAt)}</Text>
+                      </View>
+                    </View>
+                    <ScoreRing pct={cert.percentage} />
                   </View>
-                  <View style={[styles.gradeBadge, { backgroundColor: grade.bg }]}>
-                    <Text style={[styles.gradeText, { color: grade.color }]}>{grade.label}</Text>
-                  </View>
+
+                  <TouchableOpacity
+                    style={styles.detailBtn}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate(Routes.ExamResult, { examId: cert.examId })}
+                  >
+                    <Text style={styles.detailBtnText}>Detallara bax</Text>
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.certBottom}>
-                  <View style={styles.scoreRow}>
-                    <Text style={styles.scoreWin}>{cert.score}</Text>
-                    <Text style={styles.scoreDash}>/{cert.total}</Text>
-                  </View>
-                  <View style={styles.pctBadge}>
-                    <Ionicons name="ribbon-outline" size={14} color={Colors.primary} />
-                    <Text style={styles.pctText}>{cert.percentage}%</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })
+              );
+            })}
+          </View>
         )}
 
         <View style={{ height: 20 }} />
@@ -146,53 +306,121 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, height: 56,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
+    paddingHorizontal: 16, height: 60,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: Colors.primary },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 },
 
-  scroll: { padding: 20, gap: 20 },
+  scroll: { padding: 24, gap: 24, paddingBottom: 48 },
 
-  heroCard: {
-    borderRadius: 24, padding: 24, gap: 28, overflow: 'hidden',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.15, shadowRadius: 40, elevation: 4,
+  /* Search */
+  searchWrap: {
+    position: 'relative',
+    backgroundColor: Colors.surfaceLowest,
+    borderRadius: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
   },
-  heroAura: { position: 'absolute', top: -16, right: -16, width: 128, height: 128, borderRadius: 64, backgroundColor: 'rgba(255,255,255,0.1)' },
-  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  heroMeta: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.8)', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 4 },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  heroScoreCircle: { width: 64, height: 64, borderRadius: 32, borderWidth: 2, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
-  heroScoreNum: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  heroScorePercent: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  heroStats: { flexDirection: 'row', gap: 16 },
-  heroStatItem: { flex: 1, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 20, padding: 16, alignItems: 'center', gap: 4 },
-  heroStatMeta: { fontSize: 11, color: 'rgba(255,255,255,0.8)' },
-  heroStatNum: { fontSize: 24, fontWeight: '800', color: '#fff' },
+  searchIcon: { position: 'absolute', left: 16, top: 16, zIndex: 1 },
+  searchInput: {
+    paddingVertical: 16, paddingLeft: 48, paddingRight: 16,
+    fontSize: 15, color: Colors.textPrimary,
+  },
 
-  listHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  listTitle: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
+  /* Filter */
+  filterSection: { gap: 14 },
+  filterLabel: {
+    fontSize: 11, fontWeight: '700', color: Colors.textSecondary,
+    textTransform: 'uppercase', letterSpacing: 1.2,
+  },
+  chipsRow: { gap: 12, paddingRight: 8 },
+  chip: {
+    backgroundColor: Colors.surfaceLow,
+    paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 999,
+  },
+  chipText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  chipActive: {
+    paddingHorizontal: 20, paddingVertical: 10,
+    borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 20, elevation: 4,
+  },
+  chipActiveText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  /* Segmented */
+  segmented: {
+    flexDirection: 'row',
+    padding: 4,
+    backgroundColor: Colors.surfaceLow,
+    borderRadius: 999,
+  },
+  segItem: { flex: 1, paddingVertical: 8, borderRadius: 999, alignItems: 'center' },
+  segItemActive: {
+    backgroundColor: Colors.surfaceLowest,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+  },
+  segText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
+  segTextActive: { fontWeight: '700', color: Colors.primary },
 
   center: { paddingTop: 32, alignItems: 'center', gap: 12 },
   emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
 
-  certCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 20, gap: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.02, shadowRadius: 30, elevation: 1,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.4)',
+  /* Card */
+  examCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 20,
+    gap: 16,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.04, shadowRadius: 40, elevation: 2,
   },
-  certTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  certInfo: { flex: 1 },
-  certTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, lineHeight: 22 },
-  certDate: { fontSize: 11, color: Colors.textSecondary, marginTop: 4 },
-  gradeBadge: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  gradeText: { fontSize: 11, fontWeight: '700' },
+  examTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  examLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  subjectIconBox: {
+    width: 48, height: 48, borderRadius: 999,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  examTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, lineHeight: 20 },
+  examDate: { fontSize: 11, color: Colors.textMuted, marginTop: 2 },
 
-  certBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  scoreRow: { flexDirection: 'row', alignItems: 'baseline', gap: 2 },
-  scoreWin: { fontSize: 28, fontWeight: '800', color: Colors.primary },
-  scoreDash: { fontSize: 16, fontWeight: '600', color: Colors.textMuted },
-  pctBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.primaryFixed + '33', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5 },
-  pctText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  scoreRing: {
+    width: 56, height: 56, borderRadius: 28,
+    borderWidth: 4,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  scoreRingText: { fontSize: 14, fontWeight: '700' },
+
+  detailBtn: {
+    paddingVertical: 12, borderRadius: 999,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    alignItems: 'center',
+  },
+  detailBtnText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+
+  /* Category pills */
+  catPillsRow: { gap: 12, paddingRight: 8 },
+  catPill: {
+    paddingHorizontal: 24, paddingVertical: 10, borderRadius: 999,
+    backgroundColor: Colors.surfaceLowest,
+  },
+  catPillText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
+  catPillActive: {
+    paddingHorizontal: 24, paddingVertical: 10, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.15, shadowRadius: 18, elevation: 4,
+  },
+  catPillActiveText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  /* Stats grid */
+  statsGrid: { flexDirection: 'row', gap: 16, alignItems: 'stretch' },
+  statBig: {
+    flex: 3, backgroundColor: Colors.primary + '14',
+    borderRadius: 16, padding: 24, overflow: 'hidden', position: 'relative',
+  },
+  statBigKicker: { fontSize: 11, fontWeight: '700', color: Colors.primary, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 },
+  statBigValue: { fontSize: 36, fontWeight: '900', color: Colors.primary, letterSpacing: -0.8 },
+  statBigIcon: { position: 'absolute', right: -8, bottom: -16 },
+  statSmall: {
+    flex: 2, backgroundColor: Colors.surfaceLow,
+    borderRadius: 16, padding: 18, justifyContent: 'center',
+  },
+  statSmallKicker: { fontSize: 10, fontWeight: '800', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
+  statSmallValue: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
 });

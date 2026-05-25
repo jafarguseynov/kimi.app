@@ -1,6 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppTabParamList } from './types';
 import { Routes } from '../constants/routes';
 import { Colors } from '../constants/colors';
@@ -17,22 +17,13 @@ import BookmarksScreen from '../screens/bookmarks/BookmarksScreen';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
-const TAB_ICONS: Record<string, string> = {
-  [Routes.Home]: '🏠',
-  Exams: '📝',
-  Learn: '📚',
-  [Routes.AIMentor]: '🤖',
-  Marketplace: '💬',
-  [Routes.Bookmarks]: '🔖',
-  Chat: '✉️',
-  Booking: '📅',
-  Calculators: '🧮',
-  [Routes.Profile]: '👤',
+const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  [Routes.Home]: 'home',
+  Exams: 'document-text',
+  [Routes.AIMentor]: 'sparkles',
+  Booking: 'people',
+  [Routes.Profile]: 'person',
 };
-
-const TabIcon = ({ name, focused }: { name: string; focused: boolean }) => (
-  <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>{TAB_ICONS[name] ?? '●'}</Text>
-);
 
 export default function AppNavigator() {
   return (
@@ -40,21 +31,62 @@ export default function AppNavigator() {
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
-        tabBarStyle: { backgroundColor: Colors.surface, borderTopColor: Colors.border },
+        tabBarStyle: {
+          backgroundColor: Colors.surface,
+          borderTopColor: Colors.border,
+          height: 64,
+          paddingTop: 6,
+          paddingBottom: 8,
+        },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ focused, color }) => {
+          const name = TAB_ICONS[route.name] ?? 'ellipse';
+          return <Ionicons name={focused ? name : (`${name}-outline` as any)} size={22} color={color} />;
+        },
       })}
     >
       <Tab.Screen name={Routes.Home} component={HomeNavigator} options={{ tabBarLabel: 'Ana Səhifə' }} />
-      <Tab.Screen name="Exams" component={ExamNavigator} options={{ tabBarLabel: 'İmtahanlar' }} />
-      <Tab.Screen name="Learn" component={LearningNavigator} options={{ tabBarLabel: 'Öyrən' }} />
+      <Tab.Screen
+        name="Exams"
+        component={ExamNavigator}
+        options={{ tabBarLabel: 'İmtahanlar' }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            (navigation as any).navigate('Exams', { screen: Routes.ExamList });
+          },
+        })}
+      />
       <Tab.Screen name={Routes.AIMentor} component={AIMentorScreen} options={{ tabBarLabel: 'AI' }} />
-      <Tab.Screen name="Marketplace" component={MarketplaceNavigator} options={{ tabBarLabel: 'Market' }} />
-      <Tab.Screen name={Routes.Bookmarks} component={BookmarksScreen} options={{ tabBarLabel: 'Yaddaş' }} />
-      <Tab.Screen name="Chat" component={ChatNavigator} options={{ tabBarLabel: 'Mesaj' }} />
-      <Tab.Screen name="Booking" component={BookingNavigator} options={{ tabBarLabel: 'Dərslər' }} />
-      <Tab.Screen name="Calculators" component={CalculatorNavigator} options={{ tabBarLabel: 'Kalkulyator' }} />
+      <Tab.Screen name="Booking" component={BookingNavigator} options={{ tabBarLabel: 'Müəllimlər' }} />
       <Tab.Screen name={Routes.Profile} component={ProfileNavigator} options={{ tabBarLabel: 'Profil' }} />
+      {/* Hidden tabs — still navigable from HomeScreen quick actions */}
+      <Tab.Screen
+        name="Learn"
+        component={LearningNavigator}
+        options={{ tabBarItemStyle: { display: 'none' }, tabBarButton: () => null }}
+      />
+      <Tab.Screen
+        name="Marketplace"
+        component={MarketplaceNavigator}
+        options={{ tabBarItemStyle: { display: 'none' }, tabBarButton: () => null }}
+      />
+      <Tab.Screen
+        name={Routes.Bookmarks}
+        component={BookmarksScreen}
+        options={{ tabBarItemStyle: { display: 'none' }, tabBarButton: () => null }}
+      />
+      <Tab.Screen
+        name="Chat"
+        component={ChatNavigator}
+        options={{ tabBarItemStyle: { display: 'none' }, tabBarButton: () => null }}
+      />
+      <Tab.Screen
+        name="Calculators"
+        component={CalculatorNavigator}
+        options={{ tabBarItemStyle: { display: 'none' }, tabBarButton: () => null }}
+      />
     </Tab.Navigator>
   );
 }

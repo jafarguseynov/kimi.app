@@ -1,15 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+const SUPPORT_EMAIL = 'support@kimi.az';
 
 export default function SupportScreen() {
   const navigation = useNavigation<any>();
+
+  const openChat = () => {
+    const parent = navigation.getParent() as any;
+    parent?.navigate('Chat', { screen: Routes.ChatList });
+  };
+  const openEmail = () => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Kimi.az%20Dəstək`);
+  const openReport = () => navigation.navigate(Routes.ReportProblem);
+  const openFaq = () => navigation.navigate(Routes.HelpCenter);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -53,7 +63,7 @@ export default function SupportScreen() {
 
         {/* Contact options */}
         <View style={styles.contactList}>
-          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85} onPress={openChat}>
             <LinearGradient colors={GRADIENT} style={styles.contactIconBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
             </LinearGradient>
@@ -64,7 +74,7 @@ export default function SupportScreen() {
             <Ionicons name="chevron-forward" size={20} color={Colors.outlineVariant} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85}>
+          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85} onPress={openEmail}>
             <View style={[styles.contactIconBox, { backgroundColor: Colors.surfaceLow }]}>
               <Ionicons name="mail-outline" size={24} color={Colors.primary} />
             </View>
@@ -85,14 +95,14 @@ export default function SupportScreen() {
             </View>
             <Text style={styles.problemTitle}>Xəta və ya Problem Bildir</Text>
             <Text style={styles.problemDesc}>Tətbiqdə qarşılaşdığınız texniki problemləri bizə bildirin.</Text>
-            <TouchableOpacity style={styles.problemBtn} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.problemBtn} activeOpacity={0.85} onPress={openReport}>
               <Text style={styles.problemBtnText}>Problem Bildir</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* FAQ link */}
-        <TouchableOpacity style={styles.faqLink} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.faqLink} activeOpacity={0.7} onPress={openFaq}>
           <Text style={styles.faqLinkText}>Tez-tez verilən suallar (FAQ)</Text>
         </TouchableOpacity>
       </ScrollView>

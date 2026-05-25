@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
+
+const SUPPORT_EMAIL = 'support@kimi.az';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -46,6 +49,13 @@ export default function HelpCenterScreen() {
   const navigation = useNavigation<any>();
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+
+  const openChat = () => {
+    const parent = navigation.getParent() as any;
+    parent?.navigate('Chat', { screen: Routes.ChatList });
+  };
+  const openEmail = () => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Kimi.az%20Dəstək`);
+  const openReport = () => navigation.navigate(Routes.ReportProblem);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -112,20 +122,20 @@ export default function HelpCenterScreen() {
         <View style={styles.supportSection}>
           <Text style={styles.supportSectionTitle}>Dəstək ilə əlaqə</Text>
           <View style={styles.supportGrid}>
-            <View style={styles.supportCard}>
+            <TouchableOpacity style={styles.supportCard} activeOpacity={0.85} onPress={openChat}>
               <View style={styles.supportIconCircle}>
                 <Ionicons name="chatbubbles" size={22} color={Colors.primary} />
               </View>
               <Text style={styles.supportCardTitle}>Canlı Çat</Text>
               <Text style={styles.supportCardSub}>2 dəqiqəyə cavab</Text>
-            </View>
-            <View style={styles.supportCard}>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.supportCard} activeOpacity={0.85} onPress={openEmail}>
               <View style={styles.supportIconCircle}>
                 <Ionicons name="mail" size={22} color={Colors.primary} />
               </View>
               <Text style={styles.supportCardTitle}>Email</Text>
               <Text style={styles.supportCardSub}>24 saat ərzində</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -138,7 +148,7 @@ export default function HelpCenterScreen() {
             </View>
             <Text style={styles.ctaTitle}>Problem bildir</Text>
             <Text style={styles.ctaSub}>Texniki çətinliklə qarşılaşırsınız? Bizə bildirin, dərhal həll edək.</Text>
-            <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
+            <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85} onPress={openReport}>
               <Text style={styles.ctaBtnText}>Hesabat göndər</Text>
             </TouchableOpacity>
           </LinearGradient>

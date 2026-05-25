@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useSettingsStore } from '../../store/settings.store';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.NotificationSettings>;
@@ -72,9 +73,16 @@ const ITEMS: NotifItem[] = [
 const DEFAULTS = Object.fromEntries(ITEMS.map(i => [i.id, i.defaultOn])) as Record<string, boolean>;
 
 export default function NotificationSettingsScreen({ navigation }: Props) {
-  const [toggles, setToggles] = useState<Record<string, boolean>>(DEFAULTS);
+  const { notificationPrefs, setNotificationPrefs } = useSettingsStore();
+  const [toggles, setToggles] = useState<Record<string, boolean>>({ ...DEFAULTS, ...notificationPrefs });
   const flip = (id: string) => setToggles(p => ({ ...p, [id]: !p[id] }));
   const reset = () => setToggles(DEFAULTS);
+  const save = () => {
+    setNotificationPrefs(toggles);
+    Alert.alert('Yadda saxlanıldı', 'Bildiriş tənzimləmələriniz tətbiq edildi.', [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -137,7 +145,7 @@ export default function NotificationSettingsScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={{ width: '100%' }} activeOpacity={0.85}>
+          <TouchableOpacity style={{ width: '100%' }} activeOpacity={0.85} onPress={save}>
             <LinearGradient
               colors={[Colors.gradientStart, Colors.gradientEnd]}
               style={styles.saveBtn}

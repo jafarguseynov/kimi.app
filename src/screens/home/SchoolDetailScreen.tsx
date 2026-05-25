@@ -55,19 +55,28 @@ export default function SchoolDetailScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-        {/* Hero */}
-        <LinearGradient colors={GRADIENT} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View style={styles.heroBlob1} />
-          <View style={styles.heroBlob2} />
-          <View style={styles.heroIconWrap}>
-            <Ionicons name="school" size={36} color="rgba(255,255,255,0.9)" />
+        {/* Hero — photo-like */}
+        <View style={styles.heroWrap}>
+          <LinearGradient colors={GRADIENT} style={styles.heroBg} start={{ x: 0.2, y: 0 }} end={{ x: 1, y: 1 }}>
+            <View style={styles.heroBlob1} pointerEvents="none" />
+            <View style={styles.heroBlob2} pointerEvents="none" />
+            <Ionicons name="school" size={92} color="rgba(255,255,255,0.18)" style={styles.heroEmblem} />
+          </LinearGradient>
+          <LinearGradient
+            colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.65)']}
+            style={styles.heroOverlay}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            pointerEvents="none"
+          />
+          <View style={styles.heroFoot}>
+            <Text style={styles.heroName} numberOfLines={2}>{schoolName}</Text>
+            <View style={styles.heroLocationRow}>
+              <Ionicons name="location" size={14} color="rgba(255,255,255,0.85)" />
+              <Text style={styles.heroLocation}>Bakı, Azərbaycan</Text>
+            </View>
           </View>
-          <Text style={styles.heroName}>{schoolName}</Text>
-          <View style={styles.heroLocationRow}>
-            <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
-            <Text style={styles.heroLocation}>Bakı, Azərbaycan</Text>
-          </View>
-        </LinearGradient>
+        </View>
 
         {/* Rating & Stats */}
         <View style={styles.bentoRow}>
@@ -194,20 +203,20 @@ const styles = StyleSheet.create({
 
   scroll: { padding: 20, gap: 20, paddingBottom: 48 },
 
-  hero: {
-    borderRadius: 20, padding: 28, overflow: 'hidden', gap: 10,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 4,
+  heroWrap: {
+    height: 256, borderRadius: 22, overflow: 'hidden',
+    position: 'relative',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.18, shadowRadius: 26, elevation: 6,
   },
-  heroBlob1: { position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.08)' },
-  heroBlob2: { position: 'absolute', bottom: -20, left: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)' },
-  heroIconWrap: {
-    width: 64, height: 64, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center',
-    alignSelf: 'flex-start',
-  },
-  heroName: { fontSize: 24, fontWeight: '900', color: '#fff', lineHeight: 32 },
-  heroLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  heroLocation: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.8)' },
+  heroBg: { flex: 1, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  heroEmblem: { opacity: 0.9 },
+  heroOverlay: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
+  heroBlob1: { position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: 100, backgroundColor: 'rgba(255,255,255,0.1)' },
+  heroBlob2: { position: 'absolute', top: 40, left: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: 'rgba(255,255,255,0.06)' },
+  heroFoot: { position: 'absolute', left: 22, right: 22, bottom: 20, gap: 6 },
+  heroName: { fontSize: 26, fontWeight: '900', color: '#fff', letterSpacing: -0.5, lineHeight: 32 },
+  heroLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroLocation: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
 
   bentoRow: { flexDirection: 'row', gap: 12 },
   bentoCard: {

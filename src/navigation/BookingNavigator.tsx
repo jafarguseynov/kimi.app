@@ -12,12 +12,14 @@ import LeaveReviewScreen from '../screens/booking/LeaveReviewScreen';
 import ReviewSuccessScreen from '../screens/booking/ReviewSuccessScreen';
 import AllReviewsScreen from '../screens/booking/AllReviewsScreen';
 import ReviewDetailScreen from '../screens/booking/ReviewDetailScreen';
+import LessonRequestScreen from '../screens/marketplace/LessonRequestScreen';
+import InterestedTeachersScreen from '../screens/marketplace/InterestedTeachersScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function BookingNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name={Routes.TeacherList} component={TeacherListScreen} />
       <Stack.Screen name={Routes.TeacherProfile} component={TeacherProfileScreen} />
       <Stack.Screen name={Routes.BookingConfirm} component={BookingConfirmScreen} />
@@ -29,6 +31,8 @@ export default function BookingNavigator() {
       <Stack.Screen name={Routes.ReviewSuccess} component={ReviewSuccessScreen} />
       <Stack.Screen name={Routes.AllReviews} component={AllReviewsScreen} />
       <Stack.Screen name={Routes.ReviewDetail} component={ReviewDetailScreen} />
+      <Stack.Screen name={Routes.LessonRequest} component={LessonRequestScreen} options={{ presentation: 'modal' }} />
+      <Stack.Screen name={Routes.InterestedTeachers} component={InterestedTeachersScreen} />
     </Stack.Navigator>
   );
 }

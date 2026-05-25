@@ -49,8 +49,18 @@ export interface Review {
   createdAt: string;
 }
 
-export const getTeacherReviews = (teacherId: string) =>
-  api.get<Review[]>(`/booking/reviews/${teacherId}`).then((r) => r.data);
+export const getTeacherReviews = async (teacherId: string): Promise<Review[]> => {
+  if (!teacherId) return [];
+  const res = await api.get(`/booking/reviews/${teacherId}`);
+  const raw = Array.isArray(res.data) ? res.data : (res.data?.reviews ?? []);
+  return raw.map((r: any) => ({
+    id: r.id,
+    rating: r.rating,
+    comment: r.comment,
+    createdAt: r.createdAt,
+    student: r.student ?? r.reviewer ?? undefined,
+  }));
+};
 
 export const submitReview = (bookingId: string, data: { rating: number; comment?: string }) =>
   api.post<void>(`/booking/review/${bookingId}`, data).then((r) => r.data);

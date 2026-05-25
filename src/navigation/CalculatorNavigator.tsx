@@ -15,7 +15,7 @@ const Stack = createNativeStackNavigator<CalcStackParamList>();
 
 export default function CalculatorNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name={Routes.Calculators} component={CalculatorsHomeScreen} />
       <Stack.Screen name={Routes.SemesterCalc} component={SemesterCalculatorScreen} />
       <Stack.Screen name={Routes.AnnualCalc} component={AnnualCalculatorScreen} />

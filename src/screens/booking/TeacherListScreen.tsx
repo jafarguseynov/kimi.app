@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,12 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   Dimensions,
+  ScrollView,
+  Image,
+  Modal,
+  Pressable,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +22,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useFavoriteTeachersStore } from '../../store/favoritesTeachers.store';
+import { useRecentTeachersStore } from '../../store/recentTeachers.store';
 
 interface Teacher {
   id: string;
@@ -26,12 +32,40 @@ interface Teacher {
   subjects?: string[];
   hourlyRate?: number;
   rating?: number;
+  avatarUrl?: string;
+  isVerified?: boolean;
+  isOnline?: boolean;
+  format?: 'online' | 'in-person' | 'both';
+  reviewCount?: number;
+  city?: string;
+  gender?: 'male' | 'female';
+  age?: number;
 }
+
+const CITY_SUGGESTIONS = [
+  'Bakı', 'Sumqayıt', 'Gəncə', 'Mingəçevir', 'Şirvan',
+  'Naxçıvan', 'Şəki', 'Lənkəran', 'Quba', 'Xırdalan',
+  'Ağdam', 'Ağdaş', 'Ağsu', 'Astara', 'Balakən',
+  'Bərdə', 'Beyləqan', 'Biləsuvar', 'Cəlilabad', 'Daşkəsən',
+  'Füzuli', 'Gədəbəy', 'Goranboy', 'Göyçay', 'Hacıqabul',
+  'İmişli', 'İsmayıllı', 'Kürdəmir', 'Qax', 'Qazax',
+  'Qəbələ', 'Qobustan', 'Qusar', 'Masallı', 'Neftçala',
+  'Oğuz', 'Saatlı', 'Sabirabad', 'Salyan', 'Samux',
+  'Siyəzən', 'Şabran', 'Şamaxı', 'Şəmkir', 'Tərtər',
+  'Tovuz', 'Ucar', 'Yardımlı', 'Yevlax', 'Zaqatala', 'Zərdab',
+];
+
+const AGE_RANGES: { key: string; label: string; min: number; max: number }[] = [
+  { key: '18-25', label: '18-25', min: 18, max: 25 },
+  { key: '26-35', label: '26-35', min: 26, max: 35 },
+  { key: '36-50', label: '36-50', min: 36, max: 50 },
+  { key: '50+', label: '50+', min: 50, max: 200 },
+];
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = (width - 32 - 12) / 2;
 
-const FILTER_CHIPS = ['Hamısı', 'Fənn', 'Sinif', 'Qiymət', 'Şəhər', 'Reytinq', 'Dərs formatı'];
+const FILTER_CHIPS = ['Hamısı', 'Sevimlilərim', 'Riyaziyyat', 'Fizika', 'Kimya', 'Biologiya', 'İngilis dili', 'Azərbaycan dili', 'Tarix', 'Coğrafiya', 'İnformatika'];
 
 const AVATAR_GRADIENTS: [string, string][] = [
   [Colors.gradientStart, Colors.gradientEnd],
@@ -42,24 +76,145 @@ const AVATAR_GRADIENTS: [string, string][] = [
   ['#9333EA', '#D946EF'],
 ];
 
+function useDebounced<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(t);
+  }, [value, ms]);
+  return debounced;
+}
+
+const SkeletonCard = () => (
+  <View style={[styles.card, styles.skeletonCard, { width: CARD_WIDTH }]}>
+    <View style={styles.skelPhoto} />
+    <View style={styles.skelLineLg} />
+    <View style={styles.skelLineSm} />
+    <View style={styles.skelMetrics} />
+    <View style={styles.skelLineSm} />
+  </View>
+);
+
 export default function TeacherListScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounced(search, 350);
   const [activeFilter, setActiveFilter] = useState('Hamısı');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'rating' | 'priceAsc' | 'priceDesc' | 'reviews'>('rating');
+  const [formatFilter, setFormatFilter] = useState<'all' | 'online' | 'in-person'>('all');
+  const [minRating, setMinRating] = useState<0 | 4 | 4.5 | 4.8>(0);
+  const [cityFilter, setCityFilter] = useState<string>('');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
+  const [ageRange, setAgeRange] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const { data: teachers = [], isLoading } = useQuery<Teacher[]>({
-    queryKey: ['teachers', search],
+  const favoriteIds = useFavoriteTeachersStore((s) => s.ids);
+  const toggleFavorite = useFavoriteTeachersStore((s) => s.toggle);
+  const recentList = useRecentTeachersStore((s) => s.list);
+
+  const activeFilterCount =
+    (sortBy !== 'rating' ? 1 : 0) +
+    (formatFilter !== 'all' ? 1 : 0) +
+    (minRating > 0 ? 1 : 0) +
+    (cityFilter.trim() ? 1 : 0) +
+    (genderFilter !== 'all' ? 1 : 0) +
+    (ageRange ? 1 : 0);
+
+  const resetFilters = () => {
+    setSortBy('rating');
+    setFormatFilter('all');
+    setMinRating(0);
+    setCityFilter('');
+    setGenderFilter('all');
+    setAgeRange(null);
+  };
+
+  const citySuggestions = useMemo(() => {
+    const q = cityFilter.trim().toLowerCase();
+    if (!q) return [] as string[];
+    return CITY_SUGGESTIONS
+      .filter((c) => c.toLowerCase().includes(q) && c.toLowerCase() !== q)
+      .slice(0, 6);
+  }, [cityFilter]);
+
+  const subjectQuery = activeFilter !== 'Hamısı' && activeFilter !== 'Sevimlilərim' ? activeFilter : undefined;
+  const { data: teachersData, isLoading, refetch } = useQuery<Teacher[]>({
+    queryKey: ['teachers', debouncedSearch, subjectQuery],
     queryFn: () =>
-      api.get('/user/teachers', { params: { q: search } }).then((r) => r.data),
+      api
+        .get('/user/teachers', {
+          params: {
+            q: debouncedSearch || undefined,
+            subject: subjectQuery,
+          },
+        })
+        .then((r) => r.data)
+        .catch(() => [] as Teacher[]),
   });
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try { await refetch(); } finally { setRefreshing(false); }
+  };
+
+  const rawTeachers: Teacher[] = Array.isArray(teachersData) ? teachersData : [];
+
+  const teachers: Teacher[] = useMemo(() => {
+    let list = rawTeachers.slice();
+    if (activeFilter === 'Sevimlilərim') {
+      list = list.filter((t) => favoriteIds.has(t.id));
+    }
+    if (formatFilter !== 'all') {
+      list = list.filter((t) => t.format === formatFilter || t.format === 'both');
+    }
+    if (minRating > 0) {
+      list = list.filter((t) => (t.rating ?? 0) >= minRating);
+    }
+    if (cityFilter.trim()) {
+      const q = cityFilter.trim().toLowerCase();
+      list = list.filter((t) => t.city?.toLowerCase().includes(q));
+    }
+    if (genderFilter !== 'all') {
+      list = list.filter((t) => t.gender === genderFilter);
+    }
+    if (ageRange) {
+      const r = AGE_RANGES.find((a) => a.key === ageRange);
+      if (r) list = list.filter((t) => t.age != null && t.age >= r.min && t.age <= r.max);
+    }
+    if (sortBy === 'rating') list.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+    else if (sortBy === 'priceAsc') list.sort((a, b) => (a.hourlyRate ?? Number.POSITIVE_INFINITY) - (b.hourlyRate ?? Number.POSITIVE_INFINITY));
+    else if (sortBy === 'priceDesc') list.sort((a, b) => (b.hourlyRate ?? -1) - (a.hourlyRate ?? -1));
+    else if (sortBy === 'reviews') list.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
+    return list;
+  }, [rawTeachers, activeFilter, favoriteIds, formatFilter, minRating, cityFilter, genderFilter, ageRange, sortBy]);
+
+  const activeFilterChips: { label: string; onClear: () => void }[] = [];
+  if (sortBy !== 'rating') {
+    const sortMap = { priceAsc: 'Qiymət ↑', priceDesc: 'Qiymət ↓', reviews: 'Rəylər' } as const;
+    activeFilterChips.push({ label: sortMap[sortBy], onClear: () => setSortBy('rating') });
+  }
+  if (formatFilter !== 'all') activeFilterChips.push({ label: formatFilter === 'online' ? 'Onlayn' : 'Əyani', onClear: () => setFormatFilter('all') });
+  if (minRating > 0) activeFilterChips.push({ label: `${minRating}+ ★`, onClear: () => setMinRating(0) });
+  if (cityFilter.trim()) activeFilterChips.push({ label: cityFilter.trim(), onClear: () => setCityFilter('') });
+  if (genderFilter !== 'all') activeFilterChips.push({ label: genderFilter === 'male' ? 'Kişi' : 'Qadın', onClear: () => setGenderFilter('all') });
+  if (ageRange) activeFilterChips.push({ label: `${ageRange} yaş`, onClear: () => setAgeRange(null) });
 
   const renderCard = ({ item, index }: { item: Teacher; index: number }) => {
     const gradient = AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length];
     const initial = item.name?.[0]?.toUpperCase() ?? '?';
-    const subject = item.subjects?.[0] ?? 'Ümumi';
-    const price = item.hourlyRate != null ? `${item.hourlyRate} AZN` : '15 AZN';
-    const rating = item.rating?.toFixed(1) ?? '4.8';
-    const isOnline = index % 3 !== 1;
+    const subjectLabel = item.subjects?.length
+      ? item.subjects.slice(0, 2).join(' • ')
+      : 'Ümumi mütəxəssis';
+    const price = typeof item.hourlyRate === 'number' && item.hourlyRate > 0 ? item.hourlyRate : 15;
+    const ratingText = typeof item.rating === 'number' && item.rating > 0 ? item.rating.toFixed(1) : '—';
+    const reviewCount = item.reviewCount ?? (45 + ((index * 13) % 180));
+    const viewsCount = (((index * 91) % 30) / 10 + 0.5).toFixed(1);
+    const cityLabel = item.city ?? 'Bakı';
+    const showOnline = item.isOnline || item.format === 'online';
+    const showInPerson = !showOnline && item.format === 'in-person';
+    const isFavorite = favoriteIds.has(item.id);
+    const isVerified = item.isVerified !== false;
 
     return (
       <TouchableOpacity
@@ -67,64 +222,158 @@ export default function TeacherListScreen() {
         onPress={() => navigation.navigate(Routes.TeacherProfile, { teacher: item })}
         activeOpacity={0.85}
       >
-        {/* Photo area */}
         <View style={styles.photoContainer}>
-          <LinearGradient colors={gradient} style={styles.photoBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Text style={styles.photoInitial}>{initial}</Text>
-          </LinearGradient>
-          <TouchableOpacity style={styles.heartBtn} activeOpacity={0.8} hitSlop={4}>
-            <Ionicons name="heart-outline" size={15} color={Colors.textSecondary} />
+          {item.avatarUrl ? (
+            <Image source={{ uri: item.avatarUrl }} style={styles.photoBox} />
+          ) : (
+            <LinearGradient colors={gradient} style={styles.photoBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={styles.photoInitial}>{initial}</Text>
+            </LinearGradient>
+          )}
+
+          <TouchableOpacity
+            style={styles.favBtn}
+            activeOpacity={0.7}
+            hitSlop={6}
+            onPress={() => toggleFavorite(item.id)}
+          >
+            <Ionicons
+              name={isFavorite ? 'heart' : 'heart-outline'}
+              size={14}
+              color={isFavorite ? '#ef4444' : Colors.outlineVariant}
+            />
           </TouchableOpacity>
-          <View style={[styles.modeBadge, { backgroundColor: isOnline ? Colors.primary + 'E8' : Colors.tertiary + 'E8' }]}>
-            <Text style={styles.modeBadgeText}>{isOnline ? 'ONLAYN' : 'ƏYANİ'}</Text>
-          </View>
-        </View>
 
-        {/* Card body */}
-        <View style={styles.cardBody}>
-          <View style={styles.nameRow}>
-            <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
-            <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
-          </View>
-          <Text style={styles.cardSubject}>{subject}</Text>
-          <View style={styles.ratingStatRow}>
-            <Ionicons name="star" size={12} color="#F59E0B" />
-            <Text style={styles.ratingStatValue}>{rating}</Text>
-            <View style={styles.eyeStatRow}>
-              <Ionicons name="eye-outline" size={12} color={Colors.outlineVariant} />
-              <Text style={styles.viewsStatText}>1.2k</Text>
+          {showOnline && (
+            <View style={[styles.statusBadge, styles.statusOnline]}>
+              <Text style={styles.statusBadgeText}>ONLAYN</Text>
             </View>
+          )}
+          {showInPerson && (
+            <View style={[styles.statusBadge, styles.statusInPerson]}>
+              <Text style={styles.statusBadgeText}>ƏYANİ</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.nameRow}>
+          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+          {isVerified && <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />}
+        </View>
+        <Text style={styles.cardSubject} numberOfLines={1}>{subjectLabel}</Text>
+
+        <View style={styles.metricsRow}>
+          <View style={styles.metricItem}>
+            <Ionicons name="star" size={13} color="#F59E0B" />
+            <Text style={styles.metricStrong}>{ratingText}</Text>
+            <Text style={styles.metricMuted}>({reviewCount})</Text>
+          </View>
+          <View style={styles.metricItem}>
+            <Ionicons name="eye-outline" size={13} color={Colors.textMuted} />
+            <Text style={styles.metricMuted}>{viewsCount}k</Text>
           </View>
         </View>
 
-        {/* Price footer */}
-        <View style={styles.cardFooter}>
-          <Text style={styles.priceFooterLabel}>Başlayan qiymət</Text>
-          <Text style={styles.priceFooterValue}>{price}<Text style={styles.priceFooterUnit}>/saat</Text></Text>
+        <View style={styles.cityRow}>
+          <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
+          <Text style={styles.cityText} numberOfLines={1}>{cityLabel}</Text>
+        </View>
+
+        <View style={styles.priceFooter}>
+          <Text style={styles.priceLabel}>Başlayan qiymət</Text>
+          <Text style={styles.priceValue}>
+            {price} AZN<Text style={styles.priceUnit}> /saat</Text>
+          </Text>
         </View>
       </TouchableOpacity>
     );
   };
 
+  const RecentRow = recentList.length > 0 ? (
+    <View style={styles.recentWrap}>
+      <View style={styles.recentHeader}>
+        <Text style={styles.recentTitle}>Son baxdıqlarım</Text>
+        <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentRow}>
+        {recentList.map((rt, idx) => {
+          const grad = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
+          const init = rt.name?.[0]?.toUpperCase() ?? '?';
+          return (
+            <TouchableOpacity
+              key={rt.id}
+              style={styles.recentItem}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate(Routes.TeacherProfile, { teacher: rt })}
+            >
+              {rt.avatarUrl ? (
+                <Image source={{ uri: rt.avatarUrl }} style={styles.recentAvatar} />
+              ) : (
+                <LinearGradient colors={grad} style={styles.recentAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                  <Text style={styles.recentInitial}>{init}</Text>
+                </LinearGradient>
+              )}
+              <Text style={styles.recentName} numberOfLines={1}>{rt.name}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  ) : null;
+
   const PremiumCTA = (
-    <View style={styles.premiumCta}>
-      <View style={styles.premiumCtaContent}>
-        <Text style={styles.premiumCtaTitle}>Mükəmməl müəllimi tapmaqda çətinlik çəkirsiniz?</Text>
-        <Text style={styles.premiumCtaSub}>AI köməkçimiz sizin üçün ən uyğun mütəxəssisi saniyələr ərzində müəyyən edəcək.</Text>
-        <TouchableOpacity style={styles.premiumCtaBtn} activeOpacity={0.85}>
-          <Text style={styles.premiumCtaBtnText}>AI-DAN SORUŞ</Text>
+    <View>
+      {RecentRow}
+      <View style={styles.premiumCta}>
+        <View style={styles.premiumCtaContent}>
+          <Text style={styles.premiumCtaTitle}>Mükəmməl müəllimi tapmaqda çətinlik çəkirsiniz?</Text>
+          <Text style={styles.premiumCtaSub}>AI köməkçimiz sizin üçün ən uyğun mütəxəssisi saniyələr ərzində müəyyən edəcək.</Text>
+          <TouchableOpacity
+            style={styles.premiumCtaBtn}
+            activeOpacity={0.85}
+            onPress={() => {
+              const parent = navigation.getParent() as any;
+              if (parent?.navigate) parent.navigate(Routes.AIMentor);
+            }}
+          >
+            <Text style={styles.premiumCtaBtnText}>AI-DAN SORUŞ</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.premiumCtaIconBox}>
+          <Ionicons name="hardware-chip-outline" size={36} color="rgba(255,255,255,0.9)" />
+        </View>
+        <View style={styles.premiumCtaBlob} />
+      </View>
+
+      <View style={styles.requestRow}>
+        <TouchableOpacity
+          style={styles.requestCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate(Routes.LessonRequest as any)}
+        >
+          <View style={styles.requestIconBoxPrimary}>
+            <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
+          </View>
+          <Text style={styles.requestCardTitle}>Dərs Sorğusu Yarat</Text>
+          <Text style={styles.requestCardSub}>Müəllimlər səninlə əlaqə qursun</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.requestCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate(Routes.BookingHistory as any)}
+        >
+          <View style={styles.requestIconBoxSecondary}>
+            <Ionicons name="list-outline" size={24} color={Colors.tertiary} />
+          </View>
+          <Text style={styles.requestCardTitle}>Sorğularım</Text>
+          <Text style={styles.requestCardSub}>Göndərilən sorğuları izlə</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.premiumCtaIconBox}>
-        <Ionicons name="hardware-chip-outline" size={36} color="rgba(255,255,255,0.9)" />
-      </View>
-      <View style={styles.premiumCtaBlob} />
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.avatarCircle}>
@@ -132,12 +381,21 @@ export default function TeacherListScreen() {
           </View>
           <Text style={styles.headerTitle}>Müəllim Tap</Text>
         </View>
-        <TouchableOpacity style={styles.filterIconBtn} activeOpacity={0.7} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.filterIconBtn}
+          activeOpacity={0.7}
+          hitSlop={8}
+          onPress={() => setFilterOpen(true)}
+        >
           <Ionicons name="options-outline" size={22} color={Colors.primary} />
+          {activeFilterCount > 0 && (
+            <View style={styles.filterDot}>
+              <Text style={styles.filterDotText}>{activeFilterCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
       <View style={styles.searchWrapper}>
         <View style={styles.searchBox}>
           <Ionicons name="search-outline" size={20} color={Colors.textMuted} style={{ marginLeft: 16 }} />
@@ -147,52 +405,90 @@ export default function TeacherListScreen() {
             placeholderTextColor={Colors.textMuted}
             value={search}
             onChangeText={setSearch}
+            returnKeyType="search"
           />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={10} style={{ paddingHorizontal: 12 }}>
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* Filter chips */}
-      <FlatList
-        horizontal
-        data={FILTER_CHIPS}
-        keyExtractor={(c) => c}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipList}
-        style={styles.chipScroll}
-        renderItem={({ item }) => {
-          const isActive = activeFilter === item;
-          if (isActive) {
+      <View style={styles.chipScroll}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipList}
+        >
+          {FILTER_CHIPS.map((item) => {
+            const isActive = activeFilter === item;
+            const isFavChip = item === 'Sevimlilərim';
+            const favCount = favoriteIds.size;
+            if (isActive) {
+              return (
+                <TouchableOpacity key={item} onPress={() => setActiveFilter(item)} activeOpacity={0.85}>
+                  <LinearGradient
+                    colors={[Colors.gradientStart, Colors.gradientEnd]}
+                    style={styles.chipActive}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    {item === 'Hamısı' && (
+                      <Ionicons name="sparkles" size={14} color="#fff" style={{ marginRight: 4 }} />
+                    )}
+                    {isFavChip && (
+                      <Ionicons name="heart" size={13} color="#fff" style={{ marginRight: 4 }} />
+                    )}
+                    <Text style={styles.chipTextActive}>{item}{isFavChip && favCount > 0 ? ` (${favCount})` : ''}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              );
+            }
             return (
-              <TouchableOpacity onPress={() => setActiveFilter(item)} activeOpacity={0.85}>
-                <LinearGradient
-                  colors={[Colors.gradientStart, Colors.gradientEnd]}
-                  style={styles.chipActive}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  {item === 'Hamısı' && (
-                    <Ionicons name="sparkles" size={14} color="#fff" style={{ marginRight: 4 }} />
-                  )}
-                  <Text style={styles.chipTextActive}>{item}</Text>
-                </LinearGradient>
+              <TouchableOpacity
+                key={item}
+                style={styles.chip}
+                onPress={() => setActiveFilter(item)}
+                activeOpacity={0.7}
+              >
+                {isFavChip && <Ionicons name="heart-outline" size={13} color={Colors.textPrimary} style={{ marginRight: 4 }} />}
+                <Text style={styles.chipText}>{item}{isFavChip && favCount > 0 ? ` (${favCount})` : ''}</Text>
               </TouchableOpacity>
             );
-          }
-          return (
-            <TouchableOpacity
-              style={styles.chip}
-              onPress={() => setActiveFilter(item)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.chipText}>{item}</Text>
-            </TouchableOpacity>
-          );
-        }}
-      />
+          })}
+        </ScrollView>
+      </View>
 
-      {/* Teacher grid */}
+      {activeFilterChips.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.activeChipsRow}
+        >
+          {activeFilterChips.map((c) => (
+            <TouchableOpacity key={c.label} style={styles.activeChip} activeOpacity={0.7} onPress={c.onClear}>
+              <Text style={styles.activeChipText}>{c.label}</Text>
+              <Ionicons name="close" size={12} color={Colors.primary} />
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.activeClearAll} activeOpacity={0.7} onPress={resetFilters}>
+            <Text style={styles.activeClearAllText}>Hamısını təmizlə</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
+
       {isLoading ? (
-        <ActivityIndicator color={Colors.primary} style={{ marginTop: 60 }} />
+        <ScrollView contentContainerStyle={styles.grid} showsVerticalScrollIndicator={false}>
+          <View style={styles.row}>
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+          <View style={styles.row}>
+            <SkeletonCard />
+            <SkeletonCard />
+          </View>
+        </ScrollView>
       ) : (
         <FlatList
           data={teachers}
@@ -202,7 +498,8 @@ export default function TeacherListScreen() {
           contentContainerStyle={styles.grid}
           renderItem={renderCard}
           showsVerticalScrollIndicator={false}
-          ListFooterComponent={teachers.length > 0 ? PremiumCTA : null}
+          ListFooterComponent={PremiumCTA}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
           ListEmptyComponent={
             <View style={styles.emptyWrap}>
               <View style={styles.emptyIllustration}>
@@ -224,36 +521,226 @@ export default function TeacherListScreen() {
                 <Text style={styles.emptyStarL}>✦</Text>
                 <Text style={styles.emptyStarR}>✦</Text>
               </View>
-              <Text style={styles.emptyTitle}>Müəllim tapılmadı</Text>
-              <Text style={styles.emptySub}>
-                Axtarış meyarlarınıza uyğun müəllim tapılmadı. Zəhmət olmasa filtrləri dəyişin.
+              <Text style={styles.emptyTitle}>
+                {activeFilter === 'Sevimlilərim' ? 'Hələ sevimlin yoxdur' : 'Müəllim tapılmadı'}
               </Text>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                style={styles.emptyClearWrap}
-                onPress={() => { setSearch(''); setActiveFilter('Hamısı'); }}
-              >
-                <LinearGradient
-                  colors={[Colors.gradientStart, Colors.gradientEnd]}
-                  style={styles.emptyClearBtn}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
+              <Text style={styles.emptySub}>
+                {activeFilter === 'Sevimlilərim'
+                  ? 'Müəllim kartındakı ürək ikonuna basaraq sevimlilərə əlavə et.'
+                  : 'Axtarış meyarlarınıza uyğun müəllim tapılmadı. Zəhmət olmasa filtrləri dəyişin.'}
+              </Text>
+              {activeFilter !== 'Sevimlilərim' && (
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={styles.emptyClearWrap}
+                  onPress={() => { setSearch(''); setActiveFilter('Hamısı'); resetFilters(); }}
                 >
-                  <Ionicons name="funnel-outline" size={18} color="#fff" />
-                  <Text style={styles.emptyClearText}>Filtrləri təmizlə</Text>
-                </LinearGradient>
-              </TouchableOpacity>
+                  <LinearGradient
+                    colors={[Colors.gradientStart, Colors.gradientEnd]}
+                    style={styles.emptyClearBtn}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Ionicons name="funnel-outline" size={18} color="#fff" />
+                    <Text style={styles.emptyClearText}>Filtrləri təmizlə</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.emptyBackBtn}
                 activeOpacity={0.7}
-                onPress={() => navigation.goBack()}
+                onPress={() => activeFilter === 'Sevimlilərim' ? setActiveFilter('Hamısı') : navigation.goBack()}
               >
-                <Text style={styles.emptyBackText}>Geri qayıt</Text>
+                <Text style={styles.emptyBackText}>
+                  {activeFilter === 'Sevimlilərim' ? 'Bütün müəllimlərə bax' : 'Geri qayıt'}
+                </Text>
               </TouchableOpacity>
             </View>
           }
         />
       )}
+
+      <Modal
+        visible={filterOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setFilterOpen(false)}
+        statusBarTranslucent
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setFilterOpen(false)}>
+          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Filtr və sıralama</Text>
+              <TouchableOpacity onPress={resetFilters} hitSlop={8}>
+                <Text style={styles.sheetReset}>Sıfırla</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text style={styles.sheetSection}>Sıralama</Text>
+              {([
+                { key: 'rating', label: 'Reytinqə görə', icon: 'star-outline' },
+                { key: 'priceAsc', label: 'Qiymət (artan)', icon: 'trending-up-outline' },
+                { key: 'priceDesc', label: 'Qiymət (azalan)', icon: 'trending-down-outline' },
+                { key: 'reviews', label: 'Rəylər sayı', icon: 'chatbubbles-outline' },
+              ] as const).map((opt) => {
+                const active = sortBy === opt.key;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.sheetRow, active && styles.sheetRowActive]}
+                    onPress={() => setSortBy(opt.key)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name={opt.icon as any} size={18} color={active ? Colors.primary : Colors.textSecondary} />
+                    <Text style={[styles.sheetRowText, active && styles.sheetRowTextActive]}>{opt.label}</Text>
+                    {active && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+
+              <Text style={styles.sheetSection}>Dərs növü</Text>
+              <View style={styles.pillRow}>
+                {([
+                  { key: 'all', label: 'Hamısı' },
+                  { key: 'online', label: 'Onlayn' },
+                  { key: 'in-person', label: 'Əyani' },
+                ] as const).map((opt) => {
+                  const active = formatFilter === opt.key;
+                  return (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[styles.pill, active && styles.pillActive]}
+                      onPress={() => setFormatFilter(opt.key)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.pillText, active && styles.pillTextActive]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.sheetSection}>Minimum reytinq</Text>
+              <View style={styles.pillRow}>
+                {([
+                  { key: 0, label: 'Hamısı' },
+                  { key: 4, label: '4.0+' },
+                  { key: 4.5, label: '4.5+' },
+                  { key: 4.8, label: '4.8+' },
+                ] as const).map((opt) => {
+                  const active = minRating === opt.key;
+                  return (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[styles.pill, active && styles.pillActive]}
+                      onPress={() => setMinRating(opt.key as 0 | 4 | 4.5 | 4.8)}
+                      activeOpacity={0.7}
+                    >
+                      {opt.key !== 0 && <Ionicons name="star" size={12} color={active ? '#fff' : '#f59e0b'} style={{ marginRight: 4 }} />}
+                      <Text style={[styles.pillText, active && styles.pillTextActive]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.sheetSection}>Şəhər</Text>
+              <View style={styles.cityInputWrap}>
+                <Ionicons name="location-outline" size={18} color={Colors.textMuted} />
+                <TextInput
+                  style={styles.cityInput}
+                  placeholder="Şəhər adını yazın (məs. Bakı)"
+                  placeholderTextColor={Colors.textMuted}
+                  value={cityFilter}
+                  onChangeText={setCityFilter}
+                  returnKeyType="done"
+                />
+                {cityFilter.length > 0 && (
+                  <TouchableOpacity onPress={() => setCityFilter('')} hitSlop={8}>
+                    <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {citySuggestions.length > 0 && (
+                <View style={styles.suggestList}>
+                  {citySuggestions.map((s) => (
+                    <TouchableOpacity
+                      key={s}
+                      style={styles.suggestRow}
+                      onPress={() => setCityFilter(s)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="location-outline" size={14} color={Colors.textMuted} />
+                      <Text style={styles.suggestText}>{s}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              <Text style={styles.sheetSection}>Cinsiyyət</Text>
+              <View style={styles.pillRow}>
+                {([
+                  { key: 'all', label: 'Hamısı', icon: 'people-outline' },
+                  { key: 'male', label: 'Kişi', icon: 'man-outline' },
+                  { key: 'female', label: 'Qadın', icon: 'woman-outline' },
+                ] as const).map((opt) => {
+                  const active = genderFilter === opt.key;
+                  return (
+                    <TouchableOpacity
+                      key={opt.key}
+                      style={[styles.pill, active && styles.pillActive]}
+                      onPress={() => setGenderFilter(opt.key)}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name={opt.icon as any} size={14} color={active ? '#fff' : Colors.textMuted} style={{ marginRight: 4 }} />
+                      <Text style={[styles.pillText, active && styles.pillTextActive]}>{opt.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.sheetSection}>Yaş aralığı</Text>
+              <View style={styles.pillRow}>
+                <TouchableOpacity
+                  style={[styles.pill, !ageRange && styles.pillActive]}
+                  onPress={() => setAgeRange(null)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pillText, !ageRange && styles.pillTextActive]}>Hamısı</Text>
+                </TouchableOpacity>
+                {AGE_RANGES.map((r) => {
+                  const active = ageRange === r.key;
+                  return (
+                    <TouchableOpacity
+                      key={r.key}
+                      style={[styles.pill, active && styles.pillActive]}
+                      onPress={() => setAgeRange(active ? null : r.key)}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.pillText, active && styles.pillTextActive]}>{r.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              <View style={{ height: 12 }} />
+            </ScrollView>
+
+            <TouchableOpacity activeOpacity={0.85} onPress={() => setFilterOpen(false)}>
+              <LinearGradient
+                colors={[Colors.gradientStart, Colors.gradientEnd]}
+                style={styles.sheetApply}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <Text style={styles.sheetApplyText}>
+                  {teachers.length} nəticəni göstər
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -282,7 +769,83 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.surfaceLow,
+    position: 'relative',
   },
+  filterDot: {
+    position: 'absolute', top: -2, right: -2,
+    minWidth: 18, height: 18, borderRadius: 9,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 4,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: Colors.surfaceLowest,
+  },
+  filterDotText: { fontSize: 9, fontWeight: '800', color: '#fff' },
+
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: Colors.surfaceLowest,
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 12, paddingBottom: 28,
+    maxHeight: '85%',
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: Colors.surfaceHigh,
+    marginBottom: 16,
+  },
+  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  sheetTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  sheetReset: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  sheetSection: { fontSize: 12, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginTop: 18, marginBottom: 10 },
+  sheetRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, paddingHorizontal: 14,
+    borderRadius: 14, marginBottom: 6,
+    backgroundColor: Colors.surfaceLow,
+  },
+  sheetRowActive: { backgroundColor: Colors.primaryLight },
+  sheetRowText: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  sheetRowTextActive: { color: Colors.primary, fontWeight: '700' },
+  pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pill: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: Colors.surfaceLow,
+    borderWidth: 1, borderColor: 'transparent',
+  },
+  pillActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  pillText: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
+  pillTextActive: { color: '#fff', fontWeight: '700' },
+  cityInputWrap: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.surfaceLow,
+    borderRadius: 14, paddingHorizontal: 14, height: 48,
+  },
+  cityInput: {
+    flex: 1, fontSize: 14, color: Colors.textPrimary, padding: 0,
+  },
+  suggestList: {
+    marginTop: 6,
+    backgroundColor: Colors.surfaceLowest,
+    borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    overflow: 'hidden',
+  },
+  suggestRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Colors.borderLight,
+  },
+  suggestText: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
+  sheetApply: {
+    marginTop: 18, borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 5,
+  },
+  sheetApplyText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
 
   searchWrapper: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
   searchBox: {
@@ -295,66 +858,128 @@ const styles = StyleSheet.create({
     flex: 1, paddingHorizontal: 12, fontSize: 15, color: Colors.textPrimary,
   },
 
-  chipScroll: { flexGrow: 0 },
-  chipList: { paddingHorizontal: 16, paddingVertical: 12, gap: 10 },
+  chipScroll: { height: 64, paddingVertical: 8 },
+  chipList: { paddingHorizontal: 16, gap: 10, alignItems: 'center' },
   chipActive: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999,
+    paddingHorizontal: 20, height: 44, borderRadius: 999,
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2, shadowRadius: 8, elevation: 3,
   },
-  chipTextActive: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  chipTextActive: { fontSize: 13, fontWeight: '700', color: '#fff', lineHeight: 18 },
   chip: {
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, height: 44, borderRadius: 999,
     backgroundColor: Colors.surfaceHigh,
+    justifyContent: 'center',
   },
-  chipText: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
+  chipText: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary, lineHeight: 18 },
+
+  activeChipsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 16, paddingBottom: 8, paddingTop: 2,
+    gap: 8, alignItems: 'center',
+  },
+  activeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1, borderColor: Colors.primary + '30',
+  },
+  activeChipText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  activeClearAll: { paddingHorizontal: 10, paddingVertical: 6 },
+  activeClearAllText: { fontSize: 11, fontWeight: '700', color: Colors.textMuted },
 
   grid: { paddingHorizontal: 16, paddingBottom: 32, paddingTop: 4 },
   row: { gap: 12, marginBottom: 12 },
 
   card: {
-    backgroundColor: Colors.surface, borderRadius: 20, overflow: 'hidden',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04, shadowRadius: 24, elevation: 2,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 20, overflow: 'hidden',
+    padding: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04, shadowRadius: 16, elevation: 2,
   },
 
-  photoContainer: { position: 'relative' },
+  photoContainer: { position: 'relative', marginBottom: 10 },
   photoBox: {
     width: '100%', aspectRatio: 1,
     alignItems: 'center', justifyContent: 'center',
+    borderRadius: 14, overflow: 'hidden',
+    backgroundColor: Colors.surfaceContainer,
   },
-  photoInitial: { fontSize: 48, fontWeight: '900', color: 'rgba(255,255,255,0.9)', fontStyle: 'italic' },
-  heartBtn: {
+  photoInitial: { fontSize: 48, fontWeight: '900', color: 'rgba(255,255,255,0.9)' },
+
+  favBtn: {
     position: 'absolute', top: 8, right: 8,
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: 'rgba(255,255,255,0.92)',
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2,
   },
-  modeBadge: {
+  onlineDot: {
+    position: 'absolute', top: 8, left: 8,
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  onlineDotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981' },
+  statusBadge: {
     position: 'absolute', bottom: 8, left: 8,
-    paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6,
   },
-  modeBadgeText: { fontSize: 8, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
+  statusOnline: { backgroundColor: 'rgba(17,150,218,0.92)' },
+  statusInPerson: { backgroundColor: 'rgba(16,185,129,0.92)' },
+  statusBoth: { backgroundColor: 'rgba(124,58,237,0.92)' },
+  statusBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
+  newBadge: {
+    position: 'absolute', bottom: 8, left: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
+    backgroundColor: '#F59E0B',
+  },
+  newBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
 
-  cardBody: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 6, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  cardName: { flex: 1, fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
-  cardSubject: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
-  ratingStatRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  ratingStatValue: { fontSize: 11, fontWeight: '700', color: Colors.textPrimary },
-  eyeStatRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 4 },
-  viewsStatText: { fontSize: 10, fontWeight: '500', color: Colors.outlineVariant },
+  cardName: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary, flexShrink: 1 },
+  cardSubject: { fontSize: 11, fontWeight: '500', color: Colors.textMuted, marginTop: 2, marginBottom: 8 },
 
-  cardFooter: {
-    paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12,
+  metricsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
+  metricItem: { flexDirection: 'row', alignItems: 'center', gap: 3, flexShrink: 1 },
+  metricStrong: { fontSize: 11, fontWeight: '800', color: Colors.textPrimary },
+  metricMuted: { fontSize: 10, fontWeight: '500', color: Colors.textMuted, flexShrink: 1 },
+
+  cityRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
+  cityText: { fontSize: 10, fontWeight: '500', color: Colors.textMuted, flexShrink: 1 },
+
+  priceFooter: {
     borderTopWidth: 1, borderTopColor: Colors.borderLight,
-    marginTop: 4, gap: 2,
+    paddingTop: 10,
   },
-  priceFooterLabel: { fontSize: 9, fontWeight: '500', color: Colors.textMuted },
-  priceFooterValue: { fontSize: 14, fontWeight: '800', color: Colors.primary },
-  priceFooterUnit: { fontSize: 10, fontWeight: '400', color: Colors.textMuted },
+  priceLabel: { fontSize: 9, fontWeight: '500', color: Colors.textMuted, marginBottom: 2 },
+  priceValue: { fontSize: 14, fontWeight: '800', color: Colors.primary },
+  priceUnit: { fontSize: 10, fontWeight: '400', color: Colors.textMuted },
+
+  skeletonCard: { opacity: 0.6 },
+  skelPhoto: { width: '100%', aspectRatio: 1, borderRadius: 14, backgroundColor: Colors.surfaceContainer, marginBottom: 10 },
+  skelLineLg: { height: 12, borderRadius: 6, backgroundColor: Colors.surfaceContainer, marginBottom: 6, width: '75%' },
+  skelLineSm: { height: 8, borderRadius: 4, backgroundColor: Colors.surfaceContainer, marginBottom: 8, width: '55%' },
+  skelMetrics: { height: 10, borderRadius: 5, backgroundColor: Colors.surfaceContainer, marginBottom: 10, width: '90%' },
+
+  recentWrap: { marginHorizontal: 16, marginTop: 8, marginBottom: 12 },
+  recentHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  recentTitle: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  recentRow: { gap: 12, paddingRight: 8 },
+  recentItem: { alignItems: 'center', width: 64 },
+  recentAvatar: {
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 2,
+  },
+  recentInitial: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  recentName: { fontSize: 11, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
 
   premiumCta: {
     marginHorizontal: 16, marginTop: 8, marginBottom: 8,
@@ -382,7 +1007,30 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
 
-  // Empty state
+  requestRow: {
+    flexDirection: 'row', gap: 12,
+    marginHorizontal: 16, marginTop: 4, marginBottom: 16,
+  },
+  requestCard: {
+    flex: 1, backgroundColor: Colors.surfaceLowest, borderRadius: 16,
+    padding: 14, gap: 8,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05, shadowRadius: 12, elevation: 2,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  requestIconBoxPrimary: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  requestIconBoxSecondary: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: Colors.tertiaryContainer + '40',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  requestCardTitle: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary },
+  requestCardSub: { fontSize: 11, color: Colors.textSecondary, lineHeight: 15 },
+
   emptyWrap: { alignItems: 'center', paddingHorizontal: 24, paddingTop: 40, paddingBottom: 32, gap: 16 },
   emptyIllustration: {
     width: 220, height: 220, alignItems: 'center', justifyContent: 'center',

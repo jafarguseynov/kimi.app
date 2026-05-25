@@ -1,23 +1,46 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { getToken } from '../utils/token';
 import { useAuthStore } from '../store/auth.store';
+import { useUserStore } from '../store/user.store';
+import { useFavoriteTeachersStore } from '../store/favoritesTeachers.store';
+import { useRecentTeachersStore } from '../store/recentTeachers.store';
+import { getToken } from '../utils/token';
+import { getMe } from '../api/user.api';
 import { Colors } from '../constants/colors';
-import AuthNavigator from './AuthNavigator';
 import AppNavigator from './AppNavigator';
+import AuthNavigator from './AuthNavigator';
 
 export default function RootNavigator() {
-  const { isAuthenticated, isLoading, setToken, setLoading } = useAuthStore();
+  const { token, setToken, clearAuth } = useAuthStore();
+  const { setUser } = useUserStore();
+  const hydrateFavorites = useFavoriteTeachersStore((s) => s.hydrate);
+  const hydrateRecent = useRecentTeachersStore((s) => s.hydrate);
+  const [bootstrapping, setBootstrapping] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const token = await getToken();
-      if (token) await setToken(token);
-      setLoading(false);
+      try {
+        hydrateFavorites();
+        hydrateRecent();
+        const saved = await getToken();
+        if (saved) {
+          await setToken(saved);
+          try {
+            const me = await getMe();
+            setUser(me as any);
+          } catch {
+            await clearAuth();
+          }
+        }
+      } catch {
+        try { await clearAuth(); } catch {}
+      } finally {
+        setBootstrapping(false);
+      }
     })();
   }, []);
 
-  if (isLoading) {
+  if (bootstrapping) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -25,5 +48,5 @@ export default function RootNavigator() {
     );
   }
 
-  return isAuthenticated ? <AppNavigator /> : <AuthNavigator />;
+  return token ? <AppNavigator /> : <AuthNavigator />;
 }

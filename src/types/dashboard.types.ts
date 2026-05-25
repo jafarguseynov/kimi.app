@@ -11,6 +11,7 @@ export interface UserStats {
   totalExams: number;
   averageScore: number;
   activeDays: number;
+  streak: number;
   highestScore: number;
   recentResults: RecentExam[];
 }

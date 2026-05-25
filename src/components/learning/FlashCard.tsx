@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
 
@@ -9,43 +9,113 @@ interface Props {
   onRate: (quality: number) => void;
 }
 
+type RateOption = {
+  key: 'again' | 'hard' | 'good' | 'easy';
+  label: string;
+  quality: number;
+  icon: keyof typeof Ionicons.glyphMap;
+  color: string;
+  bg: string;
+};
+
+const OPTIONS: RateOption[] = [
+  { key: 'again', label: 'Yenidən', quality: 1, icon: 'refresh', color: '#DC2626', bg: '#FEE2E2' },
+  { key: 'hard', label: 'Çətin', quality: 2, icon: 'flame', color: '#F59E0B', bg: '#FEF3C7' },
+  { key: 'good', label: 'Yaxşı', quality: 4, icon: 'checkmark', color: '#16A34A', bg: '#DCFCE7' },
+  { key: 'easy', label: 'Asan', quality: 5, icon: 'sparkles', color: Colors.primary, bg: '#EEF2FF' },
+];
+
 export default function FlashCard({ front, back, onRate }: Props) {
   const [flipped, setFlipped] = useState(false);
+  const flip = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    setFlipped(false);
+    flip.setValue(0);
+  }, [front, back, flip]);
+
+  const toggle = () => {
+    const next = !flipped;
+    Animated.spring(flip, {
+      toValue: next ? 1 : 0,
+      useNativeDriver: true,
+      friction: 9,
+      tension: 60,
+    }).start();
+    setFlipped(next);
+  };
+
+  const frontRotate = flip.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
+  const backRotate = flip.interpolate({ inputRange: [0, 1], outputRange: ['180deg', '360deg'] });
+  const frontOpacity = flip.interpolate({ inputRange: [0, 0.5, 0.5], outputRange: [1, 1, 0] });
+  const backOpacity = flip.interpolate({ inputRange: [0.5, 0.5, 1], outputRange: [0, 1, 1] });
 
   return (
     <View style={styles.wrapper}>
-      <TouchableOpacity style={styles.card} onPress={() => setFlipped((f) => !f)} activeOpacity={0.95}>
-        <TouchableOpacity style={styles.flipIcon} onPress={() => setFlipped((f) => !f)} activeOpacity={0.7}>
-          <Ionicons name="sync-outline" size={28} color={Colors.outlineVariant} />
-        </TouchableOpacity>
-        <View style={styles.cardContent}>
-          <Text style={styles.cardLabel}>{flipped ? 'Cavab' : 'Sual'}</Text>
-          <Text style={styles.cardText}>{flipped ? back : front}</Text>
-        </View>
-        <View style={styles.cardFooterBar} />
-      </TouchableOpacity>
+      <TouchableOpacity activeOpacity={0.95} onPress={toggle} style={styles.cardWrap}>
+        <Animated.View
+          style={[
+            styles.card,
+            styles.cardFace,
+            { transform: [{ perspective: 1000 }, { rotateY: frontRotate }], opacity: frontOpacity },
+          ]}
+        >
+          <View style={styles.cardTopRow}>
+            <View style={styles.cardChip}>
+              <Ionicons name="help-circle" size={12} color={Colors.primary} />
+              <Text style={styles.cardChipText}>SUAL</Text>
+            </View>
+            <View style={styles.flipPill}>
+              <Ionicons name="sync" size={12} color={Colors.textSecondary} />
+              <Text style={styles.flipPillText}>Çevir</Text>
+            </View>
+          </View>
+          <View style={styles.cardCenter}>
+            <Text style={styles.cardText}>{front}</Text>
+          </View>
+          <Text style={styles.hintText}>Cavabı görmək üçün toxun</Text>
+        </Animated.View>
 
-      {!flipped && (
-        <View style={styles.hintRow}>
-          <Text style={styles.hintText}>Kartı çevirmək üçün toxun</Text>
-          <Ionicons name="chevron-down-outline" size={20} color={Colors.outlineVariant} />
-        </View>
-      )}
+        <Animated.View
+          style={[
+            styles.card,
+            styles.cardFace,
+            styles.cardBack,
+            { transform: [{ perspective: 1000 }, { rotateY: backRotate }], opacity: backOpacity },
+          ]}
+        >
+          <View style={styles.cardTopRow}>
+            <View style={[styles.cardChip, { backgroundColor: '#DCFCE7' }]}>
+              <Ionicons name="checkmark-circle" size={12} color="#15803D" />
+              <Text style={[styles.cardChipText, { color: '#15803D' }]}>CAVAB</Text>
+            </View>
+            <View style={styles.flipPill}>
+              <Ionicons name="sync" size={12} color={Colors.textSecondary} />
+              <Text style={styles.flipPillText}>Çevir</Text>
+            </View>
+          </View>
+          <View style={styles.cardCenter}>
+            <Text style={styles.cardText}>{back}</Text>
+          </View>
+          <Text style={styles.hintText}>Bilik səviyyəni qiymətləndir ↓</Text>
+        </Animated.View>
+      </TouchableOpacity>
 
       {flipped && (
         <View style={styles.rateRow}>
-          <TouchableOpacity style={styles.rateBtn} onPress={() => onRate(1)} activeOpacity={0.8}>
-            <View style={styles.rateBadIcon}>
-              <Ionicons name="close" size={24} color={Colors.error} />
-            </View>
-            <Text style={styles.rateBtnText}>Bilmədim</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.rateBtn} onPress={() => onRate(5)} activeOpacity={0.8}>
-            <View style={styles.rateGoodIcon}>
-              <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
-            </View>
-            <Text style={styles.rateBtnText}>Bildim</Text>
-          </TouchableOpacity>
+          {OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.key}
+              style={styles.rateBtn}
+              activeOpacity={0.85}
+              onPress={() => onRate(opt.quality)}
+            >
+              <View style={[styles.rateIcon, { backgroundColor: opt.bg }]}>
+                <Ionicons name={opt.icon} size={20} color={opt.color} />
+              </View>
+              <Text style={styles.rateBtnText}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
       )}
     </View>
@@ -53,58 +123,59 @@ export default function FlashCard({ front, back, onRate }: Props) {
 }
 
 const styles = StyleSheet.create({
-  wrapper: { flex: 1, alignItems: 'center', gap: 24 },
+  wrapper: { flex: 1, alignItems: 'center', gap: 16 },
 
+  cardWrap: { width: '100%', aspectRatio: 3 / 4 },
   card: {
-    width: '100%',
-    aspectRatio: 3 / 4,
+    flex: 1,
     backgroundColor: Colors.surfaceLowest,
     borderRadius: 24,
-    padding: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    padding: 22,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.06,
     shadowRadius: 40,
     elevation: 4,
   },
-  flipIcon: { position: 'absolute', top: 20, right: 20 },
-  cardContent: { alignItems: 'center', gap: 16, paddingHorizontal: 8 },
-  cardLabel: {
-    fontSize: 11, fontWeight: '700', color: Colors.primaryFixedDim,
-    textTransform: 'uppercase', letterSpacing: 2,
+  cardFace: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backfaceVisibility: 'hidden',
   },
-  cardText: {
-    fontSize: 28, fontWeight: '800', color: Colors.textPrimary,
-    textAlign: 'center', lineHeight: 38,
-  },
-  cardFooterBar: {
-    position: 'absolute', bottom: 24,
-    width: 48, height: 4,
-    backgroundColor: Colors.surfaceContainer, borderRadius: 2,
-  },
+  cardBack: { backgroundColor: '#F7FAFC' },
 
-  hintRow: { alignItems: 'center', gap: 4 },
-  hintText: { fontSize: 13, color: Colors.textSecondary + 'B3', fontStyle: 'italic' },
-
-  rateRow: { flexDirection: 'row', gap: 12, width: '100%' },
-  rateBtn: {
-    flex: 1, flexDirection: 'column', alignItems: 'center',
-    justifyContent: 'center', paddingVertical: 20,
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  cardChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5,
+  },
+  cardChipText: { fontSize: 10, fontWeight: '900', color: Colors.primary, letterSpacing: 1.2 },
+  flipPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
     backgroundColor: Colors.surfaceLow,
-    borderRadius: 16, gap: 10,
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4,
   },
-  rateBadIcon: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: Colors.error + '1A',
+  flipPillText: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary },
+
+  cardCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
+  cardText: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', lineHeight: 36 },
+  hintText: {
+    fontSize: 12, color: Colors.textSecondary,
+    textAlign: 'center', fontStyle: 'italic',
+  },
+
+  rateRow: { flexDirection: 'row', gap: 8, width: '100%' },
+  rateBtn: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 12, gap: 6,
+    backgroundColor: Colors.surfaceLowest,
+    borderRadius: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  rateIcon: {
+    width: 40, height: 40, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
   },
-  rateGoodIcon: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: Colors.primary + '1A',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  rateBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  rateBtnText: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
 });

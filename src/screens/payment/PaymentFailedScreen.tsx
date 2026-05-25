@@ -27,6 +27,7 @@ export default function PaymentFailedScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Error Visual */}
         <View style={styles.errorVisualWrap}>
+          <View style={styles.errorAura} pointerEvents="none" />
           <LinearGradient
             colors={ERROR_GRADIENT}
             style={styles.errorCard}
@@ -34,6 +35,12 @@ export default function PaymentFailedScreen() {
           >
             <Ionicons name="alert-circle" size={60} color="#fff" />
           </LinearGradient>
+          {/* Sad mascot peek */}
+          <View style={styles.mascotPeek}>
+            <View style={styles.mascotInner}>
+              <Ionicons name="sad-outline" size={22} color={Colors.primary} />
+            </View>
+          </View>
         </View>
 
         <Text style={styles.title}>Ödəniş baş tutmadı</Text>
@@ -91,12 +98,33 @@ const styles = StyleSheet.create({
 
   scroll: { padding: 24, gap: 20, paddingBottom: 48, alignItems: 'center' },
 
-  errorVisualWrap: { alignItems: 'center', paddingVertical: 16 },
+  errorVisualWrap: { alignItems: 'center', paddingVertical: 20, position: 'relative' },
+  errorAura: {
+    position: 'absolute',
+    width: 220, height: 220, borderRadius: 110,
+    backgroundColor: Colors.danger + '14',
+    top: 0,
+  },
   errorCard: {
     width: 128, height: 128, borderRadius: 28,
     alignItems: 'center', justifyContent: 'center',
     transform: [{ rotate: '3deg' }],
-    shadowColor: Colors.danger, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.2, shadowRadius: 30, elevation: 6,
+    shadowColor: Colors.danger, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.22, shadowRadius: 30, elevation: 6,
+  },
+  mascotPeek: {
+    position: 'absolute',
+    top: 4, right: '24%',
+    width: 56, height: 56, borderRadius: 28,
+    transform: [{ rotate: '-12deg' }],
+    backgroundColor: '#fff',
+    borderWidth: 3, borderColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4,
+  },
+  mascotInner: {
+    width: '100%', height: '100%', borderRadius: 28,
+    backgroundColor: Colors.surfaceLow,
+    alignItems: 'center', justifyContent: 'center',
   },
 
   title: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', lineHeight: 36 },

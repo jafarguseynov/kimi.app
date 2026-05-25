@@ -39,6 +39,10 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
 
+  useEffect(() => {
+    setMessages([]);
+  }, [chatId]);
+
   const { isLoading } = useQuery({
     queryKey: ['messages', chatId],
     queryFn: async () => {
@@ -50,11 +54,18 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!token) return;
-    const socket = socketService.connect(token);
+    socketService.connect(token);
     socketService.joinChat(chatId);
-    const handler = (msg: any) => addMessage(msg);
+    const handler = (msg: any) => {
+      if (msg?.chatId && msg.chatId !== chatId) return;
+      if (msg?.chat?.id && msg.chat.id !== chatId) return;
+      addMessage(msg);
+    };
     socketService.onNewMessage(handler);
-    return () => socketService.offNewMessage(handler);
+    return () => {
+      socketService.offNewMessage(handler);
+      socketService.leaveChat(chatId);
+    };
   }, [chatId, token]);
 
   useEffect(() => {

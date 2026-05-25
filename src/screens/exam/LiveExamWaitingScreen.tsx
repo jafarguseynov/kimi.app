@@ -1,111 +1,189 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useStartExam } from '../../hooks/useExams';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.LiveExamWaiting>;
   route: RouteProp<ExamStackParamList, typeof Routes.LiveExamWaiting>;
 };
 
+const COUNTDOWN_START = 30;
+const PARTICIPANTS_TOTAL = 1248;
+
+function format(seconds: number): { m: string; s: string } {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return { m: m.toString().padStart(2, '0'), s: s.toString().padStart(2, '0') };
+}
+
 export default function LiveExamWaitingScreen({ navigation, route }: Props) {
-  const { title = 'Riyaziyyat' } = route.params;
+  const { examId, title = 'Riyaziyyat' } = route.params;
+  const [countdown, setCountdown] = useState(COUNTDOWN_START);
+  const [participants, setParticipants] = useState(900);
+  const [pendingStart, setPendingStart] = useState(false);
+  const pulse = React.useRef(new Animated.Value(1)).current;
+
+  const { mutate: startExam, isPending: isStarting, isSuccess: isReady, isError, error } = useStartExam();
+
+  useEffect(() => {
+    if (examId) startExam(examId);
+  }, [examId]);
+
+  useEffect(() => {
+    if (isError) {
+      Alert.alert('Xəta', (error as any)?.message || 'İmtahanı başlatmaq mümkün olmadı', [
+        { text: 'Geri', onPress: () => navigation.goBack() },
+      ]);
+    }
+  }, [isError]);
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    ).start();
+  }, [pulse]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setCountdown((c) => (c <= 1 ? 0 : c - 1));
+      setParticipants((p) => Math.min(PARTICIPANTS_TOTAL, p + Math.floor(Math.random() * 20) + 5));
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  // When countdown ends OR user clicked Hazıram, navigate as soon as data is ready
+  useEffect(() => {
+    const shouldGo = (countdown === 0 || pendingStart) && isReady;
+    if (shouldGo) {
+      const t = setTimeout(() => navigation.replace(Routes.LiveExamSession), 200);
+      return () => clearTimeout(t);
+    }
+  }, [countdown, pendingStart, isReady]);
+
+  const onReadyPress = () => {
+    if (isReady) {
+      navigation.replace(Routes.LiveExamSession);
+    } else {
+      setPendingStart(true);
+    }
+  };
+
+  const { m, s } = format(countdown);
+  const fillPercent = Math.min(100, Math.round((participants / PARTICIPANTS_TOTAL) * 100));
+  const ctaLoading = isStarting || (pendingStart && !isReady);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
-            <Ionicons name="close" size={24} color={Colors.primary} />
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Rəqib gözlənilir...</Text>
+          <Text style={styles.headerTitle}>Canlı İmtahan</Text>
         </View>
-        <View style={styles.liveBadge}>
-          <Text style={styles.liveBadgeText}>Canlı</Text>
-        </View>
+        <Ionicons name="help-circle-outline" size={22} color={Colors.textMuted} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Info */}
-        <View style={styles.infoSection}>
-          <View style={styles.subjectChip}>
-            <Text style={styles.subjectChipText}>{title} • Səviyyə B1</Text>
+        {/* Mascot */}
+        <View style={styles.mascotWrap}>
+          <View style={styles.readyBadge}>
+            <Text style={styles.readyBadgeText}>Hazır ol!</Text>
           </View>
-          <Text style={styles.heroTitle}>Uyğun rəqib{'\n'}<Text style={styles.heroTitlePrimary}>axtarılır...</Text></Text>
-          <Text style={styles.heroSub}>Sizin bilik səviyyənizə uyğun ən yaxşı rəqiblərdən biri seçilir.</Text>
+          <LinearGradient
+            colors={[Colors.gradientStart, Colors.gradientEnd]}
+            style={styles.mascotCircle}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="hardware-chip" size={64} color="#fff" />
+          </LinearGradient>
         </View>
 
-        {/* Arena */}
-        <View style={styles.arenaWrap}>
-          {/* Concentric rings */}
-          <View style={[styles.ring, { left: 0, right: 0, top: 0, bottom: 0, borderColor: Colors.primary + '0D' }]} />
-          <View style={[styles.ring, { left: '10%', right: '10%', top: '10%', bottom: '10%', borderColor: Colors.primary + '1A' }]} />
-          <View style={[styles.ring, { left: '20%', right: '20%', top: '20%', bottom: '20%', borderColor: Colors.primary + '33' }]} />
-          <View style={[styles.ring, { left: '30%', right: '30%', top: '30%', bottom: '30%', borderColor: Colors.primary + '4D' }]} />
-
-          {/* VS badge — centered absolute */}
-          <View style={styles.vsCenterLayer} pointerEvents="none">
-            <View style={styles.vsBadge}>
-              <Text style={styles.vsText}>VS</Text>
-            </View>
+        {/* Countdown */}
+        <View style={styles.countdownWrap}>
+          <Text style={styles.countdownLabel}>İmtahan Başlayır</Text>
+          <View style={styles.countdownRow}>
+            <Text style={styles.countdownDigit}>{m}</Text>
+            <Animated.Text style={[styles.countdownColon, { opacity: pulse }]}>:</Animated.Text>
+            <Text style={styles.countdownDigit}>{s}</Text>
           </View>
+        </View>
 
-          {/* User — left */}
-          <View style={styles.arenaUser}>
-            <View style={styles.userAuraWrap}>
-              <View style={styles.userAura} />
-              <View style={styles.userAvatar}>
-                <Ionicons name="person" size={40} color={Colors.primary} />
+        {/* Topic card */}
+        <View style={styles.topicCard}>
+          <LinearGradient
+            colors={[Colors.gradientStart, Colors.gradientEnd]}
+            style={styles.topicIcon}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <Ionicons name="calculator" size={26} color="#fff" />
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.topicLabel}>İmtahan mövzusu</Text>
+            <Text style={styles.topicValue} numberOfLines={1}>{title}</Text>
+          </View>
+        </View>
+
+        {/* Participant card */}
+        <View style={styles.participantCard}>
+          <View style={styles.participantTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.participantLabel}>İştirakçı sayı</Text>
+              <Text style={styles.participantValue}>{participants.toLocaleString()} nəfər</Text>
+            </View>
+            <View style={styles.avatarStack}>
+              {[0, 1, 2].map((i) => (
+                <View key={i} style={[styles.avatarBubble, { left: i * 22, zIndex: 3 - i, backgroundColor: ['#cce7fa', '#dae2fd', '#c8ffe0'][i] }]}>
+                  <Ionicons name="person" size={14} color={Colors.primary} />
+                </View>
+              ))}
+              <View style={[styles.avatarBubble, styles.avatarMore, { left: 66 }]}>
+                <Text style={styles.avatarMoreText}>+1k</Text>
               </View>
-              <View style={styles.onlineDot} />
             </View>
-            <Text style={styles.arenaName}>Siz</Text>
-            <Text style={styles.arenaXP}>1,240 XP</Text>
           </View>
 
-          {/* Opponent — right */}
-          <View style={styles.arenaOpponent}>
-            <View style={styles.opponentAuraWrap}>
-              <View style={styles.opponentAura} />
-              <View style={styles.opponentAvatar}>
-                <Ionicons name="person-outline" size={36} color={Colors.primary + '66'} />
-                <View style={styles.opponentScanOverlay} />
+          <View style={styles.fillTrack}>
+            <View style={[styles.fillBar, { width: `${fillPercent}%` }]} />
+          </View>
+          <Text style={styles.participantSub}>Otaq dolmaq üzrədir...</Text>
+        </View>
+
+        {/* CTA */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          onPress={onReadyPress}
+          disabled={ctaLoading || isError}
+          style={styles.ctaWrap}
+        >
+          <LinearGradient colors={[Colors.gradientStart, Colors.gradientEnd]} style={[styles.ctaBtn, ctaLoading && { opacity: 0.7 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            {ctaLoading ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <ActivityIndicator color="#fff" size="small" />
+                <Text style={styles.ctaBtnText}>Yüklənir...</Text>
               </View>
-            </View>
-            <Text style={styles.arenaNameMuted}>Gözlənilir</Text>
-            <Text style={styles.arenaXPMuted}>Skan edilir...</Text>
-          </View>
-
-          {/* Kimi tooltip */}
-          <View style={styles.kimiTooltip}>
-            <View style={styles.kimiTooltipIcon}>
-              <Ionicons name="hardware-chip-outline" size={16} color="#fff" />
-            </View>
-            <View>
-              <Text style={styles.kimiTooltipLabel}>Kimi Mesajı</Text>
-              <Text style={styles.kimiTooltipText}>Rəqib 5 saniyəyə hazır olacaq!</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Tip */}
-        <View style={styles.tipRow}>
-          <Ionicons name="bulb-outline" size={16} color={Colors.textSecondary} />
-          <Text style={styles.tipText}>Bilirsinizmi? Sürətli cavablar əlavə xal qazandırır.</Text>
-        </View>
-
-        {/* Cancel */}
-        <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Ionicons name="close-circle-outline" size={18} color={Colors.textSecondary} />
-          <Text style={styles.cancelBtnText}>Axtarışı dayandır</Text>
+            ) : (
+              <Text style={styles.ctaBtnText}>Hazıram!</Text>
+            )}
+          </LinearGradient>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <Text style={styles.footerText}>
+          İmtahan başladığı an sistem avtomatik olaraq sualları açacaq. Zəhmət olmasa internet bağlantınızı yoxlayın.
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -116,115 +194,82 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, height: 56,
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: Colors.primary },
-  liveBadge: {
-    backgroundColor: Colors.primary + '1A', borderRadius: 999,
-    paddingHorizontal: 14, paddingVertical: 5,
-  },
-  liveBadgeText: { fontSize: 11, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 1 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
 
-  scroll: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 24, alignItems: 'center', gap: 32 },
+  scroll: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 40, alignItems: 'center' },
 
-  infoSection: { alignItems: 'center', gap: 12 },
-  subjectChip: {
-    backgroundColor: Colors.surfaceHigh, borderRadius: 999,
-    paddingHorizontal: 16, paddingVertical: 6,
+  mascotWrap: { position: 'relative', marginTop: 8, marginBottom: 20, alignItems: 'center' },
+  readyBadge: {
+    position: 'absolute', top: -6, right: -10, zIndex: 10,
+    backgroundColor: Colors.tertiaryContainer,
+    paddingHorizontal: 14, paddingVertical: 5, borderRadius: 999,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 3,
   },
-  subjectChipText: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 },
-  heroTitle: { fontSize: 40, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', lineHeight: 48, letterSpacing: -0.5 },
-  heroTitlePrimary: { color: Colors.primary },
-  heroSub: { fontSize: 15, color: Colors.textSecondary, textAlign: 'center', maxWidth: 280, lineHeight: 22 },
-
-  arenaWrap: {
-    width: '100%', aspectRatio: 1,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    position: 'relative',
-  },
-  ring: {
-    position: 'absolute', borderRadius: 9999,
-    borderWidth: 1,
-  },
-  vsCenterLayer: {
-    ...StyleSheet.absoluteFillObject,
+  readyBadgeText: { fontSize: 11, fontWeight: '800', color: Colors.tertiary },
+  mascotCircle: {
+    width: 140, height: 140, borderRadius: 70,
     alignItems: 'center', justifyContent: 'center',
-    zIndex: 20,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.2, shadowRadius: 28, elevation: 6,
   },
-  vsBadge: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: '#fff',
+
+  countdownWrap: { alignItems: 'center', marginBottom: 28, width: '100%' },
+  countdownLabel: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, marginBottom: 4, letterSpacing: 2, textTransform: 'uppercase' },
+  countdownRow: { flexDirection: 'row', alignItems: 'baseline' },
+  countdownDigit: { fontSize: 64, fontWeight: '800', color: Colors.primary, letterSpacing: -3, fontVariant: ['tabular-nums'] },
+  countdownColon: { fontSize: 64, fontWeight: '800', color: Colors.primary + '4D', letterSpacing: -3, paddingHorizontal: 4 },
+
+  topicCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 18,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    width: '100%', marginBottom: 12,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.06, shadowRadius: 32, elevation: 2,
+  },
+  topicIcon: {
+    width: 52, height: 52, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 4, borderColor: Colors.surfaceLow,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 16, elevation: 4,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 3,
   },
-  vsText: { fontSize: 14, fontWeight: '800', color: Colors.primary, fontStyle: 'italic' },
+  topicLabel: { fontSize: 11, fontWeight: '500', color: Colors.textSecondary, marginBottom: 2 },
+  topicValue: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary },
 
-  arenaUser: { alignItems: 'center', gap: 8, zIndex: 10 },
-  userAuraWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
-  userAura: {
-    position: 'absolute', width: 112, height: 112, borderRadius: 56,
-    backgroundColor: Colors.primary + '1A',
+  participantCard: {
+    backgroundColor: Colors.surfaceLow, borderRadius: 18, padding: 18, gap: 12,
+    width: '100%', marginBottom: 24,
   },
-  userAvatar: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: Colors.surfaceLowest,
-    borderWidth: 4, borderColor: '#fff',
+  participantTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  participantLabel: { fontSize: 11, fontWeight: '500', color: Colors.textSecondary, marginBottom: 2 },
+  participantValue: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
+  avatarStack: { position: 'relative', width: 110, height: 34 },
+  avatarBubble: {
+    position: 'absolute',
+    width: 34, height: 34, borderRadius: 17,
+    borderWidth: 2, borderColor: Colors.surfaceLow,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 4,
   },
-  onlineDot: {
-    position: 'absolute', bottom: 2, right: 2,
-    width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#22c55e',
-    borderWidth: 3, borderColor: '#fff',
-    zIndex: 5,
+  avatarMore: {
+    backgroundColor: Colors.primaryFixed,
   },
-  arenaName: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
-  arenaXP: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1.5 },
+  avatarMoreText: { fontSize: 10, fontWeight: '800', color: Colors.primary },
 
-  arenaOpponent: { alignItems: 'center', gap: 8, zIndex: 10 },
-  opponentAuraWrap: { position: 'relative', alignItems: 'center', justifyContent: 'center' },
-  opponentAura: {
-    position: 'absolute', width: 128, height: 128, borderRadius: 64,
-    backgroundColor: Colors.primary + '1A', opacity: 0.5,
-  },
-  opponentAvatar: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: Colors.surfaceLow,
-    borderWidth: 4, borderStyle: 'dashed', borderColor: Colors.primary + '4D',
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  opponentScanOverlay: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%',
-    backgroundColor: Colors.primary + '1A',
-  },
-  arenaNameMuted: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary + '66' },
-  arenaXPMuted: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary + '66', textTransform: 'uppercase', letterSpacing: 1.5 },
+  fillTrack: { height: 6, backgroundColor: Colors.surfaceHigh, borderRadius: 999, overflow: 'hidden' },
+  fillBar: { height: '100%', backgroundColor: Colors.primary, borderRadius: 999 },
+  participantSub: { fontSize: 11, color: Colors.textSecondary, fontStyle: 'italic' },
 
-  kimiTooltip: {
-    position: 'absolute', bottom: 16, right: 40,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 30,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.12, shadowRadius: 25, elevation: 4,
+  ctaWrap: { width: '100%' },
+  ctaBtn: {
+    paddingVertical: 18, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 5,
   },
-  kimiTooltipIcon: {
-    width: 32, height: 32, borderRadius: 10,
-    backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center',
-  },
-  kimiTooltipLabel: { fontSize: 9, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 1 },
-  kimiTooltipText: { fontSize: 12, fontWeight: '500', color: Colors.textPrimary },
+  ctaBtnText: { fontSize: 17, fontWeight: '800', color: '#fff', letterSpacing: -0.2 },
 
-  tipRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  tipText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
-
-  cancelBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 32, paddingVertical: 14, borderRadius: 999,
+  footerText: {
+    marginTop: 18, fontSize: 13, color: Colors.textSecondary, textAlign: 'center',
+    paddingHorizontal: 16, lineHeight: 19,
   },
-  cancelBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
 });

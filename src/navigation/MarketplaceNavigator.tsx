@@ -6,6 +6,7 @@ import MarketplaceHomeScreen from '../screens/marketplace/MarketplaceHomeScreen'
 import QuestionDetailScreen from '../screens/marketplace/QuestionDetailScreen';
 import AskQuestionScreen from '../screens/marketplace/AskQuestionScreen';
 import AIAnswerScreen from '../screens/marketplace/AIAnswerScreen';
+import AISolutionScreen from '../screens/marketplace/AISolutionScreen';
 import AIAnswerFallbackScreen from '../screens/marketplace/AIAnswerFallbackScreen';
 import LessonRequestScreen from '../screens/marketplace/LessonRequestScreen';
 import InterestedTeachersScreen from '../screens/marketplace/InterestedTeachersScreen';
@@ -14,7 +15,7 @@ const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
 
 export default function MarketplaceNavigator() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name={Routes.MarketplaceHome} component={MarketplaceHomeScreen} />
       <Stack.Screen name={Routes.QuestionDetail} component={QuestionDetailScreen} />
       <Stack.Screen
@@ -23,6 +24,7 @@ export default function MarketplaceNavigator() {
         options={{ presentation: 'modal' }}
       />
       <Stack.Screen name={Routes.AIAnswer} component={AIAnswerScreen} />
+      <Stack.Screen name={Routes.AISolution} component={AISolutionScreen} />
       <Stack.Screen name={Routes.AIAnswerFallback} component={AIAnswerFallbackScreen} />
       <Stack.Screen name={Routes.LessonRequest} component={LessonRequestScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name={Routes.InterestedTeachers} component={InterestedTeachersScreen} />

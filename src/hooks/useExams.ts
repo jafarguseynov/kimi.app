@@ -1,9 +1,28 @@
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { getExams, startExam, submitExam } from '../api/exam.api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getExams, getExamsForUser, startExam, submitExam, generateExam, ExamFilters } from '../api/exam.api';
 import { useExamStore } from '../store/exam.store';
 
-export const useExamList = () =>
-  useQuery({ queryKey: ['exams'], queryFn: getExams });
+export const useExamList = (filters?: ExamFilters) =>
+  useQuery({ queryKey: ['exams', filters ?? {}], queryFn: () => getExams(filters), retry: false });
+
+export const useExamListForUser = (filters?: ExamFilters, enabled = true) =>
+  useQuery({
+    queryKey: ['exams-for-me', filters ?? {}],
+    queryFn: () => getExamsForUser(filters),
+    enabled,
+    retry: false,
+  });
+
+export const useGenerateExam = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: generateExam,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['exams'] });
+      qc.invalidateQueries({ queryKey: ['exams-for-me'] });
+    },
+  });
+};
 
 export const useStartExam = () => {
   const { setSession } = useExamStore();
@@ -19,10 +38,15 @@ export const useStartExam = () => {
 
 export const useSubmitExam = () => {
   const { setResult } = useExamStore();
+  const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ examId, answers, timeSpent }: { examId: string; answers: Record<string, string>; timeSpent: number }) =>
-      submitExam(examId, answers, timeSpent),
-    onSuccess: (data) => setResult(data),
+    mutationFn: ({ examId, answers, timeSpent, type }: { examId: string; answers: Record<string, string>; timeSpent: number; type?: 'practice' | 'monthly' | 'national' | 'live' }) =>
+      submitExam(examId, answers, timeSpent, type),
+    onSuccess: (data) => {
+      setResult(data);
+      qc.invalidateQueries({ queryKey: ['examResults'] });
+      qc.invalidateQueries({ queryKey: ['certificates'] });
+    },
   });
 };

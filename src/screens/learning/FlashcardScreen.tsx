@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -7,6 +7,7 @@ import { useMutation } from '@tanstack/react-query';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { recordProgress } from '../../api/learning.api';
 import { useLearningStore } from '../../store/learning.store';
+import { useLearningProgressStore } from '../../store/learningProgress.store';
 import FlashCard from '../../components/learning/FlashCard';
 import { Colors } from '../../constants/colors';
 
@@ -14,6 +15,7 @@ type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function FlashcardScreen({ navigation }: Props) {
   const { cards, currentIndex, subject, nextCard, resetSession } = useLearningStore();
+  const markRated = useLearningProgressStore((s) => s.markRated);
   const { mutate } = useMutation({ mutationFn: ({ id, q }: { id: string; q: number }) => recordProgress(id, q) });
 
   const current = cards[currentIndex];
@@ -21,7 +23,10 @@ export default function FlashcardScreen({ navigation }: Props) {
   const progress = cards.length > 0 ? ((currentIndex + 1) / cards.length) * 100 : 0;
 
   const handleRate = (quality: number) => {
-    if (current) mutate({ id: current.id, q: quality });
+    if (current) {
+      markRated(current.id, quality);
+      mutate({ id: current.id, q: quality });
+    }
     if (isLast) {
       resetSession();
       navigation.goBack();
@@ -29,6 +34,12 @@ export default function FlashcardScreen({ navigation }: Props) {
       nextCard();
     }
   };
+
+  useEffect(() => {
+    if (!current) {
+      navigation.goBack();
+    }
+  }, [current, navigation]);
 
   if (!current) return null;
 
@@ -53,7 +64,7 @@ export default function FlashcardScreen({ navigation }: Props) {
       {/* Progress */}
       <View style={styles.progressSection}>
         <View style={styles.progressLabelRow}>
-          <Text style={styles.progressLabel}>Məşq Davam Edir</Text>
+          <Text style={styles.progressLabel}>MƏŞQ DAVAM EDİR{subject ? ` · ${subject}` : ''}</Text>
           <Text style={styles.progressCount}>{currentIndex + 1}/{cards.length} kart</Text>
         </View>
         <View style={styles.progressBar}>
@@ -93,7 +104,7 @@ const styles = StyleSheet.create({
 
   progressSection: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 8, gap: 8 },
   progressLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  progressLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
+  progressLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, letterSpacing: 0.8 },
   progressCount: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   progressBar: {
     height: 8, backgroundColor: Colors.surfaceHigh,

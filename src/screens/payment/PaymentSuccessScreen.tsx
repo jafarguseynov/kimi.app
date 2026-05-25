@@ -13,6 +13,15 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 export default function PaymentSuccessScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
 
+  const goHome = () => {
+    const parent = navigation.getParent() as any;
+    parent?.navigate(Routes.Home, { screen: Routes.HomeMain, initial: false });
+  };
+
+  const goSubscription = () => {
+    navigation.navigate(Routes.Subscription);
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
@@ -24,63 +33,51 @@ export default function PaymentSuccessScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Success Animation */}
-        <View style={styles.heroSection}>
-          <View style={styles.aura} />
-          <View style={styles.successOuter}>
-            <View style={styles.successInner}>
-              <Ionicons name="checkmark-circle" size={64} color={Colors.tertiary} />
-            </View>
+        {/* Success hero */}
+        <View style={styles.heroBlock}>
+          <View style={styles.aura} pointerEvents="none" />
+          <View style={styles.successCircle}>
+            <Ionicons name="checkmark-circle" size={56} color={Colors.tertiary} />
           </View>
         </View>
 
-        {/* Text */}
-        <View style={styles.textSection}>
-          <Text style={styles.title}>Ödəniş uğurludur 🎉</Text>
+        {/* Title + sub */}
+        <View style={styles.textBlock}>
+          <Text style={styles.title}>Ödəniş uğurla tamamlandı</Text>
           <Text style={styles.sub}>
-            Təbriklər! Ödənişiniz uğurla tamamlandı. Kurs materialları artıq profilinizdə əlçatandır.
+            Təbriklər! Premium abunəliyiniz aktiv edildi. İndi bütün imkanlardan yararlana bilərsiniz.
           </Text>
         </View>
 
-        {/* Receipt Card */}
-        <View style={styles.receiptCard}>
-          <View style={styles.receiptTop}>
-            <View>
-              <Text style={styles.receiptMeta}>Məbləğ</Text>
-              <Text style={styles.receiptAmount}>49.99 AZN</Text>
-            </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.receiptMeta}>Tarix</Text>
-              <Text style={styles.receiptDate}>12 Oktyabr, 2023</Text>
+        {/* Summary card */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Plan</Text>
+            <View style={styles.planBadge}>
+              <Text style={styles.planBadgeText}>PREMIUM</Text>
             </View>
           </View>
-          <View style={styles.receiptGrid}>
-            <View style={styles.receiptGridItem}>
-              <Text style={styles.receiptGridLabel}>METOD</Text>
-              <View style={styles.receiptGridValue}>
-                <Ionicons name="card-outline" size={14} color={Colors.primary} />
-                <Text style={styles.receiptGridText}>**** 4242</Text>
-              </View>
-            </View>
-            <View style={styles.receiptGridItem}>
-              <Text style={styles.receiptGridLabel}>STATUS</Text>
-              <View style={styles.receiptGridValue}>
-                <View style={styles.statusDot} />
-                <Text style={styles.receiptGridText}>Təsdiqləndi</Text>
-              </View>
+          <View style={styles.summaryDivider} />
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Status</Text>
+            <View style={styles.statusRow}>
+              <View style={styles.statusDot} />
+              <Text style={styles.statusText}>Aktivdir</Text>
             </View>
           </View>
         </View>
 
         {/* CTAs */}
-        <View style={{ width: '100%', gap: 4 }}>
-          <TouchableOpacity onPress={() => navigation.navigate(Routes.HomeMain)} activeOpacity={0.9}>
-            <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.primaryBtnText}>Davam et</Text>
+        <View style={styles.actions}>
+          <TouchableOpacity activeOpacity={0.9} onPress={goHome}>
+            <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+              <Text style={styles.primaryBtnText}>Ana səhifəyə qayıt</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.7}>
-            <Text style={styles.secondaryBtnText}>Qəbzi yüklə</Text>
+          <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85} onPress={goSubscription}>
+            <Ionicons name="receipt-outline" size={18} color={Colors.textPrimary} />
+            <Text style={styles.secondaryBtnText}>Abunəliyimə bax</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -93,66 +90,69 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, height: 56,
+    paddingHorizontal: 16, height: 60,
     backgroundColor: 'rgba(255,255,255,0.7)',
   },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: Colors.textPrimary },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.primary, letterSpacing: -0.3 },
 
-  scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 20 },
+  scroll: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 40, gap: 24 },
 
-  heroSection: { alignItems: 'center', justifyContent: 'center', width: 200, height: 200 },
+  /* Success hero */
+  heroBlock: {
+    width: 160, height: 160,
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative',
+  },
   aura: {
-    position: 'absolute', width: 256, height: 256, borderRadius: 128,
-    backgroundColor: Colors.tertiaryContainer + '33',
+    position: 'absolute',
+    width: 240, height: 240, borderRadius: 120,
+    backgroundColor: Colors.tertiary + '14',
   },
-  successOuter: {
-    width: 128, height: 128, borderRadius: 64, backgroundColor: '#fff',
+  successCircle: {
+    width: 104, height: 104, borderRadius: 52,
+    backgroundColor: Colors.tertiaryContainer + 'AA',
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.tertiary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.3, shadowRadius: 50, elevation: 6,
-  },
-  successInner: {
-    width: 96, height: 96, borderRadius: 48,
-    backgroundColor: Colors.tertiaryContainer + '4D',
-    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 8, borderColor: '#fff',
+    shadowColor: Colors.tertiary, shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 6,
   },
 
-  textSection: { alignItems: 'center', gap: 12, maxWidth: 340 },
-  title: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', letterSpacing: -0.5 },
-  sub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22 },
+  /* Text */
+  textBlock: { alignItems: 'center', gap: 12, maxWidth: 320 },
+  title: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', letterSpacing: -0.5, lineHeight: 32 },
+  sub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, fontWeight: '500', maxWidth: 300 },
 
-  receiptCard: {
-    width: '100%', backgroundColor: Colors.surfaceLowest, borderRadius: 24, padding: 28, gap: 20,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
+  /* Summary card */
+  summaryCard: {
+    width: '100%',
+    backgroundColor: Colors.surfaceLowest, borderRadius: 22,
+    padding: 22, gap: 16,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.05, shadowRadius: 28, elevation: 2,
   },
-  receiptTop: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
-    borderBottomWidth: 1, borderBottomColor: Colors.surfaceHigh, paddingBottom: 16,
+  summaryRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryDivider: { height: 1, backgroundColor: Colors.borderLight, marginVertical: -2 },
+  summaryLabel: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
+  planBadge: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 14, paddingVertical: 5, borderRadius: 999,
   },
-  receiptMeta: { fontSize: 11, color: Colors.textSecondary, marginBottom: 4 },
-  receiptAmount: { fontSize: 24, fontWeight: '800', color: Colors.primary, letterSpacing: -0.5 },
-  receiptDate: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  receiptGrid: { flexDirection: 'row', gap: 12 },
-  receiptGridItem: {
-    flex: 1, backgroundColor: Colors.surfaceLow, borderRadius: 16, padding: 16, gap: 10,
-  },
-  receiptGridLabel: {
-    fontSize: 9, fontWeight: '700', color: Colors.textSecondary,
-    textTransform: 'uppercase', letterSpacing: 1.5,
-  },
-  receiptGridValue: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  receiptGridText: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
+  planBadgeText: { fontSize: 11, fontWeight: '800', color: Colors.primary, letterSpacing: 1.4 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.tertiary },
+  statusText: { fontSize: 13, fontWeight: '700', color: Colors.tertiary },
 
+  /* Actions */
+  actions: { width: '100%', gap: 12 },
   primaryBtn: {
-    width: '100%', height: 58, borderRadius: 999,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 20, elevation: 4,
+    height: 56, borderRadius: 999,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.2, shadowRadius: 22, elevation: 4,
   },
-  primaryBtnText: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  primaryBtnText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: -0.2 },
   secondaryBtn: {
-    width: '100%', height: 52, borderRadius: 999,
-    alignItems: 'center', justifyContent: 'center',
+    height: 52, borderRadius: 999,
+    backgroundColor: Colors.surfaceHigh,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
   },
-  secondaryBtnText: { fontSize: 14, fontWeight: '600', color: Colors.primary },
+  secondaryBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
 });

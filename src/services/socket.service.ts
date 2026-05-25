@@ -30,6 +30,10 @@ class SocketService {
     this.socket?.emit('joinChat', chatId);
   }
 
+  leaveChat(chatId: string) {
+    this.socket?.emit('leaveChat', chatId);
+  }
+
   sendMessage(chatId: string, content: string) {
     this.socket?.emit('sendMessage', { chatId, content });
   }

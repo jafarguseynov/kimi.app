@@ -7,126 +7,229 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useUserStore } from '../../store/user.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-type Billing = 'monthly' | 'annual';
+type RoleTab = 'teacher' | 'student';
 
-const FEATURES: { label: string; free: boolean; premium: boolean }[] = [
-  { label: 'Sınırsız imtahanlar', free: true, premium: true },
-  { label: 'AI mentor dəstəyi', free: false, premium: true },
-  { label: 'Flashcard sistemi', free: true, premium: true },
-  { label: 'Liderlik lövhəsi', free: true, premium: true },
-  { label: 'Şəxsi öyrənmə planı', free: false, premium: true },
-  { label: 'Sertifikatlar', free: false, premium: true },
-  { label: 'Offline rejim', free: false, premium: true },
+type Plan = {
+  id: string;
+  badge: string;
+  badgeTone: 'primary' | 'tertiary';
+  title: string;
+  price: number;
+  perMonth: string;
+  features: string[];
+  highlight?: boolean;
+  ribbon?: string;
+};
+
+const TEACHER_PLANS: Plan[] = [
+  {
+    id: 't-3',
+    badge: 'Standart',
+    badgeTone: 'primary',
+    title: '3 Aylıq Paket',
+    price: 75,
+    perMonth: 'Hər ay üçün ~25 AZN',
+    features: ['3 ay tam aktivlik', 'Məhdud tələbə sorğusu', 'Bütün dərslərə baxış'],
+  },
+  {
+    id: 't-6',
+    badge: 'Ən çox seçilən',
+    badgeTone: 'primary',
+    title: '6 Aylıq Paket',
+    price: 99,
+    perMonth: 'Hər ay üçün ~16.50 AZN',
+    features: ['6 ay tam aktivlik', 'Üstün profil görünüşü', 'Prioritetli dəstək', 'Kimi Robot assistent'],
+    highlight: true,
+    ribbon: 'Məsləhətli',
+  },
+  {
+    id: 't-12',
+    badge: 'Ən sərfəli',
+    badgeTone: 'tertiary',
+    title: '1 İllik Paket',
+    price: 145,
+    perMonth: 'Hər ay üçün ~12 AZN',
+    features: ['1 il tam aktivlik', 'Limitsiz tələbə sorğusu', 'AI əsaslı analitika', 'Eksklüziv vebinarlar'],
+  },
+];
+
+const STUDENT_PLANS: Plan[] = [
+  {
+    id: 's-1',
+    badge: 'Başlanğıc',
+    badgeTone: 'primary',
+    title: 'Aylıq Paket',
+    price: 9,
+    perMonth: 'Sınaq üçün ideal',
+    features: ['Limitsiz testlər', 'Bütün imtahan materialları', 'Əsas Kimi Robot köməyi'],
+  },
+  {
+    id: 's-3',
+    badge: 'Ən çox seçilən',
+    badgeTone: 'primary',
+    title: '3 Aylıq Paket',
+    price: 22,
+    perMonth: 'Hər ay üçün ~7.30 AZN',
+    features: ['Limitsiz testlər', 'AI mentor dəstəyi', 'Şəxsi öyrənmə planı', 'Sertifikatlar'],
+    highlight: true,
+    ribbon: 'Məsləhətli',
+  },
+  {
+    id: 's-12',
+    badge: 'Ən sərfəli',
+    badgeTone: 'tertiary',
+    title: '1 İllik Paket',
+    price: 65,
+    perMonth: 'Hər ay üçün ~5.40 AZN',
+    features: ['Hər şey daxil', 'Offline rejim', 'Eksklüziv kurslar', 'Prioritetli dəstək'],
+  },
 ];
 
 export default function PlansScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [billing, setBilling] = useState<Billing>('monthly');
+  const user = useUserStore((s) => s.user);
+  const initialTab: RoleTab = user?.role === 'teacher' ? 'teacher' : 'student';
+  const [tab, setTab] = useState<RoleTab>(initialTab);
+
+  const plans = tab === 'teacher' ? TEACHER_PLANS : STUDENT_PLANS;
+
+  const selectPlan = (plan: Plan) => {
+    navigation.navigate(Routes.PaymentMethod, { planId: plan.id, planName: plan.title, amount: plan.price });
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
-          <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
+          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Planları Müqayisə Et</Text>
+        <Text style={styles.headerTitle}>Abunəlik Planları</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Hero */}
-        <LinearGradient colors={GRADIENT} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View style={styles.heroBlob1} />
-          <View style={styles.heroBlob2} />
-          <Text style={styles.heroTitle}>Planlarımızı{'\n'}Müqayisə Edin</Text>
-          <Text style={styles.heroSub}>Özünüzə uyğun planı seçin</Text>
-        </LinearGradient>
-
-        {/* Billing toggle */}
-        <View style={styles.toggleRow}>
+        <View style={styles.heroBlock}>
+          <Text style={styles.heroTitle}>
+            Sizin üçün ən uyğun{' '}
+            <Text style={styles.heroAccent}>planı seçin</Text>
+          </Text>
+          <Text style={styles.heroSub}>
+            Təhsil yolunuzda Kimi Robot və premium imkanlarla daha sürətli irəliləyin.
+          </Text>
           <TouchableOpacity
-            style={[styles.toggleOption, billing === 'monthly' && styles.toggleOptionActive]}
-            onPress={() => setBilling('monthly')}
-            activeOpacity={0.85}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => navigation.navigate(Routes.PlanCompare)}
+            style={styles.compareLink}
           >
-            <Text style={[styles.toggleText, billing === 'monthly' && styles.toggleTextActive]}>Aylıq</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleOption, billing === 'annual' && styles.toggleOptionActive]}
-            onPress={() => setBilling('annual')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.toggleText, billing === 'annual' && styles.toggleTextActive]}>İllik</Text>
-            <View style={styles.discountBadge}>
-              <Text style={styles.discountText}>15% endirim</Text>
-            </View>
+            <Ionicons name="git-compare-outline" size={14} color={Colors.primary} />
+            <Text style={styles.compareLinkText}>Planları müqayisə et</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Plan cards */}
-        <View style={styles.plansRow}>
-          <View style={[styles.planCard, styles.planCardFree]}>
-            <Text style={styles.planName}>Pulsuz</Text>
-            <Text style={styles.planPrice}>0 <Text style={styles.planCurrency}>AZN</Text></Text>
-            <Text style={styles.planPriceSub}>ayda</Text>
-          </View>
-          <LinearGradient colors={GRADIENT} style={[styles.planCard, styles.planCardPremium]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <View style={styles.popularBadge}>
-              <Text style={styles.popularBadgeText}>POPULYAR</Text>
-            </View>
-            <Text style={[styles.planName, { color: '#fff' }]}>Premium</Text>
-            <Text style={[styles.planPrice, { color: '#fff' }]}>
-              {billing === 'monthly' ? '9.99' : '8.49'} <Text style={styles.planCurrencyWhite}>AZN</Text>
-            </Text>
-            <Text style={[styles.planPriceSub, { color: 'rgba(255,255,255,0.8)' }]}>ayda</Text>
-          </LinearGradient>
+        {/* Tab segmented */}
+        <View style={styles.tabBar}>
+          <TouchableOpacity
+            style={[styles.tabItem, tab === 'teacher' && styles.tabItemActive]}
+            onPress={() => setTab('teacher')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.tabText, tab === 'teacher' && styles.tabTextActive]}>Müəllim</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabItem, tab === 'student' && styles.tabItemActive]}
+            onPress={() => setTab('student')}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.tabText, tab === 'student' && styles.tabTextActive]}>Şagird</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Features */}
-        <View style={styles.featuresCard}>
-          <View style={styles.featuresHeader}>
-            <Text style={styles.featuresTitle}>Funksiyaların Müqayisəsi</Text>
-            <View style={styles.featureColHeaders}>
-              <Text style={styles.featureColLabel}>Pulsuz</Text>
-              <Text style={styles.featureColLabel}>Premium</Text>
-            </View>
-          </View>
-          {FEATURES.map((f, i) => (
+        {/* Plans */}
+        <View style={{ gap: 18 }}>
+          {plans.map((p) => (
             <View
-              key={f.label}
-              style={[styles.featureRow, i > 0 && { borderTopWidth: 1, borderTopColor: Colors.borderLight, marginTop: 12, paddingTop: 12 }]}
+              key={p.id}
+              style={[styles.planCard, p.highlight && styles.planCardHighlight]}
             >
-              <Text style={styles.featureLabel}>{f.label}</Text>
-              <View style={styles.featureChecks}>
-                <View style={styles.featureCheck}>
-                  <Ionicons
-                    name={f.free ? 'checkmark-circle' : 'close-circle-outline'}
-                    size={20}
-                    color={f.free ? Colors.primary : Colors.outlineVariant}
-                  />
+              {p.ribbon && (
+                <View style={styles.ribbon}>
+                  <Text style={styles.ribbonText}>{p.ribbon}</Text>
                 </View>
-                <View style={styles.featureCheck}>
-                  <Ionicons
-                    name={f.premium ? 'checkmark-circle' : 'close-circle-outline'}
-                    size={20}
-                    color={f.premium ? Colors.tertiary : Colors.outlineVariant}
-                  />
-                </View>
+              )}
+
+              <View style={[
+                styles.planBadge,
+                p.badgeTone === 'tertiary' && styles.planBadgeTertiary,
+              ]}>
+                <Text style={[
+                  styles.planBadgeText,
+                  p.badgeTone === 'tertiary' && styles.planBadgeTextTertiary,
+                ]}>{p.badge}</Text>
+              </View>
+
+              <Text style={styles.planTitle}>{p.title}</Text>
+
+              <View style={styles.priceRow}>
+                <Text style={styles.priceNum}>{p.price}</Text>
+                <Text style={styles.priceCurrency}>AZN</Text>
+              </View>
+              <Text style={styles.pricePerMonth}>{p.perMonth}</Text>
+
+              <View style={styles.featuresList}>
+                {p.features.map((f) => (
+                  <View key={f} style={styles.featureRow}>
+                    <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
+                    <Text style={[styles.featureText, p.highlight && styles.featureTextHighlight]}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={{ gap: 8, marginTop: 18 }}>
+                <TouchableOpacity activeOpacity={0.9} onPress={() => selectPlan(p)}>
+                  <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+                    <Text style={styles.primaryBtnText}>Paketi seç</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.ghostBtn} activeOpacity={0.7} onPress={() => navigation.navigate(Routes.PremiumBenefits)}>
+                  <Text style={styles.ghostBtnText}>Daha ətraflı</Text>
+                </TouchableOpacity>
               </View>
             </View>
           ))}
         </View>
 
-        {/* CTA */}
-        <TouchableOpacity onPress={() => navigation.navigate(Routes.PaymentMethod)} activeOpacity={0.9}>
-          <LinearGradient colors={GRADIENT} style={styles.ctaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.ctaBtnText}>Premium-a keç</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
+        {/* Cross-role preview */}
+        {tab === 'teacher' && (
+          <View style={styles.crossCard}>
+            <View style={{ flex: 1, gap: 8 }}>
+              <View style={styles.crossChip}>
+                <Text style={styles.crossChipText}>Şagirdlər üçün</Text>
+              </View>
+              <Text style={styles.crossTitle}>Aylıq Premium Giriş</Text>
+              <Text style={styles.crossSub}>
+                Bütün imtahan materiallarına giriş, limitsiz testlər və Kimi Robotun fərdi dərsləri ilə fərq yaradın.
+              </Text>
+              <View style={styles.crossPriceRow}>
+                <Text style={styles.crossPriceNum}>5 - 9</Text>
+                <Text style={styles.crossPriceUnit}>AZN / ay</Text>
+              </View>
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setTab('student')} style={{ marginTop: 4 }}>
+                <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.crossBtn}>
+                  <Text style={styles.crossBtnText}>Şagird planlarına bax</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#fff" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <View style={{ height: 16 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -137,76 +240,115 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
+    paddingHorizontal: 16, height: 60,
     backgroundColor: 'rgba(255,255,255,0.85)',
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
 
-  scroll: { padding: 20, gap: 20, paddingBottom: 48 },
+  scroll: { padding: 24, paddingTop: 24, gap: 32, paddingBottom: 40 },
 
-  hero: {
-    borderRadius: 20, padding: 28, gap: 8, overflow: 'hidden',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 4,
+  /* Hero */
+  heroBlock: { alignItems: 'center', gap: 12, paddingTop: 8, paddingHorizontal: 8 },
+  heroTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', letterSpacing: -0.6, lineHeight: 34 },
+  heroAccent: { color: Colors.primary },
+  heroSub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, maxWidth: 320, fontWeight: '500' },
+  compareLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: Colors.primary + '12',
+    marginTop: 6,
   },
-  heroBlob1: { position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: 80, backgroundColor: 'rgba(255,255,255,0.08)' },
-  heroBlob2: { position: 'absolute', bottom: -20, left: -20, width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)' },
-  heroTitle: { fontSize: 26, fontWeight: '900', color: '#fff', lineHeight: 34 },
-  heroSub: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.8)' },
+  compareLinkText: { fontSize: 12, fontWeight: '800', color: Colors.primary, letterSpacing: -0.1 },
 
-  toggleRow: {
-    flexDirection: 'row', backgroundColor: Colors.surfaceContainer,
-    borderRadius: 14, padding: 4, gap: 4,
+  /* Tab */
+  tabBar: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    backgroundColor: Colors.surfaceLow,
+    padding: 6, borderRadius: 999, gap: 4,
   },
-  toggleOption: {
-    flex: 1, borderRadius: 10, paddingVertical: 10,
-    alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
+  tabItem: {
+    paddingHorizontal: 30, paddingVertical: 10, borderRadius: 999,
   },
-  toggleOptionActive: { backgroundColor: Colors.surfaceLowest },
-  toggleText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
-  toggleTextActive: { color: Colors.textPrimary, fontWeight: '700' },
-  discountBadge: { backgroundColor: Colors.primaryLight, borderRadius: 999, paddingHorizontal: 7, paddingVertical: 3 },
-  discountText: { fontSize: 10, fontWeight: '700', color: Colors.primary },
+  tabItemActive: {
+    backgroundColor: Colors.surfaceLowest,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  tabText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  tabTextActive: { color: Colors.primary, fontWeight: '800' },
 
-  plansRow: { flexDirection: 'row', gap: 14 },
-  planCard: { flex: 1, borderRadius: 20, padding: 20, gap: 4 },
-  planCardFree: {
-    backgroundColor: Colors.surfaceLowest, borderWidth: 1.5, borderColor: Colors.borderLight,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 12, elevation: 1,
+  /* Plan card */
+  planCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 22, padding: 26,
+    overflow: 'hidden', position: 'relative',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.04, shadowRadius: 22, elevation: 2,
   },
-  planCardPremium: {
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 4,
-    overflow: 'hidden',
+  planCardHighlight: {
+    borderWidth: 2, borderColor: Colors.primary,
+    shadowOpacity: 0.12, shadowRadius: 28,
   },
-  popularBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 999,
-    paddingHorizontal: 10, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 4,
+  ribbon: {
+    position: 'absolute', top: 12, right: -36,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 44, paddingVertical: 4,
+    transform: [{ rotate: '45deg' }],
   },
-  popularBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5 },
-  planName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  planPrice: { fontSize: 24, fontWeight: '900', color: Colors.primary },
-  planCurrency: { fontSize: 16, fontWeight: '600' },
-  planCurrencyWhite: { fontSize: 16, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
-  planPriceSub: { fontSize: 11, color: Colors.textSecondary },
+  ribbonText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' },
 
-  featuresCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 20,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 12, elevation: 1,
+  planBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primary + '15',
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 999,
+    marginBottom: 10,
   },
-  featuresHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  featuresTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  featureColHeaders: { flexDirection: 'row', gap: 16 },
-  featureColLabel: { width: 44, fontSize: 9, fontWeight: '700', color: Colors.outline, textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.5 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  featureLabel: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontWeight: '500' },
-  featureChecks: { flexDirection: 'row', gap: 16 },
-  featureCheck: { width: 44, alignItems: 'center' },
+  planBadgeTertiary: { backgroundColor: Colors.tertiary + '18' },
+  planBadgeText: { fontSize: 10, fontWeight: '800', color: Colors.primary, letterSpacing: 1, textTransform: 'uppercase' },
+  planBadgeTextTertiary: { color: Colors.tertiary },
 
-  ctaBtn: {
-    height: 58, borderRadius: 999,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 4,
+  planTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.4 },
+
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 14 },
+  priceNum: { fontSize: 40, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -1 },
+  priceCurrency: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
+  pricePerMonth: { fontSize: 12, color: Colors.textSecondary, marginTop: 4, fontWeight: '500' },
+
+  featuresList: { gap: 12, marginTop: 22 },
+  featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  featureText: { flex: 1, fontSize: 13, fontWeight: '500', color: Colors.textSecondary, lineHeight: 18 },
+  featureTextHighlight: { color: Colors.textPrimary, fontWeight: '700' },
+
+  primaryBtn: {
+    height: 50, borderRadius: 999,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 4,
   },
-  ctaBtnText: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  primaryBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  ghostBtn: { height: 44, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  ghostBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+
+  /* Cross-role preview */
+  crossCard: {
+    backgroundColor: Colors.primary + '0D',
+    borderRadius: 22, padding: 24,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 16,
+  },
+  crossChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+  },
+  crossChipText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' },
+  crossTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  crossSub: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19, fontWeight: '500' },
+  crossPriceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8 },
+  crossPriceNum: { fontSize: 28, fontWeight: '800', color: Colors.primary, letterSpacing: -0.5 },
+  crossPriceUnit: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  crossBtn: {
+    height: 48, borderRadius: 999,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 14, elevation: 4,
+  },
+  crossBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
 });

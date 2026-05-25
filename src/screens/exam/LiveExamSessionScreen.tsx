@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -28,13 +29,21 @@ const LIVE_FEED = [
   { id: '3', text: 'Murad səhv etdi', bold: 'Murad', live: false },
 ];
 
+const PODIUM: { rank: 1 | 2 | 3; name: string; xp: number; initials: string }[] = [
+  { rank: 2, name: 'Leyla', xp: 890, initials: 'L' },
+  { rank: 1, name: 'Cəfər', xp: 945, initials: 'C' },
+  { rank: 3, name: 'Murad', xp: 820, initials: 'M' },
+];
+
 export default function LiveExamSessionScreen({ navigation }: Props) {
   const {
     questions,
     currentIndex,
     answers,
     timeRemaining,
+    durationSeconds,
     examId,
+    submissionType,
     setAnswer,
     nextQuestion,
     previousQuestion,
@@ -49,9 +58,20 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
 
   const submit = () => {
     if (timerRef.current) clearInterval(timerRef.current);
+    if (!examId) {
+      Alert.alert('Xəta', 'İmtahan sessiyası tapılmadı. Yenidən cəhd edin.');
+      navigation.goBack();
+      return;
+    }
+    const timeSpent = Math.max(0, durationSeconds - timeRemaining);
     mutate(
-      { examId: examId!, answers, timeSpent: 0 },
-      { onSuccess: () => navigation.replace(Routes.ExamRanking) },
+      { examId, answers, timeSpent, type: submissionType ?? 'live' },
+      {
+        onSuccess: () => navigation.replace(Routes.ExamResult),
+        onError: (err: any) => {
+          Alert.alert('Xəta', err?.response?.data?.message ?? 'Nəticə saxlanıla bilmədi. Yenidən cəhd edin.');
+        },
+      },
     );
   };
 
@@ -82,7 +102,17 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
     if (timeRemaining === 0) submit();
   }, [timeRemaining]);
 
-  if (!currentQuestion) return null;
+  if (!currentQuestion) {
+    return (
+      <SafeAreaView style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]} edges={['top']}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text style={{ marginTop: 12, color: Colors.textSecondary, fontWeight: '600' }}>Suallar yüklənir...</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 24, paddingVertical: 10, paddingHorizontal: 20 }}>
+          <Text style={{ color: Colors.primary, fontWeight: '700' }}>Geri qayıt</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
+  }
 
   const selectedOptionId = answers[currentQuestion.id];
 
@@ -128,6 +158,48 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             />
+          </View>
+        </View>
+
+        {/* Live Podium — top 3 */}
+        <View style={styles.podiumSection}>
+          <View style={styles.podiumHeader}>
+            <Text style={styles.podiumTitle}>Canlı Liderlər</Text>
+            <View style={styles.podiumLivePill}>
+              <View style={styles.liveDot} />
+              <Text style={styles.podiumLiveText}>Canlı</Text>
+            </View>
+          </View>
+          <View style={styles.podiumRow}>
+            {PODIUM.map((p) => {
+              const isFirst = p.rank === 1;
+              const barHeight = p.rank === 1 ? 60 : p.rank === 2 ? 46 : 38;
+              return (
+                <View key={p.rank} style={[styles.podiumCol, isFirst && styles.podiumColFirst]}>
+                  {isFirst && (
+                    <Ionicons name="trophy" size={22} color="#FFD700" style={{ marginBottom: 4 }} />
+                  )}
+                  <View style={[styles.podiumAvatar, isFirst && styles.podiumAvatarFirst]}>
+                    <Text style={[styles.podiumAvatarText, isFirst && { color: '#fff' }]}>{p.initials}</Text>
+                  </View>
+                  <Text style={[styles.podiumName, isFirst && styles.podiumNameFirst]}>{p.name}</Text>
+                  <Text style={[styles.podiumXp, isFirst && styles.podiumXpFirst]}>{p.xp} XP</Text>
+                  {isFirst ? (
+                    <LinearGradient
+                      colors={[Colors.gradientStart, Colors.gradientEnd]}
+                      style={[styles.podiumBar, { height: barHeight }]}
+                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.podiumBarTextFirst}>{p.rank}</Text>
+                    </LinearGradient>
+                  ) : (
+                    <View style={[styles.podiumBar, styles.podiumBarMuted, { height: barHeight }]}>
+                      <Text style={styles.podiumBarText}>{p.rank}</Text>
+                    </View>
+                  )}
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -308,6 +380,54 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 999 },
+
+  // Podium
+  podiumSection: { gap: 12 },
+  podiumHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
+  podiumTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  podiumLivePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+  },
+  podiumLiveText: { fontSize: 10, fontWeight: '700', color: Colors.primary, letterSpacing: 0.5 },
+  podiumRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10 },
+  podiumCol: {
+    flex: 1, alignItems: 'center',
+    backgroundColor: Colors.surfaceLow, borderRadius: 16,
+    paddingTop: 14, paddingHorizontal: 6, gap: 4,
+    overflow: 'hidden',
+  },
+  podiumColFirst: {
+    backgroundColor: Colors.surfaceLowest,
+    borderWidth: 1, borderColor: Colors.primary + '22',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.12, shadowRadius: 12, elevation: 3,
+    paddingTop: 6,
+  },
+  podiumAvatar: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.surfaceLowest,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
+  },
+  podiumAvatarFirst: {
+    width: 56, height: 56, borderRadius: 28,
+    backgroundColor: Colors.primary,
+    borderWidth: 2, borderColor: Colors.primary + '55',
+  },
+  podiumAvatarText: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  podiumName: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
+  podiumNameFirst: { fontWeight: '800' },
+  podiumXp: { fontSize: 10, fontWeight: '600', color: Colors.textMuted, marginBottom: 6 },
+  podiumXpFirst: { color: Colors.primary, fontWeight: '800' },
+  podiumBar: {
+    width: '100%', alignItems: 'center', justifyContent: 'center',
+    borderTopLeftRadius: 10, borderTopRightRadius: 10,
+    marginTop: 2,
+  },
+  podiumBarMuted: { backgroundColor: 'rgba(255,255,255,0.6)' },
+  podiumBarText: { fontSize: 18, fontWeight: '900', color: Colors.textMuted },
+  podiumBarTextFirst: { fontSize: 22, fontWeight: '900', color: '#fff' },
 
   feedScroll: { paddingRight: 4, gap: 10 },
   feedPill: {

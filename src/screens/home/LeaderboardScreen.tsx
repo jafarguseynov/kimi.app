@@ -14,35 +14,65 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
-import { getGlobalLeaderboard, getLeague, type LeaderboardEntry, type LeagueEntry } from '../../api/leaderboard.api';
+import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
 import { useUserStore } from '../../store/user.store';
+import { Routes } from '../../constants/routes';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+type Scope = 'students' | 'schools' | 'friends' | 'me';
 
-const BAR_HEIGHTS: Record<1 | 2 | 3, number> = { 1: 128, 2: 96, 3: 80 };
-const AVATAR_SIZES: Record<1 | 2 | 3, number> = { 1: 88, 2: 64, 3: 56 };
-const MEDALS: Record<1 | 2 | 3, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+const TOP_SCHOOLS = [
+  { name: 'Modern Lisey', city: 'Bakı, Azərbaycan', rank: 1, icon: 'school' as const, bg: '#EFF6FF', tint: '#3B82F6' },
+  { name: 'Akademik Lisey', city: 'Gəncə, Azərbaycan', rank: 2, icon: 'business' as const, bg: '#ECFDF5', tint: '#10B981' },
+  { name: '160 saylı tam orta', city: 'Bakı, Azərbaycan', rank: 3, icon: 'school-outline' as const, bg: '#FEF3C7', tint: '#D97706' },
+];
 
-function AvatarCircle({ initial, size }: { initial: string; size: number }) {
-  return (
+const TAB_OPTIONS: { key: Scope; label: string }[] = [
+  { key: 'students', label: 'Top Şagirdlər' },
+  { key: 'schools', label: 'Top Məktəblər' },
+  { key: 'friends', label: 'Dostlarım' },
+  { key: 'me', label: 'Mənim yerim' },
+];
+
+function Avatar({ initial, size, gradient = false, border, borderColor }: { initial: string; size: number; gradient?: boolean; border?: number; borderColor?: string }) {
+  const inner = (
     <LinearGradient
       colors={GRADIENT}
       style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
-      <Text style={{ fontSize: size * 0.32, fontWeight: '800', color: '#fff' }}>
-        {initial}
-      </Text>
+      <Text style={{ fontSize: size * 0.34, fontWeight: '800', color: '#fff' }}>{initial}</Text>
     </LinearGradient>
   );
+  if (gradient) {
+    return (
+      <LinearGradient
+        colors={GRADIENT}
+        style={{ width: size + 12, height: size + 12, borderRadius: (size + 12) / 2, padding: 6, alignItems: 'center', justifyContent: 'center' }}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden', backgroundColor: '#fff', padding: 3 }}>
+          <View style={{ flex: 1, borderRadius: size / 2, overflow: 'hidden' }}>{inner}</View>
+        </View>
+      </LinearGradient>
+    );
+  }
+  if (border) {
+    return (
+      <View style={{ width: size + border * 2, height: size + border * 2, borderRadius: (size + border * 2) / 2, padding: border, backgroundColor: borderColor ?? Colors.surfaceHighest }}>
+        <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }}>{inner}</View>
+      </View>
+    );
+  }
+  return <View style={{ width: size, height: size, borderRadius: size / 2, overflow: 'hidden' }}>{inner}</View>;
 }
 
 export default function LeaderboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [activeTab, setActiveTab] = useState<0 | 1>(0);
-  const [globalData, setGlobalData] = useState<LeaderboardEntry[]>([]);
-  const [leagueData, setLeagueData] = useState<LeagueEntry[]>([]);
+  const [scope, setScope] = useState<Scope>('students');
+  const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const user = useUserStore((s) => s.user);
@@ -51,175 +81,289 @@ export default function LeaderboardScreen() {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     try {
-      if (activeTab === 0) {
-        const data = await getGlobalLeaderboard();
-        setGlobalData(data);
-      } else {
-        const data = await getLeague();
-        setLeagueData(data);
-      }
+      const board = await getGlobalLeaderboard();
+      setData(Array.isArray(board) ? board : []);
     } catch {
-      // keep previous data on error
+      setData([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
   };
 
-  useEffect(() => {
-    load();
-  }, [activeTab]);
-
-  const podiumOrder = (entries: LeaderboardEntry[]) => {
-    const top3 = entries.slice(0, 3);
-    if (top3.length < 3) return top3;
-    // Display order: 2nd, 1st, 3rd
-    return [top3[1], top3[0], top3[2]];
-  };
+  useEffect(() => { load(); }, []);
 
   const initial = (name: string) => name.charAt(0).toUpperCase();
+  const top3 = data.slice(0, 3);
+  const list = data.slice(3, 9);
+  const me = data.find((e) => e.userId === user?.id);
+  const nextTarget = me ? Math.max(1, Math.ceil(me.rank / 10) * 10 - 10) : null;
+  const targetGain = me && nextTarget !== null && data[nextTarget - 1]
+    ? Math.max(0, data[nextTarget - 1].totalScore - me.totalScore + 50)
+    : 450;
+  const progressToTarget = me && nextTarget !== null && me.rank > nextTarget
+    ? Math.min(0.95, (data.length - me.rank) / Math.max(1, data.length - nextTarget))
+    : 0.66;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.headerAvatar}>
-            <AvatarCircle initial={initial(user?.name ?? 'S')} size={40} />
-          </View>
-          <Text style={styles.headerTitle}>Liderlik Cədvəli</Text>
+          <Avatar initial={initial(user?.name ?? 'S')} size={40} />
+          <Text style={styles.headerTitle}>Kimi.az</Text>
         </View>
-        <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          <TouchableOpacity
+            activeOpacity={0.7} hitSlop={8} style={styles.bellBtn}
+            onPress={() => navigation.navigate(Routes.LeaderboardDetail)}
+          >
+            <Ionicons name="podium-outline" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7} hitSlop={8} style={styles.bellBtn}>
+            <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scroll}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.primary} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} tintColor={Colors.primary} />}
       >
-        {/* Filter tabs */}
-        <View style={styles.tabsWrap}>
-          {(['Global', 'Liqa'] as const).map((label, i) => (
-            <TouchableOpacity
-              key={label}
-              style={[styles.tab, activeTab === i && styles.tabActive]}
-              onPress={() => setActiveTab(i as 0 | 1)}
-              activeOpacity={0.75}
-            >
-              <Text style={[styles.tabText, activeTab === i && styles.tabTextActive]}>{label}</Text>
-            </TouchableOpacity>
-          ))}
+        {/* Headline */}
+        <View>
+          <Text style={styles.pageTitle}>Milli İmtahan Reytinqi</Text>
+          <Text style={styles.pageSub}>Bütün ölkə üzrə şagirdlərin nailiyyətləri</Text>
         </View>
+
+        {/* Segmented tabs (scrollable) */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsListInner}>
+          <View style={styles.tabsWrap}>
+            {TAB_OPTIONS.map(({ key, label }) => (
+              <TouchableOpacity
+                key={key}
+                style={[styles.tab, scope === key && styles.tabActive]}
+                onPress={() => setScope(key)}
+                activeOpacity={0.75}
+              >
+                <Text style={[styles.tabText, scope === key && styles.tabTextActive]}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
 
         {loading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
-        ) : activeTab === 0 ? (
-          /* ─── Global leaderboard ─── */
+        ) : scope === 'schools' ? (
+          <View style={{ gap: 12 }}>
+            <Text style={styles.sectionTitle}>Top Məktəblər</Text>
+            {TOP_SCHOOLS.map((s) => (
+              <TouchableOpacity
+                key={s.name}
+                style={styles.schoolRow}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate(Routes.SchoolRanking)}
+              >
+                <Text style={styles.studentRank}>{s.rank}</Text>
+                <View style={[styles.schoolIcon, { backgroundColor: s.bg }]}>
+                  <Ionicons name={s.icon} size={20} color={s.tint} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.schoolName}>{s.name}</Text>
+                  <Text style={styles.schoolCity}>{s.city}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : scope === 'friends' ? (
+          <View style={styles.placeholder}>
+            <Ionicons name="people-outline" size={42} color={Colors.textMuted} />
+            <Text style={styles.placeholderTitle}>Dostların reytinqi</Text>
+            <Text style={styles.placeholderSub}>Dost əlavə et və onlarla yarışda öz yerini gör.</Text>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate(Routes.Friends)}
+              style={{ marginTop: 12 }}
+            >
+              <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.placeholderCta}>
+                <Ionicons name="person-add-outline" size={18} color="#fff" />
+                <Text style={styles.placeholderCtaText}>Dostları gör</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : scope === 'me' ? (
+          <View style={{ gap: 16 }}>
+            {me ? (
+              <LinearGradient
+                colors={[Colors.primary, Colors.primaryDim ?? '#00547e']}
+                style={styles.myCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.myCardGlow} />
+                <View style={styles.myCardTop}>
+                  <View>
+                    <Text style={styles.myCardLabel}>Sənin Yerin</Text>
+                    <Text style={styles.myCardRank}>{me.rank}-cü</Text>
+                  </View>
+                  <View style={styles.myCardIconWrap}>
+                    <Ionicons name="trending-up" size={22} color="#fff" />
+                  </View>
+                </View>
+                <View style={{ gap: 8 }}>
+                  <View style={styles.myCardRowBetween}>
+                    <Text style={styles.myCardHint}>Növbəti hədəf: {nextTarget}-cü yer</Text>
+                    <Text style={styles.myCardHint}>+{targetGain} xal</Text>
+                  </View>
+                  <View style={styles.myCardTrack}>
+                    <View style={[styles.myCardFill, { width: `${Math.round(progressToTarget * 100)}%` as any }]} />
+                  </View>
+                </View>
+              </LinearGradient>
+            ) : (
+              <View style={styles.placeholder}>
+                <Ionicons name="rocket-outline" size={42} color={Colors.textMuted} />
+                <Text style={styles.placeholderTitle}>Hələ yerinin yoxdur</Text>
+                <Text style={styles.placeholderSub}>İmtahan ver və ümumi reytinqə daxil ol.</Text>
+              </View>
+            )}
+          </View>
+        ) : (
           <>
-            {globalData.length >= 3 && (
+            {/* Top 3 podium */}
+            {top3.length >= 3 && (
               <View style={styles.podium}>
-                {podiumOrder(globalData).map((entry) => {
-                  const rank = entry.rank as 1 | 2 | 3;
-                  const isFirst = rank === 1;
-                  const avatarSize = AVATAR_SIZES[rank] ?? 56;
-                  const barHeight = BAR_HEIGHTS[rank] ?? 80;
-                  return (
-                    <View key={entry.userId} style={styles.podiumCol}>
-                      {isFirst && <View style={styles.podiumAura} pointerEvents="none" />}
-                      <View style={[styles.podiumAvatarWrap, { borderColor: isFirst ? Colors.primaryFixed : Colors.surfaceContainer }]}>
-                        <AvatarCircle initial={initial(entry.name)} size={avatarSize} />
-                      </View>
-                      {isFirst ? (
-                        <LinearGradient colors={GRADIENT} style={styles.medalBadgeGold} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                          <Text style={styles.medalText}>{MEDALS[rank]}</Text>
-                        </LinearGradient>
-                      ) : (
-                        <View style={styles.medalBadge}>
-                          <Text style={styles.medalText}>{MEDALS[rank]}</Text>
-                        </View>
-                      )}
-                      <Text style={[styles.podiumName, isFirst && styles.podiumNameFirst]} numberOfLines={1}>
-                        {entry.name.split(' ')[0]}
-                      </Text>
-                      <Text style={[styles.podiumBal, isFirst && styles.podiumBalFirst]}>
-                        {entry.totalScore} bal
-                      </Text>
-                      {isFirst ? (
-                        <LinearGradient colors={GRADIENT} style={[styles.podiumBar, { height: barHeight }]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}>
-                          <Text style={styles.podiumBarRank}>1</Text>
-                        </LinearGradient>
-                      ) : (
-                        <View style={[styles.podiumBar, { height: barHeight, backgroundColor: rank === 2 ? Colors.surfaceLow : Colors.surfaceContainer }]} />
-                      )}
+                {/* Rank 2 */}
+                <View style={styles.podiumCol}>
+                  <View>
+                    <Avatar initial={initial(top3[1].name)} size={56} border={4} borderColor={Colors.surfaceHighest} />
+                    <View style={[styles.podiumPill, { backgroundColor: '#CBD5E1' }]}>
+                      <Text style={[styles.podiumPillText, { color: '#1E293B' }]}>2</Text>
                     </View>
-                  );
-                })}
+                  </View>
+                  <Text style={styles.podiumName} numberOfLines={1}>{top3[1].name.split(' ')[0]}</Text>
+                  <Text style={[styles.podiumScore, { color: Colors.primary }]}>{top3[1].totalScore} p.</Text>
+                </View>
+
+                {/* Rank 1 (raised, crown) */}
+                <View style={[styles.podiumCol, styles.podiumColFirst]}>
+                  <View>
+                    <View style={styles.crown}>
+                      <Ionicons name="ribbon" size={28} color="#F59E0B" />
+                    </View>
+                    <Avatar initial={initial(top3[0].name)} size={84} gradient />
+                    <View style={styles.podiumPillFirst}>
+                      <Text style={styles.podiumPillFirstText}>1</Text>
+                    </View>
+                  </View>
+                  <Text style={[styles.podiumName, styles.podiumNameFirst]} numberOfLines={1}>{top3[0].name.split(' ')[0]}</Text>
+                  <Text style={[styles.podiumScore, styles.podiumScoreFirst]}>{top3[0].totalScore} p.</Text>
+                </View>
+
+                {/* Rank 3 */}
+                <View style={styles.podiumCol}>
+                  <View>
+                    <Avatar initial={initial(top3[2].name)} size={56} border={4} borderColor={Colors.surfaceHighest} />
+                    <View style={[styles.podiumPill, { backgroundColor: '#FED7AA' }]}>
+                      <Text style={[styles.podiumPillText, { color: '#9A3412' }]}>3</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.podiumName} numberOfLines={1}>{top3[2].name.split(' ')[0]}</Text>
+                  <Text style={[styles.podiumScore, { color: Colors.primary }]}>{top3[2].totalScore} p.</Text>
+                </View>
               </View>
             )}
 
-            <View style={styles.list}>
-              {globalData.slice(3).map((entry) => {
-                const isMe = entry.userId === user?.id;
-                return (
-                  <View key={entry.userId} style={[styles.listRow, isMe && styles.listRowMe]}>
-                    {isMe && <View style={styles.listRowAccent} />}
-                    <Text style={[styles.listRank, isMe && styles.listRankMe]}>{entry.rank}</Text>
-                    <View style={[styles.listAvatar, isMe && styles.listAvatarMe]}>
-                      <AvatarCircle initial={initial(entry.name)} size={48} />
-                    </View>
-                    <View style={styles.listInfo}>
-                      <Text style={[styles.listName, isMe && styles.listNameMe]}>
-                        {isMe ? 'Sən' : entry.name}
-                      </Text>
-                      <Text style={styles.listSub}>{entry.examCount} imtahan · %{entry.avgPercentage}</Text>
-                    </View>
-                    <Text style={[styles.listBal, isMe && styles.listBalMe]}>
-                      {entry.totalScore} <Text style={styles.listBalUnit}>bal</Text>
-                    </Text>
+            {/* User rank card */}
+            {me && (
+              <LinearGradient
+                colors={[Colors.primary, Colors.primaryDim ?? '#00547e']}
+                style={styles.myCard}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={styles.myCardGlow} />
+                <View style={styles.myCardTop}>
+                  <View>
+                    <Text style={styles.myCardLabel}>Sənin Yerin</Text>
+                    <Text style={styles.myCardRank}>{me.rank}-cü</Text>
                   </View>
-                );
-              })}
-              {globalData.length === 0 && (
-                <Text style={styles.empty}>Hələ heç kim imtahan verməyib.</Text>
-              )}
+                  <View style={styles.myCardIconWrap}>
+                    <Ionicons name="trending-up" size={22} color="#fff" />
+                  </View>
+                </View>
+                <View style={{ gap: 8 }}>
+                  <View style={styles.myCardRowBetween}>
+                    <Text style={styles.myCardHint}>Növbəti hədəf: {nextTarget}-cü yer</Text>
+                    <Text style={styles.myCardHint}>+{targetGain} xal</Text>
+                  </View>
+                  <View style={styles.myCardTrack}>
+                    <View style={[styles.myCardFill, { width: `${Math.round(progressToTarget * 100)}%` as any }]} />
+                  </View>
+                </View>
+              </LinearGradient>
+            )}
+
+            {/* Top students list */}
+            <View>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Top Şagirdlər</Text>
+                <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
+                  <Text style={styles.sectionMore}>Hamısı</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.studentList}>
+                {list.map((s, i) => (
+                  <React.Fragment key={s.userId}>
+                    <View style={[styles.studentRow, i < list.length - 1 && styles.studentRowBorder]}>
+                      <Text style={styles.studentRank}>{s.rank}</Text>
+                      <Avatar initial={initial(s.name)} size={40} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.studentName} numberOfLines={1}>{s.userId === user?.id ? 'Sən' : s.name}</Text>
+                        <Text style={styles.studentSub} numberOfLines={1}>{s.examCount} imtahan · %{s.avgPercentage}</Text>
+                      </View>
+                      <View style={styles.scoreCol}>
+                        <Text style={styles.studentScore}>{s.totalScore}</Text>
+                        <Text style={styles.studentUnit}>xal</Text>
+                      </View>
+                    </View>
+                    {i === 2 && (
+                      <LinearGradient
+                        colors={GRADIENT}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.seasonCard}
+                      >
+                        <View style={{ flex: 1, gap: 8 }}>
+                          <Text style={styles.seasonKicker}>MÖVSÜMÜN ULDUZU</Text>
+                          <Text style={styles.seasonTitle}>Zirvəyə gedən yol davam edir!</Text>
+                          <TouchableOpacity
+                            activeOpacity={0.9}
+                            onPress={() => navigation.navigate(Routes.SpinWheel)}
+                            style={styles.seasonBtn}
+                          >
+                            <Text style={styles.seasonBtnText}>Davam et</Text>
+                          </TouchableOpacity>
+                        </View>
+                        <View style={styles.seasonIconWrap} pointerEvents="none">
+                          <Ionicons name="rocket" size={96} color="rgba(255,255,255,0.2)" />
+                        </View>
+                      </LinearGradient>
+                    )}
+                  </React.Fragment>
+                ))}
+                {list.length === 0 && top3.length === 0 && (
+                  <Text style={styles.empty}>Hələ heç kim imtahan verməyib.</Text>
+                )}
+              </View>
             </View>
           </>
-        ) : (
-          /* ─── League ─── */
-          <View style={styles.list}>
-            {leagueData.map((entry) => (
-              <View key={entry.userId} style={[styles.listRow, entry.isCurrentUser && styles.listRowMe]}>
-                {entry.isCurrentUser && <View style={styles.listRowAccent} />}
-                <Text style={[styles.listRank, entry.isCurrentUser && styles.listRankMe]}>{entry.rank}</Text>
-                <View style={[styles.listAvatar, entry.isCurrentUser && styles.listAvatarMe]}>
-                  <AvatarCircle initial={initial(entry.name)} size={48} />
-                </View>
-                <View style={styles.listInfo}>
-                  <Text style={[styles.listName, entry.isCurrentUser && styles.listNameMe]}>
-                    {entry.isCurrentUser ? 'Sən' : entry.name}
-                  </Text>
-                  {entry.isCurrentUser && (
-                    <View style={styles.trendChip}>
-                      <Ionicons name="trending-up" size={12} color={Colors.tertiary} />
-                      <Text style={styles.trendChipText}>Bu həftə</Text>
-                    </View>
-                  )}
-                </View>
-                <Text style={[styles.listBal, entry.isCurrentUser && styles.listBalMe]}>
-                  {entry.weeklyScore} <Text style={styles.listBalUnit}>bal</Text>
-                </Text>
-              </View>
-            ))}
-            {leagueData.length === 0 && (
-              <Text style={styles.empty}>Bu həftə hələ heç kim imtahan verməyib.</Text>
-            )}
-          </View>
         )}
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -230,87 +374,149 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, height: 64,
+    paddingHorizontal: 20, height: 64,
     backgroundColor: 'rgba(255,255,255,0.7)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerAvatar: { borderRadius: 20, overflow: 'hidden' },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.primary },
-
-  scroll: { paddingBottom: 48, gap: 28 },
-
-  tabsWrap: {
-    flexDirection: 'row', marginHorizontal: 24, marginTop: 20,
-    backgroundColor: Colors.surfaceLow, borderRadius: 999, padding: 4,
+  headerTitle: { fontSize: 20, fontWeight: '700', color: Colors.primary },
+  bellBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
   },
-  tab: { flex: 1, paddingVertical: 10, borderRadius: 999, alignItems: 'center' },
+
+  scroll: { padding: 20, paddingBottom: 32, gap: 24 },
+
+  pageTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, lineHeight: 34 },
+  pageSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 6 },
+
+  tabsListInner: { paddingVertical: 2 },
+  tabsWrap: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surfaceLow,
+    borderRadius: 999, padding: 6,
+    gap: 4,
+  },
+  tab: { paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999, alignItems: 'center' },
   tabActive: {
     backgroundColor: Colors.surfaceLowest,
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 1,
   },
-  tabText: { fontSize: 14, fontWeight: '500', color: Colors.textSecondary },
+  tabText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
   tabTextActive: { fontWeight: '700', color: Colors.primary },
 
   center: { paddingTop: 60, alignItems: 'center' },
-  empty: { textAlign: 'center', color: Colors.textSecondary, paddingVertical: 40, fontSize: 14 },
+  placeholder: { alignItems: 'center', gap: 8, padding: 40 },
+  placeholderTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  placeholderSub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center' },
 
-  podium: {
-    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center',
-    paddingHorizontal: 16, gap: 6,
-  },
-  podiumCol: { flex: 1, alignItems: 'center', gap: 6, position: 'relative' },
-  podiumAura: {
-    position: 'absolute', top: -8, left: '10%', right: '10%',
-    height: 80, backgroundColor: Colors.primaryFixed, opacity: 0.35, borderRadius: 999,
-  },
-  podiumAvatarWrap: { borderWidth: 3, borderRadius: 999, overflow: 'hidden' },
-  medalBadge: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: Colors.surfaceContainer,
+  podium: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center', gap: 14, paddingTop: 32, paddingBottom: 8 },
+  podiumCol: { alignItems: 'center', gap: 10, flex: 1 },
+  podiumColFirst: { marginBottom: 18 },
+  crown: { position: 'absolute', top: -22, right: -4, zIndex: 2 },
+  podiumPill: {
+    position: 'absolute', bottom: -8, left: '50%', marginLeft: -16,
+    width: 32, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2,
   },
-  medalBadgeGold: {
-    width: 38, height: 38, borderRadius: 19,
+  podiumPillText: { fontSize: 11, fontWeight: '800' },
+  podiumPillFirst: {
+    position: 'absolute', bottom: -12, left: '50%', marginLeft: -24,
+    width: 48, height: 24, borderRadius: 12,
+    backgroundColor: '#FBBF24',
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 4,
   },
-  medalText: { fontSize: 16 },
-  podiumName: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
-  podiumNameFirst: { fontSize: 15, fontWeight: '800' },
-  podiumBal: { fontSize: 12, fontWeight: '700', color: Colors.primary },
-  podiumBalFirst: { fontSize: 13, fontWeight: '800' },
-  podiumBar: {
-    width: '100%', borderRadius: 8,
-    alignItems: 'center', justifyContent: 'flex-start', paddingTop: 8,
-  },
-  podiumBarRank: { fontSize: 22, fontWeight: '800', color: 'rgba(255,255,255,0.5)' },
+  podiumPillFirstText: { fontSize: 13, fontWeight: '900', color: '#78350F' },
+  podiumName: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary, maxWidth: 96 },
+  podiumNameFirst: { fontSize: 14, fontWeight: '800' },
+  podiumScore: { fontSize: 11, fontWeight: '700' },
+  podiumScoreFirst: { fontSize: 13, fontWeight: '800', color: Colors.primary },
 
-  list: { paddingHorizontal: 24, gap: 10 },
-  listRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 1,
+  myCard: {
+    borderRadius: 24,
+    padding: 24,
     overflow: 'hidden',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 16 }, shadowOpacity: 0.18, shadowRadius: 30, elevation: 6,
   },
-  listRowMe: { backgroundColor: Colors.surfaceLow, borderWidth: 1, borderColor: Colors.primary + '33' },
-  listRowAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, backgroundColor: Colors.primary },
-  listRank: { width: 22, textAlign: 'center', fontSize: 14, fontWeight: '700', color: Colors.outlineVariant },
-  listRankMe: { color: Colors.textPrimary, fontWeight: '800' },
-  listAvatar: { borderRadius: 24, overflow: 'hidden' },
-  listAvatarMe: { borderWidth: 2, borderColor: Colors.primary, borderRadius: 26 },
-  listInfo: { flex: 1 },
-  listName: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-  listNameMe: { fontWeight: '800', color: Colors.textPrimary },
-  listSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  trendChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4,
-    backgroundColor: Colors.tertiaryContainer + '4D',
-    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start',
+  myCardGlow: {
+    position: 'absolute', right: -40, bottom: -40,
+    width: 160, height: 160, borderRadius: 80,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  trendChipText: { fontSize: 10, fontWeight: '700', color: Colors.tertiary },
-  listBal: { fontSize: 14, fontWeight: '800', color: Colors.primary },
-  listBalMe: { color: Colors.primary },
-  listBalUnit: { fontSize: 10, fontWeight: '500', color: Colors.textSecondary },
+  myCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
+  myCardLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 1.5 },
+  myCardRank: { fontSize: 32, fontWeight: '800', color: '#fff', marginTop: 4 },
+  myCardIconWrap: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  myCardRowBetween: { flexDirection: 'row', justifyContent: 'space-between' },
+  myCardHint: { fontSize: 11, fontWeight: '600', color: '#fff' },
+  myCardTrack: { height: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 999, overflow: 'hidden' },
+  myCardFill: { height: '100%', backgroundColor: '#fff', borderRadius: 999 },
+
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  sectionMore: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+
+  studentList: { backgroundColor: Colors.surfaceLowest, borderRadius: 20, overflow: 'hidden' },
+  studentRow: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 14 },
+  studentRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.surfaceLow },
+  studentRank: { width: 22, fontSize: 13, fontWeight: '700', color: Colors.textSecondary, textAlign: 'center' },
+  studentName: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  studentSub: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 },
+  scoreCol: { alignItems: 'flex-end' },
+  studentScore: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  studentUnit: { fontSize: 9, color: Colors.textSecondary, marginTop: 2 },
+
+  schoolsGrid: { flexDirection: 'row', gap: 12, marginTop: 12 },
+  schoolCard: {
+    flex: 1,
+    backgroundColor: Colors.surfaceLowest,
+    borderRadius: 20,
+    padding: 18,
+    gap: 12,
+  },
+  schoolIcon: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  schoolName: { fontSize: 12, fontWeight: '700', color: Colors.textPrimary },
+  schoolCity: { fontSize: 10, color: Colors.textSecondary },
+  schoolRankRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4, marginTop: 4 },
+  schoolRankNum: { fontSize: 18, fontWeight: '900', color: Colors.primary },
+  schoolRankUnit: { fontSize: 9, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 },
+
+  empty: { textAlign: 'center', color: Colors.textSecondary, paddingVertical: 30, fontSize: 13 },
+
+  schoolRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 16,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+
+  placeholderCta: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 22, paddingVertical: 12, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 3,
+  },
+  placeholderCtaText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+
+  seasonCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    borderRadius: 20, padding: 20, marginVertical: 10,
+    overflow: 'hidden',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.25, shadowRadius: 24, elevation: 6,
+  },
+  seasonKicker: { fontSize: 9, fontWeight: '800', color: 'rgba(255,255,255,0.85)', letterSpacing: 1.5 },
+  seasonTitle: { fontSize: 17, fontWeight: '800', color: '#fff', lineHeight: 22, maxWidth: '90%' },
+  seasonBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff', borderRadius: 999,
+    paddingHorizontal: 18, paddingVertical: 8,
+    marginTop: 4,
+  },
+  seasonBtnText: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+  seasonIconWrap: {
+    position: 'absolute', right: -16, bottom: -16,
+    transform: [{ rotate: '12deg' }],
+  },
 });

@@ -15,7 +15,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
+import { createLessonRequest } from '../../api/lessonRequest.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -26,12 +29,34 @@ type Format = typeof FORMATS[number];
 
 export default function LessonRequestScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const queryClient = useQueryClient();
   const [subject, setSubject] = useState('');
   const [grade, setGrade] = useState('');
   const [topic, setTopic] = useState('');
   const [format, setFormat] = useState<Format>('Online');
   const [frequency, setFrequency] = useState(3);
   const [note, setNote] = useState('');
+
+  const { mutate: submitRequest, isPending } = useMutation({
+    mutationFn: () =>
+      createLessonRequest({
+        subject,
+        grade,
+        topic,
+        format: format.toLowerCase(),
+        frequency,
+        note,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['openLessonRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['myLessonRequests'] });
+      navigation.navigate(Routes.InterestedTeachers as any, {
+        requestTitle: `${subject} · ${topic}`,
+      });
+    },
+    onError: (e: any) =>
+      Alert.alert('Xəta', e?.response?.data?.message || 'Sorğu göndərilə bilmədi'),
+  });
 
   const showSubjectPicker = () =>
     Alert.alert('Fənn seçin', '', [
@@ -190,7 +215,13 @@ export default function LessonRequestScreen() {
             <TouchableOpacity
               activeOpacity={0.9}
               style={{ marginTop: 8 }}
-              onPress={() => Alert.alert('Sorğu göndərildi', 'Sorğunuz 24 saat ərzində cavablandırılacaq')}
+              disabled={isPending}
+              onPress={() => {
+                if (!subject) return Alert.alert('Fənn', 'Zəhmət olmasa fənn seçin');
+                if (!grade) return Alert.alert('Sinif', 'Zəhmət olmasa sinif seçin');
+                if (!topic.trim()) return Alert.alert('Mövzu', 'Mövzunu daxil edin');
+                submitRequest();
+              }}
             >
               <LinearGradient
                 colors={GRADIENT}

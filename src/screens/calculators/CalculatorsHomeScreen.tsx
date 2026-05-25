@@ -121,6 +121,39 @@ export default function CalculatorsHomeScreen() {
           <Text style={styles.heroSub}>Akademik göstəricilərini asanlıqla izlə və analiz et.</Text>
         </LinearGradient>
 
+        {/* Shortcuts */}
+        <View style={styles.shortcutRow}>
+          <TouchableOpacity
+            style={styles.shortcutChip}
+            onPress={() => navigation.navigate(Routes.CalcHistory as any)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.shortcutIcon}>
+              <Ionicons name="time-outline" size={18} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shortcutTitle}>Tarixçə</Text>
+              <Text style={styles.shortcutSub}>Bütün hesablamalar</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.primaryFixed} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.shortcutChip}
+            onPress={() => navigation.navigate(Routes.CalcSaved as any)}
+            activeOpacity={0.85}
+          >
+            <View style={styles.shortcutIcon}>
+              <Ionicons name="bookmark" size={18} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shortcutTitle}>Yaddaş</Text>
+              <Text style={styles.shortcutSub}>Saxlanılanlar</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.primaryFixed} />
+          </TouchableOpacity>
+        </View>
+
         {/* Grid */}
         <View style={styles.grid}>
           {/* Row 1 — 2 half cards */}
@@ -174,6 +207,20 @@ const styles = StyleSheet.create({
   },
   heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff', lineHeight: 30 },
   heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', lineHeight: 20 },
+
+  shortcutRow: { flexDirection: 'row', gap: 12 },
+  shortcutChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  shortcutIcon: {
+    width: 36, height: 36, borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  shortcutTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  shortcutSub: { fontSize: 10, fontWeight: '500', color: Colors.textMuted, marginTop: 2 },
 
   grid: { gap: 12 },
   row: { flexDirection: 'row', gap: 12 },

@@ -7,13 +7,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { useQuery } from '@tanstack/react-query';
 import { getStudentBookings, getTeacherBookings, Booking } from '../../api/booking.api';
+import { getOrCreateChat } from '../../api/chat.api';
 import { useUserStore } from '../../store/user.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -55,6 +60,7 @@ export default function BookingHistoryScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('Hamısı');
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useUserStore();
+  const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const isTeacher = user?.role === 'teacher';
 
   const { data: bookings = [], isLoading, refetch } = useQuery({
@@ -77,8 +83,8 @@ export default function BookingHistoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
-          <Ionicons name="menu" size={24} color={Colors.primary} />
+        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Dərs Müraciətləri</Text>
         <View style={[styles.headerBtn, styles.avatar]}>
@@ -161,9 +167,28 @@ export default function BookingHistoryScreen() {
                 )}
 
                 {status === 'confirmed' && (
-                  <TouchableOpacity style={styles.joinBtn} activeOpacity={0.85}>
-                    <Ionicons name="play-circle" size={18} color="#fff" />
-                    <Text style={styles.joinBtnText}>Dərsə Qoşul</Text>
+                  <TouchableOpacity
+                    style={styles.joinBtn}
+                    activeOpacity={0.85}
+                    onPress={async () => {
+                      const otherUserId = isTeacher ? item.student?.id : item.teacher?.id;
+                      if (!otherUserId) return;
+                      try {
+                        const chat = await getOrCreateChat(otherUserId);
+                        const parent = navigation.getParent() as any;
+                        if (parent?.navigate) {
+                          parent.navigate('Chat', {
+                            screen: Routes.ChatRoom,
+                            params: { chatId: chat.id, name: personName },
+                          });
+                        }
+                      } catch (e: any) {
+                        Alert.alert('Xəta', e?.response?.data?.message || 'Söhbət açıla bilmədi');
+                      }
+                    }}
+                  >
+                    <Ionicons name="chatbubble" size={18} color="#fff" />
+                    <Text style={styles.joinBtnText}>Mesajla</Text>
                   </TouchableOpacity>
                 )}
 
@@ -173,6 +198,19 @@ export default function BookingHistoryScreen() {
                       <Ionicons name="checkmark-circle" size={18} color={Colors.tertiary} />
                       <Text style={styles.ratingText}>Tamamlandı</Text>
                     </View>
+                    {!isTeacher && (
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => navigation.navigate(Routes.LeaveReview, {
+                          bookingId: item.id,
+                          teacherId: item.teacher?.id,
+                          teacherName: personName,
+                          teacherSubject: item.subject,
+                        })}
+                      >
+                        <Text style={[styles.ratingText, { color: Colors.primary, fontWeight: '700' }]}>Rəy yaz →</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 )}
 

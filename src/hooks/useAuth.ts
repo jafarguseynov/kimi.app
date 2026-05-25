@@ -5,8 +5,18 @@ import { useAuthStore } from '../store/auth.store';
 import { useUserStore } from '../store/user.store';
 import { RegisterPayload, LoginPayload, OTPPayload } from '../types/auth.types';
 
-export const useRegister = () =>
-  useMutation({ mutationFn: (data: RegisterPayload) => registerUser(data) });
+export const useRegister = () => {
+  const { setToken } = useAuthStore();
+  const { setUser } = useUserStore();
+
+  return useMutation({
+    mutationFn: (data: RegisterPayload) => registerUser(data),
+    onSuccess: async (data) => {
+      await setToken(data.token);
+      setUser(data.user);
+    },
+  });
+};
 
 export const useLogin = () => {
   const { setToken } = useAuthStore();

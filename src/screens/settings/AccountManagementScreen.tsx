@@ -40,6 +40,27 @@ export default function AccountManagementScreen({ navigation }: Props) {
           </View>
         </View>
 
+        {/* Blocked users card */}
+        <TouchableOpacity
+          style={styles.actionCard}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate(Routes.BlockedUsers)}
+        >
+          <View style={[styles.actionIconBox, { backgroundColor: Colors.primary + '1A' }]}>
+            <Ionicons name="ban" size={28} color={Colors.primary} />
+          </View>
+          <View style={styles.actionText}>
+            <Text style={styles.actionTitle}>Bloklanmış istifadəçilər</Text>
+            <Text style={styles.actionSub}>
+              Bloklamalarınızı idarə edin — kim sizi görə və yaza bilər.
+            </Text>
+          </View>
+          <View style={styles.actionCTA}>
+            <Text style={[styles.actionCTAText, { color: Colors.primary }]}>Bax</Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
+          </View>
+        </TouchableOpacity>
+
         {/* Deactivate card */}
         <TouchableOpacity
           style={styles.actionCard}

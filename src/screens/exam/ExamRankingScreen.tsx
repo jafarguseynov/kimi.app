@@ -44,6 +44,11 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
   const myEntry = entries.find((e) => e.userId === user?.id);
   const total = entries.length;
   const myPercentile = myEntry ? Math.round((1 - (myEntry.rank - 1) / Math.max(total, 1)) * 100) : null;
+  const avgScore = total > 0 ? Math.round(entries.reduce((acc, e) => acc + e.score, 0) / total) : 0;
+  const maxScore = entries.reduce((acc, e) => Math.max(acc, e.total), 0) || 100;
+  const myBarPct = myEntry ? Math.min(100, Math.round((myEntry.score / maxScore) * 100)) : 0;
+  const avgBarPct = Math.min(100, Math.round((avgScore / maxScore) * 100));
+  const diffPct = avgScore > 0 && myEntry ? Math.round(((myEntry.score - avgScore) / avgScore) * 100) : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -105,6 +110,49 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
                 <Text style={styles.pctValue}> ({myEntry.percentage}%)</Text>
               </View>
             </LinearGradient>
+          )}
+
+          {/* Comparative Analysis */}
+          {myEntry && total > 0 && (
+            <View style={styles.compareCard}>
+              <Text style={styles.compareTitle}>Müqayisəli Analiz</Text>
+
+              <View style={styles.compareRow}>
+                <View style={styles.compareLabelRow}>
+                  <Text style={styles.compareLabel}>Sənin Balın</Text>
+                  <Text style={styles.compareValueMine}>{myEntry.score} bal</Text>
+                </View>
+                <View style={styles.compareTrack}>
+                  <LinearGradient
+                    colors={[Colors.gradientStart, Colors.gradientEnd]}
+                    style={[styles.compareFill, { width: `${myBarPct}%` as any }]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.compareRow}>
+                <View style={styles.compareLabelRow}>
+                  <Text style={styles.compareLabel}>Ölkə Ortalaması</Text>
+                  <Text style={styles.compareValueAvg}>{avgScore} bal</Text>
+                </View>
+                <View style={styles.compareTrack}>
+                  <View style={[styles.compareFillAvg, { width: `${avgBarPct}%` as any }]} />
+                </View>
+              </View>
+
+              {diffPct !== null && (
+                <View style={styles.insightRow}>
+                  <Ionicons name="analytics-outline" size={20} color={Colors.primary} />
+                  <Text style={styles.insightText}>
+                    Sənin balın ölkə ortalamasından{' '}
+                    <Text style={styles.insightAccent}>{diffPct > 0 ? `${diffPct}%` : `${Math.abs(diffPct)}%`}</Text>
+                    {diffPct >= 0 ? ' daha yüksəkdir.' : ' aşağıdır.'}
+                  </Text>
+                </View>
+              )}
+            </View>
           )}
 
           {/* Top entries */}
@@ -201,6 +249,32 @@ const styles = StyleSheet.create({
   scoreLabel: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
   scoreValue: { fontSize: 18, fontWeight: '800', color: '#fff' },
   pctValue: { fontSize: 14, color: 'rgba(255,255,255,0.8)' },
+
+  compareCard: {
+    backgroundColor: Colors.surfaceLow,
+    borderRadius: 20,
+    padding: 22,
+    gap: 16,
+  },
+  compareTitle: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  compareRow: { gap: 8 },
+  compareLabelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  compareLabel: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
+  compareValueMine: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  compareValueAvg: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+  compareTrack: { height: 10, backgroundColor: Colors.surfaceHigh, borderRadius: 999, overflow: 'hidden' },
+  compareFill: { height: '100%', borderRadius: 999 },
+  compareFillAvg: { height: '100%', borderRadius: 999, backgroundColor: 'rgba(89,92,94,0.4)' },
+  insightRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+  },
+  insightText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+  insightAccent: { color: Colors.primary, fontWeight: '700' },
 
   top10Section: { gap: 16 },
   top10Header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

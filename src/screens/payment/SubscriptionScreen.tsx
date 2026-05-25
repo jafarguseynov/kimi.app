@@ -94,14 +94,14 @@ export default function SubscriptionScreen() {
         </View>
 
         {/* Actions */}
-        <TouchableOpacity onPress={() => navigation.navigate(Routes.Plans)} activeOpacity={0.9}>
+        <TouchableOpacity onPress={() => navigation.navigate(Routes.SubscriptionRenew)} activeOpacity={0.9}>
           <LinearGradient colors={GRADIENT} style={styles.changePlanBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.changePlanBtnText}>Planı dəyiş</Text>
-            <Ionicons name="swap-horizontal" size={22} color="#fff" />
+            <Text style={styles.changePlanBtnText}>Abunəliyi yenilə</Text>
+            <Ionicons name="refresh" size={22} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.8} onPress={() => navigation.navigate(Routes.SubscriptionCancel)}>
           <Text style={styles.cancelBtnText}>Abunəliyi ləğv et</Text>
         </TouchableOpacity>
       </ScrollView>

@@ -58,7 +58,10 @@ export default function LeaveReviewScreen() {
       return submitReview(bookingId, { rating, comment: fullComment || undefined });
     },
     onSuccess: () => navigation.navigate(Routes.ReviewSuccess, { teacherId, teacherName }),
-    onError: () => Alert.alert('Xəta', 'Rəy göndərilmədi. Yenidən cəhd edin.'),
+    onError: (err: any) => {
+      const reason = err?.response?.data?.message;
+      Alert.alert('Xəta', reason ? `${reason}` : 'Rəy göndərilmədi. Yenidən cəhd edin.');
+    },
   });
 
   const toggleTag = (tag: string) => {

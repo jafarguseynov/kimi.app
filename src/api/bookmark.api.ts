@@ -1,6 +1,6 @@
 import client from './client';
 
-export type BookmarkTargetType = 'exam' | 'question' | 'flashcard';
+export type BookmarkTargetType = 'exam' | 'question' | 'flashcard' | 'teacher' | 'request';
 
 export interface Bookmark {
   id: string;

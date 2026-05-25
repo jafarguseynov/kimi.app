@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, GestureResponderEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -12,26 +12,17 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamFilter> };
 
-const SUBJECTS = ['Riyaziyyat', 'İngilis dili', 'Fizika', 'Azərbaycan dili', 'Kimya'];
-
-const DIFFICULTIES = [
-  { label: 'Asan', icon: 'happy-outline' as const },
-  { label: 'Orta', icon: 'remove-circle-outline' as const },
-  { label: 'Çətin', icon: 'sad-outline' as const },
-];
-
-const EXAM_TYPES = [
-  { label: 'Practice', icon: 'create-outline' as const },
-  { label: 'Canlı', icon: 'radio-outline' as const },
-  { label: 'Aylıq sınaq', icon: 'calendar-outline' as const },
-];
+const TYPE_TABS = ['Hamısı', 'Sınaq', 'Aylıq', 'Milli'] as const;
+const SUBJECTS = ['Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Fizika', 'Kimya', 'Tarix'];
+const MAX_SCORE = 700;
 
 export default function ExamFilterScreen({ navigation }: Props) {
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['Riyaziyyat']);
-  const [difficulty, setDifficulty] = useState('Orta');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [examType, setExamType] = useState('Canlı');
+  const [examType, setExamType] = useState<(typeof TYPE_TABS)[number]>('Hamısı');
+  const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['Riyaziyyat', 'İngilis dili']);
+  const [dateFrom, setDateFrom] = useState('01.10.2023');
+  const [dateTo, setDateTo] = useState('31.10.2023');
+  const [scoreMax, setScoreMax] = useState(MAX_SCORE);
+  const sliderWidth = useRef(0);
 
   const toggleSubject = (s: string) => {
     setSelectedSubjects((prev) =>
@@ -40,278 +31,284 @@ export default function ExamFilterScreen({ navigation }: Props) {
   };
 
   const clearAll = () => {
+    setExamType('Hamısı');
     setSelectedSubjects([]);
-    setDifficulty('');
     setDateFrom('');
     setDateTo('');
-    setExamType('');
+    setScoreMax(MAX_SCORE);
   };
 
-  return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
-      {/* Drag handle */}
-      <View style={styles.dragHandle} />
+  const onTrackTouch = (e: GestureResponderEvent) => {
+    const w = sliderWidth.current;
+    if (!w) return;
+    const x = e.nativeEvent.locationX;
+    const ratio = Math.max(0, Math.min(1, x / w));
+    setScoreMax(Math.round(ratio * MAX_SCORE));
+  };
 
+  const fillRatio = scoreMax / MAX_SCORE;
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}
-          hitSlop={8}
-        >
-          <Ionicons name="close" size={22} color={Colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Filtrlər</Text>
-        <TouchableOpacity onPress={clearAll} activeOpacity={0.7}>
-          <Text style={styles.resetText}>Sıfırla</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
+            <Ionicons name="close" size={22} color={Colors.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Filtrlər</Text>
+        </View>
+        <TouchableOpacity onPress={clearAll} activeOpacity={0.7} style={styles.clearBtn}>
+          <Text style={styles.clearText}>Təmizlə</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* İmtahan növü */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>İmtahan növü</Text>
+          <View style={styles.segment}>
+            {TYPE_TABS.map((t) => {
+              const active = examType === t;
+              return (
+                <TouchableOpacity
+                  key={t}
+                  style={[styles.segmentBtn, active && styles.segmentBtnActive]}
+                  onPress={() => setExamType(t)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{t}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
         {/* Fənn */}
         <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Text style={styles.sectionLabel}>Fənn</Text>
-            <View style={styles.multiSelectBadge}>
-              <Text style={styles.multiSelectText}>Çoxlu seçim</Text>
-            </View>
-          </View>
+          <Text style={styles.sectionLabel}>Fənn seçin</Text>
           <View style={styles.chipsWrap}>
             {SUBJECTS.map((s) => {
               const active = selectedSubjects.includes(s);
               return (
                 <TouchableOpacity
                   key={s}
-                  style={[styles.subjectChip, active && styles.subjectChipActive]}
                   onPress={() => toggleSubject(s)}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
+                  style={[styles.subjectChip, active && styles.subjectChipActive]}
                 >
                   <Text style={[styles.subjectChipText, active && styles.subjectChipTextActive]}>{s}</Text>
+                  {active ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
                 </TouchableOpacity>
               );
             })}
           </View>
         </View>
 
-        {/* Çətinlik */}
+        {/* Tarix aralığı */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Çətinlik</Text>
-          <View style={styles.diffGrid}>
-            {DIFFICULTIES.map((d) => {
-              const active = difficulty === d.label;
-              return (
-                <TouchableOpacity
-                  key={d.label}
-                  style={[styles.diffCard, active && styles.diffCardActive]}
-                  onPress={() => setDifficulty(d.label)}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name={d.icon} size={22} color={active ? Colors.primary : Colors.textMuted} />
-                  <Text style={[styles.diffLabel, active && styles.diffLabelActive]}>{d.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Tarix */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Tarix</Text>
-          <View style={styles.dateRow}>
-            <View style={styles.dateInputWrap}>
-              <Ionicons name="calendar-outline" size={18} color={Colors.textMuted} style={styles.dateIcon} />
-              <TextInput
-                style={styles.dateInput}
-                placeholder="Başlanğıc"
-                placeholderTextColor={Colors.textMuted}
-                value={dateFrom}
-                onChangeText={setDateFrom}
-              />
+          <Text style={styles.sectionLabel}>Tarix aralığı</Text>
+          <View style={styles.dateGrid}>
+            <View style={styles.dateCard}>
+              <Text style={styles.dateLabel}>Başlanğıc</Text>
+              <Text style={styles.dateValue}>{dateFrom || '— —'}</Text>
             </View>
-            <View style={styles.dateSeparator} />
-            <View style={styles.dateInputWrap}>
-              <Ionicons name="calendar-outline" size={18} color={Colors.textMuted} style={styles.dateIcon} />
-              <TextInput
-                style={styles.dateInput}
-                placeholder="Son tarix"
-                placeholderTextColor={Colors.textMuted}
-                value={dateTo}
-                onChangeText={setDateTo}
-              />
+            <View style={styles.dateCard}>
+              <Text style={styles.dateLabel}>Bitmə</Text>
+              <Text style={styles.dateValue}>{dateTo || '— —'}</Text>
             </View>
           </View>
         </View>
 
-        {/* İmtahan növü */}
+        {/* Bal aralığı */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>İmtahan növü</Text>
-          <View style={styles.typeRow}>
-            {EXAM_TYPES.map((t) => {
-              const active = examType === t.label;
-              return (
-                <TouchableOpacity
-                  key={t.label}
-                  onPress={() => setExamType(t.label)}
-                  activeOpacity={0.85}
-                  style={{ borderRadius: 999 }}
-                >
-                  {active ? (
-                    <LinearGradient
-                      colors={GRADIENT}
-                      style={styles.typeChipActive}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                    >
-                      <Ionicons name={t.icon} size={18} color="#fff" />
-                      <Text style={styles.typeChipActiveText}>{t.label}</Text>
-                    </LinearGradient>
-                  ) : (
-                    <View style={styles.typeChip}>
-                      <Ionicons name={t.icon} size={18} color={Colors.textSecondary} />
-                      <Text style={styles.typeChipText}>{t.label}</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.scoreHead}>
+            <Text style={styles.sectionLabel}>Bal aralığı</Text>
+            <View style={styles.scoreValueRow}>
+              <Text style={styles.scoreValueNum}>0 - {scoreMax}</Text>
+              <Text style={styles.scoreValueUnit}>BAL</Text>
+            </View>
+          </View>
+
+          <View style={styles.sliderWrap}>
+            {/* Floating mascot above thumb */}
+            <View
+              style={[
+                styles.mascotFloat,
+                { left: `${fillRatio * 100}%`, transform: [{ translateX: -36 }] },
+              ]}
+              pointerEvents="none"
+            >
+              <View style={styles.mascotTag}>
+                <Text style={styles.mascotTagText}>Kimi Robot</Text>
+              </View>
+              <LinearGradient
+                colors={GRADIENT}
+                style={styles.mascotAvatar}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <Ionicons name="hardware-chip-outline" size={24} color="rgba(255,255,255,0.9)" />
+              </LinearGradient>
+            </View>
+
+            <Pressable
+              onLayout={(e) => { sliderWidth.current = e.nativeEvent.layout.width; }}
+              onPress={onTrackTouch}
+              onTouchMove={onTrackTouch}
+              style={styles.sliderTrackHit}
+            >
+              <View style={styles.sliderTrackBg}>
+                <View style={[styles.sliderTrackFill, { width: `${fillRatio * 100}%` }]} />
+              </View>
+              <View style={[styles.sliderThumb, { left: `${fillRatio * 100}%` }]} />
+            </Pressable>
+
+            <View style={styles.sliderLabelsRow}>
+              <Text style={styles.sliderLabel}>MİNİMUM</Text>
+              <Text style={styles.sliderLabel}>MAKSİMUM</Text>
+            </View>
           </View>
         </View>
 
-        {/* Decorative mascot */}
-        <View style={styles.mascotDecor} pointerEvents="none">
-          <LinearGradient
-            colors={GRADIENT}
-            style={styles.mascotCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Ionicons name="hardware-chip-outline" size={40} color="rgba(255,255,255,0.85)" />
-          </LinearGradient>
-        </View>
+        <View style={{ height: 24 }} />
       </ScrollView>
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.9}
-          style={{ width: '100%' }}
-        >
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.9}>
           <LinearGradient
             colors={GRADIENT}
             style={styles.applyBtn}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.applyBtnText}>Tətbiq et</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
+            <Text style={styles.applyBtnText}>Nəticələri göstər</Text>
+            <Ionicons name="trending-up" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
-        <Text style={styles.footerBrand}>Kimi.az tərəfindən tənzimlənir</Text>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.surfaceLowest },
-
-  dragHandle: {
-    width: 48, height: 6, borderRadius: 3,
-    backgroundColor: Colors.surfaceVariant,
-    alignSelf: 'center', marginTop: 12, marginBottom: 4, opacity: 0.4,
-  },
+  container: { flex: 1, backgroundColor: Colors.background },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, height: 64,
-    borderBottomWidth: 1, borderBottomColor: Colors.surfaceContainer,
+    paddingHorizontal: 16, height: 60,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  resetText: { fontSize: 14, fontWeight: '600', color: Colors.primary, paddingHorizontal: 8 },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 },
+  clearBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  clearText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
-  scroll: { padding: 24, gap: 32, paddingBottom: 16 },
+  scroll: { padding: 24, gap: 32, paddingBottom: 32 },
 
-  section: { gap: 16 },
-  sectionHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionLabel: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  multiSelectBadge: {
-    backgroundColor: Colors.primary + '1A', borderRadius: 4,
-    paddingHorizontal: 8, paddingVertical: 3,
+  section: { gap: 14 },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1.4, marginLeft: 4 },
+
+  /* Segment */
+  segment: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.surfaceContainer,
+    padding: 4, borderRadius: 999,
   },
-  multiSelectText: { fontSize: 9, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  segmentBtn: { flex: 1, height: 38, alignItems: 'center', justifyContent: 'center', borderRadius: 999 },
+  segmentBtnActive: {
+    backgroundColor: Colors.surfaceLowest,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
+  },
+  segmentText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  segmentTextActive: { color: Colors.primary, fontWeight: '700' },
 
+  /* Subject chips */
   chipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   subjectChip: {
-    paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999,
-    backgroundColor: Colors.surfaceLow,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999,
+    backgroundColor: Colors.surfaceLowest,
+    borderWidth: 1, borderColor: Colors.outlineVariant + '4D',
   },
   subjectChipActive: {
-    backgroundColor: Colors.primary,
+    backgroundColor: Colors.primary, borderColor: Colors.primary,
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 2,
   },
-  subjectChipText: { fontSize: 14, fontWeight: '500', color: Colors.textSecondary },
-  subjectChipTextActive: { color: '#fff', fontWeight: '600' },
+  subjectChipText: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
+  subjectChipTextActive: { color: '#fff', fontWeight: '700' },
 
-  diffGrid: { flexDirection: 'row', gap: 12 },
-  diffCard: {
-    flex: 1, paddingVertical: 16, borderRadius: 20,
-    backgroundColor: Colors.surfaceLow,
-    alignItems: 'center', gap: 8,
-    borderWidth: 2, borderColor: 'transparent',
+  /* Date grid */
+  dateGrid: { flexDirection: 'row', gap: 12 },
+  dateCard: {
+    flex: 1, backgroundColor: Colors.surfaceLowest,
+    borderRadius: 18, padding: 14, gap: 2,
+    borderWidth: 1, borderColor: Colors.outlineVariant + '33',
   },
-  diffCardActive: {
-    backgroundColor: Colors.primary + '0A',
-    borderColor: Colors.primary,
-  },
-  diffLabel: { fontSize: 12, fontWeight: '600', color: Colors.textMuted },
-  diffLabelActive: { color: Colors.primary, fontWeight: '700' },
+  dateLabel: { fontSize: 10, fontWeight: '800', color: Colors.primary, letterSpacing: 1.2, textTransform: 'uppercase' },
+  dateValue: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
 
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  dateInputWrap: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.surfaceLow, borderRadius: 16,
-    paddingHorizontal: 14, height: 52,
-  },
-  dateIcon: { marginRight: 8 },
-  dateInput: { flex: 1, fontSize: 14, color: Colors.textPrimary },
-  dateSeparator: { width: 16, height: 2, backgroundColor: Colors.outlineVariant, borderRadius: 999 },
+  /* Score / slider */
+  scoreHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
+  scoreValueRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  scoreValueNum: { fontSize: 22, fontWeight: '800', color: Colors.primary, letterSpacing: -0.5 },
+  scoreValueUnit: { fontSize: 11, fontWeight: '800', color: Colors.primary, marginBottom: 3 },
 
-  typeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  typeChipActive: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 3,
+  sliderWrap: {
+    paddingTop: 70, paddingBottom: 6, paddingHorizontal: 4,
+    position: 'relative',
   },
-  typeChipActiveText: { fontSize: 14, fontWeight: '600', color: '#fff' },
-  typeChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 11, borderRadius: 999,
-    backgroundColor: Colors.surfaceLow,
-    borderWidth: 1, borderColor: 'transparent',
+  mascotFloat: {
+    position: 'absolute', top: 0,
+    alignItems: 'center', width: 72,
   },
-  typeChipText: { fontSize: 14, fontWeight: '500', color: Colors.textSecondary },
-
-  mascotDecor: { alignItems: 'flex-end', marginTop: 8 },
-  mascotCircle: {
-    width: 80, height: 80, borderRadius: 40,
+  mascotTag: {
+    backgroundColor: Colors.primaryDim,
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 999, marginBottom: 4,
+  },
+  mascotTagText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: -0.2, textTransform: 'uppercase' },
+  mascotAvatar: {
+    width: 52, height: 52, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 4,
+    borderWidth: 2, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 8, elevation: 3,
   },
 
+  sliderTrackHit: { height: 24, justifyContent: 'center' },
+  sliderTrackBg: {
+    height: 6, borderRadius: 999, backgroundColor: Colors.surfaceHigh, overflow: 'hidden',
+  },
+  sliderTrackFill: { height: '100%', backgroundColor: Colors.primary, borderRadius: 999 },
+  sliderThumb: {
+    position: 'absolute',
+    width: 24, height: 24, borderRadius: 12,
+    backgroundColor: Colors.primary,
+    borderWidth: 4, borderColor: '#fff',
+    marginLeft: -12,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12, elevation: 4,
+  },
+  sliderLabelsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
+  sliderLabel: { fontSize: 10, fontWeight: '800', color: Colors.outline, letterSpacing: 1.5 },
+
+  /* Footer */
   footer: {
-    paddingHorizontal: 24, paddingTop: 16, paddingBottom: 24,
-    backgroundColor: Colors.surfaceLowest,
-    borderTopWidth: 1, borderTopColor: Colors.surfaceContainer,
-    gap: 12, alignItems: 'center',
+    paddingHorizontal: 24, paddingTop: 14, paddingBottom: 28,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderTopWidth: 1, borderTopColor: Colors.borderLight,
   },
   applyBtn: {
-    width: '100%', height: 60, borderRadius: 999,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    height: 58, borderRadius: 999,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 4,
   },
-  applyBtnText: { fontSize: 17, fontWeight: '800', color: '#fff' },
-  footerBrand: { fontSize: 10, color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.5 },
+  applyBtnText: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
 });

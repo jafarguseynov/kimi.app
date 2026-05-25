@@ -1,41 +1,95 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput,
-  TouchableOpacity, KeyboardAvoidingView, Platform,
+  TouchableOpacity, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useMutation } from '@tanstack/react-query';
-import { sendAiMessage } from '../../api/ai.api';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import { sendAiMessage, analyzePerformance } from '../../api/ai.api';
+import { getExamResults } from '../../api/certificate.api';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 
-interface Message { id: string; role: 'user' | 'ai'; text: string; }
+interface Message { id: string; role: 'user' | 'ai'; text: string; isWelcome?: boolean; }
 
 const WELCOME: Message = {
   id: 'welcome',
   role: 'ai',
-  text: 'Salam! Keçən həftəki performansını analiz etdim. Bu həftə zəif mövzun: Faizlər. Gəl bu mövzunu birlikdə gücləndirək.',
+  isWelcome: true,
+  text: 'Salam! Keçən həftəki performansını analiz etdim. Gəl zəif mövzularını birlikdə gücləndirək.',
 };
 
+const DAILY_GOAL = 20;
+
 export default function AIMentorScreen() {
+  const navigation = useNavigation<any>();
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState('');
   const listRef = useRef<FlatList>(null);
   const { mutate, isPending } = useMutation({ mutationFn: sendAiMessage });
+  const { mutate: runAnalyze, isPending: isAnalyzing } = useMutation({ mutationFn: analyzePerformance });
+  const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
 
-  const send = () => {
-    if (!input.trim()) return;
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', text: input };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput('');
-    mutate(input, {
-      onSuccess: (data) => {
-        const aiMsg: Message = { id: (Date.now() + 1).toString(), role: 'ai', text: data.reply || '' };
-        setMessages((prev) => [...prev, aiMsg]);
+  const todayProgress = useMemo(() => {
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+    const todayResults = results.filter((r) => {
+      const d = new Date(r.completedAt);
+      return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === todayKey;
+    });
+    const solved = todayResults.reduce((s, r) => s + r.total, 0);
+    const pct = Math.min(100, Math.round((solved / DAILY_GOAL) * 100));
+    return { solved, pct };
+  }, [results]);
+
+  const appendAi = (text: string) => {
+    setMessages((prev) => [...prev, { id: `ai-${Date.now()}`, role: 'ai', text }]);
+  };
+  const appendUser = (text: string) => {
+    setMessages((prev) => [...prev, { id: `u-${Date.now()}`, role: 'user', text }]);
+  };
+
+  const send = (override?: string) => {
+    const msg = (override ?? input).trim();
+    if (!msg || isPending) return;
+    appendUser(msg);
+    if (!override) setInput('');
+    mutate(msg, {
+      onSuccess: (data) => appendAi(data.reply || 'Cavab boş gəldi.'),
+      onError: (err: any) => {
+        const detail = err?.response?.data?.message;
+        appendAi(detail ? `Xəta: ${detail}` : 'Hal-hazırda AI-ya qoşula bilmədim. Bir az sonra yenidən cəhd et.');
       },
     });
   };
+
+  const handleAnalyze = () => {
+    if (isAnalyzing) return;
+    appendUser('Performansımı analiz et');
+    runAnalyze(undefined, {
+      onSuccess: (data) => {
+        const weak = data.weakTopics.length
+          ? `Zəif mövzular: ${data.weakTopics.map((t) => `${t.subject} (${t.avg}%)`).join(', ')}`
+          : 'Zəif mövzu görünmür — yaxşı gedirsən!';
+        const recs = data.recommendations.length
+          ? `\n\nTövsiyələr:\n• ${data.recommendations.join('\n• ')}`
+          : '';
+        appendAi(`Orta xal: ${data.averageScore}%\n${weak}${recs}`);
+      },
+      onError: () => appendAi('Analiz alınmadı. İmtahan verdiyini yoxla və yenidən cəhd et.'),
+    });
+  };
+
+  const handleReplay = () => {
+    setMessages([WELCOME]);
+  };
+
+  const handleAttach = () => Alert.alert('Tezliklə', 'Fayl əlavə etmə funksiyası tezliklə əlavə olunacaq.');
+  const handleImage = () => Alert.alert('Tezliklə', 'Şəkil yükləmə funksiyası tezliklə əlavə olunacaq.');
+  const handleMic = () => Alert.alert('Tezliklə', 'Səs yazma funksiyası tezliklə əlavə olunacaq.');
 
   const renderMessage = ({ item }: { item: Message }) => {
     if (item.role === 'user') {
@@ -52,9 +106,9 @@ export default function AIMentorScreen() {
         <View style={styles.aiBubble}>
           <View style={styles.aiBubbleAura} />
           <Text style={styles.aiText}>{item.text}</Text>
-          {item.id === 'welcome' && (
+          {item.isWelcome && (
             <View style={styles.aiActions}>
-              <TouchableOpacity activeOpacity={0.85}>
+              <TouchableOpacity activeOpacity={0.85} onPress={handleReplay}>
                 <LinearGradient
                   colors={[Colors.gradientStart, Colors.gradientEnd]}
                   style={styles.aiActionBtn}
@@ -64,9 +118,14 @@ export default function AIMentorScreen() {
                   <Text style={styles.aiActionBtnText}>Təkrar et</Text>
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.aiActionBtnSecondary} activeOpacity={0.8}>
-                <Ionicons name="play-circle-outline" size={16} color={Colors.textPrimary} />
-                <Text style={styles.aiActionBtnSecondaryText}>Test başlat</Text>
+              <TouchableOpacity
+                style={styles.aiActionBtnSecondary}
+                activeOpacity={0.8}
+                onPress={handleAnalyze}
+                disabled={isAnalyzing}
+              >
+                <Ionicons name="analytics-outline" size={16} color={Colors.textPrimary} />
+                <Text style={styles.aiActionBtnSecondaryText}>{isAnalyzing ? 'Analiz olunur...' : 'AI Analiz'}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -91,9 +150,6 @@ export default function AIMentorScreen() {
             <Text style={styles.headerOnline}>Onlayn</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.settingsBtn} activeOpacity={0.7}>
-          <Ionicons name="settings-outline" size={22} color={Colors.textSecondary} />
-        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined} keyboardVerticalOffset={0}>
@@ -127,15 +183,15 @@ export default function AIMentorScreen() {
             </View>
             <View>
               <Text style={styles.goalTitle}>Gündəlik Hədəf</Text>
-              <Text style={styles.goalSub}>Bu gün 20 yeni sual həll etməlisən</Text>
+              <Text style={styles.goalSub}>Bu gün {DAILY_GOAL} yeni sual həll etməlisən</Text>
             </View>
           </View>
           <View style={styles.goalProgressBar}>
-            <View style={styles.goalProgressFill} />
+            <View style={[styles.goalProgressFill, { width: `${todayProgress.pct}%` }]} />
           </View>
           <View style={styles.goalProgressRow}>
-            <Text style={styles.goalProgressLeft}>5/20 sual</Text>
-            <Text style={styles.goalProgressRight}>25% tamamlandı</Text>
+            <Text style={styles.goalProgressLeft}>{todayProgress.solved}/{DAILY_GOAL} sual</Text>
+            <Text style={styles.goalProgressRight}>{todayProgress.pct}% tamamlandı</Text>
           </View>
         </View>
 
@@ -153,25 +209,25 @@ export default function AIMentorScreen() {
             />
             <View style={styles.inputActions}>
               <View style={styles.inputIconRow}>
-                <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.7} onPress={handleAttach}>
                   <Ionicons name="attach-outline" size={20} color={Colors.textMuted} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.7} onPress={handleImage}>
                   <Ionicons name="image-outline" size={20} color={Colors.textMuted} />
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.7}>
+                <TouchableOpacity style={styles.inputIconBtn} activeOpacity={0.7} onPress={handleMic}>
                   <Ionicons name="mic-outline" size={20} color={Colors.textMuted} />
                 </TouchableOpacity>
               </View>
             </View>
           </View>
-          <TouchableOpacity onPress={send} activeOpacity={0.85}>
+          <TouchableOpacity onPress={() => send()} activeOpacity={0.85} disabled={isPending || !input.trim()}>
             <LinearGradient
-              colors={[Colors.gradientStart, Colors.gradientEnd]}
+              colors={isPending || !input.trim() ? [Colors.surfaceHighest, Colors.surfaceHighest] : [Colors.gradientStart, Colors.gradientEnd]}
               style={styles.sendFab}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             >
-              <Ionicons name="send" size={22} color="#fff" />
+              <Ionicons name={isPending ? 'hourglass' : 'send'} size={22} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
         </View>

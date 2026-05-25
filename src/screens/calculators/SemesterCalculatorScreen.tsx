@@ -8,6 +8,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Alert,
+  Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+const KSQ_OPTIONS = [3, 4, 5, 6] as const;
 
 function getGrade(score: number): string {
   if (score >= 91) return '5 (Əla)';
@@ -35,9 +38,21 @@ type Result = {
 
 export default function SemesterCalculatorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const [ksq, setKsq] = useState(['', '', '']);
+
+  const [step, setStep] = useState<'setup' | 'input'>('setup');
+  const [ksqCount, setKsqCount] = useState<number>(3);
+  const [hasBsq, setHasBsq] = useState<boolean>(true);
+
+  const [ksq, setKsq] = useState<string[]>(['', '', '']);
   const [bsq, setBsq] = useState('');
   const [result, setResult] = useState<Result | null>(null);
+
+  const goToInput = () => {
+    setKsq(Array(ksqCount).fill(''));
+    setBsq('');
+    setResult(null);
+    setStep('input');
+  };
 
   const updateKsq = (idx: number, val: string) => {
     const next = [...ksq];
@@ -47,148 +62,258 @@ export default function SemesterCalculatorScreen() {
 
   const calculate = () => {
     const filled = ksq.filter((v) => v.trim() !== '').map(Number);
-    if (filled.length === 0 || !bsq.trim()) return;
+    if (filled.length === 0) {
+      Alert.alert('Məlumat çatmır', 'Ən azı bir KSQ qiyməti daxil edin');
+      return;
+    }
+    if (filled.some((v) => isNaN(v) || v < 0 || v > 100)) {
+      Alert.alert('Yanlış qiymət', 'KSQ qiymətləri 0-100 aralığında olmalıdır');
+      return;
+    }
     const ksqAvg = filled.reduce((a, b) => a + b, 0) / filled.length;
-    const ksq40 = ksqAvg * 0.4;
-    const bsq60 = Number(bsq) * 0.6;
-    const final = Math.min(100, ksq40 + bsq60);
-    setResult({ ksqAvg, ksq40, bsq60, final, grade: getGrade(final) });
+    if (hasBsq) {
+      if (!bsq.trim()) {
+        Alert.alert('Məlumat çatmır', 'BSQ qiymətini daxil edin');
+        return;
+      }
+      const bsqNum = Number(bsq);
+      if (isNaN(bsqNum) || bsqNum < 0 || bsqNum > 100) {
+        Alert.alert('Yanlış qiymət', 'BSQ 0-100 aralığında olmalıdır');
+        return;
+      }
+      const ksq40 = ksqAvg * 0.4;
+      const bsq60 = bsqNum * 0.6;
+      const final = Math.min(100, ksq40 + bsq60);
+      setResult({ ksqAvg, ksq40, bsq60, final, grade: getGrade(final) });
+    } else {
+      // No BSQ: semester grade = KSQ average
+      setResult({ ksqAvg, ksq40: ksqAvg, bsq60: 0, final: ksqAvg, grade: getGrade(ksqAvg) });
+    }
   };
 
   const reset = () => {
-    setKsq(['', '', '']);
+    setKsq(Array(ksqCount).fill(''));
     setBsq('');
     setResult(null);
+  };
+
+  const onBack = () => {
+    if (step === 'input') {
+      setStep('setup');
+      setResult(null);
+    } else {
+      navigation.goBack();
+    }
   };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+          <TouchableOpacity style={styles.headerBtn} onPress={onBack} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Yarımillik Qiymətləndirmə</Text>
-          <View style={styles.headerBtn} />
+          <Text style={styles.headerTitle}>Semestr Balı</Text>
+          <Text style={styles.brand}>Kimi.az</Text>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
-          {/* Hero */}
-          <View style={styles.hero}>
-            <Text style={styles.heroTitle}>Salam! Mən Kimi.</Text>
-            <Text style={styles.heroSub}>Gəl yarımillik balını birlikdə hesablayaq.</Text>
-            <View style={styles.heroLine} />
-          </View>
+        {step === 'setup' ? (
+          <ScrollView contentContainerStyle={styles.scrollSetup} showsVerticalScrollIndicator={false}>
+            {/* Mascot */}
+            <View style={styles.mascotWrap}>
+              <View style={styles.mascotAura} pointerEvents="none" />
+              <View style={styles.mascotCircle}>
+                <Ionicons name="school" size={42} color={Colors.primary} />
+              </View>
+            </View>
 
-          {/* KSQ Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
+            {/* Hero */}
+            <View style={styles.heroBlock}>
+              <Text style={styles.heroTitle}>Yarımillik Qiymətləndirmə</Text>
+              <Text style={styles.heroSub}>KSQ sayını seçin və BSQ-nin olub-olmadığını qeyd edin.</Text>
+            </View>
+
+            {/* KSQ count */}
+            <View style={styles.fieldBlock}>
+              <View style={styles.fieldLabelRow}>
+                <Ionicons name="list-outline" size={18} color={Colors.primary} />
+                <Text style={styles.fieldLabel}>KSQ sayı</Text>
+              </View>
+              <View style={styles.segmented}>
+                {KSQ_OPTIONS.map((n) => {
+                  const active = ksqCount === n;
+                  return (
+                    <TouchableOpacity
+                      key={n}
+                      style={[styles.segItem, active && styles.segItemActive]}
+                      onPress={() => setKsqCount(n)}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[styles.segText, active && styles.segTextActive]}>{n}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* BSQ toggle */}
+            <View style={styles.toggleCard}>
+              <View style={styles.toggleLeft}>
+                <View style={styles.toggleIcon}>
+                  <Ionicons name="checkmark-done" size={22} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.toggleTitle}>BSQ var</Text>
+                  <Text style={styles.toggleSub}>Böyük Summativ Qiymətləndirmə</Text>
+                </View>
+              </View>
+              <Switch
+                value={hasBsq}
+                onValueChange={setHasBsq}
+                trackColor={{ false: Colors.surfaceHigh, true: Colors.primary }}
+                thumbColor="#fff"
+                ios_backgroundColor={Colors.surfaceHigh}
+              />
+            </View>
+
+            {/* Tip banner */}
+            <View style={styles.tipBanner}>
+              <Ionicons name="sparkles" size={18} color={Colors.primary} />
+              <Text style={styles.tipText}>Kimi Robot ilə balını saniyələr ərzində hesabla!</Text>
+            </View>
+
+            {/* CTA */}
+            <TouchableOpacity activeOpacity={0.9} onPress={goToInput} style={{ marginTop: 8 }}>
+              <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
+                <Text style={styles.ctaText}>Davam et</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollInput}>
+            {/* Setup summary */}
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryChip}>
+                <Ionicons name="list-outline" size={14} color={Colors.primary} />
+                <Text style={styles.summaryChipText}>{ksqCount} KSQ</Text>
+              </View>
+              <View style={[styles.summaryChip, !hasBsq && styles.summaryChipMuted]}>
+                <Ionicons name={hasBsq ? 'checkmark-circle' : 'close-circle'} size={14} color={hasBsq ? Colors.tertiary : Colors.outline} />
+                <Text style={[styles.summaryChipText, !hasBsq && { color: Colors.textSecondary }]}>
+                  {hasBsq ? 'BSQ var' : 'BSQ yox'}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.summaryEdit} onPress={() => setStep('setup')} hitSlop={8}>
+                <Ionicons name="create-outline" size={14} color={Colors.primary} />
+                <Text style={styles.summaryEditText}>Dəyiş</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* KSQ inputs */}
+            <View style={styles.section}>
               <Text style={styles.sectionTitle}>KSQ Qiymətləri</Text>
-              <TouchableOpacity style={styles.addBtn} activeOpacity={0.7}>
-                <Ionicons name="add-circle-outline" size={16} color={Colors.primary} />
-                <Text style={styles.addBtnText}>Yeni KSQ</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.inputGrid}>
-              {[0, 1, 2].map((idx) => (
-                <View key={idx} style={styles.inputCard}>
-                  <Text style={styles.inputLabel}>KSQ {idx + 1}</Text>
-                  <TextInput
-                    style={styles.inputField}
-                    value={ksq[idx]}
-                    onChangeText={(v) => updateKsq(idx, v)}
-                    placeholder="0 - 100"
-                    placeholderTextColor={Colors.outlineVariant}
-                    keyboardType="numeric"
-                    maxLength={3}
-                  />
-                </View>
-              ))}
-              <TouchableOpacity style={styles.addCard} activeOpacity={0.7}>
-                <Ionicons name="add" size={24} color={Colors.outline} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* BSQ Section */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>BSQ Qiyməti</Text>
-            <View style={styles.bsqCard}>
-              <View style={styles.bsqIconBox}>
-                <Ionicons name="ribbon-outline" size={22} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.inputLabel}>Yekun BSQ balı</Text>
-                <TextInput
-                  style={styles.inputField}
-                  value={bsq}
-                  onChangeText={setBsq}
-                  placeholder="Balı daxil edin"
-                  placeholderTextColor={Colors.outlineVariant}
-                  keyboardType="numeric"
-                  maxLength={3}
-                />
+              <View style={styles.inputGrid}>
+                {ksq.map((val, idx) => (
+                  <View key={idx} style={styles.inputCard}>
+                    <Text style={styles.inputLabel}>KSQ {idx + 1}</Text>
+                    <TextInput
+                      style={styles.inputField}
+                      value={val}
+                      onChangeText={(v) => updateKsq(idx, v)}
+                      placeholder="0 - 100"
+                      placeholderTextColor={Colors.outlineVariant}
+                      keyboardType="numeric"
+                      maxLength={3}
+                    />
+                  </View>
+                ))}
               </View>
             </View>
-          </View>
 
-          {/* Buttons */}
-          <TouchableOpacity onPress={calculate} activeOpacity={0.9}>
-            <LinearGradient colors={GRADIENT} style={styles.calcBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Ionicons name="calculator-outline" size={22} color="#fff" />
-              <Text style={styles.calcBtnText}>Hesabla</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
-            <Ionicons name="refresh-outline" size={20} color={Colors.danger} />
-            <Text style={styles.resetBtnText}>Sıfırla</Text>
-          </TouchableOpacity>
-
-          {/* Result */}
-          <View style={styles.resultSection}>
-            <Text style={styles.sectionTitle}>Nəticə</Text>
-            <View style={styles.resultCard}>
-              <View style={styles.resultRowWide}>
-                <View>
-                  <Text style={styles.resultLabel}>KSQ ortalaması</Text>
-                  <Text style={styles.resultValue}>{result ? result.ksqAvg.toFixed(1) : '—'}</Text>
-                </View>
-                <View style={styles.resultIconBox}>
-                  <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
-                </View>
-              </View>
-              <View style={styles.resultRow2}>
-                <View style={styles.resultHalf}>
-                  <Text style={styles.resultLabelSm}>KSQ-nin 40%-i</Text>
-                  <Text style={styles.resultValueMd}>{result ? result.ksq40.toFixed(1) : '—'}</Text>
-                </View>
-                <View style={styles.resultHalf}>
-                  <Text style={styles.resultLabelSm}>BSQ-nin 60%-i</Text>
-                  <Text style={styles.resultValueMd}>{result ? result.bsq60.toFixed(1) : '—'}</Text>
-                </View>
-              </View>
-              {/* Final */}
-              <LinearGradient colors={GRADIENT} style={styles.finalCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <View style={styles.finalBlob} />
-                <View>
-                  <Text style={styles.finalLabel}>Yekun bal və qiymət</Text>
-                  <View style={styles.finalAmountRow}>
-                    <Text style={styles.finalAmount}>{result ? result.final.toFixed(1) : '—'}</Text>
-                    <Text style={styles.finalMax}> / 100</Text>
+            {/* BSQ input */}
+            {hasBsq && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>BSQ Qiyməti</Text>
+                <View style={styles.bsqCard}>
+                  <View style={styles.bsqIconBox}>
+                    <Ionicons name="ribbon-outline" size={22} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>Yekun BSQ balı</Text>
+                    <TextInput
+                      style={styles.inputField}
+                      value={bsq}
+                      onChangeText={setBsq}
+                      placeholder="Balı daxil edin"
+                      placeholderTextColor={Colors.outlineVariant}
+                      keyboardType="numeric"
+                      maxLength={3}
+                    />
                   </View>
                 </View>
-                <View style={styles.finalGradeBox}>
-                  <Text style={styles.finalGradeText}>{result ? result.grade.charAt(0) : '—'}</Text>
-                </View>
+              </View>
+            )}
+
+            {/* Calculate / reset */}
+            <TouchableOpacity onPress={calculate} activeOpacity={0.9}>
+              <LinearGradient colors={GRADIENT} style={styles.calcBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+                <Ionicons name="calculator-outline" size={22} color="#fff" />
+                <Text style={styles.calcBtnText}>Hesabla</Text>
               </LinearGradient>
-              {result && (
-                <View style={styles.gradeRow}>
-                  <Text style={styles.gradeFullText}>{result.grade}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
+              <Ionicons name="refresh-outline" size={20} color={Colors.danger} />
+              <Text style={styles.resetBtnText}>Sıfırla</Text>
+            </TouchableOpacity>
+
+            {/* Result */}
+            {result && (
+              <View style={styles.resultSection}>
+                <Text style={styles.sectionTitle}>Nəticə</Text>
+                <View style={styles.resultCard}>
+                  <View style={styles.resultRowWide}>
+                    <View>
+                      <Text style={styles.resultLabel}>KSQ ortalaması</Text>
+                      <Text style={styles.resultValue}>{result.ksqAvg.toFixed(1)}</Text>
+                    </View>
+                    <View style={styles.resultIconBox}>
+                      <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
+                    </View>
+                  </View>
+                  {hasBsq && (
+                    <View style={styles.resultRow2}>
+                      <View style={styles.resultHalf}>
+                        <Text style={styles.resultLabelSm}>KSQ-nin 40%-i</Text>
+                        <Text style={styles.resultValueMd}>{result.ksq40.toFixed(1)}</Text>
+                      </View>
+                      <View style={styles.resultHalf}>
+                        <Text style={styles.resultLabelSm}>BSQ-nin 60%-i</Text>
+                        <Text style={styles.resultValueMd}>{result.bsq60.toFixed(1)}</Text>
+                      </View>
+                    </View>
+                  )}
+                  <LinearGradient colors={GRADIENT} style={styles.finalCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                    <View style={styles.finalBlob} />
+                    <View>
+                      <Text style={styles.finalLabel}>Yekun bal və qiymət</Text>
+                      <View style={styles.finalAmountRow}>
+                        <Text style={styles.finalAmount}>{result.final.toFixed(1)}</Text>
+                        <Text style={styles.finalMax}> / 100</Text>
+                      </View>
+                    </View>
+                    <View style={styles.finalGradeBox}>
+                      <Text style={styles.finalGradeText}>{result.grade.charAt(0)}</Text>
+                    </View>
+                  </LinearGradient>
+                  <View style={styles.gradeRow}>
+                    <Text style={styles.gradeFullText}>{result.grade}</Text>
+                  </View>
                 </View>
-              )}
-            </View>
-          </View>
-        </ScrollView>
+              </View>
+            )}
+          </ScrollView>
+        )}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -204,23 +329,106 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '600', color: Colors.textPrimary },
+  headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 },
+  brand: { fontSize: 16, fontWeight: '800', color: Colors.primaryDim, letterSpacing: -0.3, width: 70, textAlign: 'right' },
 
-  scroll: { padding: 20, gap: 20, paddingBottom: 48 },
+  /* Setup step */
+  scrollSetup: { padding: 24, paddingTop: 32, paddingBottom: 48, gap: 24, alignItems: 'stretch' },
 
-  hero: {
-    backgroundColor: Colors.primaryLight, borderRadius: 20, padding: 28,
-    alignItems: 'center', gap: 8,
+  mascotWrap: {
+    alignSelf: 'center',
+    position: 'relative',
+    width: 110, height: 110,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 4,
   },
-  heroTitle: { fontSize: 22, fontWeight: '800', color: Colors.primary },
-  heroSub: { fontSize: 14, color: Colors.textSecondary },
-  heroLine: { width: 48, height: 6, borderRadius: 3, backgroundColor: Colors.primary + '33', marginTop: 8 },
+  mascotAura: {
+    position: 'absolute', inset: 0,
+    backgroundColor: Colors.primary + '22',
+    borderRadius: 55,
+    transform: [{ scale: 1.2 }],
+  },
+  mascotCircle: {
+    width: 96, height: 96, borderRadius: 48,
+    backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 6,
+  },
+
+  heroBlock: { alignItems: 'center', gap: 10, marginBottom: 8 },
+  heroTitle: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', letterSpacing: -0.5, lineHeight: 30 },
+  heroSub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 22, maxWidth: 300, fontWeight: '500' },
+
+  fieldBlock: { gap: 12 },
+  fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
+  fieldLabel: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+
+  segmented: {
+    flexDirection: 'row', gap: 6,
+    backgroundColor: Colors.surfaceLow,
+    padding: 6, borderRadius: 16,
+  },
+  segItem: {
+    flex: 1, paddingVertical: 12, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  segItemActive: {
+    backgroundColor: Colors.surfaceLowest,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  segText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
+  segTextActive: { color: Colors.primary, fontWeight: '800' },
+
+  toggleCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 18,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.06, shadowRadius: 20, elevation: 2,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)',
+  },
+  toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
+  toggleIcon: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.primary + '1A',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  toggleTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  toggleSub: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500', marginTop: 2 },
+
+  tipBanner: {
+    backgroundColor: Colors.primary + '0F', borderRadius: 14,
+    padding: 14,
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderLeftWidth: 3, borderLeftColor: Colors.primary,
+  },
+  tipText: { flex: 1, fontSize: 13, color: Colors.textSecondary, fontWeight: '500', lineHeight: 18 },
+
+  ctaBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 58, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 22, elevation: 4,
+  },
+  ctaText: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: -0.2 },
+
+  /* Input step */
+  scrollInput: { padding: 20, gap: 20, paddingBottom: 48 },
+
+  summaryRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  summaryChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
+    backgroundColor: Colors.primary + '12',
+  },
+  summaryChipMuted: { backgroundColor: Colors.surfaceLow },
+  summaryChipText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+  summaryEdit: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+    marginLeft: 'auto',
+  },
+  summaryEditText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
 
   section: { gap: 12 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  addBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  addBtnText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
 
   inputGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   inputCard: {
@@ -230,11 +438,6 @@ const styles = StyleSheet.create({
   },
   inputLabel: { fontSize: 11, fontWeight: '700', color: Colors.outline, textTransform: 'uppercase', letterSpacing: 0.5 },
   inputField: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, padding: 0 },
-  addCard: {
-    width: '47%', backgroundColor: Colors.surfaceLow, borderRadius: 16, padding: 16,
-    alignItems: 'center', justifyContent: 'center', minHeight: 72,
-    borderWidth: 2, borderStyle: 'dashed', borderColor: Colors.outlineVariant + '66',
-  },
 
   bsqCard: {
     backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 20,

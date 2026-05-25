@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,65 +9,125 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { createBooking } from '../../api/booking.api';
+import { createBooking, getTeacherSlots, TeacherSlot } from '../../api/booking.api';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 
 const DAY_NAMES = ['Bazar ertəsi', 'Çərşənbə axşamı', 'Çərşənbə', 'Cümə axşamı', 'Cümə', 'Şənbə', 'Bazar'];
 const SUBJECTS = ['Riyaziyyat', 'Fizika', 'Kimya', 'Biologiya', 'İngilis dili', 'Tarix'];
 
+function computeSlotDate(slot: TeacherSlot): Date {
+  const now = new Date();
+  const targetDay = slot.dayOfWeek;
+  const currentDay = (now.getDay() + 6) % 7;
+  const daysUntil = (targetDay - currentDay + 7) % 7 || 7;
+  const d = new Date(now);
+  d.setDate(now.getDate() + daysUntil);
+  const [h, m] = slot.startTime.split(':').map(Number);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function defaultFallbackDate(): Date {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  d.setHours(18, 0, 0, 0);
+  return d;
+}
+
 export default function BookingConfirmScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { teacher, slot } = route.params ?? {};
+  const { teacher, slot: paramSlot } = route.params ?? {};
   const queryClient = useQueryClient();
 
   const [subject, setSubject] = useState('');
   const [note, setNote] = useState('');
+  const [pickedSlotId, setPickedSlotId] = useState<string | undefined>(paramSlot?.id);
 
-  const nextSlotDate = (): Date => {
-    const now = new Date();
-    const targetDay = slot.dayOfWeek; // 0=Mon
-    const currentDay = (now.getDay() + 6) % 7; // convert Sun=0 to Mon=0
-    const daysUntil = (targetDay - currentDay + 7) % 7 || 7;
-    const d = new Date(now);
-    d.setDate(now.getDate() + daysUntil);
-    const [h, m] = slot.startTime.split(':').map(Number);
-    d.setHours(h, m, 0, 0);
-    return d;
-  };
+  const { data: slotsData, isLoading: slotsLoading } = useQuery<TeacherSlot[]>({
+    queryKey: ['teacherSlots', teacher?.id],
+    queryFn: () => getTeacherSlots(teacher.id).catch(() => [] as TeacherSlot[]),
+    enabled: !!teacher?.id && !paramSlot,
+  });
+
+  const availableSlots = useMemo(() => {
+    const arr = Array.isArray(slotsData) ? slotsData : [];
+    return arr.filter((s) => s.isAvailable !== false);
+  }, [slotsData]);
+
+  const activeSlot: TeacherSlot | undefined = paramSlot
+    ?? availableSlots.find((s) => s.id === pickedSlotId)
+    ?? availableSlots[0];
+
+  const scheduledDate = activeSlot ? computeSlotDate(activeSlot) : defaultFallbackDate();
 
   const { mutate, isPending } = useMutation({
     mutationFn: () =>
       createBooking({
         teacherId: teacher.id,
-        scheduledAt: nextSlotDate().toISOString(),
+        scheduledAt: scheduledDate.toISOString(),
         subject: subject || undefined,
         note: note || undefined,
       }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myBookings'] });
       queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
       Alert.alert('Uğurlu!', 'Sifarişiniz göndərildi. Müəllim təsdiqləyəcək.', [
         { text: 'OK', onPress: () => navigation.navigate(Routes.BookingHistory) },
       ]);
     },
-    onError: () => Alert.alert('Xəta', 'Sifariş göndərilə bilmədi'),
+    onError: (err: any) => {
+      const reason = err?.response?.data?.message;
+      Alert.alert('Xəta', reason ?? 'Sifariş göndərilə bilmədi');
+    },
   });
 
-  if (!teacher || !slot) return null;
-
-  const scheduledDate = nextSlotDate();
+  if (!teacher) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Sifarişi Təsdiqlə</Text>
+          <View style={styles.headerBtn} />
+        </View>
+        <View style={{ padding: 24, gap: 16 }}>
+          <Text style={styles.emptyText}>Müəllim seçilməyib</Text>
+          <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
+            <Text style={styles.btnText}>Geri</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      <Text style={styles.title}>Sifarişi Təsdiqlə</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Sifarişi Təsdiqlə</Text>
+        <View style={styles.headerBtn} />
+      </View>
 
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
       <View style={styles.summaryCard}>
         <Row label="Müəllim" value={teacher.name} />
-        <Row label="Gün" value={DAY_NAMES[slot.dayOfWeek]} />
-        <Row label="Saat" value={`${slot.startTime} – ${slot.endTime}`} />
+        {activeSlot ? (
+          <>
+            <Row label="Gün" value={DAY_NAMES[activeSlot.dayOfWeek]} />
+            <Row label="Saat" value={`${activeSlot.startTime} – ${activeSlot.endTime}`} />
+          </>
+        ) : (
+          <Row label="Vaxt" value="Müəllim sizinlə əlaqə saxlayacaq" />
+        )}
         <Row
           label="Tarix"
           value={scheduledDate.toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}
@@ -76,6 +136,36 @@ export default function BookingConfirmScreen() {
           <Row label="Qiymət" value={`${teacher.hourlyRate} AZN`} />
         )}
       </View>
+
+      {!paramSlot && availableSlots.length > 0 && (
+        <>
+          <Text style={styles.label}>Vaxt seçin</Text>
+          <View style={styles.chipRow}>
+            {availableSlots.slice(0, 8).map((s) => {
+              const active = (activeSlot?.id ?? '') === s.id;
+              return (
+                <TouchableOpacity
+                  key={s.id}
+                  style={[styles.chip, active && styles.chipActive]}
+                  onPress={() => setPickedSlotId(s.id)}
+                >
+                  <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                    {DAY_NAMES[s.dayOfWeek].slice(0, 3)} · {s.startTime}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </>
+      )}
+
+      {!paramSlot && !slotsLoading && availableSlots.length === 0 && (
+        <View style={styles.noticeBox}>
+          <Text style={styles.noticeText}>
+            Müəllimin açıq cədvəli yoxdur. Sorğunu göndər, müəllim sizinlə əlaqə saxlayıb vaxt razılaşdıracaq.
+          </Text>
+        </View>
+      )}
 
       <Text style={styles.label}>Fənn</Text>
       <View style={styles.chipRow}>
@@ -113,7 +203,8 @@ export default function BookingConfirmScreen() {
           <Text style={styles.btnText}>Sifariş Göndər</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -128,7 +219,19 @@ function Row({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
-  title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, marginBottom: 20 },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.75)',
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  headerBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.surfaceLow,
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.primary },
+  emptyText: { fontSize: 16, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center' },
   summaryCard: {
     backgroundColor: Colors.surface,
     borderRadius: 14,
@@ -164,6 +267,15 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     minHeight: 80,
   },
+  noticeBox: {
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: Colors.primaryFixed + '33',
+  },
+  noticeText: { fontSize: 13, color: Colors.primary, lineHeight: 19, fontWeight: '500' },
   btn: {
     backgroundColor: Colors.primary,
     borderRadius: 14,
