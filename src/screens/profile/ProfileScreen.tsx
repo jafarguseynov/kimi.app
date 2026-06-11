@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
+import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import { useLogout } from '../../hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { getUserStats } from '../../api/dashboard.api';
@@ -29,10 +30,12 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type MenuTab = 'self' | 'home' | 'exams';
 const BASE_STUDENT_MENU = [
+  { id: 'joinTeacher', icon: 'people-outline', label: 'Müəllimə qoşul', sub: 'Müəllim kodu ilə qoşul, bonus qazan', tab: 'self' as MenuTab, route: Routes.JoinTeacher },
   { id: 'results', icon: 'analytics-outline', label: 'Mənim nəticələrim', sub: 'Ümumi performansın təhlili', tab: 'self' as MenuTab, route: Routes.ExamHistory },
   { id: 'history', icon: 'time-outline', label: 'İmtahan tarixçəsi', sub: 'Keçirilən bütün sınaqlar', tab: 'self' as MenuTab, route: Routes.ExamHistory },
   { id: 'questions', icon: 'help-circle-outline', label: 'Sual fəaliyyətim', sub: 'Düzgün və səhv cavablar', tab: 'self' as MenuTab, route: Routes.Achievements },
   { id: 'balance', icon: 'wallet-outline', label: 'Balansım', sub: '', tab: 'self' as MenuTab, route: Routes.Wallet },
+  { id: 'subscription', icon: 'diamond-outline', label: 'Abunəlik Planları', sub: 'Premium imkanlar və Kimi Robot', tab: 'home' as MenuTab, route: Routes.Plans },
   { id: 'goals', icon: 'flag-outline', label: 'Məqsədlərim', sub: 'Həftəlik hədəflər: 3/5', tab: 'home' as MenuTab, route: Routes.DailyMissions },
   { id: 'medals', icon: 'trophy-outline', label: 'Medallar', sub: '', tab: 'self' as MenuTab, route: Routes.Achievements },
   { id: 'certs', icon: 'ribbon-outline', label: 'Sertifikatlar', sub: '', tab: 'self' as MenuTab, route: Routes.CertificateList },
@@ -213,6 +216,9 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
   const teacherSubjects = subjects?.length ? subjects : [];
   const teacherBio = bio ?? '';
 
+  // Profil gücü (tamamlama) — ortaq hook (backend ilə eyni 6 element)
+  const { pct: trustPct, nextStep } = useTeacherProfileCompletion();
+
   const metrics = [
     { label: 'Aylıq Gəlir', value: analytics?.monthlyEarnings?.toString() ?? '—', unit: 'AZN', primary: true },
     { label: 'Tələbələr', value: analytics?.totalStudents?.toString() ?? '—', unit: '', primary: false },
@@ -274,27 +280,64 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
         </TouchableOpacity>
       </View>
 
-      {/* Premium card */}
-      <LinearGradient colors={GRADIENT} style={styles.premiumCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-        <View style={styles.premiumLeft}>
-          <View style={styles.premiumBadge}>
-            <Text style={styles.premiumBadgeText}>Premium Status</Text>
+      {/* Boost card */}
+      <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.TeacherBoost)}>
+        <LinearGradient colors={GRADIENT} style={styles.premiumCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+          <View style={styles.premiumLeft}>
+            <View style={styles.premiumBadge}>
+              <Text style={styles.premiumBadgeText}>Profili İrəli Çək</Text>
+            </View>
+            <Text style={styles.premiumTitle}>Boost et</Text>
+            <Text style={styles.premiumSub}>
+              Profilini siyahının başına çıxar{'\n'}və daha çox tələbə səni tapsın.
+            </Text>
           </View>
-          <Text style={styles.premiumTitle}>Premium Müəllim</Text>
-          <Text style={styles.premiumSub}>
-            Profiliniz ön sıralarda göstərilir{'\n'}və daha çox tələbə sizi tapır.
-          </Text>
-        </View>
-        <View style={styles.premiumIconWrap}>
-          <Ionicons name="ribbon" size={42} color="#fff" />
-        </View>
-      </LinearGradient>
+          <View style={styles.premiumIconWrap}>
+            <Ionicons name="rocket" size={42} color="#fff" />
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+
+      {/* Profil gücü (tamamlama) */}
+      {trustPct < 100 && (
+        <TouchableOpacity
+          style={trustStyles.card}
+          activeOpacity={0.9}
+          onPress={() => navigation.navigate(Routes.EditProfile)}
+        >
+          <View style={trustStyles.headerRow}>
+            <View style={trustStyles.iconWrap}>
+              <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={trustStyles.title}>Profil gücü</Text>
+              <Text style={trustStyles.sub}>Güclü profil daha çox şagird gətirir</Text>
+            </View>
+            <Text style={trustStyles.pct}>{trustPct}%</Text>
+          </View>
+          <View style={trustStyles.barTrack}>
+            <View style={[trustStyles.barFill, { width: `${trustPct}%` }]} />
+          </View>
+          {nextStep && (
+            <View style={trustStyles.nextRow}>
+              <Ionicons name="add-circle-outline" size={15} color={Colors.primary} />
+              <Text style={trustStyles.nextText}>Növbəti: {nextStep.label}</Text>
+              <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
+            </View>
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Müəllim İnkişafı */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Müəllim İnkişafı</Text>
         <View style={progStyles.list}>
           {[
+            { key: 'class', icon: 'people-circle' as const, title: 'Sinifim', sub: 'Şagird dəvət et', route: Routes.TeacherClass, local: true },
+            { key: 'students', icon: 'people' as const, title: 'Şagirdlərim', sub: 'Performans izləməsi', route: Routes.TeacherStudents, local: true },
+            { key: 'gradeCalc', icon: 'calculator' as const, title: 'Qiymət Kalkulyatoru', sub: 'Sinfin yarımillik & illik qiymətləri', route: Routes.ClassGradeCalc, local: true },
+            { key: 'calculators', icon: 'apps' as const, title: 'Kalkulyatorlar', sub: 'Semestr, illik, DİM, keyfiyyət, bal', route: Routes.Calculators, tab: 'Calculators' },
+            { key: 'referral', icon: 'share-social' as const, title: 'Referal proqramı', sub: 'Hər kəsi dəvət et, hər referala bonus', route: Routes.Referral, local: true },
             { key: 'badges', icon: 'ribbon' as const, title: 'Nailiyyətlər', sub: 'Qazandığın badges', route: Routes.TeacherBadges },
             { key: 'level', icon: 'flash' as const, title: 'Səviyyə', sub: 'XP & perks', route: Routes.TeacherLevel },
             { key: 'verified', icon: 'checkmark-done' as const, title: 'Verified ol', sub: 'Tələblər və status', route: Routes.VerifiedTeacher },
@@ -305,7 +348,18 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
               key={it.key}
               style={progStyles.row}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate(it.route)}
+              onPress={() => {
+                if ((it as any).tab) {
+                  (navigation.getParent() as any)?.navigate((it as any).tab);
+                } else if ((it as any).local) {
+                  navigation.navigate(it.route);
+                } else {
+                  (navigation.getParent() as any)?.navigate(Routes.Home, {
+                    screen: it.route,
+                    initial: false,
+                  });
+                }
+              }}
             >
               <View style={progStyles.iconWrap}>
                 <Ionicons name={it.icon} size={20} color={Colors.primary} />
@@ -649,6 +703,27 @@ const progStyles = StyleSheet.create({
   },
   rowTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.2 },
   rowSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+});
+
+const trustStyles = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 16, gap: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 2,
+  },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconWrap: {
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  title: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  sub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  pct: { fontSize: 20, fontWeight: '800', color: Colors.primary },
+  barTrack: { height: 8, borderRadius: 4, backgroundColor: Colors.surfaceHighest, overflow: 'hidden' },
+  barFill: { height: 8, borderRadius: 4, backgroundColor: Colors.primary },
+  nextRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nextText: { flex: 1, fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
 });
 
 const styles = StyleSheet.create({

@@ -25,3 +25,8 @@ export const markNotificationRead = async (id: string): Promise<void> => {
 export const markAllNotificationsRead = async (): Promise<void> => {
   await client.post('/notification/read-all');
 };
+
+// Expo push token-i backend-ə yaz (icazə veriləndən sonra).
+export const savePushToken = async (token: string | null): Promise<void> => {
+  await client.post('/notification/push-token', { token });
+};

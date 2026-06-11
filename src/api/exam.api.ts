@@ -27,8 +27,27 @@ export const getExams = (filters?: ExamFilters) =>
 export const getExamsForUser = (filters?: ExamFilters) =>
   apiClient.get<Exam[]>(`/exam/for-me${buildQuery(filters)}`).then((r) => r.data);
 
+// ─── Admin paneldən idarə olunan imtahan kateqoriyaları ─────────────────────
+export interface RemoteCategory {
+  id: string;
+  key: string;
+  title: string;
+  description: string | null;
+  emoji: string | null;
+  bg: string | null;
+  subjects: string[] | null;
+  sortOrder: number;
+  isActive: boolean;
+  children: RemoteCategory[];
+}
+
+export const getExamCategories = () =>
+  apiClient.get<RemoteCategory[]>('/exam-categories').then((r) => r.data);
+
 export const startExam = (examId: string) =>
-  apiClient.post<ExamSession>('/exam/start', { examId }).then((r) => r.data);
+  // Longer timeout: the backend may be cold-starting (Render free tier),
+  // which can exceed the default 15s client timeout.
+  apiClient.post<ExamSession>('/exam/start', { examId }, { timeout: 45000 }).then((r) => r.data);
 
 export const submitExam = (
   examId: string,
@@ -36,7 +55,7 @@ export const submitExam = (
   timeSpent: number,
   type?: 'practice' | 'monthly' | 'national' | 'live',
 ) =>
-  apiClient.post<ExamResult>('/exam/submit', { examId, answers, timeSpent, type }).then((r) => r.data);
+  apiClient.post<ExamResult>('/exam/submit', { examId, answers, timeSpent, type }, { timeout: 45000 }).then((r) => r.data);
 
 export interface GenerateExamPayload {
   categoryKey?: string;

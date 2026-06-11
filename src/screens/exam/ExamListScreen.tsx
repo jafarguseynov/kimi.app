@@ -8,7 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { useExamList } from '../../hooks/useExams';
+import { useExamList, useExamCollections } from '../../hooks/useExams';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getExamResults, ExamResultRow } from '../../api/certificate.api';
 import { getTopicStats } from '../../api/topicStats.api';
@@ -178,6 +178,7 @@ const daysSinceLastExam = (results: ExamResultRow[]) => {
 export default function ExamListScreen({ navigation }: Props) {
   const rootNav = useNavigation<any>();
   const { data: exams = [], refetch: refetchExams } = useExamList();
+  const { data: bankCollections = [] } = useExamCollections();
   const { data: results = [], refetch: refetchResults } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
   const { data: topicStats } = useQuery({ queryKey: ['topicStats'], queryFn: getTopicStats });
   const setSubmissionType = useExamStore((s) => s.setSubmissionType);
@@ -430,6 +431,34 @@ export default function ExamListScreen({ navigation }: Props) {
             ))}
           </ScrollView>
         </View>
+
+        {/* İmtahan Bankları — admin yüklədiyi PDF banklarından random test */}
+        {bankCollections.length > 0 && (
+          <View style={catStyles.section}>
+            <View style={catStyles.sectionHeader}>
+              <Text style={moreStyles.sectionTitle}>İmtahan Bankları</Text>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate(Routes.ExamCollections)} hitSlop={8}>
+                <Text style={catStyles.seeAll}>Hamısı →</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={catStyles.row}>
+              {bankCollections.slice(0, 8).map((c) => (
+                <TouchableOpacity
+                  key={c.id}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate(Routes.ExamCollections)}
+                  style={catStyles.card}
+                >
+                  <View style={[catStyles.iconBox, { backgroundColor: Colors.primaryLight }]}>
+                    <Ionicons name={c.locked ? 'lock-closed' : 'library'} size={20} color={Colors.primary} />
+                  </View>
+                  <Text style={catStyles.cardTitle} numberOfLines={1}>{c.title}</Text>
+                  <Text style={catStyles.cardSub} numberOfLines={1}>{c.questionCount} sual</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {/* Kompakt stat sırası */}
         <View style={styles.pillRow}>
@@ -1269,4 +1298,5 @@ const catStyles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   cardTitle: { fontSize: 12, fontWeight: '800', color: Colors.textPrimary },
+  cardSub: { fontSize: 10, fontWeight: '600', color: Colors.textSecondary, marginTop: 2 },
 });

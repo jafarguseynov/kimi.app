@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,10 +18,14 @@ import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { getUserStats } from '../../api/dashboard.api';
-import { getTeachers, getTeacherAnalytics } from '../../api/user.api';
+import { getTeachers, getTeacherAnalytics, ensureProfileReminder } from '../../api/user.api';
 import { getGlobalLeaderboard } from '../../api/leaderboard.api';
 import { getTeacherBookings } from '../../api/booking.api';
 import { listOpenRequests, expressInterest, type PublicLessonRequest } from '../../api/lessonRequest.api';
+import { useOnboardingStore } from '../../store/onboarding.store';
+import { usePushStore } from '../../store/push.store';
+import { getPermissionStatus } from '../../utils/push';
+import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.HomeMain>;
@@ -138,6 +142,46 @@ export default function HomeScreen({ navigation }: Props) {
   const firstName = user?.name?.split(' ')[0] || 'İstifadəçi';
   const isTeacher = user?.role === 'teacher';
   const isParent = user?.role === 'parent';
+
+  const { pendingTeacherSetup, setPendingTeacherSetup } = useOnboardingStore();
+  const { complete: profileComplete } = useTeacherProfileCompletion();
+
+  // Bildiriş icazəsi (priming) — bir dəfə soruşmaq üçün
+  const { primingSeen, hydrated: pushHydrated, setPrimingSeen } = usePushStore();
+  const pushAskedRef = useRef(false);
+  // Müəllim profil-setup açılan sessiyada push priming-i göstərmə (toqquşmasın)
+  const skipPushThisSessionRef = useRef(isTeacher && pendingTeacherSetup);
+
+  // Müəllim profil tamamlama: (1) ilk açılışda setup ekranı, (2) xatırlatma bildirişi
+  useEffect(() => {
+    if (!isTeacher) return;
+    // Backend-də yarımçıq profil üçün xatırlatma bildirişi yaradılsın (72h idempotent)
+    ensureProfileReminder().catch(() => {});
+    // Qeydiyyatdan sonra bir dəfə profil tamamlama addımını göstər
+    if (pendingTeacherSetup && !profileComplete) {
+      setPendingTeacherSetup(false);
+      navigation.navigate(Routes.TeacherProfileSetup);
+    } else if (pendingTeacherSetup) {
+      setPendingTeacherSetup(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacher]);
+
+  // Bildiriş icazəsi: ilk açılışda bir dəfə, yalnız OS statusu hələ soruşulmayıbsa,
+  // rola uyğun priming ekranını göstər (OS dialoqunu birbaşa açmadan).
+  useEffect(() => {
+    if (!pushHydrated || primingSeen || pushAskedRef.current) return;
+    if (skipPushThisSessionRef.current) return;
+    pushAskedRef.current = true;
+    (async () => {
+      const status = await getPermissionStatus();
+      setPrimingSeen(true);
+      if (status === 'undetermined') {
+        navigation.navigate(Routes.NotificationPriming);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pushHydrated, primingSeen]);
 
   const { data: stats } = useQuery({ queryKey: ['user-stats'], queryFn: getUserStats, enabled: !isTeacher });
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers-home'], queryFn: () => getTeachers({ limit: 3 }), enabled: !isTeacher && !isParent });
@@ -292,7 +336,7 @@ export default function HomeScreen({ navigation }: Props) {
             {/* Greeting */}
             <View style={styles.greetSection}>
               <Text style={styles.greetSmall}>Xoş gəldiniz,</Text>
-              <Text style={styles.greetTitle}>Salam, {firstName} müəllimə 👋</Text>
+              <Text style={styles.greetTitle}>Salam, {firstName} müəllim 👋</Text>
             </View>
 
             {/* Earnings Card */}
@@ -384,6 +428,27 @@ export default function HomeScreen({ navigation }: Props) {
                 </Text>
               </View>
             </View>
+
+            {/* Sinif Qiymət Kalkulyatoru */}
+            <TouchableOpacity
+              style={styles.calcCard}
+              activeOpacity={0.9}
+              onPress={() => (navigation.getParent() as any)?.navigate(Routes.Profile, { screen: Routes.ClassGradeCalc })}
+            >
+              <LinearGradient
+                colors={[Colors.gradientStart, Colors.gradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.calcIconWrap}
+              >
+                <Ionicons name="calculator" size={24} color="#fff" />
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.calcTitle}>Sinif Qiymət Kalkulyatoru</Text>
+                <Text style={styles.calcSub}>Şagirdlərin yarımillik & illik qiymətini, keyfiyyət faizini anında hesabla</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
 
             {/* New Requests */}
             <View style={styles.sectionRow}>
@@ -1254,6 +1319,34 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
     lineHeight: 18,
   },
+
+  // ── Teacher: Sinif Qiymət Kalkulyatoru kartı ───────────────────────────
+  calcCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: Colors.surfaceLowest,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 14,
+    elevation: 2,
+  },
+  calcIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  calcTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  calcSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 3, lineHeight: 17 },
 
   // ── Teacher: Requests ──────────────────────────────────────────────────
   requestList: { gap: 10, marginBottom: 24 },

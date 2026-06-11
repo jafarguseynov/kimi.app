@@ -8,6 +8,8 @@ import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import Confetti from '../../components/effects/Confetti';
+import { playSpin, stopSpin, playReward } from '../../utils/sound';
+import { hapticMedium, hapticHeavy, hapticSuccess, hapticLight } from '../../utils/haptics';
 import { useSpinStreakStore, STREAK_BONUS_THRESHOLD } from '../../store/spinStreak.store';
 import { useSpinWheelStore } from '../../store/spinWheel.store';
 import { logSpin } from '../../api/spin.api';
@@ -130,6 +132,9 @@ export default function SpinWheelScreen({ navigation }: Props) {
     ensureDailyReset();
   }, [ensureDailyReset]);
 
+  // Ekrandan çıxarkən fırlanma səsini dayandır
+  useEffect(() => () => { stopSpin(); }, []);
+
   // restore latest reward label from persistent history
   useEffect(() => {
     if (history.length > 0 && lastReward === '—') setLastReward(history[0].label);
@@ -157,6 +162,8 @@ export default function SpinWheelScreen({ navigation }: Props) {
       return;
     }
     setSpinning(true);
+    hapticMedium();
+    playSpin(); // çarx fırlanma səsi (yavaşlayan tıqqıltı)
 
     // Pity timer: after 10 spins without rare+, guarantee rare+
     const guaranteeRare = shouldGuaranteeRarePlus();
@@ -185,6 +192,12 @@ export default function SpinWheelScreen({ navigation }: Props) {
       useNativeDriver: true,
     }).start(() => {
       setSpinning(false);
+      stopSpin(); // tıqqıltını dayandır
+      // Mükafat səsi + titrəyiş (nadirliyə uyğun)
+      playReward(targetSeg.rarity);
+      if (targetSeg.rarity === 'legendary') hapticHeavy();
+      else if (targetSeg.rarity === 'common') hapticLight();
+      else hapticSuccess();
       decrementSpin();
       setLastReward(targetSeg.label);
       addHistoryEntry({

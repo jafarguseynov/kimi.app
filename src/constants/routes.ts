@@ -38,6 +38,7 @@ export const Routes = {
   ExamSession: 'ExamSession',
   ExamResult: 'ExamResult',
   ExamReview: 'ExamReview',
+  ExamCollections: 'ExamCollections',
 
   // Learning stack
   LearningHome: 'LearningHome',
@@ -95,6 +96,9 @@ export const Routes = {
   // AI
   AIRecommendations: 'AIRecommendations',
   AIOnboarding: 'AIOnboarding',
+
+  // Notifications onboarding
+  NotificationPriming: 'NotificationPriming',
 
   // Live Exam flow
   LiveExamWaiting: 'LiveExamWaiting',
@@ -194,6 +198,11 @@ export const Routes = {
   TeacherLevel: 'TeacherLevel',
   VerifiedTeacher: 'VerifiedTeacher',
   TopTeachersLeaderboard: 'TopTeachersLeaderboard',
+  TeacherStudents: 'TeacherStudents',
+  TeacherBoost: 'TeacherBoost',
+  TeacherProfileSetup: 'TeacherProfileSetup',
+  TeacherClass: 'TeacherClass',
+  JoinTeacher: 'JoinTeacher',
 
   // Teacher verification
   VerificationStart: 'VerificationStart',
@@ -244,4 +253,5 @@ export const Routes = {
   DIMCalc: 'DIMCalc',
   CalcHistory: 'CalcHistory',
   CalcSaved: 'CalcSaved',
+  ClassGradeCalc: 'ClassGradeCalc',
 } as const;

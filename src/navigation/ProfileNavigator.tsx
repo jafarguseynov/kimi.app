@@ -44,6 +44,11 @@ import ExamHistoryScreen from '../screens/exam/ExamHistoryScreen';
 import ExamResultScreen from '../screens/exam/ExamResultScreen';
 import DuelHistoryScreen from '../screens/exam/DuelHistoryScreen';
 import RewardHistoryScreen from '../screens/profile/RewardHistoryScreen';
+import TeacherStudentsScreen from '../screens/profile/TeacherStudentsScreen';
+import TeacherBoostScreen from '../screens/profile/TeacherBoostScreen';
+import TeacherClassScreen from '../screens/profile/TeacherClassScreen';
+import JoinTeacherScreen from '../screens/profile/JoinTeacherScreen';
+import ClassGradeCalculatorScreen from '../screens/calculators/ClassGradeCalculatorScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -71,6 +76,11 @@ export default function ProfileNavigator() {
       <Stack.Screen name={Routes.Referral} component={ReferralScreen} />
       <Stack.Screen name={Routes.ReferralBalance} component={ReferralBalanceScreen} />
       <Stack.Screen name={Routes.Dashboard} component={TeacherDashboardScreen} />
+      <Stack.Screen name={Routes.TeacherStudents} component={TeacherStudentsScreen} />
+      <Stack.Screen name={Routes.TeacherBoost} component={TeacherBoostScreen} />
+      <Stack.Screen name={Routes.TeacherClass} component={TeacherClassScreen} />
+      <Stack.Screen name={Routes.JoinTeacher} component={JoinTeacherScreen} />
+      <Stack.Screen name={Routes.ClassGradeCalc} component={ClassGradeCalculatorScreen} />
       <Stack.Screen name={Routes.Settings} component={SettingsScreen} />
       <Stack.Screen name={Routes.NotificationSettings} component={NotificationSettingsScreen} />
       <Stack.Screen name={Routes.TermsOfService} component={TermsOfServiceScreen} />

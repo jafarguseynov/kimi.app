@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
@@ -30,6 +30,8 @@ const METHODS: {
 
 export default function PaymentMethodScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const route = useRoute();
+  const params = (route.params ?? {}) as any;
   const [selected, setSelected] = useState<Method>('card');
 
   return (
@@ -90,7 +92,7 @@ export default function PaymentMethodScreen() {
 
       {/* CTA */}
       <View style={styles.ctaWrap}>
-        <TouchableOpacity onPress={() => navigation.navigate(Routes.CardPayment)} activeOpacity={0.9}>
+        <TouchableOpacity onPress={() => navigation.navigate(Routes.CardPayment, params)} activeOpacity={0.9}>
           <LinearGradient colors={GRADIENT} style={styles.ctaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Text style={styles.ctaBtnText}>Təsdiqlə</Text>
           </LinearGradient>

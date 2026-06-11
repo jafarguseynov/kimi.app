@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   ActivityIndicator,
+  Animated,
+  Easing,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,13 +27,31 @@ import Input from '../../components/common/Input';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Login> };
 
-export default function LoginScreen({ navigation }: Props) {
-  const [showEmailForm, setShowEmailForm] = useState(false);
+type IconName = keyof typeof Ionicons.glyphMap;
 
+const FEATURES: { icon: IconName; label: string }[] = [
+  { icon: 'flash', label: 'AI testlər' },
+  { icon: 'videocam', label: 'Canlı dərs' },
+  { icon: 'ribbon', label: 'Sertifikat' },
+];
+
+export default function LoginScreen({ navigation }: Props) {
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
   const { mutate, isPending } = useLogin();
+
+  // Entrance animation
+  const appear = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(appear, {
+      toValue: 1,
+      duration: 520,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [appear]);
+  const slideUp = appear.interpolate({ inputRange: [0, 1], outputRange: [18, 0] });
 
   const onSubmit = (data: LoginFormData) => {
     mutate(data, {
@@ -56,156 +76,136 @@ export default function LoginScreen({ navigation }: Props) {
           <View style={styles.aura1} pointerEvents="none" />
           <View style={styles.aura2} pointerEvents="none" />
 
-          {/* Logo */}
-          <View style={styles.logoWrap}>
-            <LinearGradient
-              colors={[Colors.gradientStart, Colors.gradientEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoBox}
-            >
-              <Ionicons name="hardware-chip" size={40} color="#fff" />
-            </LinearGradient>
-          </View>
-
-          {/* Headline */}
-          <View style={styles.headline}>
-            <Text style={styles.title}>Kimi.az-a xoş gəlmisən</Text>
-            <Text style={styles.subtitle}>Süni intellekt dəstəkli təhsil platforması</Text>
-          </View>
-
-          {/* Auth buttons */}
-          <View style={styles.buttons}>
-            {/* Phone login */}
-            <TouchableOpacity
-              onPress={() => navigation.navigate(Routes.Register)}
-              activeOpacity={0.85}
-            >
+          <Animated.View style={{ width: '100%', alignItems: 'center', opacity: appear, transform: [{ translateY: slideUp }] }}>
+            {/* Logo */}
+            <View style={styles.logoWrap}>
+              <View style={styles.logoGlow} pointerEvents="none" />
               <LinearGradient
                 colors={[Colors.gradientStart, Colors.gradientEnd]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
-                style={styles.phoneBtn}
+                style={styles.logoBox}
               >
-                <View style={styles.phoneBtnLeft}>
-                  <Ionicons name="phone-portrait-outline" size={22} color="#fff" />
-                  <Text style={styles.phoneBtnText}>Telefon ilə giriş</Text>
-                </View>
-                <Ionicons name="arrow-forward" size={20} color="#fff" />
+                <View style={styles.logoGloss} />
+                <Ionicons name="hardware-chip" size={40} color="#fff" />
               </LinearGradient>
-            </TouchableOpacity>
+              <LinearGradient
+                colors={['#006947', '#0a8a5f']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.logoBadge}
+              >
+                <Ionicons name="sparkles" size={12} color="#fff" />
+              </LinearGradient>
+            </View>
 
-            {/* Email login toggle */}
-            <TouchableOpacity
-              style={styles.emailBtn}
-              onPress={() => setShowEmailForm(!showEmailForm)}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="mail-outline" size={22} color={Colors.primary} />
-              <Text style={styles.emailBtnText}>Email ilə giriş</Text>
-            </TouchableOpacity>
+            {/* Headline */}
+            <View style={styles.headline}>
+              <Text style={styles.title}>Kimi.az-a xoş gəlmisən</Text>
+              <Text style={styles.subtitle}>Süni intellekt dəstəkli təhsil platforması</Text>
+            </View>
 
-            {/* Inline email form */}
-            {showEmailForm && (
-              <View style={styles.emailForm}>
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field: { onChange, value } }) => (
-                    <Input
-                      label="E-poçt"
-                      placeholder="email@example.com"
-                      onChangeText={onChange}
-                      value={value}
-                      keyboardType="email-address"
-                      error={errors.email?.message}
-                    />
+            {/* Feature pills */}
+            <View style={styles.features}>
+              {FEATURES.map((f) => (
+                <View key={f.label} style={styles.featurePill}>
+                  <Ionicons name={f.icon} size={14} color={Colors.primary} />
+                  <Text style={styles.featureText}>{f.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Login form */}
+            <View style={styles.form}>
+              <Controller
+                control={control}
+                name="identifier"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Email və ya telefon nömrəsi"
+                    placeholder="email@example.com  və ya  +994XXXXXXXXX"
+                    onChangeText={onChange}
+                    value={value}
+                    autoCapitalize="none"
+                    error={errors.identifier?.message}
+                  />
+                )}
+              />
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { onChange, value } }) => (
+                  <Input
+                    label="Şifrə"
+                    placeholder="••••••••"
+                    onChangeText={onChange}
+                    value={value}
+                    secureTextEntry
+                    error={errors.password?.message}
+                  />
+                )}
+              />
+
+              <TouchableOpacity onPress={handleSubmit(onSubmit)} disabled={isPending} activeOpacity={0.85} style={{ marginTop: 4 }}>
+                <LinearGradient
+                  colors={[Colors.gradientStart, Colors.gradientEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={[styles.loginBtn, isPending && { opacity: 0.65 }]}
+                >
+                  {isPending ? (
+                    <ActivityIndicator color="#fff" />
+                  ) : (
+                    <>
+                      <Text style={styles.loginBtnText}>Daxil ol</Text>
+                      <Ionicons name="arrow-forward" size={20} color="#fff" />
+                    </>
                   )}
-                />
-                <Controller
-                  control={control}
-                  name="password"
-                  render={({ field: { onChange, value } }) => (
-                    <Input
-                      label="Şifrə"
-                      placeholder="••••••••"
-                      onChangeText={onChange}
-                      value={value}
-                      secureTextEntry
-                      error={errors.password?.message}
-                    />
-                  )}
-                />
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>VƏ YA</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* SSO */}
+              <View style={styles.ssoRow}>
                 <TouchableOpacity
-                  onPress={handleSubmit(onSubmit)}
-                  disabled={isPending}
+                  style={styles.ssoBtn}
+                  onPress={() => Alert.alert('Tezliklə', 'Google ilə giriş tezliklə əlavə ediləcək')}
                   activeOpacity={0.85}
                 >
-                  <LinearGradient
-                    colors={[Colors.gradientStart, Colors.gradientEnd]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.submitBtn, isPending && { opacity: 0.65 }]}
-                  >
-                    {isPending ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <Text style={styles.submitBtnText}>Daxil ol</Text>
-                    )}
-                  </LinearGradient>
+                  <Text style={styles.googleG}>G</Text>
+                  <Text style={styles.ssoBtnText}>Google</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.ssoBtn, styles.ssoBtnDark]}
+                  onPress={() => Alert.alert('Tezliklə', 'Apple ilə giriş tezliklə əlavə ediləcək')}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="logo-apple" size={20} color="#fff" />
+                  <Text style={[styles.ssoBtnText, { color: '#fff' }]}>Apple</Text>
                 </TouchableOpacity>
               </View>
-            )}
-
-            {/* Divider */}
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>VƏ YA</Text>
-              <View style={styles.dividerLine} />
             </View>
 
-            {/* SSO */}
-            <View style={styles.ssoRow}>
-              <TouchableOpacity
-                style={styles.ssoBtn}
-                onPress={() => Alert.alert('Tezliklə', 'Google ilə giriş tezliklə əlavə ediləcək')}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.googleG}>G</Text>
-                <Text style={styles.ssoBtnText}>Google</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.ssoBtn, styles.ssoBtnDark]}
-                onPress={() => Alert.alert('Tezliklə', 'Apple ilə giriş tezliklə əlavə ediləcək')}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="logo-apple" size={20} color="#fff" />
-                <Text style={[styles.ssoBtnText, { color: '#fff' }]}>Apple</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {/* Register link */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Hesabın yoxdur?{' '}
-              <Text
-                style={styles.footerLink}
-                onPress={() => navigation.navigate(Routes.Register)}
-              >
-                Qeydiyyat
+            {/* Register link */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Hesabın yoxdur?{' '}
+                <Text
+                  style={styles.footerLink}
+                  onPress={() => navigation.navigate(Routes.Register)}
+                >
+                  Qeydiyyat
+                </Text>
               </Text>
-            </Text>
-          </View>
-
-          {/* Bottom accent line */}
-          <LinearGradient
-            colors={[Colors.gradientStart, Colors.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.bottomAccent}
-          />
+            </View>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -217,8 +217,9 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 24,
     paddingBottom: 32,
   },
 
@@ -241,21 +242,58 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryFixed + '22',
   },
 
-  logoWrap: { marginBottom: 28 },
+  logoWrap: {
+    width: 88,
+    height: 88,
+    marginBottom: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoGlow: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    top: -31,
+    left: -31,
+    backgroundColor: Colors.primaryFixed + '22',
+  },
   logoBox: {
     width: 88,
     height: 88,
-    borderRadius: 22,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.32,
+    shadowRadius: 22,
     elevation: 10,
   },
+  logoGloss: {
+    position: 'absolute',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    top: -22,
+    left: -14,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  logoBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2.5,
+    borderColor: Colors.background,
+  },
 
-  headline: { alignItems: 'center', marginBottom: 36 },
+  headline: { alignItems: 'center', marginBottom: 18 },
   title: {
     fontSize: 26,
     fontWeight: '800',
@@ -271,59 +309,44 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  buttons: { width: '100%', gap: 12 },
-
-  phoneBtn: {
+  features: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 28,
+  },
+  featurePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 18,
-    paddingHorizontal: 24,
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: Colors.primaryLight,
     borderRadius: 999,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 6,
   },
-  phoneBtnLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  phoneBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  featureText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
 
-  emailBtn: {
+  form: { width: '100%' },
+  loginBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'center',
+    gap: 8,
     paddingVertical: 18,
-    paddingHorizontal: 24,
-    backgroundColor: Colors.white,
     borderRadius: 999,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-  },
-  emailBtnText: { fontSize: 16, fontWeight: '600', color: Colors.textPrimary },
-
-  emailForm: { gap: 4, paddingTop: 4 },
-  submitBtn: {
-    paddingVertical: 17,
-    borderRadius: 999,
-    alignItems: 'center',
-    marginTop: 8,
     shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  submitBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  loginBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
 
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginVertical: 4,
+    marginVertical: 18,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: Colors.surfaceHigh },
   dividerText: {
@@ -340,20 +363,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 18,
+    paddingVertical: 16,
     backgroundColor: Colors.white,
     borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
   },
-  ssoBtnDark: { backgroundColor: Colors.inverse },
+  ssoBtnDark: { backgroundColor: Colors.inverse, borderColor: Colors.inverse },
   googleG: { fontSize: 16, fontWeight: '800', color: '#4285F4' },
   ssoBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
 
-  footer: { marginTop: 32 },
+  footer: { marginTop: 28 },
   footerText: {
     textAlign: 'center',
     color: Colors.textSecondary,
@@ -361,12 +386,4 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   footerLink: { color: Colors.primary, fontWeight: '700' },
-
-  bottomAccent: {
-    width: '120%',
-    height: 6,
-    borderRadius: 3,
-    opacity: 0.3,
-    marginTop: 24,
-  },
 });

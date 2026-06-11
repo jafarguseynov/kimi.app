@@ -9,6 +9,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { getSubcategories, SubItem } from '../../constants/educationTaxonomy';
 import { getStructureSummary } from '../../constants/dimOfficialStructure';
+import { useExamCategories } from '../../hooks/useExamCategories';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.CategorySubcategories>;
 
@@ -16,7 +17,17 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function CategorySubcategoriesScreen({ navigation, route }: Props) {
   const { categoryKey, categoryTitle } = route.params;
-  const items = getSubcategories(categoryKey);
+  const remote = useExamCategories();
+  const remoteSubs = remote?.find((c) => c.key === categoryKey)?.children;
+  const items: SubItem[] = remoteSubs && remoteSubs.length > 0
+    ? remoteSubs.map((s) => ({
+        key: s.key,
+        title: s.title,
+        desc: s.description ?? undefined,
+        emoji: s.emoji ?? undefined,
+        subjects: s.subjects ?? undefined,
+      }))
+    : getSubcategories(categoryKey);
 
   const openItem = (item: SubItem) => {
     if (item.subjects && item.subjects.length > 0) {

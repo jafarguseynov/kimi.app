@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -92,13 +92,22 @@ const STUDENT_PLANS: Plan[] = [
 export default function PlansScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const user = useUserStore((s) => s.user);
-  const initialTab: RoleTab = user?.role === 'teacher' ? 'teacher' : 'student';
-  const [tab, setTab] = useState<RoleTab>(initialTab);
+  // Plans are locked to the current user's role — teachers only see teacher
+  // plans, students/parents only see student plans (no cross-role browsing).
+  const tab: RoleTab = user?.role === 'teacher' ? 'teacher' : 'student';
 
   const plans = tab === 'teacher' ? TEACHER_PLANS : STUDENT_PLANS;
 
   const selectPlan = (plan: Plan) => {
-    navigation.navigate(Routes.PaymentMethod, { planId: plan.id, planName: plan.title, amount: plan.price });
+    // Plan id formatı "t-6" / "s-12" → ay sayını verir
+    const months = Number(plan.id.split('-')[1]) || 1;
+    navigation.navigate(Routes.PaymentMethod, {
+      planId: plan.id,
+      planName: plan.title,
+      amount: plan.price,
+      months,
+      isTeacherSub: tab === 'teacher',
+    });
   };
 
   return (
@@ -129,24 +138,6 @@ export default function PlansScreen() {
           >
             <Ionicons name="git-compare-outline" size={14} color={Colors.primary} />
             <Text style={styles.compareLinkText}>Planları müqayisə et</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Tab segmented */}
-        <View style={styles.tabBar}>
-          <TouchableOpacity
-            style={[styles.tabItem, tab === 'teacher' && styles.tabItemActive]}
-            onPress={() => setTab('teacher')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.tabText, tab === 'teacher' && styles.tabTextActive]}>Müəllim</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabItem, tab === 'student' && styles.tabItemActive]}
-            onPress={() => setTab('student')}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.tabText, tab === 'student' && styles.tabTextActive]}>Şagird</Text>
           </TouchableOpacity>
         </View>
 
@@ -203,31 +194,6 @@ export default function PlansScreen() {
             </View>
           ))}
         </View>
-
-        {/* Cross-role preview */}
-        {tab === 'teacher' && (
-          <View style={styles.crossCard}>
-            <View style={{ flex: 1, gap: 8 }}>
-              <View style={styles.crossChip}>
-                <Text style={styles.crossChipText}>Şagirdlər üçün</Text>
-              </View>
-              <Text style={styles.crossTitle}>Aylıq Premium Giriş</Text>
-              <Text style={styles.crossSub}>
-                Bütün imtahan materiallarına giriş, limitsiz testlər və Kimi Robotun fərdi dərsləri ilə fərq yaradın.
-              </Text>
-              <View style={styles.crossPriceRow}>
-                <Text style={styles.crossPriceNum}>5 - 9</Text>
-                <Text style={styles.crossPriceUnit}>AZN / ay</Text>
-              </View>
-              <TouchableOpacity activeOpacity={0.9} onPress={() => setTab('student')} style={{ marginTop: 4 }}>
-                <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.crossBtn}>
-                  <Text style={styles.crossBtnText}>Şagird planlarına bax</Text>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
 
         <View style={{ height: 16 }} />
       </ScrollView>

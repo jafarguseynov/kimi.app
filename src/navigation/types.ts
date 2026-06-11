@@ -53,6 +53,7 @@ export type ExamStackParamList = {
   [Routes.ExamHistory]: undefined;
   [Routes.ExamFilter]: undefined;
   [Routes.ExamSettings]: { examId?: string; title?: string } | undefined;
+  [Routes.ExamCollections]: undefined;
 };
 
 export type MarketplaceStackParamList = {
@@ -144,6 +145,7 @@ export type HomeStackParamList = {
   [Routes.PaymentFailed]: undefined;
   [Routes.Subscription]: undefined;
   [Routes.Plans]: undefined;
+  [Routes.TeacherProfileSetup]: undefined;
   [Routes.PlanCompare]: undefined;
   [Routes.PremiumBenefits]: undefined;
   [Routes.Subscription]: undefined;
@@ -154,6 +156,7 @@ export type HomeStackParamList = {
   [Routes.LessonRequestDetail]: { requestId: string };
   [Routes.MyRequests]: undefined;
   [Routes.AIRecommendations]: undefined;
+  [Routes.NotificationPriming]: undefined;
   [Routes.Search]: undefined;
   [Routes.TeacherBadges]: undefined;
   [Routes.TeacherLevel]: undefined;

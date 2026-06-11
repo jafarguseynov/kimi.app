@@ -38,6 +38,7 @@ import CertificateListScreen from '../screens/exam/CertificateListScreen';
 import ExamHistoryScreen from '../screens/exam/ExamHistoryScreen';
 import ExamFilterScreen from '../screens/exam/ExamFilterScreen';
 import ExamSettingsScreen from '../screens/exam/ExamSettingsScreen';
+import ExamCollectionsScreen from '../screens/exam/ExamCollectionsScreen';
 
 const Stack = createNativeStackNavigator<ExamStackParamList>();
 
@@ -45,6 +46,7 @@ export default function ExamNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name={Routes.ExamList} component={ExamListScreen} />
+      <Stack.Screen name={Routes.ExamCollections} component={ExamCollectionsScreen} />
       <Stack.Screen name={Routes.ExamBrowse} component={ExamBrowseScreen} />
       <Stack.Screen name={Routes.ExamCategories} component={ExamCategoriesScreen} />
       <Stack.Screen name={Routes.CategorySubcategories} component={CategorySubcategoriesScreen} />

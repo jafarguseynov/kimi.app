@@ -6,19 +6,47 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Alert } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { subscribeTeacher } from '../../api/subscription.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function CardPaymentScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const route = useRoute();
+  const params = (route.params ?? {}) as { amount?: number; months?: number; isTeacherSub?: boolean; planName?: string };
+  const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
+
+  const amountLabel = params.amount != null ? `${Number(params.amount).toFixed(2)} ` : '45.00 ';
+
+  const { mutate: activateSub, isPending: activating } = useMutation({
+    mutationFn: () => subscribeTeacher(params.months ?? 1),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['subscriptionStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['teacherAnalytics'] });
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+      navigation.navigate(Routes.PaymentSuccess, params);
+    },
+    onError: (err: any) => {
+      Alert.alert('Xəta', err?.response?.data?.message ?? 'Abunəlik aktivləşdirilə bilmədi. Yenidən cəhd edin.');
+    },
+  });
+
+  const onPay = () => {
+    if (activating) return;
+    // Müəllim abunəlik paketidirsə real olaraq aktivləşdir; əks halda (şagird) mock axın.
+    if (params.isTeacherSub) activateSub();
+    else navigation.navigate(Routes.PaymentSuccess, params);
+  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -119,7 +147,7 @@ export default function CardPaymentScreen() {
             <View style={styles.amountRow}>
               <View>
                 <Text style={styles.amountLabel}>Ödəniləcək məbləğ</Text>
-                <Text style={styles.amountValue}>45.00 <Text style={styles.amountCurrency}>AZN</Text></Text>
+                <Text style={styles.amountValue}>{amountLabel}<Text style={styles.amountCurrency}>AZN</Text></Text>
               </View>
               <View style={styles.sslBadge}>
                 <Ionicons name="lock-closed" size={14} color={Colors.primary} />
@@ -128,10 +156,10 @@ export default function CardPaymentScreen() {
             </View>
           </View>
 
-          <TouchableOpacity onPress={() => navigation.navigate(Routes.PaymentSuccess)} activeOpacity={0.9}>
+          <TouchableOpacity onPress={onPay} activeOpacity={0.9} disabled={activating}>
             <LinearGradient colors={GRADIENT} style={styles.payBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.payBtnText}>Ödənişi tamamla</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
+              <Text style={styles.payBtnText}>{activating ? 'Aktivləşdirilir...' : 'Ödənişi tamamla'}</Text>
+              <Ionicons name={activating ? 'hourglass' : 'arrow-forward'} size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
 

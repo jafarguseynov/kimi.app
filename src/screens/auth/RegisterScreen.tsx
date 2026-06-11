@@ -32,23 +32,18 @@ const ROLE_OPTIONS: { id: Exclude<UserRole, 'admin'>; label: string; icon: keyof
 ];
 
 const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif', 'Abituriyent'];
-const GOALS: { id: string; label: string }[] = [
-  { id: 'university', label: 'Universitet hazırlığı' },
-  { id: 'school', label: 'Məktəb dərsləri' },
-  { id: 'olympiad', label: 'Olimpiada hazırlığı' },
-  { id: 'general', label: 'Ümumi bilik' },
-];
 
 export default function RegisterScreen({ navigation }: Props) {
   const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    defaultValues: { phone: '+994' },
   });
   const { mutate, isPending } = useRegister();
   const [role, setRole] = React.useState<Exclude<UserRole, 'admin'>>('student');
   const [grade, setGrade] = React.useState('');
   const [school, setSchool] = React.useState('');
-  const [goal, setGoal] = React.useState('');
   const [childName, setChildName] = React.useState('');
+  const [referralCode, setReferralCode] = React.useState('');
 
   const pickGrade = () =>
     Alert.alert('Sinif seçin', '', [
@@ -56,18 +51,7 @@ export default function RegisterScreen({ navigation }: Props) {
       { text: 'Ləğv et', style: 'cancel' as const, onPress: () => {} },
     ]);
 
-  const pickGoal = () =>
-    Alert.alert('Məqsəd seçin', '', [
-      ...GOALS.map((g) => ({ text: g.label, onPress: () => setGoal(g.id) })),
-      { text: 'Ləğv et', style: 'cancel' as const, onPress: () => {} },
-    ]);
-
   const onSubmit = (data: RegisterFormData) => {
-    if (role === 'student') {
-      if (!grade) return Alert.alert('Sinif', 'Zəhmət olmasa sinif seçin');
-      if (!school.trim()) return Alert.alert('Məktəb', 'Məktəb adını daxil edin');
-      if (!goal) return Alert.alert('Məqsəd', 'Məqsəd seçin');
-    }
     if (role === 'parent') {
       if (!childName.trim()) return Alert.alert('Övlad', 'Övladınızın adını daxil edin');
       if (!grade) return Alert.alert('Sinif', 'Övladınızın sinfini seçin');
@@ -77,10 +61,11 @@ export default function RegisterScreen({ navigation }: Props) {
       {
         ...data,
         role,
-        school: school || undefined,
-        grade: grade || undefined,
-        goal: role === 'student' ? goal || undefined : undefined,
+        // Şagird üçün sinif/məktəb/məqsəd qeydiyyatdan sonra profildə doldurulur
+        school: role === 'parent' ? school || undefined : undefined,
+        grade: role === 'parent' ? grade || undefined : undefined,
         childName: role === 'parent' ? childName || undefined : undefined,
+        referralCode: referralCode.trim() || undefined,
       },
       {
         onError: (err: any) => {
@@ -89,8 +74,6 @@ export default function RegisterScreen({ navigation }: Props) {
       },
     );
   };
-
-  const goalLabel = GOALS.find((g) => g.id === goal)?.label;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -217,38 +200,14 @@ export default function RegisterScreen({ navigation }: Props) {
               )}
             />
 
-            {/* Role-specific extra fields */}
+            {/* Şagird: sinif/məktəb qeydiyyatdan sonra profil bölməsində seçilir */}
             {role === 'student' && (
-              <>
-                <View style={styles.labelWrap}>
-                  <Text style={styles.fieldLabel}>SİNİF</Text>
-                </View>
-                <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={pickGrade}>
-                  <Text style={[styles.selectText, !grade && styles.selectPlaceholder]}>
-                    {grade || 'Sinif seçin'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color={Colors.primary} />
-                </TouchableOpacity>
-
-                <View style={styles.labelWrap}>
-                  <Text style={styles.fieldLabel}>MƏKTƏB</Text>
-                </View>
-                <Input
-                  placeholder="Məs: 132 saylı tam orta məktəb"
-                  value={school}
-                  onChangeText={setSchool}
-                />
-
-                <View style={styles.labelWrap}>
-                  <Text style={styles.fieldLabel}>MƏQSƏD</Text>
-                </View>
-                <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={pickGoal}>
-                  <Text style={[styles.selectText, !goal && styles.selectPlaceholder]}>
-                    {goalLabel || 'Məqsəd seçin'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={18} color={Colors.primary} />
-                </TouchableOpacity>
-              </>
+              <View style={styles.infoNote}>
+                <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
+                <Text style={styles.infoNoteText}>
+                  Sinif və məktəbini qeydiyyatdan sonra profil bölməsində seçəcəksən.
+                </Text>
+              </View>
             )}
 
             {role === 'parent' && (
@@ -273,7 +232,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 </TouchableOpacity>
 
                 <View style={styles.labelWrap}>
-                  <Text style={styles.fieldLabel}>ÖVLADIN MƏKTƏBİ (opsional)</Text>
+                  <Text style={styles.fieldLabel}>ÖVLADIN MƏKTƏBİ (istəyə bağlı)</Text>
                 </View>
                 <Input
                   placeholder="Məktəb adı"
@@ -282,6 +241,16 @@ export default function RegisterScreen({ navigation }: Props) {
                 />
               </>
             )}
+
+            <View style={styles.labelWrap}>
+              <Text style={styles.fieldLabel}>REFERAL KODU (istəyə bağlı)</Text>
+            </View>
+            <Input
+              placeholder="Məs: SF1A2B3C"
+              value={referralCode}
+              onChangeText={(t: string) => setReferralCode(t.toUpperCase())}
+              autoCapitalize="characters"
+            />
 
             {/* Submit */}
             <TouchableOpacity
@@ -397,6 +366,18 @@ const styles = StyleSheet.create({
   },
 
   form: { gap: 0 },
+
+  infoNote: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 14,
+  },
+  infoNoteText: { flex: 1, fontSize: 13, color: Colors.primary, fontWeight: '500', lineHeight: 18 },
 
   roleRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   roleChip: {

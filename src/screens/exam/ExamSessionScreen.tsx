@@ -15,8 +15,9 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useExamStore } from '../../store/exam.store';
-import { useSubmitExam } from '../../hooks/useExams';
+import { useSubmitExam, useSubmitCollectionTest } from '../../hooks/useExams';
 import { formatTime } from '../../utils/formatters';
+import { hapticLight, hapticMedium, hapticSelection } from '../../utils/haptics';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamSession> };
 
@@ -30,6 +31,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
     timeRemaining,
     durationSeconds,
     examId,
+    collectionId,
     submissionType,
     setAnswer,
     nextQuestion,
@@ -37,6 +39,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
     decrementTimer,
   } = useExamStore();
   const { mutate, isPending } = useSubmitExam();
+  const { mutate: mutateCollection, isPending: isPendingCollection } = useSubmitCollectionTest();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const currentQuestion = questions[currentIndex];
@@ -53,15 +56,19 @@ export default function ExamSessionScreen({ navigation }: Props) {
       return;
     }
     const timeSpent = Math.max(0, durationSeconds - timeRemaining);
-    mutate(
-      { examId, answers, timeSpent, type: submissionType ?? undefined },
-      {
-        onSuccess: () => navigation.replace(Routes.ExamResult),
-        onError: (err: any) => {
-          Alert.alert('Xəta', err?.response?.data?.message ?? 'Nəticə saxlanıla bilmədi. Yenidən cəhd edin.');
-        },
-      },
-    );
+    const onSuccess = () => navigation.replace(Routes.ExamResult);
+    const onError = (err: any) => {
+      Alert.alert('Xəta', err?.response?.data?.message ?? 'Nəticə saxlanıla bilmədi. Yenidən cəhd edin.');
+    };
+    if (collectionId) {
+      // İmtahan Bankı testi — bank endpoint-inə təqdim et
+      mutateCollection(
+        { id: collectionId, questionIds: questions.map((q) => q.id), answers, timeSpent },
+        { onSuccess, onError },
+      );
+    } else {
+      mutate({ examId, answers, timeSpent, type: submissionType ?? undefined }, { onSuccess, onError });
+    }
   };
 
   const handleClose = () => {
@@ -148,7 +155,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
               <TouchableOpacity
                 key={opt.id}
                 style={[styles.optionRow, isSelected && styles.optionRowSelected]}
-                onPress={() => setAnswer(currentQuestion.id, opt.id)}
+                onPress={() => { hapticSelection(); setAnswer(currentQuestion.id, opt.id); }}
                 activeOpacity={0.8}
               >
                 <View style={[styles.letterCircle, isSelected && styles.letterCircleSelected]}>
@@ -191,8 +198,8 @@ export default function ExamSessionScreen({ navigation }: Props) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => isLast ? submit() : nextQuestion()}
-          disabled={isPending}
+          onPress={() => { if (isLast) { hapticMedium(); submit(); } else { hapticLight(); nextQuestion(); } }}
+          disabled={isPending || isPendingCollection}
           activeOpacity={0.85}
         >
           <LinearGradient
@@ -202,7 +209,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.navBtnTextNext}>
-              {isPending ? 'Yüklənir...' : isLast ? 'Bitir' : 'Növbəti'}
+              {(isPending || isPendingCollection) ? 'Yüklənir...' : isLast ? 'Bitir' : 'Növbəti'}
             </Text>
             {!isLast && <Ionicons name="arrow-forward-outline" size={16} color="#fff" />}
           </LinearGradient>

@@ -45,6 +45,7 @@ import PaymentSuccessScreen from '../screens/payment/PaymentSuccessScreen';
 import PaymentFailedScreen from '../screens/payment/PaymentFailedScreen';
 import SubscriptionScreen from '../screens/payment/SubscriptionScreen';
 import PlansScreen from '../screens/payment/PlansScreen';
+import TeacherProfileSetupScreen from '../screens/profile/TeacherProfileSetupScreen';
 import PlanCompareScreen from '../screens/payment/PlanCompareScreen';
 import PremiumBenefitsScreen from '../screens/payment/PremiumBenefitsScreen';
 import SubscriptionRenewScreen from '../screens/payment/SubscriptionRenewScreen';
@@ -76,6 +77,7 @@ import MyFriendsScreen from '../screens/social/MyFriendsScreen';
 import TeacherProfilePremiumScreen from '../screens/profile/TeacherProfilePremiumScreen';
 import FriendsLeaderboardScreen from '../screens/social/FriendsLeaderboardScreen';
 import InviteFriendsScreen from '../screens/social/InviteFriendsScreen';
+import NotificationPrimingScreen from '../screens/onboarding/NotificationPrimingScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -125,6 +127,7 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.PaymentFailed} component={PaymentFailedScreen} />
       <Stack.Screen name={Routes.Subscription} component={SubscriptionScreen} />
       <Stack.Screen name={Routes.Plans} component={PlansScreen} />
+      <Stack.Screen name={Routes.TeacherProfileSetup} component={TeacherProfileSetupScreen} options={{ presentation: 'modal' }} />
       <Stack.Screen name={Routes.PlanCompare} component={PlanCompareScreen} />
       <Stack.Screen name={Routes.PremiumBenefits} component={PremiumBenefitsScreen} />
       <Stack.Screen name={Routes.SubscriptionRenew} component={SubscriptionRenewScreen} />
@@ -156,6 +159,7 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.TeacherProfilePremium} component={TeacherProfilePremiumScreen} />
       <Stack.Screen name={Routes.FriendsLeaderboard} component={FriendsLeaderboardScreen} />
       <Stack.Screen name={Routes.InviteFriends} component={InviteFriendsScreen} />
+      <Stack.Screen name={Routes.NotificationPriming} component={NotificationPrimingScreen} options={{ presentation: 'modal' }} />
     </Stack.Navigator>
   );
 }

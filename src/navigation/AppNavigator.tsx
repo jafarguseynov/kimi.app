@@ -4,6 +4,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppTabParamList } from './types';
 import { Routes } from '../constants/routes';
 import { Colors } from '../constants/colors';
+import { hapticLight } from '../utils/haptics';
 import HomeNavigator from './HomeNavigator';
 import AIMentorScreen from '../screens/ai/AIMentorScreen';
 import ProfileNavigator from './ProfileNavigator';
@@ -28,6 +29,7 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 export default function AppNavigator() {
   return (
     <Tab.Navigator
+      screenListeners={{ tabPress: () => hapticLight() }}
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: Colors.primary,
         tabBarInactiveTintColor: Colors.textMuted,
@@ -60,7 +62,19 @@ export default function AppNavigator() {
       />
       <Tab.Screen name={Routes.AIMentor} component={AIMentorScreen} options={{ tabBarLabel: 'AI' }} />
       <Tab.Screen name="Booking" component={BookingNavigator} options={{ tabBarLabel: 'Müəllimlər' }} />
-      <Tab.Screen name={Routes.Profile} component={ProfileNavigator} options={{ tabBarLabel: 'Profil' }} />
+      <Tab.Screen
+        name={Routes.Profile}
+        component={ProfileNavigator}
+        options={{ tabBarLabel: 'Profil' }}
+        listeners={({ navigation }) => ({
+          // Profil tabına basanda həmişə kökə (ProfileHome) qayıt — başqa ekranda
+          // (məs. kalkulyatorda) "yapışıb qalmasın".
+          tabPress: (e) => {
+            e.preventDefault();
+            (navigation as any).navigate(Routes.Profile, { screen: Routes.ProfileHome });
+          },
+        })}
+      />
       {/* Hidden tabs — still navigable from HomeScreen quick actions */}
       <Tab.Screen
         name="Learn"

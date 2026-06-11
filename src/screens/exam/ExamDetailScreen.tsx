@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,8 +62,18 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
   }, [isPending]);
 
   const onStart = () => {
+    if (!examId) {
+      Alert.alert('Xəta', 'İmtahan ID-si tapılmadı. Yenidən cəhd edin.');
+      return;
+    }
     mutate(examId, {
       onSuccess: () => navigation.navigate(Routes.ExamSession),
+      onError: (err: any) => {
+        const msg = err?.code === 'ECONNABORTED'
+          ? 'Server cavab vermədi (bağlantı vaxtı bitdi). Bir az sonra yenidən cəhd edin.'
+          : err?.response?.data?.message ?? err?.message ?? 'İmtahan başlana bilmədi. Yenidən cəhd edin.';
+        Alert.alert('İmtahan başlana bilmədi', msg);
+      },
     });
   };
 

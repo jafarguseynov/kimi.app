@@ -19,7 +19,7 @@ import { AuthStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { OTP_RESEND_SECONDS } from '../../constants/config';
-import { useVerifyOTP } from '../../hooks/useAuth';
+import { useVerifyOTP, useRequestOtp } from '../../hooks/useAuth';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.OTP>;
@@ -31,6 +31,16 @@ export default function OTPScreen({ navigation, route }: Props) {
   const [countdown, setCountdown] = useState(OTP_RESEND_SECONDS);
   const [otpValue, setOtpValue] = useState('');
   const { mutate, isPending } = useVerifyOTP();
+  const { mutate: resendOtp, isPending: isResending } = useRequestOtp();
+
+  const onResend = useCallback(() => {
+    resendOtp(phone, {
+      onSuccess: () => setCountdown(OTP_RESEND_SECONDS),
+      onError: (err: any) => {
+        Alert.alert('Xəta', err?.response?.data?.message || 'Kod yenidən göndərilə bilmədi');
+      },
+    });
+  }, [phone, resendOtp]);
 
   useEffect(() => {
     if (countdown === 0) return;
@@ -144,8 +154,10 @@ export default function OTPScreen({ navigation, route }: Props) {
           {countdown > 0 ? (
             <Text style={styles.timerText}>Kodu yenidən göndər ({mm}:{ss})</Text>
           ) : (
-            <TouchableOpacity onPress={() => setCountdown(OTP_RESEND_SECONDS)}>
-              <Text style={styles.resendText}>Kodu yenidən göndər</Text>
+            <TouchableOpacity onPress={onResend} disabled={isResending}>
+              <Text style={styles.resendText}>
+                {isResending ? 'Göndərilir...' : 'Kodu yenidən göndər'}
+              </Text>
             </TouchableOpacity>
           )}
         </View>

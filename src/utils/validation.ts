@@ -8,7 +8,7 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email('Email düzgün deyil'),
+  identifier: z.string().min(1, 'Email və ya telefon daxil edin'),
   password: z.string().min(1, 'Şifrə daxil edin'),
 });
 

@@ -16,6 +16,7 @@ import { Colors } from '../../constants/colors';
 import { useMutation } from '@tanstack/react-query';
 import { getMe, updateUser } from '../../api/user.api';
 import { useUserStore } from '../../store/user.store';
+import LocationSchoolPicker from '../../components/common/LocationSchoolPicker';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.EditProfile>;
@@ -91,6 +92,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const [price, setPrice] = useState(userAny?.hourlyRate?.toString() ?? '');
   const [lessonFormat, setLessonFormat] = useState<LessonFormat>('online');
   const [bio, setBio] = useState(userAny?.bio ?? '');
+  // teacher trust
+  const [headline, setHeadline] = useState(userAny?.headline ?? '');
+  const [experienceYears, setExperienceYears] = useState(userAny?.experienceYears?.toString() ?? '');
+  const [introVideoUrl, setIntroVideoUrl] = useState(userAny?.introVideoUrl ?? '');
+  const [offersFreeDemo, setOffersFreeDemo] = useState(!!userAny?.offersFreeDemo);
 
   // student
   const [city, setCity] = useState('Bakı');
@@ -117,6 +123,10 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       if (meAny.bio) setBio(meAny.bio);
       if (meAny.subjects?.length) setSelectedSubjects(meAny.subjects);
       if (meAny.hourlyRate) setPrice(meAny.hourlyRate.toString());
+      if (meAny.headline) setHeadline(meAny.headline);
+      if (meAny.experienceYears) setExperienceYears(meAny.experienceYears.toString());
+      if (meAny.introVideoUrl) setIntroVideoUrl(meAny.introVideoUrl);
+      if (typeof meAny.offersFreeDemo === 'boolean') setOffersFreeDemo(meAny.offersFreeDemo);
     }).catch(() => {});
   }, []);
 
@@ -127,6 +137,10 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         data.bio = bio;
         data.subjects = selectedSubjects;
         if (price) data.hourlyRate = parseFloat(price);
+        data.headline = headline;
+        data.experienceYears = experienceYears ? parseInt(experienceYears, 10) : 0;
+        data.introVideoUrl = introVideoUrl;
+        data.offersFreeDemo = offersFreeDemo;
       }
       return updateUser(data);
     },
@@ -200,6 +214,10 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               price={price} setPrice={setPrice}
               lessonFormat={lessonFormat} setLessonFormat={setLessonFormat}
               bio={bio} setBio={setBio}
+              headline={headline} setHeadline={setHeadline}
+              experienceYears={experienceYears} setExperienceYears={setExperienceYears}
+              introVideoUrl={introVideoUrl} setIntroVideoUrl={setIntroVideoUrl}
+              offersFreeDemo={offersFreeDemo} setOffersFreeDemo={setOffersFreeDemo}
             />
           ) : role === 'parent' ? (
             <ParentForm
@@ -250,6 +268,8 @@ function TeacherForm({
   firstName, setFirstName, lastName, setLastName,
   selectedSubjects, toggleSubject, price, setPrice,
   lessonFormat, setLessonFormat, bio, setBio,
+  headline, setHeadline, experienceYears, setExperienceYears,
+  introVideoUrl, setIntroVideoUrl, offersFreeDemo, setOffersFreeDemo,
 }: {
   firstName: string; setFirstName: (v: string) => void;
   lastName: string; setLastName: (v: string) => void;
@@ -257,6 +277,10 @@ function TeacherForm({
   price: string; setPrice: (v: string) => void;
   lessonFormat: LessonFormat; setLessonFormat: (v: LessonFormat) => void;
   bio: string; setBio: (v: string) => void;
+  headline: string; setHeadline: (v: string) => void;
+  experienceYears: string; setExperienceYears: (v: string) => void;
+  introVideoUrl: string; setIntroVideoUrl: (v: string) => void;
+  offersFreeDemo: boolean; setOffersFreeDemo: (v: boolean) => void;
 }) {
   return (
     <View style={styles.formSection}>
@@ -292,13 +316,21 @@ function TeacherForm({
 
       {/* Bento: experience + price + city */}
       <View style={styles.bentoGrid}>
-        <TouchableOpacity style={[styles.bentoCard, styles.bentoHalf]} activeOpacity={0.8}>
-          <Text style={styles.bentoLabel}>Təcrübə</Text>
+        <View style={[styles.bentoCard, styles.bentoHalf]}>
+          <Text style={styles.bentoLabel}>Təcrübə (il)</Text>
           <View style={styles.bentoRow}>
-            <Text style={styles.bentoValue}>5+ İl</Text>
-            <Ionicons name="chevron-down" size={18} color={Colors.primary} />
+            <TextInput
+              style={styles.bentoInput}
+              value={experienceYears}
+              onChangeText={setExperienceYears}
+              keyboardType="numeric"
+              placeholder="0"
+              placeholderTextColor={Colors.textMuted}
+              maxLength={2}
+            />
+            <Text style={styles.bentoUnit}>İl</Text>
           </View>
-        </TouchableOpacity>
+        </View>
         <View style={[styles.bentoCard, styles.bentoHalf]}>
           <Text style={styles.bentoLabel}>Dərs qiyməti</Text>
           <View style={styles.bentoRow}>
@@ -332,6 +364,17 @@ function TeacherForm({
         </View>
       </View>
 
+      {/* Headline */}
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabel}>Qısa təqdimat (şüar)</Text>
+        <TextInput
+          style={styles.input} value={headline} onChangeText={setHeadline}
+          placeholder="Məs: 10 ildir abituriyentləri ali məktəbə hazırlayıram"
+          placeholderTextColor={Colors.textMuted}
+          maxLength={90}
+        />
+      </View>
+
       {/* Bio */}
       <View style={styles.fieldBlock}>
         <Text style={styles.fieldLabel}>Haqqımda</Text>
@@ -340,6 +383,33 @@ function TeacherForm({
           multiline textAlignVertical="top" numberOfLines={4}
           placeholder="Özünüz haqqında qısa məlumat yazın..."
           placeholderTextColor={Colors.textMuted}
+        />
+      </View>
+
+      {/* Intro video */}
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabel}>Təqdimat videosu (YouTube linki)</Text>
+        <View style={styles.inputIconWrap}>
+          <Ionicons name="logo-youtube" size={18} color="#e11d48" style={styles.inputIcon} />
+          <TextInput
+            style={styles.inputCardWithIcon} value={introVideoUrl} onChangeText={setIntroVideoUrl}
+            placeholder="https://youtu.be/..."
+            placeholderTextColor={Colors.textMuted}
+            autoCapitalize="none" keyboardType="url"
+          />
+        </View>
+      </View>
+
+      {/* Free demo lesson */}
+      <View style={styles.demoRow}>
+        <View style={{ flex: 1, marginRight: 12 }}>
+          <Text style={styles.fieldLabel}>Pulsuz demo dərs</Text>
+          <Text style={styles.demoSub}>Yeni şagirdlərə 1 pulsuz tanışlıq dərsi təklif et — daha çox sorğu gətirir.</Text>
+        </View>
+        <Switch
+          value={offersFreeDemo} onValueChange={setOffersFreeDemo}
+          trackColor={{ false: Colors.surfaceHigh, true: Colors.primary }}
+          thumbColor="#fff" ios_backgroundColor={Colors.surfaceHigh}
         />
       </View>
 
@@ -408,16 +478,10 @@ function StudentForm({
           </TouchableOpacity>
         </View>
 
-        {/* School */}
+        {/* School — ərazi → məktəb kaskad seçimi */}
         <View style={styles.fieldBlockCard}>
           <Text style={styles.fieldLabelSm}>Məktəb</Text>
-          <View style={styles.inputIconWrap}>
-            <Ionicons name="school-outline" size={18} color={Colors.primary + '99'} style={styles.inputIcon} />
-            <TextInput
-              style={styles.inputCardWithIcon} value={school} onChangeText={setSchool}
-              placeholder="Məktəb nömrəsi və ya adı" placeholderTextColor={Colors.textMuted}
-            />
-          </View>
+          <LocationSchoolPicker value={school} onSelect={({ path }) => setSchool(path)} />
         </View>
 
         {/* Grade */}
@@ -752,6 +816,14 @@ const styles = StyleSheet.create({
     minHeight: 110,
     borderWidth: 1, borderColor: Colors.borderLight,
   },
+
+  // Free demo
+  demoRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  demoSub: { fontSize: 11, color: Colors.textMuted, marginTop: 4, lineHeight: 16 },
 
   // Availability
   availHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },

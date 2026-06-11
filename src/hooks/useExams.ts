@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getExams, getExamsForUser, startExam, submitExam, generateExam, ExamFilters } from '../api/exam.api';
+import { getExamCollections, startCollectionTest, submitCollectionTest } from '../api/examCollection.api';
 import { useExamStore } from '../store/exam.store';
 
 export const useExamList = (filters?: ExamFilters) =>
@@ -47,6 +48,37 @@ export const useSubmitExam = () => {
       setResult(data);
       qc.invalidateQueries({ queryKey: ['examResults'] });
       qc.invalidateQueries({ queryKey: ['certificates'] });
+    },
+  });
+};
+
+// ─── İmtahan Bankı (kolleksiya) ──────────────────────────────────────────────
+
+export const useExamCollections = (enabled = true) =>
+  useQuery({ queryKey: ['exam-collections'], queryFn: getExamCollections, enabled, retry: false });
+
+export const useStartCollectionTest = () => {
+  const { setSession, setCollectionId } = useExamStore();
+
+  return useMutation({
+    mutationFn: (id: string) => startCollectionTest(id),
+    onSuccess: (data, id) => {
+      setSession(data.sessionId, data.exam.id, data.questions, data.exam.duration * 60);
+      setCollectionId(id);
+    },
+  });
+};
+
+export const useSubmitCollectionTest = () => {
+  const { setResult } = useExamStore();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, questionIds, answers, timeSpent }: { id: string; questionIds: string[]; answers: Record<string, string>; timeSpent: number }) =>
+      submitCollectionTest(id, questionIds, answers, timeSpent),
+    onSuccess: (data) => {
+      setResult(data);
+      qc.invalidateQueries({ queryKey: ['exam-collections'] });
     },
   });
 };

@@ -40,6 +40,7 @@ interface Teacher {
   city?: string;
   gender?: 'male' | 'female';
   age?: number;
+  isFeatured?: boolean;
 }
 
 const CITY_SUGGESTIONS = [
@@ -186,6 +187,8 @@ export default function TeacherListScreen() {
     else if (sortBy === 'priceAsc') list.sort((a, b) => (a.hourlyRate ?? Number.POSITIVE_INFINITY) - (b.hourlyRate ?? Number.POSITIVE_INFINITY));
     else if (sortBy === 'priceDesc') list.sort((a, b) => (b.hourlyRate ?? -1) - (a.hourlyRate ?? -1));
     else if (sortBy === 'reviews') list.sort((a, b) => (b.reviewCount ?? 0) - (a.reviewCount ?? 0));
+    // İrəli çəkilmiş (boost) profillər həmişə öndə
+    list.sort((a, b) => Number(b.isFeatured ?? false) - Number(a.isFeatured ?? false));
     return list;
   }, [rawTeachers, activeFilter, favoriteIds, formatFilter, minRating, cityFilter, genderFilter, ageRange, sortBy]);
 
@@ -252,6 +255,12 @@ export default function TeacherListScreen() {
           {showInPerson && (
             <View style={[styles.statusBadge, styles.statusInPerson]}>
               <Text style={styles.statusBadgeText}>ƏYANİ</Text>
+            </View>
+          )}
+          {item.isFeatured && (
+            <View style={styles.featuredBadge}>
+              <Ionicons name="rocket" size={10} color="#fff" />
+              <Text style={styles.featuredBadgeText}>İRƏLİ</Text>
             </View>
           )}
         </View>
@@ -933,6 +942,13 @@ const styles = StyleSheet.create({
   statusInPerson: { backgroundColor: 'rgba(16,185,129,0.92)' },
   statusBoth: { backgroundColor: 'rgba(124,58,237,0.92)' },
   statusBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
+  featuredBadge: {
+    position: 'absolute', top: 8, left: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6,
+    backgroundColor: 'rgba(245,158,11,0.95)',
+  },
+  featuredBadgeText: { fontSize: 8, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
   newBadge: {
     position: 'absolute', bottom: 8, left: 8,
     flexDirection: 'row', alignItems: 'center', gap: 4,

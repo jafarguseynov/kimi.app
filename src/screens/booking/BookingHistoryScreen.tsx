@@ -16,9 +16,10 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
-import { useQuery } from '@tanstack/react-query';
-import { getStudentBookings, getTeacherBookings, Booking } from '../../api/booking.api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getStudentBookings, getTeacherBookings, confirmBooking, cancelBooking, Booking } from '../../api/booking.api';
 import { getOrCreateChat } from '../../api/chat.api';
+import { getSubscriptionStatus } from '../../api/subscription.api';
 import { useUserStore } from '../../store/user.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -63,9 +64,48 @@ export default function BookingHistoryScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const isTeacher = user?.role === 'teacher';
 
+  const queryClient = useQueryClient();
+
   const { data: bookings = [], isLoading, refetch } = useQuery({
     queryKey: ['bookings', isTeacher ? 'teacher' : 'student'],
     queryFn: isTeacher ? getTeacherBookings : getStudentBookings,
+  });
+
+  const { data: subStatus } = useQuery({
+    queryKey: ['subscriptionStatus'],
+    queryFn: getSubscriptionStatus,
+    enabled: isTeacher,
+  });
+  const subscribed = subStatus?.active ?? false;
+
+  const goToPlans = () => {
+    (navigation.getParent() as any)?.navigate(Routes.Home, { screen: Routes.Plans, initial: false });
+  };
+
+  const { mutate: doConfirm, isPending: confirming } = useMutation({
+    mutationFn: confirmBooking,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings', 'teacher'] }),
+    onError: (err: any) => {
+      const msg = err?.response?.data?.message;
+      if (msg === 'SUBSCRIPTION_REQUIRED') {
+        Alert.alert(
+          'Abunəlik tələb olunur',
+          'Şagird sorğularını qəbul etmək üçün müəllim abunəliyi aktiv olmalıdır.',
+          [
+            { text: 'İmtina', style: 'cancel' },
+            { text: 'Planlara bax', onPress: goToPlans },
+          ],
+        );
+      } else {
+        Alert.alert('Xəta', msg ?? 'Sorğu qəbul edilə bilmədi.');
+      }
+    },
+  });
+
+  const { mutate: doCancel, isPending: cancelling } = useMutation({
+    mutationFn: cancelBooking,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings', 'teacher'] }),
+    onError: (err: any) => Alert.alert('Xəta', err?.response?.data?.message ?? 'Sorğu ləğv edilə bilmədi.'),
   });
 
   const onRefresh = async () => {
@@ -109,6 +149,18 @@ export default function BookingHistoryScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {isTeacher && !subscribed && (
+          <TouchableOpacity style={styles.lockBanner} activeOpacity={0.9} onPress={goToPlans}>
+            <View style={styles.lockIconBox}>
+              <Ionicons name="lock-closed" size={20} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.lockTitle}>Sorğulara cavab vermək üçün abunəlik lazımdır</Text>
+              <Text style={styles.lockSub}>Şagird müraciətlərini qəbul et və gəlir əldə et →</Text>
+            </View>
+          </TouchableOpacity>
+        )}
 
         {isLoading ? (
           <View style={styles.center}>
@@ -163,6 +215,29 @@ export default function BookingHistoryScreen() {
                       <Text style={styles.infoLabel}>Müddət</Text>
                       <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.duration} dəq</Text>
                     </View>
+                  </View>
+                )}
+
+                {isTeacher && status === 'pending' && (
+                  <View style={styles.actionRow}>
+                    <TouchableOpacity
+                      style={[styles.rejectBtn, (confirming || cancelling) && styles.btnDisabled]}
+                      activeOpacity={0.85}
+                      disabled={confirming || cancelling}
+                      onPress={() => doCancel(item.id)}
+                    >
+                      <Ionicons name="close" size={18} color={Colors.textSecondary} />
+                      <Text style={styles.rejectBtnText}>İmtina</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.acceptBtn, (confirming || cancelling) && styles.btnDisabled]}
+                      activeOpacity={0.85}
+                      disabled={confirming || cancelling}
+                      onPress={() => doConfirm(item.id)}
+                    >
+                      <Ionicons name={subscribed ? 'checkmark' : 'lock-closed'} size={18} color="#fff" />
+                      <Text style={styles.acceptBtnText}>{confirming ? 'Qəbul edilir...' : 'Qəbul et'}</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
 
@@ -295,6 +370,32 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 3,
   },
   joinBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+
+  lockBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fffbeb', borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: '#fde68a',
+  },
+  lockIconBox: {
+    width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#d97706',
+  },
+  lockTitle: { fontSize: 13, fontWeight: '800', color: '#92400e' },
+  lockSub: { fontSize: 11, color: '#b45309', marginTop: 2 },
+
+  actionRow: { flexDirection: 'row', gap: 10 },
+  rejectBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: Colors.surfaceLow, borderRadius: 999, paddingVertical: 12,
+  },
+  rejectBtnText: { fontSize: 14, fontWeight: '700', color: Colors.textSecondary },
+  acceptBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: Colors.primary, borderRadius: 999, paddingVertical: 12,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 16, elevation: 3,
+  },
+  acceptBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  btnDisabled: { opacity: 0.6 },
 
   ratingRow: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

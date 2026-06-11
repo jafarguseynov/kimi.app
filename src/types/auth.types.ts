@@ -21,10 +21,11 @@ export interface RegisterPayload {
   grade?: string;
   goal?: string;
   childName?: string;
+  referralCode?: string;
 }
 
 export interface LoginPayload {
-  email: string;
+  identifier: string; // email və ya telefon nömrəsi
   password: string;
 }
 

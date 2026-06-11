@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -11,6 +11,8 @@ import { useExamStore } from '../../store/exam.store';
 import { useUserStore } from '../../store/user.store';
 import { getExamLeaderboard } from '../../api/leaderboard.api';
 import { getExamResult } from '../../api/certificate.api';
+import Confetti from '../../components/effects/Confetti';
+import { playSuccess, playSoft } from '../../utils/sound';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -30,11 +32,27 @@ export default function ExamResultScreen({ navigation, route }: Props) {
   const fromHistory = !!paramExamId && !result;
   const [rank, setRank] = useState<number | null>(null);
   const [totalParticipants, setTotalParticipants] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const celebratedRef = useRef(false);
   const [fallback, setFallback] = useState<{ score: number; total: number; percentage: number; examTitle: string; timeSpent: number; subject?: string; completedAt?: string } | null>(null);
 
   useEffect(() => {
     if (!fromHistory) return () => { resetExam(); };
   }, [fromHistory]);
+
+  // İmtahan sonu təntənəsi — yalnız təzə təqdimdən sonra (köhnə nəticəyə baxışda yox),
+  // bir dəfə: yaxşı nəticədə aşağıdan konfeti + səs + titrəyiş, zəif nəticədə yumşaq səs.
+  useEffect(() => {
+    if (fromHistory || celebratedRef.current || !result) return;
+    celebratedRef.current = true;
+    const pct = result.percentage ?? 0;
+    if (pct >= 60) {
+      setShowConfetti(true);
+      playSuccess();
+    } else {
+      playSoft();
+    }
+  }, [result, fromHistory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,6 +147,7 @@ export default function ExamResultScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <Confetti active={showConfetti} origin="bottom" onDone={() => setShowConfetti(false)} />
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.headerBtn}

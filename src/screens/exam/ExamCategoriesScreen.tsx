@@ -7,6 +7,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useExamCategories } from '../../hooks/useExamCategories';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamCategories>;
 
@@ -37,6 +38,17 @@ const CATEGORIES: Category[] = [
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ExamCategoriesScreen({ navigation }: Props) {
+  const remote = useExamCategories();
+  const categories: Category[] = remote
+    ? remote.map((c) => ({
+        key: c.key,
+        title: c.title,
+        desc: c.description ?? '',
+        emoji: c.emoji ?? '📂',
+        bg: c.bg ?? '#EFF6FF',
+      }))
+    : CATEGORIES;
+
   const openCategory = (cat: Category) => {
     navigation.navigate(Routes.CategorySubcategories, { categoryKey: cat.key, categoryTitle: cat.title });
   };
@@ -72,7 +84,7 @@ export default function ExamCategoriesScreen({ navigation }: Props) {
 
         {/* Bento grid */}
         <View style={styles.grid}>
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <View key={c.key} style={styles.card}>
               <View style={[styles.iconBox, { backgroundColor: c.bg }]}>
                 <Text style={{ fontSize: 22 }}>{c.emoji}</Text>

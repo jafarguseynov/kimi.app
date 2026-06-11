@@ -21,6 +21,9 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useUpdateUser } from '../../hooks/useUser';
 import { useUserStore } from '../../store/user.store';
+import { useQuery } from '@tanstack/react-query';
+import { getSpecializations } from '../../api/specialization.api';
+import AreaPicker from '../../components/common/AreaPicker';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.ProfileSetup> };
 
@@ -70,10 +73,19 @@ export default function ProfileSetupScreen({ navigation }: Props) {
   const [experience, setExperience] = useState('');
   const [showSubjectPicker, setShowSubjectPicker] = useState(false);
 
+  // Admin-idarəli ixtisaslar (boşdursa statik siyahıya keç)
+  const { data: specs = [] } = useQuery({
+    queryKey: ['specializations'],
+    queryFn: getSpecializations,
+    enabled: role === 'teacher',
+  });
+  const subjectOptions = specs.length ? specs.map((s) => s.name) : SUBJECTS;
+
   // Teacher step 2
   const [price, setPrice] = useState('');
   const [format, setFormat] = useState<FormatType>('online');
   const [city, setCity] = useState('Bakı');
+  const [area, setArea] = useState<{ locationId: string; areaName: string } | null>(null);
   const [bio, setBio] = useState('');
 
   // Parent
@@ -113,7 +125,29 @@ export default function ProfileSetupScreen({ navigation }: Props) {
       Alert.alert('Xəta', 'Ad ən azı 2 hərf olmalıdır');
       return;
     }
+    if (subjects.length === 0) {
+      Alert.alert('Fənlər', 'Ən azı bir ixtisas/fənn seçin');
+      return;
+    }
     setStep(2);
+  };
+
+  const onTeacherFinish = () => {
+    if (!area) {
+      Alert.alert('Ərazi', 'Zəhmət olmasa fəaliyyət ərazinizi seçin');
+      return;
+    }
+    mutate(
+      {
+        name: name.trim(),
+        subjects,
+        hourlyRate: Number(price) || 0,
+        bio: bio.trim() || undefined,
+        locationId: area.locationId,
+        areaName: area.areaName,
+      } as any,
+      { onSuccess: () => navigation.navigate(Routes.AIOnboarding) },
+    );
   };
 
   // ── Student ────────────────────────────────────────────────────────────
@@ -662,7 +696,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             </View>
             {showSubjectPicker && (
               <View style={styles.subjectPicker}>
-                {SUBJECTS.filter((s) => !subjects.includes(s)).map((s) => (
+                {subjectOptions.filter((s) => !subjects.includes(s)).map((s) => (
                   <TouchableOpacity
                     key={s}
                     style={styles.subjectPickerItem}
@@ -788,21 +822,10 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           ))}
         </View>
 
-        {/* City */}
-        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>Şəhər</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-          <View style={styles.chipRow}>
-            {CITIES.map((c) => (
-              <TouchableOpacity
-                key={c}
-                style={[styles.chip, city === c && styles.chipActive]}
-                onPress={() => setCity(c)}
-              >
-                <Text style={[styles.chipText, city === c && styles.chipTextActive]}>{c}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </ScrollView>
+        {/* Ərazi — Lokasiyalar iyerarxiyasından seçim */}
+        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>Fəaliyyət ərazisi</Text>
+        <AreaPicker value={area?.areaName} onSelect={setArea} />
+        <Text style={styles.fieldHint}>Tələbələr sizi ərazi üzrə tapacaq.</Text>
 
         {/* Bio */}
         <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>Bio / Özünüz haqqında</Text>
@@ -838,7 +861,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <Text style={styles.backFooterText}>Geri</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={onFinish}
+            onPress={onTeacherFinish}
             disabled={isPending}
             activeOpacity={0.85}
             style={{ flex: 1 }}
@@ -851,8 +874,8 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             >
               {isPending ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={styles.ctaBtnText}>Növbəti Addım</Text>
-                  <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  <Text style={styles.ctaBtnText}>Tamamla</Text>
+                  <Ionicons name="checkmark" size={20} color="#fff" />
                 </>
               )}
             </LinearGradient>
