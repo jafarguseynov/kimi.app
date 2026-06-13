@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing, Alert, Share, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -16,9 +16,12 @@ import { logSpin } from '../../api/spin.api';
 
 type Props = { navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.SpinWheel> };
 
-const WHEEL_SIZE = 280;
+// Çarx ölçüsü ekran eninə uyğunlaşır — balaca telefonlarda (Samsung A5 2017 və s.)
+// 280px sabit ölçü ekrandan daşırdı. Mövcud enə görə hesablanır.
+const SCREEN_W = Math.min(Dimensions.get('window').width, Dimensions.get('window').height);
+const WHEEL_SIZE = Math.max(220, Math.min(280, SCREEN_W - 72));
 const CENTER = WHEEL_SIZE / 2;
-const ICON_RADIUS = 88;
+const ICON_RADIUS = WHEEL_SIZE * 0.314; // 280→88 nisbətini saxlayır
 const SEG_WIDTH = 60;
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -349,6 +352,10 @@ export default function SpinWheelScreen({ navigation }: Props) {
             </View>
           </View>
 
+          {/* Statik kölgə/fon dairəsi — kölgə fırlanan view-da olduqda
+              Android-də animasiya zamanı çarx itirdi. Kölgəni buraya köçürdük. */}
+          <View style={styles.wheelShadow} pointerEvents="none" />
+
           {/* Wheel Circle */}
           <Animated.View style={[styles.wheel, wheelRotateStyle]}>
             {/* Light aura tint */}
@@ -569,6 +576,21 @@ const styles = StyleSheet.create({
   },
   pinDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
 
+  // Statik kölgə dairəsi (fırlanmır) — Android elevation+rotate glitch-inin qarşısını alır.
+  wheelShadow: {
+    position: 'absolute',
+    bottom: 0,
+    alignSelf: 'center',
+    width: WHEEL_SIZE,
+    height: WHEEL_SIZE,
+    borderRadius: WHEEL_SIZE / 2,
+    backgroundColor: '#fff',
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.08,
+    shadowRadius: 40,
+    elevation: 6,
+  },
   wheel: {
     width: WHEEL_SIZE,
     height: WHEEL_SIZE,
@@ -578,11 +600,6 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.08,
-    shadowRadius: 40,
-    elevation: 8,
   },
   wheelTint: {
     position: 'absolute',

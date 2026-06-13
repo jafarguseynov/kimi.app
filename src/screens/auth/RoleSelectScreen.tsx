@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -41,8 +41,11 @@ export default function RoleSelectScreen({ navigation }: Props) {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerBrand}>
-          <Ionicons name="hardware-chip" size={22} color={Colors.primary} />
-          <Text style={styles.brandText}>Kimi.az</Text>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
         </View>
       </View>
 
@@ -124,7 +127,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
   headerBrand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  brandText: { fontSize: 18, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
+  brandLogo: { width: 130, height: 46 },
 
   scroll: { padding: 24, gap: 28, paddingBottom: 40 },
 

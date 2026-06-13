@@ -7,7 +7,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { useExamListForUser, useGenerateExam } from '../../hooks/useExams';
+import { useExamListForUser } from '../../hooks/useExams';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.CategoryExams>;
 type Mode = 'all' | 'practice' | 'monthly' | 'live';
@@ -31,19 +31,11 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
   const { categoryTitle, categoryKey, subKey, subject } = route.params;
   const [mode, setMode] = useState<Mode>('all');
   const { data: exams = [], isLoading, error, refetch } = useExamListForUser({ categoryKey, subKey, subject, limit: 6 });
-  const generate = useGenerateExam();
 
   const filtered = useMemo(() => exams, [exams]);
 
-  // Generasiya üçün subject çatışmırsa, subKey və ya categoryTitle-dan istifadə et
+  // Fənn çatışmırsa, subKey və ya categoryTitle-dan istifadə et
   const effectiveSubject = subject ?? subKey ?? categoryTitle.split('·').pop()?.trim() ?? categoryTitle;
-
-  const onGenerate = () => {
-    generate.mutate(
-      { categoryKey, subKey, subject: effectiveSubject, difficulty: 'medium', questionCount: 25 },
-      { onSuccess: () => refetch() },
-    );
-  };
 
   const badgesFor = (idx: number): BadgeKind[] => {
     if (idx === 0) return ['new', 'popular'];
@@ -119,31 +111,39 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
         </ScrollView>
 
         {/* Cards */}
-        {isLoading || generate.isPending ? (
+        {isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
-            {generate.isPending && (
-              <Text style={[styles.emptySub, { marginTop: 12 }]}>AI yeni imtahan hazırlayır… (5-10 san)</Text>
-            )}
           </View>
         ) : filtered.length === 0 ? (
-          <View style={styles.empty}>
-            <Ionicons name="document-text-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>{categoryTitle} üçün imtahan hazır deyil</Text>
-            <Text style={styles.emptySub}>
-              {error
-                ? 'Server bağlantısında problem var. Yenidən cəhd et və ya AI ilə yeni imtahan yarat.'
-                : `Sənin üçün AI dərhal yeni imtahan hazırlaya bilər.\nFənn: ${effectiveSubject}`}
-            </Text>
-            <TouchableOpacity activeOpacity={0.85} onPress={onGenerate} style={{ marginTop: 16 }}>
-              <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-                <Text style={styles.startBtnText}>AI ilə yeni imtahan yarat</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity activeOpacity={0.85} onPress={() => refetch()} style={{ marginTop: 8 }}>
-              <Text style={{ fontSize: 12, color: Colors.textSecondary, textDecorationLine: 'underline' }}>Yenidən yoxla</Text>
-            </TouchableOpacity>
-          </View>
+          error ? (
+            <View style={styles.empty}>
+              <Ionicons name="cloud-offline-outline" size={42} color={Colors.textMuted} />
+              <Text style={styles.emptyTitle}>Bağlantı problemi</Text>
+              <Text style={styles.emptySub}>Server bağlantısında problem var. Bir az sonra yenidən cəhd et.</Text>
+              <TouchableOpacity activeOpacity={0.85} onPress={() => refetch()} style={{ marginTop: 12 }}>
+                <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}>Yenidən yoxla</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            // Hovuz boşdur — backend fonda hazırlayır, ekran avtomatik yenilənir
+            <View style={styles.empty}>
+              <ActivityIndicator size="large" color={Colors.primary} />
+              <Text style={[styles.emptyTitle, { marginTop: 12 }]}>İmtahanlar hazırlanır…</Text>
+              <Text style={styles.emptySub}>
+                {`Sənə uyğun imtahanlar hazırlanır. Bir neçə saniyə — bu ekran avtomatik yenilənəcək.\nFənn: ${effectiveSubject}`}
+              </Text>
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate(Routes.NewExam, undefined)}
+                style={{ marginTop: 16 }}
+              >
+                <Text style={{ fontSize: 13, color: Colors.textSecondary, textDecorationLine: 'underline' }}>
+                  Özün üçün xüsusi imtahan yarat
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )
         ) : (
           <View style={{ gap: 24 }}>
             {filtered.map((ex: any, idx: number) => {

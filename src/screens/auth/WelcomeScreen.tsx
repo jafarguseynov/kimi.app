@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   FlatList,
   TouchableOpacity,
@@ -259,7 +260,11 @@ export default function WelcomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.logo}>Kimi.az</Text>
+        <Image
+          source={require('../../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
         <TouchableOpacity onPress={() => navigation.navigate(Routes.Login)} hitSlop={12}>
           <Text style={styles.skip}>Keçid et</Text>
         </TouchableOpacity>
@@ -335,10 +340,8 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
   },
   logo: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.5,
+    width: 220,
+    height: 82,
   },
   skip: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
 

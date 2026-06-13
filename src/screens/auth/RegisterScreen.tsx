@@ -2,6 +2,7 @@ import React from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -84,15 +85,11 @@ export default function RegisterScreen({ navigation }: Props) {
       >
         {/* Logo section */}
         <View style={styles.logoSection}>
-          <LinearGradient
-            colors={[Colors.gradientStart, Colors.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoBox}
-          >
-            <Ionicons name="school-outline" size={32} color="#fff" />
-          </LinearGradient>
-          <Text style={styles.logoText}>Kimi.az</Text>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.logoSub}>Gələcəyin təhsil platforması</Text>
         </View>
 
@@ -316,25 +313,10 @@ const styles = StyleSheet.create({
   },
 
   logoSection: { alignItems: 'center', marginBottom: 28, marginTop: 16 },
-  logoBox: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  logoText: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.5,
-    marginBottom: 4,
+  logoImage: {
+    width: 380,
+    height: 205,
+    marginBottom: 8,
   },
   logoSub: { fontSize: 14, color: Colors.textSecondary },
 

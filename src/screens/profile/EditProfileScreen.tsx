@@ -15,6 +15,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useMutation } from '@tanstack/react-query';
 import { getMe, updateUser } from '../../api/user.api';
+import { uploadImageOrFallback } from '../../api/media.api';
 import { useUserStore } from '../../store/user.store';
 import LocationSchoolPicker from '../../components/common/LocationSchoolPicker';
 
@@ -50,6 +51,8 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const role = route.params?.role ?? (user?.role === 'teacher' ? 'teacher' : user?.role === 'parent' ? 'parent' : 'student');
   const userAny = user as any;
   const [avatarUri, setAvatarUri] = useState<string | undefined>(userAny?.avatarUrl);
+  // Yeni seçilmiş lokal şəkil yaddaşa basılanda yüklənməlidir.
+  const [avatarDirty, setAvatarDirty] = useState(false);
 
   const pickImage = async (fromCamera: boolean) => {
     const perm = fromCamera
@@ -65,6 +68,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
     if (!result.canceled && result.assets?.[0]) {
       const uri = result.assets[0].uri;
       setAvatarUri(uri);
+      setAvatarDirty(true);
       if (user) setUser({ ...(user as any), avatarUrl: uri });
     }
   };
@@ -100,10 +104,10 @@ export default function EditProfileScreen({ navigation, route }: Props) {
 
   // student
   const [city, setCity] = useState('Bakı');
-  const [school, setSchool] = useState('');
-  const [grade, setGrade] = useState('9-cu');
-  const [interests, setInterests] = useState<string[]>([]);
-  const [goal, setGoal] = useState<Goal>('university');
+  const [school, setSchool] = useState(userAny?.school ?? '');
+  const [grade, setGrade] = useState(userAny?.grade ?? '9-cu');
+  const [interests, setInterests] = useState<string[]>(userAny?.interests ?? []);
+  const [goal, setGoal] = useState<Goal>((userAny?.goal as Goal) ?? 'university');
 
   // parent
   const [phone, setPhone] = useState(user?.phone ?? '');
@@ -120,6 +124,10 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       setPhone(me.phone ?? '');
       setEmail(me.email ?? '');
       const meAny = me as any;
+      if (meAny.avatarUrl) setAvatarUri(meAny.avatarUrl);
+      if (meAny.school) setSchool(meAny.school);
+      if (meAny.grade) setGrade(meAny.grade);
+      if (meAny.goal) setGoal(meAny.goal);
       if (meAny.bio) setBio(meAny.bio);
       if (meAny.subjects?.length) setSelectedSubjects(meAny.subjects);
       if (meAny.hourlyRate) setPrice(meAny.hourlyRate.toString());
@@ -131,8 +139,14 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   }, []);
 
   const { mutate: save, isPending: isSaving } = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const data: any = { name: [firstName, lastName].filter(Boolean).join(' ') };
+
+      // Yeni şəkil seçilibsə əvvəlcə yüklə (uğursuz olsa lokal URI saxlanır).
+      if (avatarDirty && avatarUri) {
+        data.avatarUrl = await uploadImageOrFallback(avatarUri);
+      }
+
       if (role === 'teacher') {
         data.bio = bio;
         data.subjects = selectedSubjects;
@@ -141,10 +155,17 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         data.experienceYears = experienceYears ? parseInt(experienceYears, 10) : 0;
         data.introVideoUrl = introVideoUrl;
         data.offersFreeDemo = offersFreeDemo;
+      } else if (role === 'student') {
+        // Əvvəllər bu sahələr heç vaxt göndərilmirdi — ona görə "yaddaşda qalmırdı".
+        data.school = school;
+        data.grade = grade;
+        data.goal = goal;
       }
       return updateUser(data);
     },
-    onSuccess: () => {
+    onSuccess: (updated) => {
+      // Store-u serverdən qayıdan dəyərlərlə yenilə ki, geri qayıdanda dolu görünsün.
+      if (updated) setUser({ ...(user as any), ...(updated as any) });
       Alert.alert('Yadda saxlandı', 'Profil məlumatları yeniləndi.');
       navigation.goBack();
     },

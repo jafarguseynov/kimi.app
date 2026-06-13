@@ -49,7 +49,7 @@ export default function ExamLoadingOverlay({
   const floatY = float.interpolate({ inputRange: [0, 1], outputRange: [0, -8] });
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => {}}>
       <View style={styles.root}>
         <View style={styles.blobOne} />
         <View style={styles.blobTwo} />

@@ -298,7 +298,11 @@ export default function HomeScreen({ navigation }: Props) {
           >
             <Ionicons name="person" size={16} color="#fff" />
           </LinearGradient>
-          <Text style={styles.logoText}>Kimi.az</Text>
+          <Image
+            source={require('../../../assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
         <View style={styles.topBarRight}>
           {!isTeacher && !isParent && (
@@ -1084,11 +1088,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.4,
+  logoImage: {
+    width: 160,
+    height: 58,
+    marginLeft: 2,
   },
   topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   streakBadge: {

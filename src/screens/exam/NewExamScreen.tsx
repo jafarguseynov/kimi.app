@@ -1,12 +1,10 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  PanResponder,
-  LayoutChangeEvent,
   Alert,
   ActivityIndicator,
 } from 'react-native';
@@ -19,6 +17,7 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useGenerateExam } from '../../hooks/useExams';
+import { useExamConfig, pickExamConfig } from '../../hooks/useExamConfig';
 import { useExamStore } from '../../store/exam.store';
 import ExamLoadingOverlay from '../../components/exam/ExamLoadingOverlay';
 
@@ -29,9 +28,10 @@ type Props = {
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif'];
+// ─── Fallback dəyərlər — admin /exam-config boş/əlçatmaz olarsa istifadə olunur ───
+const FALLBACK_GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif'];
 
-const SUBJECTS: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+const FALLBACK_SUBJECTS: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'math', label: 'Riyaziyyat', icon: 'calculator' },
   { key: 'az', label: 'Azərbaycan dili', icon: 'language' },
   { key: 'en', label: 'İngilis dili', icon: 'globe' },
@@ -43,11 +43,9 @@ const TOPICS_BY_SUBJECT: Record<string, string[]> = {
   en: ['Grammar', 'Tenses', 'Reading', 'Listening', 'Writing'],
 };
 
-const DIFFICULTIES: { key: 'easy' | 'medium' | 'hard'; label: string }[] = [
-  { key: 'easy', label: 'Asan' },
-  { key: 'medium', label: 'Orta' },
-  { key: 'hard', label: 'Çətin' },
-];
+const DIFF_LABELS: Record<string, string> = { easy: 'Asan', medium: 'Orta', hard: 'Çətin' };
+const FALLBACK_DIFFICULTIES: ('easy' | 'medium' | 'hard')[] = ['easy', 'medium', 'hard'];
+const FALLBACK_DURATIONS = [15, 30, 45, 60, 90];
 
 type ExamTypeKey = 'practice' | 'monthly' | 'national' | 'live';
 const EXAM_TYPES: { key: ExamTypeKey; label: string; color: string }[] = [
@@ -57,8 +55,6 @@ const EXAM_TYPES: { key: ExamTypeKey; label: string; color: string }[] = [
   { key: 'live',     label: 'Canlı', color: '#DC2626' },
 ];
 
-const MIN_Q = 5;
-const MAX_Q = 50;
 const THUMB_SIZE = 26;
 
 export default function NewExamScreen({ navigation, route }: Props) {
@@ -77,8 +73,55 @@ export default function NewExamScreen({ navigation, route }: Props) {
   const [duration, setDuration] = useState<number | undefined>(initial.duration);
   const [gradeOpen, setGradeOpen] = useState(false);
 
-  const trackWidth = useRef(0);
-  const [trackReady, setTrackReady] = useState(false);
+  // ─── Admin paneldən gələn parametrlər (boş/əlçatmaz olsa fallback) ───
+  const configBundle = useExamConfig();
+  const cfg = useMemo(() => pickExamConfig(configBundle, { type: examType }), [configBundle, examType]);
+
+  const SUBJECTS = useMemo(
+    () =>
+      cfg?.subjects?.length
+        ? cfg.subjects.map((s) => ({ key: s.key, label: s.label, icon: (s.icon ?? 'book') as keyof typeof Ionicons.glyphMap }))
+        : FALLBACK_SUBJECTS,
+    [cfg],
+  );
+  const GRADES = useMemo(() => (cfg?.grades?.length ? cfg.grades : FALLBACK_GRADES), [cfg]);
+  const DIFFICULTIES = useMemo(
+    () => (cfg?.difficulties?.length ? cfg.difficulties : FALLBACK_DIFFICULTIES).map((k) => ({ key: k as 'easy' | 'medium' | 'hard', label: DIFF_LABELS[k] ?? k })),
+    [cfg],
+  );
+  const DURATIONS = cfg?.durationOptions?.length ? cfg.durationOptions : FALLBACK_DURATIONS;
+  const VISIBLE_EXAM_TYPES = useMemo(
+    () => (cfg?.examTypes?.length ? EXAM_TYPES.filter((t) => cfg.examTypes.includes(t.key)) : EXAM_TYPES),
+    [cfg],
+  );
+  // Sual sayı bütün imtahanlar üçün sabitdir — admin paneldəki "Defolt sual" dəyəri.
+  // İstifadəçi dəyişə bilmir; backend onsuz da bu sayı tətbiq edir.
+  const STANDARD_Q = cfg?.defaultQuestions ?? 25;
+
+  // Sual sayı sabitdir — həmişə standart dəyərə bərabər saxlanılır
+  useEffect(() => {
+    setQuestionCount(STANDARD_Q);
+  }, [STANDARD_Q]);
+
+  // Seçilmiş fənn artıq siyahıda yoxdursa — ilkinə qayıt
+  useEffect(() => {
+    if (SUBJECTS.length && !SUBJECTS.some((s) => s.key === subject)) {
+      setSubject(SUBJECTS[0].key);
+      setTopics(new Set());
+    }
+  }, [SUBJECTS]);
+
+  // Seçilmiş çətinlik artıq icazəli deyilsə — ilkinə qayıt
+  useEffect(() => {
+    if (DIFFICULTIES.length && !DIFFICULTIES.some((d) => d.key === difficulty)) {
+      setDifficulty(DIFFICULTIES[0].key);
+    }
+  }, [DIFFICULTIES]);
+
+  // Sinif indeksi diapazondan kənardadırsa — düzəlt
+  useEffect(() => {
+    if (gradeIdx >= GRADES.length) setGradeIdx(Math.max(0, GRADES.length - 1));
+  }, [GRADES]);
 
   const topicList = TOPICS_BY_SUBJECT[subject] ?? [];
 
@@ -92,42 +135,6 @@ export default function NewExamScreen({ navigation, route }: Props) {
   };
 
   const selectAllTopics = () => setTopics(new Set(topicList));
-
-  const onTrackLayout = (e: LayoutChangeEvent) => {
-    trackWidth.current = e.nativeEvent.layout.width;
-    setTrackReady(true);
-  };
-
-  const setFromX = (x: number) => {
-    const w = trackWidth.current;
-    if (!w) return;
-    const clamped = Math.max(0, Math.min(w, x));
-    const pct = clamped / w;
-    const value = Math.round(MIN_Q + pct * (MAX_Q - MIN_Q));
-    setQuestionCount(value);
-  };
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: (_, g) => setFromX(g.x0 - getTrackPageX()),
-        onPanResponderMove: (_, g) => setFromX(g.moveX - getTrackPageX()),
-      }),
-    [],
-  );
-
-  const trackRef = useRef<View>(null);
-  const trackPageX = useRef(0);
-  const getTrackPageX = () => trackPageX.current;
-  const measureTrack = () => {
-    trackRef.current?.measure((_x, _y, _w, _h, pageX) => {
-      trackPageX.current = pageX;
-    });
-  };
-
-  const fillPct = ((questionCount - MIN_Q) / (MAX_Q - MIN_Q)) * 100;
 
   const handleStart = () => {
     if (isGenerating) return;
@@ -283,7 +290,7 @@ export default function NewExamScreen({ navigation, route }: Props) {
         <View style={styles.section}>
           <Text style={styles.label}>İmtahan növü</Text>
           <View style={styles.segWrap}>
-            {EXAM_TYPES.map((t) => {
+            {VISIBLE_EXAM_TYPES.map((t) => {
               const active = t.key === examType;
               return (
                 <TouchableOpacity
@@ -299,7 +306,7 @@ export default function NewExamScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Question count */}
+        {/* Question count — sabit standart */}
         <View style={styles.section}>
           <View style={styles.labelRow}>
             <Text style={styles.label}>Sual sayı</Text>
@@ -307,33 +314,9 @@ export default function NewExamScreen({ navigation, route }: Props) {
               <Text style={styles.countBadgeText}>{questionCount}</Text>
             </View>
           </View>
-          <View
-            ref={trackRef}
-            onLayout={onTrackLayout}
-            onTouchStart={measureTrack}
-            style={styles.sliderTrackWrap}
-            {...panResponder.panHandlers}
-          >
-            <View style={styles.sliderTrack}>
-              <LinearGradient
-                colors={GRADIENT}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={[styles.sliderFill, { width: `${fillPct}%` }]}
-              />
-            </View>
-            {trackReady && (
-              <View
-                style={[
-                  styles.sliderThumb,
-                  { left: (fillPct / 100) * trackWidth.current - THUMB_SIZE / 2 },
-                ]}
-              />
-            )}
-          </View>
-          <View style={styles.sliderLabels}>
-            <Text style={styles.sliderLabelText}>{MIN_Q} SUAL</Text>
-            <Text style={styles.sliderLabelText}>{MAX_Q} SUAL</Text>
-          </View>
+          <Text style={styles.sliderLabelText}>
+            Bütün imtahanlar üçün standart say — {STANDARD_Q} sual.
+          </Text>
         </View>
 
         {/* Duration */}
@@ -345,7 +328,7 @@ export default function NewExamScreen({ navigation, route }: Props) {
             </View>
           </View>
           <View style={styles.segWrap}>
-            {[15, 30, 45, 60, 90].map((m) => {
+            {DURATIONS.map((m) => {
               const active = duration === m;
               return (
                 <TouchableOpacity

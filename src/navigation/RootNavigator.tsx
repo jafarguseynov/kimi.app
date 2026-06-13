@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, Image, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '../store/auth.store';
 import { useUserStore } from '../store/user.store';
 import { useFavoriteTeachersStore } from '../store/favoritesTeachers.store';
@@ -49,6 +49,11 @@ export default function RootNavigator() {
   if (bootstrapping) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.background }}>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={{ width: 200, height: 92, marginBottom: 24 }}
+          resizeMode="contain"
+        />
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );

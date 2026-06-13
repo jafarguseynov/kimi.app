@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   Alert,
@@ -190,7 +191,12 @@ export default function OTPScreen({ navigation, route }: Props) {
         </TouchableOpacity>
 
         {/* Footer */}
-        <Text style={styles.footer}>Kimi.az • Premium Educational Intelligence</Text>
+        <Image
+          source={require('../../../assets/logo.png')}
+          style={styles.footerLogo}
+          resizeMode="contain"
+        />
+        <Text style={styles.footer}>Premium Educational Intelligence</Text>
       </ScrollView>
     </SafeAreaView>
   );
@@ -364,6 +370,13 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 
+  footerLogo: {
+    width: 120,
+    height: 40,
+    alignSelf: 'center',
+    marginTop: 4,
+    marginBottom: 2,
+  },
   footer: {
     fontSize: 12,
     color: Colors.textMuted,

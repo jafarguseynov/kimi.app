@@ -12,6 +12,12 @@ export const useExamListForUser = (filters?: ExamFilters, enabled = true) =>
     queryFn: () => getExamsForUser(filters),
     enabled,
     retry: false,
+    // Hovuz boş olduqda backend fonda imtahan hazırlayır — hazır olana qədər
+    // ekranı avtomatik yeniləyirik ki, şagird əl ilə düymə basıb gözləməsin.
+    refetchInterval: (query) => {
+      const data = query.state.data as unknown[] | undefined;
+      return data && data.length === 0 ? 4000 : false;
+    },
   });
 
 export const useGenerateExam = () => {

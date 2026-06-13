@@ -18,6 +18,7 @@ import { useExamStore } from '../../store/exam.store';
 import { useSubmitExam, useSubmitCollectionTest } from '../../hooks/useExams';
 import { formatTime } from '../../utils/formatters';
 import { hapticLight, hapticMedium, hapticSelection } from '../../utils/haptics';
+import { rf, rs } from '../../utils/responsive';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamSession> };
 
@@ -279,8 +280,8 @@ const styles = StyleSheet.create({
   questionCard: {
     backgroundColor: Colors.surface,
     borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
+    padding: rs(24),
+    marginBottom: rs(20),
     overflow: 'hidden',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 10 },
@@ -298,22 +299,22 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
   },
   questionText: {
-    fontSize: 18,
+    fontSize: rf(18),
     fontWeight: '600',
     color: Colors.textPrimary,
-    lineHeight: 26,
+    lineHeight: rf(26),
     marginBottom: 20,
     maxWidth: '85%',
   },
   formulaBox: {
     backgroundColor: Colors.surfaceLow,
     borderRadius: 14,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    paddingVertical: rs(20),
+    paddingHorizontal: rs(20),
     alignItems: 'center',
   },
   formulaText: {
-    fontSize: 20,
+    fontSize: rf(19),
     fontWeight: '700',
     color: Colors.primaryDim,
     letterSpacing: 0.5,
@@ -326,8 +327,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: 999,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
+    paddingVertical: rs(13),
+    paddingHorizontal: rs(16),
     borderWidth: 2,
     borderColor: Colors.borderLight,
     shadowColor: '#000',
@@ -338,18 +339,18 @@ const styles = StyleSheet.create({
   },
   optionRowSelected: { borderColor: Colors.primaryFixed },
   letterCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: rs(36),
+    height: rs(36),
+    borderRadius: rs(18),
     backgroundColor: Colors.surfaceLow,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: 12,
   },
   letterCircleSelected: { backgroundColor: Colors.primary },
-  letterText: { fontSize: 15, fontWeight: '700', color: Colors.primary },
+  letterText: { fontSize: rf(15), fontWeight: '700', color: Colors.primary },
   letterTextSelected: { color: '#fff' },
-  optionText: { flex: 1, fontSize: 15, fontWeight: '500', color: Colors.textPrimary },
+  optionText: { flex: 1, fontSize: rf(15), fontWeight: '500', color: Colors.textPrimary },
   checkCircle: {
     width: 26,
     height: 26,

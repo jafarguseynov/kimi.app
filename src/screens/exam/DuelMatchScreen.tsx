@@ -272,7 +272,7 @@ export default function DuelMatchScreen() {
       </View>
 
       {/* Countdown overlay */}
-      <Modal visible={countdown !== null} transparent animationType="fade">
+      <Modal visible={countdown !== null} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.overlay}>
           <Text style={styles.overlayHint}>Yarış başlayır...</Text>
           <Animated.View style={[styles.countdownWrap, { transform: [{ scale: countdownScale }] }]}>

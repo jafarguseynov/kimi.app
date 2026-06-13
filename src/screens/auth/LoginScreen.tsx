@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   TouchableOpacity,
   Alert,
@@ -78,26 +79,11 @@ export default function LoginScreen({ navigation }: Props) {
 
           <Animated.View style={{ width: '100%', alignItems: 'center', opacity: appear, transform: [{ translateY: slideUp }] }}>
             {/* Logo */}
-            <View style={styles.logoWrap}>
-              <View style={styles.logoGlow} pointerEvents="none" />
-              <LinearGradient
-                colors={[Colors.gradientStart, Colors.gradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.logoBox}
-              >
-                <View style={styles.logoGloss} />
-                <Ionicons name="hardware-chip" size={40} color="#fff" />
-              </LinearGradient>
-              <LinearGradient
-                colors={['#006947', '#0a8a5f']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.logoBadge}
-              >
-                <Ionicons name="sparkles" size={12} color="#fff" />
-              </LinearGradient>
-            </View>
+            <Image
+              source={require('../../../assets/logo.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
 
             {/* Headline */}
             <View style={styles.headline}>
@@ -242,55 +228,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryFixed + '22',
   },
 
-  logoWrap: {
-    width: 88,
-    height: 88,
-    marginBottom: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoGlow: {
-    position: 'absolute',
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    top: -31,
-    left: -31,
-    backgroundColor: Colors.primaryFixed + '22',
-  },
-  logoBox: {
-    width: 88,
-    height: 88,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.32,
-    shadowRadius: 22,
-    elevation: 10,
-  },
-  logoGloss: {
-    position: 'absolute',
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    top: -22,
-    left: -14,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-  },
-  logoBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2.5,
-    borderColor: Colors.background,
+  logoImage: {
+    width: 260,
+    height: 120,
+    marginBottom: 20,
   },
 
   headline: { alignItems: 'center', marginBottom: 18 },

@@ -44,6 +44,32 @@ export interface RemoteCategory {
 export const getExamCategories = () =>
   apiClient.get<RemoteCategory[]>('/exam-categories').then((r) => r.data);
 
+// ─── Admin paneldən idarə olunan imtahan parametrləri ───────────────────────
+export interface ExamConfigSubject { key: string; label: string; icon?: string }
+
+export interface ResolvedExamConfig {
+  minQuestions: number;
+  maxQuestions: number;
+  defaultQuestions: number;
+  defaultDuration: number;
+  durationOptions: number[];
+  difficulties: string[];
+  defaultDifficulty: string;
+  subjects: ExamConfigSubject[];
+  grades: string[];
+  examsPerCategory: number;
+  examTypes: string[];
+}
+
+export interface ExamConfigBundle {
+  global: ResolvedExamConfig;
+  types: Record<string, ResolvedExamConfig>;
+  categories: Record<string, ResolvedExamConfig>;
+}
+
+export const getExamConfig = () =>
+  apiClient.get<ExamConfigBundle>('/exam-config').then((r) => r.data);
+
 export const startExam = (examId: string) =>
   // Longer timeout: the backend may be cold-starting (Render free tier),
   // which can exceed the default 15s client timeout.
