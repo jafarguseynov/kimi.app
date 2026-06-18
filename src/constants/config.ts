@@ -1,7 +1,7 @@
-// Production API (kimi.creativegroup.az serverində — pm2 + nginx/PHP bridge)
+// Production API — kimi.az domeni üzərindən (eyni server, /api proxy host-agnostik)
 export const API_BASE_URL = __DEV__
-  ? 'https://kimi.creativegroup.az/api'
-  : 'https://kimi.creativegroup.az/api';
+  ? 'https://kimi.az/api'
+  : 'https://kimi.az/api';
 
 // API origin (/api olmadan).
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
