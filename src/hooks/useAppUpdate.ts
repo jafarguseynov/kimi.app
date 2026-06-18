@@ -1,8 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
 import { APP_VERSION_URL } from '../constants/config';
+
+// expo-updates native modulu (ExpoUpdates) yalnız EAS build-də mövcuddur.
+// Dev / run:ios build-ində olmaya bilər — statik import açılışda crash verir,
+// ona görə təhlükəsiz require ilə yükləyirik (yoxdursa OTA sadəcə passiv qalır).
+let Updates: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Updates = require('expo-updates');
+} catch {
+  Updates = null;
+}
 
 export interface StoreUpdate {
   version: string;
@@ -53,7 +63,7 @@ export function useAppUpdate() {
     // 1) OTA yoxlaması (yalnız real build-də; dev/Expo Go-da isEnabled=false)
     (async () => {
       try {
-        if (!Updates.isEnabled || __DEV__) return;
+        if (!Updates?.isEnabled || __DEV__) return;
         const check = await Updates.checkForUpdateAsync();
         if (check.isAvailable) {
           await Updates.fetchUpdateAsync();
@@ -91,7 +101,7 @@ export function useAppUpdate() {
 
   const applyOta = useCallback(async () => {
     try {
-      await Updates.reloadAsync();
+      if (Updates?.reloadAsync) await Updates.reloadAsync();
     } catch {
       /* no-op */
     }
