@@ -26,6 +26,7 @@ import { useOnboardingStore } from '../../store/onboarding.store';
 import { usePushStore } from '../../store/push.store';
 import { getPermissionStatus } from '../../utils/push';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
+import UpdateBanner from '../../components/UpdateBanner';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.HomeMain>;
@@ -334,6 +335,8 @@ export default function HomeScreen({ navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Yeni versiya / OTA güncəlləmə banneri */}
+        <UpdateBanner />
         {isTeacher ? (
           // ════════════════ TEACHER VIEW ════════════════
           <>
