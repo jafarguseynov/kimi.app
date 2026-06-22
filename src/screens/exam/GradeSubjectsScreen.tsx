@@ -10,6 +10,7 @@ import { Colors } from '../../constants/colors';
 import { getSubcategories, FOREIGN_LANGUAGES, isForeignLangSubject } from '../../constants/educationTaxonomy';
 import { getCoefficient, getStructureSummary } from '../../constants/dimOfficialStructure';
 import { useServeMock } from '../../hooks/useExams';
+import { useExamCategories } from '../../hooks/useExamCategories';
 import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.GradeSubjects>;
@@ -20,9 +21,15 @@ const isForeignLang = isForeignLangSubject;
 export default function GradeSubjectsScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { categoryKey, parentKey, parentTitle } = route.params;
-  const parent = getSubcategories(categoryKey).find((p) => p.key === parentKey);
-  const subjects = parent?.subjects ?? [];
-  const structureKey = parent?.structureKey;
+  // Fənlər serverdən (admin-idarəli taksonomiya) gəlir; offline/köhnə backend olarsa
+  // hardcode taksonomiyaya düşürük. structureKey (DİM bal əmsalları) həmişə yereldir.
+  const remote = useExamCategories();
+  const hardcodedParent = getSubcategories(categoryKey).find((p) => p.key === parentKey);
+  const remoteParent = remote?.find((c) => c.key === categoryKey)?.children?.find((s) => s.key === parentKey);
+  const subjects = remoteParent?.subjects && remoteParent.subjects.length > 0
+    ? remoteParent.subjects
+    : hardcodedParent?.subjects ?? [];
+  const structureKey = hardcodedParent?.structureKey;
   const structureSummary = structureKey ? getStructureSummary(structureKey) : undefined;
 
   const { mutate: startMock, isPending: mockPending } = useServeMock();
