@@ -7,6 +7,7 @@ import { useRecentTeachersStore } from '../store/recentTeachers.store';
 import { useOnboardingStore } from '../store/onboarding.store';
 import { usePushStore } from '../store/push.store';
 import { useSettingsStore } from '../store/settings.store';
+import { useFeatureFlagStore } from '../store/featureFlag.store';
 import { getToken } from '../utils/token';
 import { getMe } from '../api/user.api';
 import { Colors } from '../constants/colors';
@@ -21,6 +22,7 @@ export default function RootNavigator() {
   const hydrateOnboarding = useOnboardingStore((s) => s.hydrate);
   const hydratePush = usePushStore((s) => s.hydrate);
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
+  const loadFlags = useFeatureFlagStore((s) => s.loadFlags);
   const [bootstrapping, setBootstrapping] = useState(true);
 
   useEffect(() => {
@@ -37,6 +39,8 @@ export default function RootNavigator() {
           try {
             const me = await getMe();
             setUser(me as any);
+            // Monetizasiya/feature açarlarını yüklə (token lazımdır)
+            loadFlags();
           } catch {
             await clearAuth();
           }
@@ -48,6 +52,11 @@ export default function RootNavigator() {
       }
     })();
   }, []);
+
+  // Fresh login-dən sonra (token dəyişəndə) açarları yenilə.
+  useEffect(() => {
+    if (token) loadFlags();
+  }, [token]);
 
   if (bootstrapping) {
     return (

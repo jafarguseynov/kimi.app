@@ -22,6 +22,7 @@ import { getOrCreateChat } from '../../api/chat.api';
 import { getSubscriptionStatus } from '../../api/subscription.api';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
+import { useMonetization } from '../../store/featureFlag.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -63,6 +64,7 @@ function getInitials(name: string): string {
 
 export default function BookingHistoryScreen() {
   const { t, language } = useTranslation();
+  const { subscription: subVisible } = useMonetization();
   const [activeTab, setActiveTab] = useState<TabType>('all');
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useUserStore();
@@ -155,7 +157,7 @@ export default function BookingHistoryScreen() {
           ))}
         </View>
 
-        {isTeacher && !subscribed && (
+        {isTeacher && !subscribed && subVisible && (
           <TouchableOpacity style={styles.lockBanner} activeOpacity={0.9} onPress={goToPlans}>
             <View style={styles.lockIconBox}>
               <Ionicons name="lock-closed" size={20} color="#fff" />

@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getTeacherSlots, getTeacherReviews, getStudentBookings, TeacherSlot, Review } from '../../api/booking.api';
 import { getOrCreateChat } from '../../api/chat.api';
+import { recordTeacherView } from '../../api/user.api';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
@@ -68,6 +69,8 @@ export default function TeacherProfileScreen() {
         isVerified: teacher.isVerified,
       });
     }
+    // Hər açılışda profil baxışını qeyd et (+1).
+    if (teacher?.id) recordTeacherView(teacher.id);
   }, [teacher?.id]);
 
   const { data: slotsData, isLoading } = useQuery<TeacherSlot[]>({

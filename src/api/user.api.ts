@@ -35,6 +35,10 @@ export const getTeachers = (params?: { limit?: number; subject?: string; q?: str
 export const getTeacherAnalytics = () =>
   apiClient.get<TeacherAnalytics>('/user/teacher/analytics').then((r) => r.data);
 
+// Müəllim profilinə baxış qeyd et — hər açılışda +1.
+export const recordTeacherView = (teacherId: string) =>
+  apiClient.post<{ profileViews?: number }>(`/user/teacher/${teacherId}/view`, {}).then((r) => r.data).catch(() => null);
+
 export interface TeacherStudent {
   id: string;
   name: string;

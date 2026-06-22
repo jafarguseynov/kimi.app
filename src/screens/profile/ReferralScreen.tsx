@@ -18,6 +18,7 @@ import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { useMonetization } from '../../store/featureFlag.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -39,6 +40,7 @@ interface ReferralFriend {
 export default function ReferralScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
+  const { payments: payVisible } = useMonetization();
   const { data, isLoading } = useQuery<ReferralData>({
     queryKey: ['referral'],
     queryFn: async () => {
@@ -111,13 +113,15 @@ export default function ReferralScreen() {
                 <Text style={styles.balanceCurrency}>AZN</Text>
               </View>
               <View style={styles.balanceBtnRow}>
-                <TouchableOpacity
-                  style={styles.balanceBtnSolid}
-                  activeOpacity={0.85}
-                  onPress={() => navigation.navigate(Routes.Wallet)}
-                >
-                  <Text style={styles.balanceBtnSolidText}>{t('referral.increaseBalance')}</Text>
-                </TouchableOpacity>
+                {payVisible && (
+                  <TouchableOpacity
+                    style={styles.balanceBtnSolid}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate(Routes.Wallet)}
+                  >
+                    <Text style={styles.balanceBtnSolidText}>{t('referral.increaseBalance')}</Text>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={styles.balanceBtnGhost}
                   activeOpacity={0.85}

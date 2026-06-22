@@ -26,6 +26,7 @@ import { UserStats } from '../../types/dashboard.types';
 import { Switch } from 'react-native';
 import { LanguageChips } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
+import { useMonetization } from '../../store/featureFlag.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -57,8 +58,16 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
   navigation: NativeStackNavigationProp<any>;
 }) {
   const { t } = useTranslation();
+  const { subscription: subVisible, payments: payVisible } = useMonetization();
   const initial = name?.[0]?.toUpperCase() ?? '?';
   const firstName = name.split(' ')[0];
+
+  // Monetizasiya bağlıdırsa balans (payments) və abunə (subscription) menyu sətirlərini gizlət.
+  const menu = BASE_STUDENT_MENU.filter((item) => {
+    if (item.id === 'balance' && !payVisible) return false;
+    if (item.id === 'subscription' && !subVisible) return false;
+    return true;
+  });
 
   const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
   const { data: certs = [] } = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
@@ -162,7 +171,7 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
 
       {/* Menu */}
       <View style={styles.menuCard}>
-        {BASE_STUDENT_MENU.map((item, i) => {
+        {menu.map((item, i) => {
           const isBalance = item.id === 'balance';
           const sub = isBalance && walletBalance !== undefined
             ? t('profileScreen.walletSub', { amount: walletBalance.toFixed(2) })
@@ -170,7 +179,7 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
           return (
           <TouchableOpacity
             key={item.id}
-            style={[styles.menuItem, i < BASE_STUDENT_MENU.length - 1 && styles.menuItemDivider]}
+            style={[styles.menuItem, i < menu.length - 1 && styles.menuItemDivider]}
             activeOpacity={0.7}
             onPress={() => {
               if (item.tab === 'self') {
@@ -227,6 +236,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
   navigation: NativeStackNavigationProp<any>;
 }) {
   const { t } = useTranslation();
+  const { withdrawals: withdrawVisible } = useMonetization();
   const initial = name?.[0]?.toUpperCase() ?? '?';
   const teacherSubjects = subjects?.length ? subjects : [];
   const teacherBio = bio ?? '';
@@ -277,7 +287,8 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
         ))}
       </View>
 
-      {/* Earnings actions */}
+      {/* Earnings actions — admin monetizasiya bağlasa gizlənir */}
+      {withdrawVisible && (
       <View style={styles.earningsRow}>
         <TouchableOpacity
           style={styles.earningsPrimary}
@@ -298,6 +309,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
           <Text style={styles.earningsSecondaryText}>{t('profileScreen.history')}</Text>
         </TouchableOpacity>
       </View>
+      )}
 
       {/* Boost card */}
       <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.TeacherBoost)}>

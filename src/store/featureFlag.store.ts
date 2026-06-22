@@ -21,3 +21,28 @@ export const useFeatureFlagStore = create<FeatureFlagState>((set, get) => ({
   },
   isEnabled: (key) => get().flags[key] ?? false,
 }));
+
+// Monetizasiya açarları — admin paneldən idarə olunur.
+export const FLAGS = {
+  subscription: 'monetization_subscription',
+  payments: 'monetization_payments',
+  withdrawals: 'monetization_withdrawals',
+} as const;
+
+// Fail-open: flag yüklənənə qədər və ya açar yoxdursa GÖRÜNÜR sayılır
+// (heç nə yanlışlıqla gizlənməsin; admin açıq-aşkar bağlamalıdır).
+function visible(flags: Record<string, boolean>, loaded: boolean, key: string): boolean {
+  if (!loaded) return true;
+  return flags[key] ?? true;
+}
+
+/** Komponentlərdə monetizasiya görünüşünü oxumaq üçün rahat hook (flags dəyişəndə yenidən render olur). */
+export function useMonetization() {
+  const flags = useFeatureFlagStore((s) => s.flags);
+  const loaded = useFeatureFlagStore((s) => s.loaded);
+  return {
+    subscription: visible(flags, loaded, FLAGS.subscription),
+    payments: visible(flags, loaded, FLAGS.payments),
+    withdrawals: visible(flags, loaded, FLAGS.withdrawals),
+  };
+}

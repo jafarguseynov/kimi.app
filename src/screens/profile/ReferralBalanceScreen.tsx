@@ -18,6 +18,7 @@ import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { useMonetization } from '../../store/featureFlag.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const DATE_LOCALE: Record<string, string> = { az: 'az-Latn-AZ', ru: 'ru-RU', en: 'en-US' };
@@ -53,6 +54,7 @@ function initials(name: string) {
 export default function ReferralBalanceScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t, language } = useTranslation();
+  const { withdrawals: withdrawVisible } = useMonetization();
 
   const { data, isLoading } = useQuery<ReferralData>({
     queryKey: ['referral'],
@@ -117,13 +119,15 @@ export default function ReferralBalanceScreen() {
                 <Text style={styles.heroAmount}>{availableBalance.toFixed(2)}</Text>
                 <Text style={styles.heroCurrency}>AZN</Text>
               </View>
-              <TouchableOpacity
-                style={styles.withdrawBtn}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate(Routes.Withdrawal)}
-              >
-                <Text style={styles.withdrawBtnText}>{t('referralBalance.withdraw')}</Text>
-              </TouchableOpacity>
+              {withdrawVisible && (
+                <TouchableOpacity
+                  style={styles.withdrawBtn}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate(Routes.Withdrawal)}
+                >
+                  <Text style={styles.withdrawBtnText}>{t('referralBalance.withdraw')}</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </LinearGradient>
 

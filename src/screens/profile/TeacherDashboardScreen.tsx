@@ -10,6 +10,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
+import { useMonetization } from '../../store/featureFlag.store';
 
 interface Analytics {
   totalBookings: number;
@@ -26,6 +27,7 @@ export default function TeacherDashboardScreen() {
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
   const { t } = useTranslation();
+  const { withdrawals: withdrawVisible } = useMonetization();
 
   const { data: analytics, isLoading } = useQuery<Analytics>({
     queryKey: ['teacherAnalytics'],
@@ -109,7 +111,9 @@ export default function TeacherDashboardScreen() {
           </View>
         </View>
 
-        {/* Actions */}
+        {/* Actions — qazanc çıxarma admin monetizasiya bağlasa gizlənir */}
+        {withdrawVisible && (
+        <>
         <TouchableOpacity
           style={{ width: '100%' }}
           activeOpacity={0.85}
@@ -134,6 +138,8 @@ export default function TeacherDashboardScreen() {
           <Ionicons name="time-outline" size={20} color={Colors.textSecondary} />
           <Text style={styles.secondaryActionText}>{t('teacherDashboard.history')}</Text>
         </TouchableOpacity>
+        </>
+        )}
 
         {/* AI Insight */}
         <View style={styles.insightCard}>
