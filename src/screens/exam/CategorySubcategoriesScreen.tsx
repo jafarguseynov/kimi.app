@@ -59,6 +59,11 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
   // "Xarici dil" terminal item-i seçiləndə konkret dil soruşulur (Magistr, Doktorantura).
   const [langPickerKey, setLangPickerKey] = useState<string | null>(null);
 
+  // Açılıb-bağlanan mərhələ bölmələri (Rus bölməsi). Başlanğıcda hamısı bağlıdır.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const toggleSection = (id: string) =>
+    setOpenSections((prev) => ({ ...prev, [id]: !prev[id] }));
+
   const goToExams = (subKey: string, subject: string) => {
     navigation.navigate(Routes.CategoryExams, {
       categoryKey,
@@ -139,12 +144,39 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {sections.map((section, si) => (
-          <View key={section.label ?? `sec-${si}`} style={styles.section}>
-            {!!section.label && <Text style={styles.sectionLabel}>{section.label}</Text>}
-            <View style={styles.grid}>{section.items.map(renderCard)}</View>
-          </View>
-        ))}
+        {sections.map((section, si) => {
+          // Başlıqsız bölmə (digər kateqoriyalar) — birbaşa göstər, açılma yoxdur.
+          if (!section.label) {
+            return (
+              <View key={`sec-${si}`} style={styles.section}>
+                <View style={styles.grid}>{section.items.map(renderCard)}</View>
+              </View>
+            );
+          }
+          // Başlıqlı bölmə (Rus bölməsi mərhələləri) — klik edincə açılır/bağlanır.
+          const id = `sec-${si}`;
+          const open = !!openSections[id];
+          return (
+            <View key={id} style={styles.section}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                style={styles.sectionHeader}
+                onPress={() => toggleSection(id)}
+              >
+                <Text style={styles.sectionLabel}>{section.label}</Text>
+                <View style={styles.sectionHeaderRight}>
+                  <Text style={styles.sectionCount}>{section.items.length}</Text>
+                  <Ionicons
+                    name={open ? 'chevron-up' : 'chevron-down'}
+                    size={18}
+                    color={Colors.textMuted}
+                  />
+                </View>
+              </TouchableOpacity>
+              {open && <View style={styles.grid}>{section.items.map(renderCard)}</View>}
+            </View>
+          );
+        })}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -201,7 +233,20 @@ const styles = StyleSheet.create({
   scroll: { padding: 24, gap: 24, paddingBottom: 48 },
 
   section: { gap: 14 },
-  sectionLabel: { fontSize: 13, fontWeight: '800', color: Colors.textSecondary, letterSpacing: 0.2 },
+  sectionHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.surfaceLowest, borderRadius: 14,
+    paddingVertical: 14, paddingHorizontal: 16,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  sectionLabel: { flex: 1, fontSize: 14, fontWeight: '800', color: Colors.textPrimary, letterSpacing: 0.2 },
+  sectionHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sectionCount: {
+    fontSize: 11, fontWeight: '800', color: Colors.primary,
+    backgroundColor: Colors.primary + '14',
+    minWidth: 22, textAlign: 'center',
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, overflow: 'hidden',
+  },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   card: {
