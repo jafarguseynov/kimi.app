@@ -172,6 +172,13 @@ export default function HomeScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isTeacher]);
 
+  // Şagird üçün profil tamamlama xatırlatması (backend interval-idempotent).
+  useEffect(() => {
+    if (isTeacher || isParent) return;
+    ensureProfileReminder().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isTeacher, isParent]);
+
   // Bildiriş icazəsi: ilk açılışda bir dəfə, yalnız OS statusu hələ soruşulmayıbsa,
   // rola uyğun priming ekranını göstər (OS dialoqunu birbaşa açmadan).
   useEffect(() => {

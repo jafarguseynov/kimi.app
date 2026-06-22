@@ -84,11 +84,7 @@ export async function requestAndRegister(): Promise<{ status: PushPermissionStat
     if (!N || !isRealDevice()) return { status: 'unsupported', token: null };
 
     if (Platform.OS === 'android') {
-      await N.setNotificationChannelAsync('default', {
-        name: 'Ümumi bildirişlər',
-        importance: N.AndroidImportance.DEFAULT,
-        lightColor: '#006190',
-      }).catch(() => {});
+      await setupAndroidChannels(N);
     }
 
     const existing = await N.getPermissionsAsync();
@@ -112,5 +108,73 @@ export async function requestAndRegister(): Promise<{ status: PushPermissionStat
     return { status, token };
   } catch {
     return { status: 'unsupported', token: null };
+  }
+}
+
+// kimi.az-a özəl bildiriş səsi (assets/sounds/kimi_notify.wav → app bundle).
+// Backend push payload-da `sound: 'kimi_notify.wav'` göndərir; Android-də səs
+// yalnız bu səslə qurulmuş kanal vasitəsilə işləyir.
+export const CUSTOM_SOUND = 'kimi_notify.wav';
+
+// Android bildiriş kanallarını qurur ('default' + özəl səsli 'kimi_default').
+async function setupAndroidChannels(N: NotificationsModule) {
+  await N.setNotificationChannelAsync('default', {
+    name: 'Ümumi bildirişlər',
+    importance: N.AndroidImportance.DEFAULT,
+    lightColor: '#006190',
+  }).catch(() => {});
+  await N.setNotificationChannelAsync('kimi_default', {
+    name: 'Kimi.az bildirişləri',
+    importance: N.AndroidImportance.HIGH,
+    lightColor: '#006190',
+    sound: CUSTOM_SOUND,
+  }).catch(() => {});
+}
+
+// App açılışında kanalları əvvəlcədən qur (icazədən asılı olmadan). Təhlükəsiz no-op.
+export async function ensureNotificationChannels(): Promise<void> {
+  try {
+    const N = getMod();
+    if (!N || Platform.OS !== 'android') return;
+    await setupAndroidChannels(N);
+  } catch {
+    /* kritik deyil */
+  }
+}
+
+type Sub = { remove: () => void };
+
+// İstifadəçi bildirişə toxunduqda çağırılır (app açıq/arxa planda/bağlı).
+// Qaytarılan abunəliyi useEffect cleanup-da remove() ilə ləğv et.
+export function addNotificationResponseListener(
+  handler: (data: Record<string, any>) => void,
+): Sub | null {
+  try {
+    const N = getMod();
+    if (!N) return null;
+    const sub = N.addNotificationResponseReceivedListener((response: any) => {
+      const data = response?.notification?.request?.content?.data ?? {};
+      handler(data as Record<string, any>);
+    });
+    return sub as Sub;
+  } catch {
+    return null;
+  }
+}
+
+// Bildiriş app ön planda olarkən gəldikdə (banner/səs handler tərəfindən idarə olunur).
+export function addNotificationReceivedListener(
+  handler: (data: Record<string, any>) => void,
+): Sub | null {
+  try {
+    const N = getMod();
+    if (!N) return null;
+    const sub = N.addNotificationReceivedListener((notification: any) => {
+      const data = notification?.request?.content?.data ?? {};
+      handler(data as Record<string, any>);
+    });
+    return sub as Sub;
+  } catch {
+    return null;
   }
 }
