@@ -29,6 +29,7 @@ import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileComple
 import UpdateBanner from '../../components/UpdateBanner';
 import { LanguageFlagButton } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
+import { rs } from '../../utils/responsive';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.HomeMain>;
@@ -119,8 +120,8 @@ function TestCard({ title, sub, icon, iconColor = Colors.primary, onPress }: Tes
       onPress={onPress}
     >
       <Ionicons name={icon} size={20} color={iconColor} />
-      <Text style={tcStyles.title}>{title}</Text>
-      <Text style={tcStyles.sub}>{sub}</Text>
+      <Text style={tcStyles.title} numberOfLines={2}>{title}</Text>
+      <Text style={tcStyles.sub} numberOfLines={2}>{sub}</Text>
     </TouchableOpacity>
   );
 }
@@ -128,6 +129,7 @@ function TestCard({ title, sub, icon, iconColor = Colors.primary, onPress }: Tes
 const tcStyles = StyleSheet.create({
   card: {
     flex: 1,
+    minWidth: 0,
     backgroundColor: '#fff',
     borderRadius: 14,
     padding: 12,
@@ -340,7 +342,7 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={() => navigation.navigate(Routes.StreakDashboard)}
             >
               <Ionicons name="flame" size={15} color="#f97316" />
-              <Text style={styles.streakText}>{t('home.streak', { n: stats?.streak ?? 0 })}</Text>
+              <Text style={styles.streakText} numberOfLines={1}>{t('home.streak', { n: stats?.streak ?? 0 })}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -1100,11 +1102,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: rs(16),
     paddingVertical: 12,
+    gap: 8,
     backgroundColor: Colors.surface + 'b3',
   },
-  topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  // flex:1 + minWidth:0 → loqo qrupu sağdakı sabit düymələrə yer buraxmaq üçün
+  // istənilən ekran enində kiçilə bilir (dar ekranlarda sağdan daşmanın qarşısını alır).
+  topBarLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 },
   topAvatar: {
     width: 36,
     height: 36,
@@ -1113,11 +1118,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoImage: {
-    width: 160,
-    height: 58,
+    flexShrink: 1,
+    width: rs(150),
+    height: rs(54),
     marginLeft: 2,
   },
-  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  topBarRight: { flexDirection: 'row', alignItems: 'center', gap: rs(8), flexShrink: 0 },
   streakBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1125,7 +1131,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff7ed',
     borderWidth: 1,
     borderColor: '#fed7aa',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
     borderRadius: 999,
   },
@@ -1151,7 +1157,7 @@ const styles = StyleSheet.create({
   },
 
   scroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: rs(20),
     paddingTop: 8,
     paddingBottom: 32,
   },
