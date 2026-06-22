@@ -16,6 +16,31 @@ type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.CategorySu
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
+type StageSection = { label: string | null; items: SubItem[] };
+
+// Rus bölməsi (və oxşar sinif-əsaslı kateqoriyalar) üçün siniflərı mərhələ başlıqları altında qruplaşdırır.
+// Qruplama key-dən törədilir — backend-də ayrıca səviyyə yoxdur (model 2 səviyyəlidir).
+function buildStageSections(items: SubItem[]): StageSection[] {
+  const buckets: Record<string, SubItem[]> = { primary: [], middle: [], graduation: [], qabul: [], other: [] };
+  for (const it of items) {
+    if (it.key.startsWith('ab-')) buckets.qabul.push(it);
+    else if (/^\d+$/.test(it.key)) {
+      const g = parseInt(it.key, 10);
+      if (g <= 4) buckets.primary.push(it);
+      else if (g <= 8) buckets.middle.push(it);
+      else buckets.graduation.push(it);
+    } else buckets.other.push(it);
+  }
+  const order: { k: keyof typeof buckets; label: string | null }[] = [
+    { k: 'primary', label: '📗 Başlanğıc siniflər (1–4)' },
+    { k: 'middle', label: '📘 Ümumi orta (5–8)' },
+    { k: 'graduation', label: '🎓 Buraxılış (9–11)' },
+    { k: 'qabul', label: '🎯 Qəbul / Abituriyent' },
+    { k: 'other', label: null },
+  ];
+  return order.filter((o) => buckets[o.k].length > 0).map((o) => ({ label: o.label, items: buckets[o.k] }));
+}
+
 export default function CategorySubcategoriesScreen({ navigation, route }: Props) {
   const { categoryKey, categoryTitle } = route.params;
   const { t } = useTranslation();
@@ -67,6 +92,40 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
     if (subKey) goToExams(subKey, lang);
   };
 
+  // Rus bölməsi: siniflər + qəbul qrupları mərhələ başlıqları altında. Digər kateqoriyalar: tək qrup.
+  const sections: StageSection[] =
+    categoryKey === 'russian' ? buildStageSections(items) : [{ label: null, items }];
+
+  const renderCard = (item: SubItem) => {
+    const structureSummary = item.structureKey ? getStructureSummary(item.structureKey) : undefined;
+    return (
+      <View key={item.key} style={styles.card}>
+        <View style={styles.iconBox}>
+          <Text style={{ fontSize: 22 }}>{item.emoji ?? '📂'}</Text>
+        </View>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        {!!item.desc && <Text style={styles.cardDesc}>{item.desc}</Text>}
+        {!!structureSummary && (
+          <View style={styles.structurePill}>
+            <Ionicons name="document-text-outline" size={11} color={Colors.primary} />
+            <Text style={styles.structurePillText}>{structureSummary}</Text>
+          </View>
+        )}
+        <TouchableOpacity activeOpacity={0.85} onPress={() => openItem(item)}>
+          <LinearGradient
+            colors={GRADIENT}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.cardCta}
+          >
+            <Text style={styles.cardCtaText}>
+              {item.subjects && item.subjects.length > 0 ? 'Fənləri gör' : 'Daxil ol'}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
@@ -80,37 +139,12 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={styles.grid}>
-          {items.map((item) => {
-            const structureSummary = item.structureKey ? getStructureSummary(item.structureKey) : undefined;
-            return (
-              <View key={item.key} style={styles.card}>
-                <View style={styles.iconBox}>
-                  <Text style={{ fontSize: 22 }}>{item.emoji ?? '📂'}</Text>
-                </View>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {!!item.desc && <Text style={styles.cardDesc}>{item.desc}</Text>}
-                {!!structureSummary && (
-                  <View style={styles.structurePill}>
-                    <Ionicons name="document-text-outline" size={11} color={Colors.primary} />
-                    <Text style={styles.structurePillText}>{structureSummary}</Text>
-                  </View>
-                )}
-                <TouchableOpacity activeOpacity={0.85} onPress={() => openItem(item)}>
-                  <LinearGradient
-                    colors={GRADIENT}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={styles.cardCta}
-                  >
-                    <Text style={styles.cardCtaText}>
-                      {item.subjects && item.subjects.length > 0 ? 'Fənləri gör' : 'Daxil ol'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-        </View>
+        {sections.map((section, si) => (
+          <View key={section.label ?? `sec-${si}`} style={styles.section}>
+            {!!section.label && <Text style={styles.sectionLabel}>{section.label}</Text>}
+            <View style={styles.grid}>{section.items.map(renderCard)}</View>
+          </View>
+        ))}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -165,6 +199,9 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 10, fontWeight: '600', color: Colors.textMuted, letterSpacing: 1.2, marginTop: -2 },
 
   scroll: { padding: 24, gap: 24, paddingBottom: 48 },
+
+  section: { gap: 14 },
+  sectionLabel: { fontSize: 13, fontWeight: '800', color: Colors.textSecondary, letterSpacing: 0.2 },
 
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   card: {
