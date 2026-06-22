@@ -27,6 +27,7 @@ import { Switch } from 'react-native';
 import { LanguageChips } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
 import { useMonetization } from '../../store/featureFlag.store';
+import { rs } from '../../utils/responsive';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -134,18 +135,18 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={styles.statValue}>{t('profileScreen.streakDays', { count: streak })}</Text>
-          <Text style={styles.statLabel}>{t('profileScreen.statStreak')}</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('profileScreen.streakDays', { count: streak })}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>{t('profileScreen.statStreak')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statEmoji}>🏆</Text>
-          <Text style={styles.statValue}>{tier}</Text>
-          <Text style={styles.statLabel}>{t('profileScreen.statLeague')}</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{tier}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>{t('profileScreen.statLeague')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statEmoji}>⭐</Text>
-          <Text style={styles.statValue}>{rating}</Text>
-          <Text style={styles.statLabel}>{t('profileScreen.statRating')}</Text>
+          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{rating}</Text>
+          <Text style={styles.statLabel} numberOfLines={1}>{t('profileScreen.statRating')}</Text>
         </View>
       </View>
 
@@ -832,17 +833,18 @@ const styles = StyleSheet.create({
   roleBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 1 },
 
   // ── Stats (student) ──
-  statsRow: { flexDirection: 'row', gap: 12 },
+  statsRow: { flexDirection: 'row', gap: rs(10) },
   statItem: {
-    flex: 1, backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 16,
+    flex: 1, minWidth: 0, backgroundColor: Colors.surfaceLowest, borderRadius: 18,
+    paddingVertical: 16, paddingHorizontal: rs(8),
     alignItems: 'center', justifyContent: 'center', gap: 2,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.03, shadowRadius: 12, elevation: 1,
   },
   statItemGrad: { shadowColor: Colors.primary, shadowOpacity: 0.15 },
   statEmoji: { fontSize: 22, marginBottom: 2 },
-  statLabel: { fontSize: 9, fontWeight: '800', color: Colors.outline, textTransform: 'uppercase', letterSpacing: 1 },
-  statValue: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, marginTop: 2 },
+  statLabel: { fontSize: 9, fontWeight: '800', color: Colors.outline, textTransform: 'uppercase', letterSpacing: 1, textAlign: 'center' },
+  statValue: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, marginTop: 2, textAlign: 'center' },
 
   // ── Level badge below avatar ──
   levelChip: {
