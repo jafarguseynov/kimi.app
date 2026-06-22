@@ -5,18 +5,20 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const PROBLEM_TYPES = [
-  { value: 'tech', label: 'Texniki xəta' },
-  { value: 'content', label: 'Dərs məzmunu' },
-  { value: 'payment', label: 'Ödəniş problemi' },
-  { value: 'other', label: 'Digər' },
+  { value: 'tech', labelKey: 'reportProblem.typeTech' },
+  { value: 'content', labelKey: 'reportProblem.typeContent' },
+  { value: 'payment', labelKey: 'reportProblem.typePayment' },
+  { value: 'other', labelKey: 'reportProblem.typeOther' },
 ];
 
 export default function ReportProblemScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [problemType, setProblemType] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -24,7 +26,8 @@ export default function ReportProblemScreen() {
   const [descFocused, setDescFocused] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
 
-  const selectedLabel = PROBLEM_TYPES.find(t => t.value === problemType)?.label ?? 'Növ seçin';
+  const selectedType = PROBLEM_TYPES.find(pt => pt.value === problemType);
+  const selectedLabel = selectedType ? t(selectedType.labelKey) : t('reportProblem.typePlaceholder');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -32,22 +35,22 @@ export default function ReportProblemScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Problemi Bildir</Text>
+        <Text style={styles.headerTitle}>{t('reportProblem.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Intro */}
         <View style={styles.intro}>
-          <Text style={styles.introTitle}>Sizə necə kömək edə bilərik?</Text>
-          <Text style={styles.introSub}>Problemi təsvir edin, komandamız ən qısa zamanda sizinlə əlaqə saxlayacaq.</Text>
+          <Text style={styles.introTitle}>{t('reportProblem.introTitle')}</Text>
+          <Text style={styles.introSub}>{t('reportProblem.introSub')}</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
           {/* Problem type */}
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Problem növü</Text>
+            <Text style={styles.fieldLabel}>{t('reportProblem.typeLabel')}</Text>
             <TouchableOpacity style={styles.selectRow} activeOpacity={0.85} onPress={() => setShowPicker(!showPicker)}>
               <Text style={[styles.selectText, !problemType && styles.selectPlaceholder]}>{selectedLabel}</Text>
               <Ionicons name={showPicker ? 'chevron-up' : 'chevron-down'} size={20} color={Colors.outline} />
@@ -62,7 +65,7 @@ export default function ReportProblemScreen() {
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.dropdownOptionText, problemType === type.value && styles.dropdownOptionTextActive]}>
-                      {type.label}
+                      {t(type.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -72,11 +75,11 @@ export default function ReportProblemScreen() {
 
           {/* Title */}
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Qısa başlıq</Text>
+            <Text style={styles.fieldLabel}>{t('reportProblem.titleLabel')}</Text>
             <View style={[styles.inputBox, titleFocused && styles.inputBoxFocused]}>
               <TextInput
                 style={styles.inputText}
-                placeholder="Məsələn: Video açılmır"
+                placeholder={t('reportProblem.titlePlaceholder')}
                 placeholderTextColor={Colors.outlineVariant}
                 value={title}
                 onChangeText={setTitle}
@@ -88,11 +91,11 @@ export default function ReportProblemScreen() {
 
           {/* Description */}
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Açıqlama</Text>
+            <Text style={styles.fieldLabel}>{t('reportProblem.descLabel')}</Text>
             <View style={[styles.textareaBox, descFocused && styles.inputBoxFocused]}>
               <TextInput
                 style={styles.textareaInput}
-                placeholder="Problemi ətraflı izah edin..."
+                placeholder={t('reportProblem.descPlaceholder')}
                 placeholderTextColor={Colors.outlineVariant}
                 value={description}
                 onChangeText={setDescription}
@@ -107,13 +110,13 @@ export default function ReportProblemScreen() {
 
           {/* File upload */}
           <View style={styles.field}>
-            <Text style={styles.fieldLabel}>Fayl əlavə et</Text>
+            <Text style={styles.fieldLabel}>{t('reportProblem.uploadLabel')}</Text>
             <TouchableOpacity style={styles.uploadZone} activeOpacity={0.85}>
               <View style={styles.uploadIconWrap}>
                 <Ionicons name="cloud-upload-outline" size={28} color={Colors.primary} />
               </View>
-              <Text style={styles.uploadTitle}>Şəkil və ya sənəd yüklə</Text>
-              <Text style={styles.uploadSub}>PNG, JPG və ya PDF (Max. 5MB)</Text>
+              <Text style={styles.uploadTitle}>{t('reportProblem.uploadTitle')}</Text>
+              <Text style={styles.uploadSub}>{t('reportProblem.uploadSub')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -121,7 +124,7 @@ export default function ReportProblemScreen() {
         {/* Submit */}
         <TouchableOpacity activeOpacity={0.85} style={styles.submitWrap}>
           <LinearGradient colors={GRADIENT} style={styles.submitBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.submitText}>Göndər</Text>
+            <Text style={styles.submitText}>{t('reportProblem.submit')}</Text>
             <Ionicons name="send-outline" size={18} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

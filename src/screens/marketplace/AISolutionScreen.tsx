@@ -8,6 +8,7 @@ import { RouteProp } from '@react-navigation/native';
 import { MarketplaceStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<MarketplaceStackParamList, typeof Routes.AISolution>;
@@ -70,6 +71,7 @@ function buildSteps(question: string): { steps: Step[]; answer: string; unit?: s
 }
 
 export default function AISolutionScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const question = route.params?.question ?? '2x + 5 = 15 tənliyində x-i tapın və bu tənliyin kimyəvi reaksiyalardakı mol sayına tətbiqini izah edin.';
   const { steps, answer, unit } = useMemo(() => buildSteps(question), [question]);
 
@@ -79,10 +81,10 @@ export default function AISolutionScreen({ navigation, route }: Props) {
 
   const shareSolution = async () => {
     try {
-      const summary = `Kimi AI sualımı həll etdi!\n\nSual: ${question}\nNəticə: ${answer}${unit ? ' ' + unit : ''}\n\nSən də sına: https://kimi.az`;
-      await Share.share({ message: summary, title: 'Kimi AI Cavabı' });
+      const summary = t('marketplace.shareSummary', { question, result: `${answer}${unit ? ' ' + unit : ''}` });
+      await Share.share({ message: summary, title: t('marketplace.shareTitle') });
     } catch {
-      Alert.alert('Xəta', 'Paylaşma alınmadı');
+      Alert.alert(t('marketplace.errorTitle'), t('marketplace.shareFail'));
     }
   };
 
@@ -92,7 +94,7 @@ export default function AISolutionScreen({ navigation, route }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Cavab</Text>
+        <Text style={styles.headerTitle}>{t('marketplace.aiAnswerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} onPress={shareSolution} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={20} color={Colors.primary} />
         </TouchableOpacity>
@@ -108,10 +110,10 @@ export default function AISolutionScreen({ navigation, route }: Props) {
           </View>
           <View style={{ flex: 1, gap: 6 }}>
             <View style={styles.kickerPill}>
-              <Text style={styles.kickerText}>KİMİ AI KÖMƏKÇİSİ</Text>
+              <Text style={styles.kickerText}>{t('marketplace.kimiAssistant')}</Text>
             </View>
-            <Text style={styles.introTitle}>Mən sualını həll etdim!</Text>
-            <Text style={styles.introSub}>Gəl addım-addım necə alındığına baxaq.</Text>
+            <Text style={styles.introTitle}>{t('marketplace.solvedIt')}</Text>
+            <Text style={styles.introSub}>{t('marketplace.stepByStep')}</Text>
           </View>
         </View>
 
@@ -119,7 +121,7 @@ export default function AISolutionScreen({ navigation, route }: Props) {
         <View style={{ gap: 10 }}>
           <View style={styles.sectionLabel}>
             <Ionicons name="help-circle" size={18} color={Colors.primary} />
-            <Text style={styles.sectionLabelText}>SUALIN</Text>
+            <Text style={styles.sectionLabelText}>{t('marketplace.yourQuestion')}</Text>
           </View>
           <View style={styles.questionCard}>
             <View style={styles.questionAccent} />
@@ -131,7 +133,7 @@ export default function AISolutionScreen({ navigation, route }: Props) {
         <View style={{ gap: 14 }}>
           <View style={styles.sectionLabel}>
             <Ionicons name="sparkles" size={18} color={Colors.primary} />
-            <Text style={[styles.sectionLabelText, { color: Colors.textPrimary, fontSize: 16 }]}>Həlli addımları</Text>
+            <Text style={[styles.sectionLabelText, { color: Colors.textPrimary, fontSize: 16 }]}>{t('marketplace.solutionSteps')}</Text>
           </View>
 
           {steps.map((step, i) => {
@@ -162,16 +164,16 @@ export default function AISolutionScreen({ navigation, route }: Props) {
         {/* Result card */}
         <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.resultCard}>
           <View style={styles.resultAura} pointerEvents="none" />
-          <Text style={styles.resultKicker}>NƏTİCƏ</Text>
+          <Text style={styles.resultKicker}>{t('marketplace.result')}</Text>
           <View style={styles.resultRow}>
             <Text style={styles.resultValue}>{answer}</Text>
             {unit ? <Text style={styles.resultUnit}>{unit}</Text> : null}
           </View>
           <View style={styles.resultBadge}>
             <Ionicons name="checkmark-circle" size={14} color="#fff" />
-            <Text style={styles.resultBadgeText}>AI tərəfindən təsdiqlənib</Text>
+            <Text style={styles.resultBadgeText}>{t('marketplace.aiVerified')}</Text>
           </View>
-          <Text style={styles.resultNote}>Riyazi tənliyin həlli 100% dəqiqliklə yerinə yetirilmişdir.</Text>
+          <Text style={styles.resultNote}>{t('marketplace.resultNote')}</Text>
         </LinearGradient>
 
         {/* Actions */}
@@ -179,11 +181,11 @@ export default function AISolutionScreen({ navigation, route }: Props) {
           <TouchableOpacity activeOpacity={0.9} onPress={askAnother}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
               <Ionicons name="add-circle" size={22} color="#fff" />
-              <Text style={styles.primaryBtnText}>Başqa sual soruş</Text>
+              <Text style={styles.primaryBtnText}>{t('marketplace.askAnother')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7} onPress={shareSolution} style={styles.secondaryBtn}>
-            <Text style={styles.secondaryBtnText}>Həlli paylaş</Text>
+            <Text style={styles.secondaryBtnText}>{t('marketplace.shareSolution')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -191,7 +193,7 @@ export default function AISolutionScreen({ navigation, route }: Props) {
             style={styles.fallbackLink}
           >
             <Ionicons name="person-outline" size={16} color={Colors.primary} />
-            <Text style={styles.fallbackLinkText}>Cavab yetərli olmadı? Müəllimdən soruş</Text>
+            <Text style={styles.fallbackLinkText}>{t('marketplace.notEnoughAsk')}</Text>
           </TouchableOpacity>
         </View>
 

@@ -8,6 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -82,13 +83,14 @@ export default function DuelSessionScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { user } = useUserStore();
+  const { t } = useTranslation();
   const p: Params = (route.params ?? {}) as Params;
 
   const mode: 'bot' | 'live' = p.mode ?? 'live';
   const opponentName = p.opponentName ?? (mode === 'bot' ? 'Robo-Kimi' : 'Leyla');
   const subject = p.subject ?? 'Riyaziyyat';
   const stake = p.stake ?? 25;
-  const myName = user?.name?.split(' ')[0] ?? 'Sən';
+  const myName = user?.name?.split(' ')[0] ?? t('duel.me');
 
   const bank = QUESTION_BANK[subject] ?? QUESTION_BANK['Riyaziyyat'];
   const desiredCount = p.questionCount ?? 5;
@@ -161,17 +163,17 @@ export default function DuelSessionScreen() {
     qStartRef.current = Date.now();
     setLastBonus(null);
     setTimeLeft(PER_QUESTION_SECONDS);
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setTimeLeft((v) => {
         if (v <= 1) {
-          clearInterval(t);
+          clearInterval(timer);
           if (!revealedRef.current) handleTimeout();
           return 0;
         }
         return v - 1;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [idx]);
 
@@ -214,9 +216,9 @@ export default function DuelSessionScreen() {
   };
 
   const confirmExit = () => {
-    Alert.alert('Duel-dən çıx?', 'Bu yarış məğlubiyyət sayılacaq.', [
-      { text: 'Davam et', style: 'cancel' },
-      { text: 'Çıx', style: 'destructive', onPress: () => navigation.goBack() },
+    Alert.alert(t('duel.exitTitle'), t('duel.exitBody'), [
+      { text: t('duel.continue'), style: 'cancel' },
+      { text: t('duel.exit'), style: 'destructive', onPress: () => navigation.goBack() },
     ]);
   };
 
@@ -287,7 +289,7 @@ export default function DuelSessionScreen() {
             <View style={[styles.bonusBadge, lastBonus === 0 && styles.bonusBadgeZero]}>
               <Ionicons name="flash" size={11} color={lastBonus === 0 ? Colors.textSecondary : '#F59E0B'} />
               <Text style={[styles.bonusText, lastBonus === 0 && { color: Colors.textSecondary }]}>
-                {lastBonus > 0 ? `+${BASE_POINTS + lastBonus} xal` : '0 xal'}
+                {lastBonus > 0 ? `+${BASE_POINTS + lastBonus} ${t('duel.pointsUnit')}` : `0 ${t('duel.pointsUnit')}`}
               </Text>
             </View>
           )}
@@ -337,7 +339,7 @@ export default function DuelSessionScreen() {
       {/* Bottom hint */}
       <View style={styles.bottomHint}>
         <Text style={styles.hintText}>
-          Mərc: {stake} XP • Qalib {stake * 2} XP götürür
+          {t('duel.stakeHint', { stake, prize: stake * 2 })}
         </Text>
       </View>
     </SafeAreaView>

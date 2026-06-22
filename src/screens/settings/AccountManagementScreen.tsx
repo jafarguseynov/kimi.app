@@ -6,19 +6,21 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.AccountManagement>;
 };
 
 export default function AccountManagementScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hesabın İdarə Edilməsi</Text>
+        <Text style={styles.headerTitle}>{t('accountMgmt.headerTitle')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -30,12 +32,12 @@ export default function AccountManagementScreen({ navigation }: Props) {
           </View>
           <View style={styles.tipCard}>
             <View style={styles.tipBadge}>
-              <Text style={styles.tipBadgeText}>KİMİ-NİN MƏSLƏHƏTİ</Text>
+              <Text style={styles.tipBadgeText}>{t('accountMgmt.tipBadge')}</Text>
             </View>
-            <Text style={styles.tipTitle}>Məlumatlarınızı qoruyun</Text>
+            <Text style={styles.tipTitle}>{t('accountMgmt.tipTitle')}</Text>
             <Text style={styles.tipBody}>
-              Hesabı <Text style={styles.tipHighlight}>deaktiv etdikdə</Text> məlumatlarınız saxlanılır, lakin profiliniz gizlədilir.{' '}
-              <Text style={styles.tipHighlightDanger}>Sildikdə</Text> isə bütün tərəqqiniz və sertifikatlarınız həmişəlik itirilir.
+              {t('accountMgmt.tipBodyPre')}<Text style={styles.tipHighlight}>{t('accountMgmt.tipDeactivate')}</Text>{t('accountMgmt.tipBodyMid')}
+              <Text style={styles.tipHighlightDanger}>{t('accountMgmt.tipDelete')}</Text>{t('accountMgmt.tipBodyPost')}
             </Text>
           </View>
         </View>
@@ -50,13 +52,13 @@ export default function AccountManagementScreen({ navigation }: Props) {
             <Ionicons name="ban" size={28} color={Colors.primary} />
           </View>
           <View style={styles.actionText}>
-            <Text style={styles.actionTitle}>Bloklanmış istifadəçilər</Text>
+            <Text style={styles.actionTitle}>{t('accountMgmt.blockedTitle')}</Text>
             <Text style={styles.actionSub}>
-              Bloklamalarınızı idarə edin — kim sizi görə və yaza bilər.
+              {t('accountMgmt.blockedSub')}
             </Text>
           </View>
           <View style={styles.actionCTA}>
-            <Text style={[styles.actionCTAText, { color: Colors.primary }]}>Bax</Text>
+            <Text style={[styles.actionCTAText, { color: Colors.primary }]}>{t('accountMgmt.view')}</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
           </View>
         </TouchableOpacity>
@@ -71,13 +73,13 @@ export default function AccountManagementScreen({ navigation }: Props) {
             <Ionicons name="eye-off-outline" size={28} color={Colors.primary} />
           </View>
           <View style={styles.actionText}>
-            <Text style={styles.actionTitle}>Hesabı deaktiv et</Text>
+            <Text style={styles.actionTitle}>{t('accountMgmt.deactivateTitle')}</Text>
             <Text style={styles.actionSub}>
-              Fəaliyyətinizi müvəqqəti dayandırın. İstənilən vaxt geri qayıda bilərsiniz.
+              {t('accountMgmt.deactivateSub')}
             </Text>
           </View>
           <View style={styles.actionCTA}>
-            <Text style={[styles.actionCTAText, { color: Colors.primary }]}>İndi deaktiv et</Text>
+            <Text style={[styles.actionCTAText, { color: Colors.primary }]}>{t('accountMgmt.deactivateNow')}</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
           </View>
         </TouchableOpacity>
@@ -92,23 +94,23 @@ export default function AccountManagementScreen({ navigation }: Props) {
             <Ionicons name="trash-outline" size={28} color={Colors.error} />
           </View>
           <View style={styles.actionText}>
-            <Text style={styles.actionTitle}>Hesabı sil</Text>
+            <Text style={styles.actionTitle}>{t('accountMgmt.deleteTitle')}</Text>
             <Text style={styles.actionSub}>
-              Bütün kurs tarixçənizi və şəxsi məlumatlarınızı sistemdən tamamilə təmizləyin.
+              {t('accountMgmt.deleteSub')}
             </Text>
           </View>
           <View style={styles.actionCTA}>
-            <Text style={[styles.actionCTAText, { color: Colors.error }]}>Həmişəlik sil</Text>
+            <Text style={[styles.actionCTAText, { color: Colors.error }]}>{t('accountMgmt.deleteForever')}</Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.error} />
           </View>
         </TouchableOpacity>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerLabel}>Yardıma ehtiyacınız var?</Text>
+          <Text style={styles.footerLabel}>{t('accountMgmt.needHelp')}</Text>
           <TouchableOpacity style={styles.supportBtn} activeOpacity={0.7}>
             <Ionicons name="headset-outline" size={18} color={Colors.textPrimary} />
-            <Text style={styles.supportBtnText}>Dəstək ilə əlaqə</Text>
+            <Text style={styles.supportBtnText}>{t('accountMgmt.contactSupport')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

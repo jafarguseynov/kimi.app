@@ -13,11 +13,13 @@ import { Alert } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { subscribeTeacher } from '../../api/subscription.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function CardPaymentScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const route = useRoute();
   const params = (route.params ?? {}) as { amount?: number; months?: number; isTeacherSub?: boolean; planName?: string };
   const queryClient = useQueryClient();
@@ -37,7 +39,7 @@ export default function CardPaymentScreen() {
       navigation.navigate(Routes.PaymentSuccess, params);
     },
     onError: (err: any) => {
-      Alert.alert('Xəta', err?.response?.data?.message ?? 'Abunəlik aktivləşdirilə bilmədi. Yenidən cəhd edin.');
+      Alert.alert(t('pay.errorTitle'), err?.response?.data?.message ?? t('pay.subActivateFailed'));
     },
   });
 
@@ -55,7 +57,7 @@ export default function CardPaymentScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Ödəniş</Text>
+          <Text style={styles.headerTitle}>{t('pay.payHeader')}</Text>
           <Text style={styles.headerLogo}>Kimi.az</Text>
         </View>
 
@@ -70,20 +72,20 @@ export default function CardPaymentScreen() {
                 <Ionicons name="shield-checkmark" size={14} color={Colors.tertiary} />
               </View>
             </View>
-            <Text style={styles.heroTitle}>Kartla ödəniş</Text>
-            <Text style={styles.heroSub}>Təhlükəsiz ödəniş sistemimiz vasitəsilə kursa qoşulun</Text>
+            <Text style={styles.heroTitle}>{t('pay.cardPayTitle')}</Text>
+            <Text style={styles.heroSub}>{t('pay.cardPaySub')}</Text>
           </View>
 
           {/* Form */}
           <View style={styles.formCard}>
             <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>Kartın üzərindəki ad</Text>
+              <Text style={styles.fieldLabel}>{t('pay.cardName')}</Text>
               <View style={styles.fieldBox}>
                 <TextInput
                   style={[styles.fieldInput, { textTransform: 'uppercase', letterSpacing: 1 }]}
                   value={name}
                   onChangeText={setName}
-                  placeholder="AD SOYAD"
+                  placeholder={t('pay.cardNamePlaceholder')}
                   placeholderTextColor={Colors.outlineVariant}
                   autoCapitalize="characters"
                 />
@@ -91,7 +93,7 @@ export default function CardPaymentScreen() {
             </View>
 
             <View style={styles.fieldWrap}>
-              <Text style={styles.fieldLabel}>Kart nömrəsi</Text>
+              <Text style={styles.fieldLabel}>{t('pay.cardNumber')}</Text>
               <View style={[styles.fieldBox, styles.fieldRow]}>
                 <TextInput
                   style={[styles.fieldInput, { flex: 1, letterSpacing: 2 }]}
@@ -111,13 +113,13 @@ export default function CardPaymentScreen() {
 
             <View style={styles.fieldRow}>
               <View style={[styles.fieldWrap, { flex: 1 }]}>
-                <Text style={styles.fieldLabel}>Son istifadə tarixi</Text>
+                <Text style={styles.fieldLabel}>{t('pay.expiryLabel')}</Text>
                 <View style={styles.fieldBox}>
                   <TextInput
                     style={[styles.fieldInput, { textAlign: 'center' }]}
                     value={expiry}
                     onChangeText={setExpiry}
-                    placeholder="AA / İİ"
+                    placeholder={t('pay.expiryPlaceholder')}
                     placeholderTextColor={Colors.outlineVariant}
                     keyboardType="numeric"
                     maxLength={5}
@@ -146,7 +148,7 @@ export default function CardPaymentScreen() {
 
             <View style={styles.amountRow}>
               <View>
-                <Text style={styles.amountLabel}>Ödəniləcək məbləğ</Text>
+                <Text style={styles.amountLabel}>{t('pay.amountToPay')}</Text>
                 <Text style={styles.amountValue}>{amountLabel}<Text style={styles.amountCurrency}>AZN</Text></Text>
               </View>
               <View style={styles.sslBadge}>
@@ -158,15 +160,15 @@ export default function CardPaymentScreen() {
 
           <TouchableOpacity onPress={onPay} activeOpacity={0.9} disabled={activating}>
             <LinearGradient colors={GRADIENT} style={styles.payBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.payBtnText}>{activating ? 'Aktivləşdirilir...' : 'Ödənişi tamamla'}</Text>
+              <Text style={styles.payBtnText}>{activating ? t('pay.activating') : t('pay.completePayment')}</Text>
               <Ionicons name={activating ? 'hourglass' : 'arrow-forward'} size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
 
           <Text style={styles.terms}>
-            Təsdiq düyməsini sıxmaqla siz bizim{' '}
-            <Text style={{ color: Colors.primary, fontWeight: '600' }}>Xidmət Şərtlərimizlə</Text>
-            {' '}razılaşırsınız.
+            {t('pay.termsPre')}
+            <Text style={{ color: Colors.primary, fontWeight: '600' }}>{t('pay.termsLink')}</Text>
+            {t('pay.termsPost')}
           </Text>
         </ScrollView>
       </SafeAreaView>

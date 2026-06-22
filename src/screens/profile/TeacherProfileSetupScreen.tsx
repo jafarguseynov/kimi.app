@@ -7,17 +7,19 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const BENEFITS = [
-  { icon: 'trending-up' as const, text: 'Tam profil siyahıda daha yuxarı göstərilir' },
-  { icon: 'people' as const, text: 'Daha çox şagird səni tapır və sorğu göndərir' },
-  { icon: 'gift' as const, text: 'Profili tamamla → 3 günlük pulsuz Boost hədiyyə' },
+  { icon: 'trending-up' as const, textKey: 'teacherProfileSetup.benefit1' },
+  { icon: 'people' as const, textKey: 'teacherProfileSetup.benefit2' },
+  { icon: 'gift' as const, textKey: 'teacherProfileSetup.benefit3' },
 ];
 
 export default function TeacherProfileSetupScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { pct, items } = useTeacherProfileCompletion();
 
   const goEdit = () => {
@@ -34,15 +36,15 @@ export default function TeacherProfileSetupScreen() {
           </LinearGradient>
         </View>
 
-        <Text style={styles.title}>Profilini tamamla</Text>
+        <Text style={styles.title}>{t('teacherProfileSetup.title')}</Text>
         <Text style={styles.sub}>
-          Bir neçə dəqiqə çəkir — amma şagirdlərin sənə güvənməsi və səni seçməsi üçün ən vacib addımdır.
+          {t('teacherProfileSetup.sub')}
         </Text>
 
         {/* Progress */}
         <View style={styles.progressCard}>
           <View style={styles.progressTop}>
-            <Text style={styles.progressLabel}>Profil gücü</Text>
+            <Text style={styles.progressLabel}>{t('teacherProfileSetup.progressLabel')}</Text>
             <Text style={styles.progressPct}>{pct}%</Text>
           </View>
           <View style={styles.barTrack}>
@@ -69,7 +71,7 @@ export default function TeacherProfileSetupScreen() {
               <View style={styles.benefitIcon}>
                 <Ionicons name={b.icon} size={18} color={Colors.primary} />
               </View>
-              <Text style={styles.benefitText}>{b.text}</Text>
+              <Text style={styles.benefitText}>{t(b.textKey)}</Text>
             </View>
           ))}
         </View>
@@ -77,12 +79,12 @@ export default function TeacherProfileSetupScreen() {
         <View style={styles.actions}>
           <TouchableOpacity activeOpacity={0.9} onPress={goEdit}>
             <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.primaryBtnText}>İndi tamamla</Text>
+              <Text style={styles.primaryBtnText}>{t('teacherProfileSetup.completeNow')}</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.8} onPress={() => navigation.goBack()}>
-            <Text style={styles.secondaryBtnText}>Sonra</Text>
+            <Text style={styles.secondaryBtnText}>{t('teacherProfileSetup.later')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

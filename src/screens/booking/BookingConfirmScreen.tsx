@@ -16,6 +16,9 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { createBooking, getTeacherSlots, TeacherSlot } from '../../api/booking.api';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
+
+const DATE_LOCALE: Record<string, string> = { az: 'az-AZ', ru: 'ru-RU', en: 'en-US' };
 
 const DAY_NAMES = ['Bazar ertəsi', 'Çərşənbə axşamı', 'Çərşənbə', 'Cümə axşamı', 'Cümə', 'Şənbə', 'Bazar'];
 const SUBJECTS = ['Riyaziyyat', 'Fizika', 'Kimya', 'Biologiya', 'İngilis dili', 'Tarix'];
@@ -41,6 +44,7 @@ function defaultFallbackDate(): Date {
 
 export default function BookingConfirmScreen() {
   const navigation = useNavigation<any>();
+  const { t, language } = useTranslation();
   const route = useRoute<any>();
   const { teacher, slot: paramSlot } = route.params ?? {};
   const queryClient = useQueryClient();
@@ -77,13 +81,13 @@ export default function BookingConfirmScreen() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
       queryClient.invalidateQueries({ queryKey: ['studentBookings'] });
-      Alert.alert('Uğurlu!', 'Sifarişiniz göndərildi. Müəllim təsdiqləyəcək.', [
+      Alert.alert(t('booking.successTitle'), t('booking.orderSent'), [
         { text: 'OK', onPress: () => navigation.navigate(Routes.BookingHistory) },
       ]);
     },
     onError: (err: any) => {
       const reason = err?.response?.data?.message;
-      Alert.alert('Xəta', reason ?? 'Sifariş göndərilə bilmədi');
+      Alert.alert(t('booking.errorTitle'), reason ?? t('booking.orderFailed'));
     },
   });
 
@@ -94,13 +98,13 @@ export default function BookingConfirmScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sifarişi Təsdiqlə</Text>
+          <Text style={styles.headerTitle}>{t('booking.confirmOrderHeader')}</Text>
           <View style={styles.headerBtn} />
         </View>
         <View style={{ padding: 24, gap: 16 }}>
-          <Text style={styles.emptyText}>Müəllim seçilməyib</Text>
+          <Text style={styles.emptyText}>{t('booking.noTeacherSelected')}</Text>
           <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
-            <Text style={styles.btnText}>Geri</Text>
+            <Text style={styles.btnText}>{t('booking.back')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -119,27 +123,27 @@ export default function BookingConfirmScreen() {
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
       <View style={styles.summaryCard}>
-        <Row label="Müəllim" value={teacher.name} />
+        <Row label={t('booking.teacher')} value={teacher.name} />
         {activeSlot ? (
           <>
-            <Row label="Gün" value={DAY_NAMES[activeSlot.dayOfWeek]} />
-            <Row label="Saat" value={`${activeSlot.startTime} – ${activeSlot.endTime}`} />
+            <Row label={t('booking.day')} value={DAY_NAMES[activeSlot.dayOfWeek]} />
+            <Row label={t('booking.hour')} value={`${activeSlot.startTime} – ${activeSlot.endTime}`} />
           </>
         ) : (
-          <Row label="Vaxt" value="Müəllim sizinlə əlaqə saxlayacaq" />
+          <Row label={t('booking.timeWord')} value={t('booking.teacherWillContact')} />
         )}
         <Row
-          label="Tarix"
-          value={scheduledDate.toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}
+          label={t('booking.dateLabel')}
+          value={scheduledDate.toLocaleDateString(DATE_LOCALE[language] ?? 'az-AZ', { day: 'numeric', month: 'long', year: 'numeric' })}
         />
         {teacher.hourlyRate != null && (
-          <Row label="Qiymət" value={`${teacher.hourlyRate} AZN`} />
+          <Row label={t('booking.price')} value={`${teacher.hourlyRate} AZN`} />
         )}
       </View>
 
       {!paramSlot && availableSlots.length > 0 && (
         <>
-          <Text style={styles.label}>Vaxt seçin</Text>
+          <Text style={styles.label}>{t('booking.pickTime')}</Text>
           <View style={styles.chipRow}>
             {availableSlots.slice(0, 8).map((s) => {
               const active = (activeSlot?.id ?? '') === s.id;
@@ -162,12 +166,12 @@ export default function BookingConfirmScreen() {
       {!paramSlot && !slotsLoading && availableSlots.length === 0 && (
         <View style={styles.noticeBox}>
           <Text style={styles.noticeText}>
-            Müəllimin açıq cədvəli yoxdur. Sorğunu göndər, müəllim sizinlə əlaqə saxlayıb vaxt razılaşdıracaq.
+            {t('booking.noScheduleNotice')}
           </Text>
         </View>
       )}
 
-      <Text style={styles.label}>Fənn</Text>
+      <Text style={styles.label}>{t('booking.subject')}</Text>
       <View style={styles.chipRow}>
         {SUBJECTS.map((s) => (
           <TouchableOpacity
@@ -180,10 +184,10 @@ export default function BookingConfirmScreen() {
         ))}
       </View>
 
-      <Text style={styles.label}>Qeyd (ixtiyari)</Text>
+      <Text style={styles.label}>{t('booking.noteOptional')}</Text>
       <TextInput
         style={styles.textarea}
-        placeholder="Müəllimə mesajınız..."
+        placeholder={t('booking.notePlaceholder')}
         placeholderTextColor={Colors.textMuted}
         value={note}
         onChangeText={setNote}
@@ -200,7 +204,7 @@ export default function BookingConfirmScreen() {
         {isPending ? (
           <ActivityIndicator color="#fff" />
         ) : (
-          <Text style={styles.btnText}>Sifariş Göndər</Text>
+          <Text style={styles.btnText}>{t('booking.sendOrder')}</Text>
         )}
       </TouchableOpacity>
       </ScrollView>

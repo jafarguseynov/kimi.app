@@ -6,6 +6,7 @@ import { useFavoriteTeachersStore } from '../store/favoritesTeachers.store';
 import { useRecentTeachersStore } from '../store/recentTeachers.store';
 import { useOnboardingStore } from '../store/onboarding.store';
 import { usePushStore } from '../store/push.store';
+import { useSettingsStore } from '../store/settings.store';
 import { getToken } from '../utils/token';
 import { getMe } from '../api/user.api';
 import { Colors } from '../constants/colors';
@@ -19,6 +20,7 @@ export default function RootNavigator() {
   const hydrateRecent = useRecentTeachersStore((s) => s.hydrate);
   const hydrateOnboarding = useOnboardingStore((s) => s.hydrate);
   const hydratePush = usePushStore((s) => s.hydrate);
+  const hydrateSettings = useSettingsStore((s) => s.hydrate);
   const [bootstrapping, setBootstrapping] = useState(true);
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export default function RootNavigator() {
         hydrateRecent();
         hydrateOnboarding();
         hydratePush();
+        hydrateSettings();
         const saved = await getToken();
         if (saved) {
           await setToken(saved);

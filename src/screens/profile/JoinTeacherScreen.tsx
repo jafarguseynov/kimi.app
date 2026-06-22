@@ -10,17 +10,19 @@ import { useNavigation } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { joinTeacher } from '../../api/collaboration.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const BENEFITS = [
-  { icon: 'gift' as const, text: '7 günlük pulsuz premium' },
-  { icon: 'school' as const, text: 'Müəllimindən birbaşa tapşırıqlar' },
-  { icon: 'trending-up' as const, text: 'İrəliləyişini müəllimin izləyir' },
+  { icon: 'gift' as const, textKey: 'joinTeacher.benefit1' },
+  { icon: 'school' as const, textKey: 'joinTeacher.benefit2' },
+  { icon: 'trending-up' as const, textKey: 'joinTeacher.benefit3' },
 ];
 
 export default function JoinTeacherScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [code, setCode] = useState('');
   const [focused, setFocused] = useState(false);
@@ -30,24 +32,24 @@ export default function JoinTeacherScreen() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['me'] });
       if (data.alreadyMember) {
-        Alert.alert('Artıq qoşulmusan', `Sən artıq ${data.teacherName} müəllimin sinifindəsən.`, [
-          { text: 'Oldu', onPress: () => navigation.goBack() },
+        Alert.alert(t('joinTeacher.alreadyTitle'), t('joinTeacher.alreadyBody', { name: data.teacherName }), [
+          { text: t('joinTeacher.ok'), onPress: () => navigation.goBack() },
         ]);
       } else {
         Alert.alert(
-          'Uğurla qoşuldun! 🎉',
-          `${data.teacherName} müəllimin sinifinə qoşuldun və ${data.premiumDays ?? 7} günlük pulsuz premium qazandın.`,
-          [{ text: 'Əla', onPress: () => navigation.goBack() }],
+          t('joinTeacher.successTitle'),
+          t('joinTeacher.successBody', { name: data.teacherName, days: data.premiumDays ?? 7 }),
+          [{ text: t('joinTeacher.great'), onPress: () => navigation.goBack() }],
         );
       }
     },
     onError: (err: any) => {
-      Alert.alert('Xəta', err?.response?.data?.message ?? 'Kod tapılmadı. Yenidən yoxla.');
+      Alert.alert(t('joinTeacher.errorTitle'), err?.response?.data?.message ?? t('joinTeacher.errorBody'));
     },
   });
 
   const onJoin = () => {
-    if (!code.trim()) return Alert.alert('Kod', 'Zəhmət olmasa müəllim kodunu daxil et.');
+    if (!code.trim()) return Alert.alert(t('joinTeacher.codeTitle'), t('joinTeacher.codeEmpty'));
     if (isPending) return;
     mutate();
   };
@@ -59,7 +61,7 @@ export default function JoinTeacherScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Müəllimə qoşul</Text>
+          <Text style={styles.headerTitle}>{t('joinTeacher.headerTitle')}</Text>
           <View style={styles.headerBtn} />
         </View>
 
@@ -67,28 +69,28 @@ export default function JoinTeacherScreen() {
           <View style={styles.iconBox}>
             <Ionicons name="people" size={32} color={Colors.primary} />
           </View>
-          <Text style={styles.title}>Müəllim sinifinə qoşul</Text>
+          <Text style={styles.title}>{t('joinTeacher.title')}</Text>
           <Text style={styles.subtitle}>
-            Müəllimindən aldığın kodu daxil et — sinifinə qoşul və bonus qazan.
+            {t('joinTeacher.subtitle')}
           </Text>
 
           <View style={styles.benefits}>
             {BENEFITS.map((b, i) => (
               <View key={i} style={styles.benefitRow}>
                 <View style={styles.benefitIcon}><Ionicons name={b.icon} size={16} color={Colors.primary} /></View>
-                <Text style={styles.benefitText}>{b.text}</Text>
+                <Text style={styles.benefitText}>{t(b.textKey)}</Text>
               </View>
             ))}
           </View>
 
-          <Text style={styles.label}>Müəllim kodu</Text>
+          <Text style={styles.label}>{t('joinTeacher.label')}</Text>
           <TextInput
             style={[styles.input, focused && styles.inputFocused]}
             value={code}
-            onChangeText={(t) => setCode(t.toUpperCase())}
+            onChangeText={(val) => setCode(val.toUpperCase())}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
-            placeholder="Məs: SF1A2B3C"
+            placeholder={t('joinTeacher.placeholder')}
             placeholderTextColor={Colors.textMuted}
             autoCapitalize="characters"
             autoCorrect={false}
@@ -98,7 +100,7 @@ export default function JoinTeacherScreen() {
             <LinearGradient colors={GRADIENT} style={styles.joinBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               {isPending ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={styles.joinBtnText}>Qoşul</Text>
+                  <Text style={styles.joinBtnText}>{t('joinTeacher.join')}</Text>
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </>
               )}

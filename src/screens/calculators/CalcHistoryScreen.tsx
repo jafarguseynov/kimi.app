@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type EntryIcon = 'bar-chart-outline' | 'school-outline' | 'document-text-outline';
 
@@ -45,6 +46,7 @@ const ENTRIES: HistoryEntry[] = [
 
 export default function CalcHistoryScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -52,7 +54,7 @@ export default function CalcHistoryScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hesablama Tarixçəsi</Text>
+        <Text style={styles.headerTitle}>{t('calc.historyHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -60,13 +62,13 @@ export default function CalcHistoryScreen() {
         {/* Welcome card */}
         <View style={styles.welcomeCard}>
           <View style={styles.heroTitleRow}>
-            <Text style={styles.heroTitle}>Bütün hesablamaların </Text>
+            <Text style={styles.heroTitle}>{t('calc.allTogetherPre')}</Text>
             <View style={styles.birBadge}>
-              <Text style={styles.birBadgeText}>bir</Text>
+              <Text style={styles.birBadgeText}>{t('calc.birBadge')}</Text>
             </View>
-            <Text style={styles.heroTitle}> yerdədir!</Text>
+            <Text style={styles.heroTitle}>{t('calc.allTogetherPost')}</Text>
           </View>
-          <Text style={styles.heroSub}>Nəticələrini izlə və irəliləyişini gör.</Text>
+          <Text style={styles.heroSub}>{t('calc.trackSub')}</Text>
         </View>
 
         {/* History entries */}
@@ -97,7 +99,7 @@ export default function CalcHistoryScreen() {
 
         {/* Load more */}
         <TouchableOpacity style={styles.loadMoreBtn} activeOpacity={0.8}>
-          <Text style={styles.loadMoreText}>Daha çox göstər</Text>
+          <Text style={styles.loadMoreText}>{t('calc.loadMore')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

@@ -9,11 +9,13 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { getFlashcards } from '../../api/learning.api';
 import { useLearningProgressStore } from '../../store/learningProgress.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function LearningStatsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { data: allCards = [] } = useQuery({
     queryKey: ['flashcards', 'all'],
     queryFn: () => getFlashcards(),
@@ -39,7 +41,7 @@ export default function LearningStatsScreen() {
         <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()} hitSlop={8} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Statistika</Text>
+        <Text style={styles.headerTitle}>{t('learning.stats')}</Text>
         <View style={styles.iconBtn} />
       </View>
 
@@ -50,11 +52,11 @@ export default function LearningStatsScreen() {
             <Ionicons name="trophy" size={28} color="#fff" />
           </View>
           <Text style={styles.heroValue}>{total}</Text>
-          <Text style={styles.heroLabel}>kart öyrənildi</Text>
+          <Text style={styles.heroLabel}>{t('learning.cardsLearned')}</Text>
           <View style={styles.heroBarBg}>
             <View style={[styles.heroBarFill, { width: `${overallPct}%` }]} />
           </View>
-          <Text style={styles.heroPct}>Ümumi: {overallPct}%</Text>
+          <Text style={styles.heroPct}>{t('learning.overall', { pct: overallPct })}</Text>
         </LinearGradient>
 
         {/* Mini stats */}
@@ -64,26 +66,26 @@ export default function LearningStatsScreen() {
               <Ionicons name="flame" size={18} color="#F59E0B" />
             </View>
             <Text style={styles.miniValue}>{week}</Text>
-            <Text style={styles.miniLabel}>Bu həftə</Text>
+            <Text style={styles.miniLabel}>{t('learning.thisWeek')}</Text>
           </View>
           <View style={styles.miniCard}>
             <View style={[styles.miniIcon, { backgroundColor: '#EEF2FF' }]}>
               <Ionicons name="eye" size={18} color={Colors.primary} />
             </View>
             <Text style={styles.miniValue}>{seenCount}</Text>
-            <Text style={styles.miniLabel}>Baxılıb</Text>
+            <Text style={styles.miniLabel}>{t('learning.viewed')}</Text>
           </View>
           <View style={styles.miniCard}>
             <View style={[styles.miniIcon, { backgroundColor: '#FEE2E2' }]}>
               <Ionicons name="time" size={18} color="#DC2626" />
             </View>
             <Text style={styles.miniValue}>{dueLen}</Text>
-            <Text style={styles.miniLabel}>Təkrara</Text>
+            <Text style={styles.miniLabel}>{t('learning.forReview')}</Text>
           </View>
         </View>
 
         {/* Per-subject */}
-        <Text style={styles.sectionTitle}>Mövzu üzrə</Text>
+        <Text style={styles.sectionTitle}>{t('learning.bySubject')}</Text>
         <View style={{ gap: 10, marginTop: 12 }}>
           {subjects.map((s) => {
             const pct = s.total ? Math.round((s.learned / s.total) * 100) : 0;
@@ -112,7 +114,7 @@ export default function LearningStatsScreen() {
           })}
           {subjects.length === 0 && (
             <Text style={{ color: Colors.textSecondary, textAlign: 'center', marginTop: 16 }}>
-              Hələ heç bir kart öyrənilməyib.
+              {t('learning.noLearnedYet')}
             </Text>
           )}
         </View>
@@ -121,7 +123,7 @@ export default function LearningStatsScreen() {
         <View style={styles.tipCard}>
           <Ionicons name="bulb" size={16} color="#F59E0B" />
           <Text style={styles.tipText}>
-            Hər gün ən azı 5 kart təkrar et — uzunmüddətli yaddaş üçün ən təsirli üsuldur.
+            {t('learning.statsTip')}
           </Text>
         </View>
       </ScrollView>

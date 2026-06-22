@@ -7,6 +7,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.LiveExamDetail>;
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -22,8 +23,9 @@ function computeStartTs(startAt?: string): number {
 }
 
 export default function LiveExamDetailScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { examId, title, startAt, participants } = route.params;
-  const displayTitle = title ?? 'Ümumi Sınaq İmtahanı';
+  const displayTitle = title ?? t('liveExams.defaultTitle');
   const audience = participants ?? 1240;
 
   const targetTs = useMemo(() => computeStartTs(startAt), [startAt]);
@@ -45,17 +47,17 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
     const d = new Date();
     return d.toDateString() === startDate.toDateString();
   })();
-  const dateLabel = isToday ? 'Bugün' : startDate.toLocaleDateString('az-AZ', { day: 'numeric', month: 'short' });
+  const dateLabel = isToday ? t('liveExams.today') : startDate.toLocaleDateString('az-AZ', { day: 'numeric', month: 'short' });
 
   const register = () => {
-    Alert.alert('Qeydiyyatdan keçdiniz!', 'İmtahan başlayanda sizə bildiriş gələcək.', [
-      { text: 'Anladım' },
-      { text: 'İndi qoşul', onPress: () => navigation.navigate(Routes.LiveExamWaiting, { examId, title: displayTitle }) },
+    Alert.alert(t('liveExams.registeredTitle'), t('liveExams.registeredBody'), [
+      { text: t('liveExams.gotIt') },
+      { text: t('liveExams.joinNow'), onPress: () => navigation.navigate(Routes.LiveExamWaiting, { examId, title: displayTitle }) },
     ]);
   };
 
   const setReminder = () => {
-    Alert.alert('Xatırlatma quruldu', 'Bizdə bunu xatırlayacağıq və imtahandan 15 dəq əvvəl bildirəcəyik.');
+    Alert.alert(t('liveExams.reminderSetTitle'), t('liveExams.reminderSetBody'));
   };
 
   return (
@@ -64,7 +66,7 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Canlı İmtahan</Text>
+        <Text style={styles.headerTitle}>{t('liveExams.detailHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -72,10 +74,10 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
         {/* Hero */}
         <View style={styles.heroCard}>
           <View style={styles.livePill}>
-            <Text style={styles.livePillText}>CANLI</Text>
+            <Text style={styles.livePillText}>{t('liveExams.liveBadge')}</Text>
           </View>
           <Text style={styles.heroTitle}>{displayTitle}</Text>
-          <Text style={styles.heroSub}>Blok imtahanına hazırlıq mərhələsi</Text>
+          <Text style={styles.heroSub}>{t('liveExams.detailHeroSub')}</Text>
         </View>
 
         {/* Bento grid */}
@@ -85,7 +87,7 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
               <Ionicons name="time-outline" size={22} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.bentoLabel}>Başlama vaxtı</Text>
+              <Text style={styles.bentoLabel}>{t('liveExams.startTime')}</Text>
               <Text style={styles.bentoValue}>{startTime}</Text>
             </View>
           </View>
@@ -94,7 +96,7 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
               <Ionicons name="calendar-outline" size={22} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.bentoLabel}>Tarix</Text>
+              <Text style={styles.bentoLabel}>{t('liveExams.date')}</Text>
               <Text style={styles.bentoValue}>{dateLabel}</Text>
             </View>
           </View>
@@ -104,7 +106,7 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
                 <Ionicons name="people" size={24} color={Colors.primary} />
               </View>
               <View>
-                <Text style={styles.bentoLabel}>İştirakçı sayı</Text>
+                <Text style={styles.bentoLabel}>{t('liveExams.participantsCount')}</Text>
                 <Text style={styles.bentoValueLg}>{audience.toLocaleString('az-AZ')}+</Text>
               </View>
             </View>
@@ -124,12 +126,12 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
 
         {/* Countdown */}
         <View style={styles.countdownSection}>
-          <Text style={styles.countdownLabel}>Qalan vaxt</Text>
+          <Text style={styles.countdownLabel}>{t('liveExams.remaining')}</Text>
           <View style={styles.countdownRow}>
             {[
-              { value: hours, label: 'SAAT' },
-              { value: minutes, label: 'DƏQİQƏ' },
-              { value: seconds, label: 'SANİYƏ', accent: true },
+              { value: hours, label: t('liveExams.hour') },
+              { value: minutes, label: t('liveExams.minute') },
+              { value: seconds, label: t('liveExams.second'), accent: true },
             ].map((part, i, arr) => (
               <React.Fragment key={part.label}>
                 <View style={styles.countCol}>
@@ -152,10 +154,10 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
 
         {/* Description */}
         <View>
-          <Text style={styles.sectionTitle}>İmtahan haqqında</Text>
+          <Text style={styles.sectionTitle}>{t('liveExams.aboutExam')}</Text>
           <View style={styles.descCard}>
             <Text style={styles.descText}>
-              Bu imtahan Dövlət İmtahan Mərkəzinin ən son proqramına uyğun hazırlanmışdır. İmtahan müddəti 180 dəqiqədir və hər bir fənn üzrə biliklərinizi real vaxt rejimində sınaqdan keçirmək üçün nəzərdə tutulmuşdur.
+              {t('liveExams.descText')}
             </Text>
           </View>
         </View>
@@ -164,12 +166,12 @@ export default function LiveExamDetailScreen({ route, navigation }: Props) {
         <View style={{ gap: 16 }}>
           <TouchableOpacity activeOpacity={0.85} onPress={register}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Qeydiyyatdan keç</Text>
+              <Text style={styles.primaryBtnText}>{t('liveExams.register')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.reminderBtn} activeOpacity={0.85} onPress={setReminder}>
             <Ionicons name="notifications" size={22} color={Colors.textPrimary} />
-            <Text style={styles.reminderBtnText}>Xatırlatma qur</Text>
+            <Text style={styles.reminderBtnText}>{t('liveExams.setReminderBtn')}</Text>
           </TouchableOpacity>
         </View>
 

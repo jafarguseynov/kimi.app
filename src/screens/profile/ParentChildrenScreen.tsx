@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 type BadgeIcon = 'flame-outline' | 'trophy-outline';
 
@@ -50,6 +51,7 @@ const CHILDREN: ChildData[] = [
 
 export default function ParentChildrenScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -57,7 +59,7 @@ export default function ParentChildrenScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Övladlarım</Text>
+        <Text style={styles.headerTitle}>{t('parentChildren.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate(Routes.ConnectChild)} activeOpacity={0.7}>
           <Ionicons name="add" size={26} color={Colors.primary} />
         </TouchableOpacity>
@@ -66,10 +68,10 @@ export default function ParentChildrenScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroLabel}>Xoş gəldiniz</Text>
+          <Text style={styles.heroLabel}>{t('parentChildren.heroLabel')}</Text>
           <Text style={styles.heroName}>Elnur bəy</Text>
           <Text style={styles.heroSubtitle}>
-            Övladlarınızın təhsil tərəqqisini buradan izləyə bilərsiniz.
+            {t('parentChildren.heroSubtitle')}
           </Text>
         </View>
 
@@ -102,7 +104,7 @@ export default function ParentChildrenScreen() {
 
               <View style={styles.progressSection}>
                 <View style={styles.progressHeader}>
-                  <Text style={styles.progressLabelText}>Aylıq hədəf</Text>
+                  <Text style={styles.progressLabelText}>{t('parentChildren.monthlyGoal')}</Text>
                   <Text style={[styles.progressPct, { color: child.progressLabelColor }]}>
                     {child.progressLabel}
                   </Text>
@@ -123,7 +125,7 @@ export default function ParentChildrenScreen() {
                 activeOpacity={0.85}
                 onPress={() => navigation.navigate(Routes.ChildAcademicReport, { childName: child.name })}
               >
-                <Text style={styles.viewBtnText}>Tərəqqiyə bax</Text>
+                <Text style={styles.viewBtnText}>{t('parentChildren.viewProgress')}</Text>
                 <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
               </TouchableOpacity>
             </View>
@@ -139,7 +141,7 @@ export default function ParentChildrenScreen() {
           <View style={styles.addIconCircle}>
             <Ionicons name="add" size={22} color={Colors.textMuted} />
           </View>
-          <Text style={styles.addChildText}>Yeni övlad əlavə et</Text>
+          <Text style={styles.addChildText}>{t('parentChildren.addChild')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

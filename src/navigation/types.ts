@@ -22,7 +22,15 @@ export type ExamStackParamList = {
   [Routes.ExamPurchaseConfirm]: { examId: string; title?: string; price: number; subject?: string; questions?: number };
   [Routes.ExamPurchaseSuccess]: { examId: string; title?: string; subject?: string; questions?: number; successRate?: number };
   [Routes.ExamFilterSheet]: undefined;
-  [Routes.ExamInfo]: { examId: string; title?: string };
+  [Routes.ExamInfo]: {
+    examId: string;
+    title?: string;
+    questionCount?: number;
+    duration?: number;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    categoryKey?: string;
+    subject?: string;
+  };
   [Routes.SchoolExams]: undefined;
   [Routes.AIExamRecommendations]: undefined;
   [Routes.ExamBrowse]: { subject?: string; category?: string } | undefined;
@@ -126,6 +134,7 @@ export type HomeStackParamList = {
   [Routes.SchoolDetail]: { schoolName?: string };
   [Routes.Notifications]: undefined;
   [Routes.Settings]: undefined;
+  [Routes.EditProfile]: { role?: 'teacher' | 'student' | 'parent' } | undefined;
   [Routes.NotificationSettings]: undefined;
   [Routes.SmartFeed]: undefined;
   [Routes.StreakProtection]: { currentStreak?: number } | undefined;

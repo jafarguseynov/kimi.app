@@ -18,6 +18,9 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { getQuestions, MarketQuestion } from '../../api/marketplace.api';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -44,15 +47,15 @@ const subjectIcon = (subject: string): IconName => {
   return 'help-circle-outline';
 };
 
-const timeAgo = (iso: string): string => {
+const timeAgo = (iso: string, t: TFn): string => {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'indi';
-  if (m < 60) return `${m} dəqiqə əvvəl`;
+  if (m < 1) return t('marketplace.timeNow');
+  if (m < 60) return t('marketplace.minAgo', { m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} saat əvvəl`;
+  if (h < 24) return t('marketplace.hourAgo', { h });
   const d = Math.floor(h / 24);
-  return `${d} gün əvvəl`;
+  return t('marketplace.dayAgo', { d });
 };
 
 const isUrgent = (q: MarketQuestion): boolean => {
@@ -62,6 +65,7 @@ const isUrgent = (q: MarketQuestion): boolean => {
 
 export default function MarketplaceHomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const [tab, setTab] = useState<TabKey>('active');
   const [refreshing, setRefreshing] = useState(false);
@@ -85,10 +89,20 @@ export default function MarketplaceHomeScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.avatarCircle}>
-          <Ionicons name="person" size={18} color={Colors.primary} />
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate(Routes.Home))}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <View style={styles.avatarCircle}>
+            <Ionicons name="person" size={18} color={Colors.primary} />
+          </View>
+          <Text style={styles.headerTitle}>{t('marketplace.title')}</Text>
         </View>
-        <Text style={styles.headerTitle}>Sual Bazarı</Text>
         <TouchableOpacity
           style={styles.bellBtn}
           onPress={() => (navigation.getParent() as any)?.navigate('Home', { screen: Routes.Notifications })}
@@ -110,14 +124,14 @@ export default function MarketplaceHomeScreen() {
             activeOpacity={0.8}
             onPress={() => setTab('active')}
           >
-            <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>Aktiv suallar</Text>
+            <Text style={[styles.tabText, tab === 'active' && styles.tabTextActive]}>{t('marketplace.tabActive')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, tab === 'mine' && styles.tabActive]}
             activeOpacity={0.8}
             onPress={() => setTab('mine')}
           >
-            <Text style={[styles.tabText, tab === 'mine' && styles.tabTextActive]}>Mənim suallarım</Text>
+            <Text style={[styles.tabText, tab === 'mine' && styles.tabTextActive]}>{t('marketplace.tabMine')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -129,7 +143,7 @@ export default function MarketplaceHomeScreen() {
           <View style={styles.center}>
             <Ionicons name="help-circle-outline" size={48} color={Colors.primaryFixed} />
             <Text style={styles.emptyText}>
-              {tab === 'mine' ? 'Hələ sual paylaşmamısınız' : 'Aktiv sual yoxdur'}
+              {tab === 'mine' ? t('marketplace.emptyMine') : t('marketplace.emptyActive')}
             </Text>
           </View>
         ) : (
@@ -158,17 +172,17 @@ export default function MarketplaceHomeScreen() {
                     </View>
                     {urgent && (
                       <View style={styles.urgentChip}>
-                        <Text style={styles.urgentChipText}>TƏCİLİ</Text>
+                        <Text style={styles.urgentChipText}>{t('marketplace.urgent')}</Text>
                       </View>
                     )}
                   </View>
 
                   <View style={styles.metaRow}>
                     <Ionicons name="time-outline" size={12} color={Colors.outline} />
-                    <Text style={styles.metaText}>{timeAgo(q.createdAt)}</Text>
+                    <Text style={styles.metaText}>{timeAgo(q.createdAt, t)}</Text>
                     <Text style={styles.metaDot}>•</Text>
                     <Ionicons name="chatbubble-outline" size={12} color={Colors.outline} />
-                    <Text style={styles.metaText}>{q.isResolved ? 'Həll edildi' : 'Açıq'}</Text>
+                    <Text style={styles.metaText}>{q.isResolved ? t('marketplace.resolved') : t('marketplace.open')}</Text>
                   </View>
 
                   <View style={styles.bottomRow}>
@@ -183,7 +197,7 @@ export default function MarketplaceHomeScreen() {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                       >
-                        <Text style={styles.answerBtnText}>Cavabla</Text>
+                        <Text style={styles.answerBtnText}>{t('marketplace.answerVerb')}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -208,7 +222,7 @@ export default function MarketplaceHomeScreen() {
           end={{ x: 1, y: 1 }}
         >
           <Ionicons name="add-circle-outline" size={22} color="#fff" />
-          <Text style={styles.fabText}>Sual paylaş</Text>
+          <Text style={styles.fabText}>{t('marketplace.shareQuestion')}</Text>
         </LinearGradient>
       </TouchableOpacity>
     </SafeAreaView>
@@ -224,6 +238,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.8)',
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerBackBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   avatarCircle: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.surfaceContainer,

@@ -18,6 +18,7 @@ import { useLearningStore } from '../../store/learning.store';
 import { useLearningProgressStore } from '../../store/learningProgress.store';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
@@ -37,6 +38,7 @@ const SUBJECT_ICONS: Record<string, string> = {
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function LearningHomeScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: subjects = [], isLoading } = useQuery({
     queryKey: ['subjects'],
     queryFn: getSubjects,
@@ -63,8 +65,8 @@ export default function LearningHomeScreen({ navigation }: Props) {
       const cards = await getFlashcards(subject);
       if (cards.length === 0) {
         Alert.alert(
-          `${subject} üçün kart yoxdur`,
-          'Bu mövzu üçün hələ flashcard hazırlanmayıb. Tezliklə əlavə olunacaq.',
+          t('learning.noCardsTitle', { subject }),
+          t('learning.noCardsMsg'),
           [{ text: 'OK' }],
         );
         return;
@@ -72,7 +74,7 @@ export default function LearningHomeScreen({ navigation }: Props) {
       setCards(cards, subject);
       navigation.navigate(Routes.FlashcardSession);
     } catch (err: any) {
-      Alert.alert('Xəta', err?.message ?? 'Kartlar yüklənə bilmədi');
+      Alert.alert(t('learning.errorTitle'), err?.message ?? t('learning.cardsLoadFailed'));
     } finally {
       setLoadingSubject(null);
     }
@@ -80,7 +82,7 @@ export default function LearningHomeScreen({ navigation }: Props) {
 
   const startDueSession = () => {
     if (dueList.length === 0) return;
-    setCards(dueList, 'Bugün təkrar');
+    setCards(dueList, t('learning.todayReview'));
     navigation.navigate(Routes.FlashcardSession);
   };
 
@@ -91,8 +93,16 @@ export default function LearningHomeScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.header}>
-          <Text style={styles.title}>Öyrən</Text>
-          <Text style={styles.subtitle}>Hansı mövzunu öyrənmək istəyirsən?</Text>
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate(Routes.Home))}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>{t('learning.learn')}</Text>
+          <Text style={styles.subtitle}>{t('learning.whatToLearn')}</Text>
         </View>
 
         {/* Due cards banner */}
@@ -117,18 +127,18 @@ export default function LearningHomeScreen({ navigation }: Props) {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.bannerTitle, dueList.length === 0 && { color: Colors.textPrimary }]}>
-                {dueList.length > 0 ? `${dueList.length} kart təkrara hazırdır` : 'Bütün kartlar yeniləndi'}
+                {dueList.length > 0 ? t('learning.dueReady', { n: dueList.length }) : t('learning.allUpdated')}
               </Text>
               <Text style={[styles.bannerSub, dueList.length === 0 && { color: Colors.textSecondary }]}>
                 {dueList.length > 0
-                  ? 'Yaddaşı möhkəmlət — qarışıq sessiya başlat'
-                  : '12 saat sonra yeni kartlar gələcək'}
+                  ? t('learning.dueSub')
+                  : t('learning.allUpdatedSub')}
               </Text>
             </View>
             {dueList.length > 0 && (
               <View style={styles.bannerCta}>
                 <Ionicons name="play" size={14} color={Colors.primary} />
-                <Text style={styles.bannerCtaText}>Başlat</Text>
+                <Text style={styles.bannerCtaText}>{t('learning.start')}</Text>
               </View>
             )}
           </LinearGradient>
@@ -142,8 +152,8 @@ export default function LearningHomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate(Routes.MemoryAI)}
           >
             <Ionicons name="sparkles" size={20} color={Colors.primary} />
-            <Text style={styles.quickTitle}>Yaddaş AI</Text>
-            <Text style={styles.quickSub}>Ağıllı təkrar</Text>
+            <Text style={styles.quickTitle}>{t('learning.memoryAi')}</Text>
+            <Text style={styles.quickSub}>{t('learning.smartReview')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.quickCard, { backgroundColor: '#FEF3C7' }]}
@@ -151,8 +161,8 @@ export default function LearningHomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate(Routes.LearningGroups)}
           >
             <Ionicons name="people" size={20} color="#F59E0B" />
-            <Text style={styles.quickTitle}>Qruplar</Text>
-            <Text style={styles.quickSub}>Birlikdə öyrən</Text>
+            <Text style={styles.quickTitle}>{t('learning.groups')}</Text>
+            <Text style={styles.quickSub}>{t('learning.learnTogether')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.quickCard, { backgroundColor: '#DCFCE7' }]}
@@ -160,15 +170,15 @@ export default function LearningHomeScreen({ navigation }: Props) {
             onPress={() => navigation.navigate(Routes.LearningStats)}
           >
             <Ionicons name="stats-chart" size={20} color="#16A34A" />
-            <Text style={styles.quickTitle}>Statistika</Text>
-            <Text style={styles.quickSub}>Bu həftə {weekCount}</Text>
+            <Text style={styles.quickTitle}>{t('learning.stats')}</Text>
+            <Text style={styles.quickSub}>{t('learning.thisWeekN', { n: weekCount })}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Subjects */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Mövzular</Text>
-          <Text style={styles.sectionSub}>{subjects.length} mövzu</Text>
+          <Text style={styles.sectionTitle}>{t('learning.topics')}</Text>
+          <Text style={styles.sectionSub}>{t('learning.topicsCount', { n: subjects.length })}</Text>
         </View>
 
         {isLoading ? (
@@ -200,14 +210,14 @@ export default function LearningHomeScreen({ navigation }: Props) {
                     />
                   </View>
                   <Text style={styles.subjectMeta}>
-                    {learned}/{total} söz · {pct}%
+                    {t('learning.subjectMeta', { learned, total, pct })}
                   </Text>
                 </TouchableOpacity>
               );
             })}
             {subjects.length === 0 && (
               <View style={styles.empty}>
-                <Text style={styles.emptyText}>Hələ mövzu yoxdur</Text>
+                <Text style={styles.emptyText}>{t('learning.noTopics')}</Text>
               </View>
             )}
           </View>
@@ -220,6 +230,7 @@ export default function LearningHomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
   header: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 },
+  headerBackBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginLeft: -8, marginBottom: 4 },
   title: { fontSize: 26, fontWeight: '900', color: Colors.textPrimary, letterSpacing: -0.5 },
   subtitle: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
 

@@ -5,11 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function StreakWarningScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -25,10 +27,10 @@ export default function StreakWarningScreen() {
         {/* Warning badge */}
         <View style={styles.warnPill}>
           <Ionicons name="warning" size={14} color={Colors.danger} />
-          <Text style={styles.warnPillText}>Təhlükə</Text>
+          <Text style={styles.warnPillText}>{t('streak.warnTag')}</Text>
         </View>
 
-        <Text style={styles.title}>⚠️ Streak qırılmaq üzrədir!</Text>
+        <Text style={styles.title}>{t('streak.warnTitle')}</Text>
 
         {/* Fading fire visual */}
         <View style={styles.flameWrap}>
@@ -46,19 +48,19 @@ export default function StreakWarningScreen() {
             colors={[Colors.danger, Colors.dangerLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             style={styles.cardStripe}
           />
-          <Text style={styles.cardTitle}>Bu gün aktiv deyilsən</Text>
-          <Text style={styles.cardSub}>İndi daxil olsan streak qorunacaq</Text>
+          <Text style={styles.cardTitle}>{t('streak.warnCardTitle')}</Text>
+          <Text style={styles.cardSub}>{t('streak.warnCardSub')}</Text>
         </View>
 
         {/* Actions */}
         <View style={{ gap: 12, width: '100%', marginTop: 4 }}>
           <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.goBack()}>
             <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>İndi başla</Text>
+              <Text style={styles.primaryBtnText}>{t('streak.startNow')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.goBack()} style={styles.ghostBtn}>
-            <Text style={styles.ghostBtnText}>Sonra xatırlat</Text>
+            <Text style={styles.ghostBtnText}>{t('streak.remindLater')}</Text>
           </TouchableOpacity>
         </View>
 

@@ -28,6 +28,7 @@ import SchoolSearchScreen from '../screens/home/SchoolSearchScreen';
 import SchoolDetailScreen from '../screens/home/SchoolDetailScreen';
 import NotificationScreen from '../screens/home/NotificationScreen';
 import SettingsScreen from '../screens/profile/SettingsScreen';
+import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import NotificationSettingsScreen from '../screens/settings/NotificationSettingsScreen';
 import LanguageSelectScreen from '../screens/settings/LanguageSelectScreen';
 import TwoFactorScreen from '../screens/settings/TwoFactorScreen';
@@ -110,6 +111,7 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.SchoolDetail} component={SchoolDetailScreen} />
       <Stack.Screen name={Routes.Notifications} component={NotificationScreen} />
       <Stack.Screen name={Routes.Settings} component={SettingsScreen} />
+      <Stack.Screen name={Routes.EditProfile} component={EditProfileScreen} />
       <Stack.Screen name={Routes.NotificationSettings} component={NotificationSettingsScreen} />
       <Stack.Screen name={Routes.LanguageSelect} component={LanguageSelectScreen} />
       <Stack.Screen name={Routes.TwoFactor} component={TwoFactorScreen} />

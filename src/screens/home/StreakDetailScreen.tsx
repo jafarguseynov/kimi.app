@@ -7,22 +7,25 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const FIRE: [string, string] = ['#ff7b00', '#ff4500'];
 
-const NODES = [
-  { id: 'g1', label: 'G1', icon: 'checkmark' as const, done: true },
-  { id: 'g2', label: 'G2', icon: 'checkmark' as const, done: true },
-  { id: 'g3', label: 'G3', icon: 'checkmark' as const, done: true },
-  { id: 'gx', label: '...', icon: 'ellipsis-horizontal' as const, done: true },
-  { id: 'g7', label: 'Bugün', icon: 'checkmark' as const, done: true, today: true },
+type Node = { id: string; label?: string; labelKey?: string; icon: keyof typeof Ionicons.glyphMap; done: boolean; today?: boolean };
+const NODES: Node[] = [
+  { id: 'g1', label: 'G1', icon: 'checkmark', done: true },
+  { id: 'g2', label: 'G2', icon: 'checkmark', done: true },
+  { id: 'g3', label: 'G3', icon: 'checkmark', done: true },
+  { id: 'gx', label: '...', icon: 'ellipsis-horizontal', done: true },
+  { id: 'g7', labelKey: 'streak.today', icon: 'checkmark', done: true, today: true },
 ];
 
 export default function StreakDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<HomeStackParamList, typeof Routes.StreakDetail>>();
   const days = route.params?.days ?? 7;
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -43,17 +46,17 @@ export default function StreakDetailScreen() {
 
         <View style={styles.heroText}>
           <LinearGradient colors={FIRE} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.daysBgWrap}>
-            <Text style={styles.daysText}>{days} gün</Text>
+            <Text style={styles.daysText}>{t('streak.daysUnit', { n: days })}</Text>
           </LinearGradient>
-          <Text style={styles.streakLabel}>streak</Text>
-          <Text style={styles.heroSub}>Ardıcıl {days} gündür aktivsən!</Text>
+          <Text style={styles.streakLabel}>{t('streak.streakWord')}</Text>
+          <Text style={styles.heroSub}>{t('streak.detHeroSub', { n: days })}</Text>
         </View>
 
         {/* Target card */}
         <View style={styles.targetCard}>
           <View>
-            <Text style={styles.targetKicker}>NÖVBƏTI HƏDƏF</Text>
-            <Text style={styles.targetValue}>10 gün</Text>
+            <Text style={styles.targetKicker}>{t('streak.nextTargetKicker')}</Text>
+            <Text style={styles.targetValue}>{t('streak.tenDays')}</Text>
           </View>
           <View style={styles.ringWrap}>
             <View style={styles.ringTrack} />
@@ -75,7 +78,7 @@ export default function StreakDetailScreen() {
                 <Ionicons name={n.icon} size={n.today ? 22 : 16} color="#fff" />
               </LinearGradient>
               <Text style={[styles.nodeLabel, n.today && { color: Colors.primary, fontWeight: '800', fontSize: 12 }]}>
-                {n.label}
+                {n.labelKey ? t(n.labelKey) : n.label}
               </Text>
             </View>
           ))}
@@ -87,7 +90,7 @@ export default function StreakDetailScreen() {
       <View style={styles.footer}>
         <TouchableOpacity activeOpacity={0.9} style={{ width: '100%' }}>
           <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
-            <Text style={styles.ctaText}>Bu gün də davam et</Text>
+            <Text style={styles.ctaText}>{t('streak.detContinueToday')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

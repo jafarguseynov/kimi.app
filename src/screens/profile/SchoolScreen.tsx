@@ -12,6 +12,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import client from '../../api/client';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 interface SchoolData {
   id: string;
@@ -21,6 +22,7 @@ interface SchoolData {
 }
 
 export default function SchoolScreen() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'join' | 'create'>('join');
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -40,7 +42,7 @@ export default function SchoolScreen() {
       qc.invalidateQueries({ queryKey: ['mySchool'] });
       setCode('');
     },
-    onError: (e: any) => Alert.alert('Xəta', e.response?.data?.message ?? 'Xəta baş verdi'),
+    onError: (e: any) => Alert.alert(t('school.errorTitle'), e.response?.data?.message ?? t('school.errorBody')),
   });
 
   const { mutate: create, isPending: creating } = useMutation({
@@ -49,7 +51,7 @@ export default function SchoolScreen() {
       qc.invalidateQueries({ queryKey: ['mySchool'] });
       setName('');
     },
-    onError: (e: any) => Alert.alert('Xəta', e.response?.data?.message ?? 'Xəta baş verdi'),
+    onError: (e: any) => Alert.alert(t('school.errorTitle'), e.response?.data?.message ?? t('school.errorBody')),
   });
 
   if (isLoading) {
@@ -64,16 +66,16 @@ export default function SchoolScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Məktəbim</Text>
+          <Text style={styles.title}>{t('school.myTitle')}</Text>
         </View>
         <View style={styles.schoolCard}>
           <Text style={styles.schoolIcon}>🏫</Text>
           <Text style={styles.schoolName}>{school.name}</Text>
           <View style={styles.codeRow}>
-            <Text style={styles.codeLabel}>Kod: </Text>
+            <Text style={styles.codeLabel}>{t('school.codeLabel')}</Text>
             <Text style={styles.codeValue}>{school.code}</Text>
           </View>
-          <Text style={styles.members}>{school.memberCount} üzv</Text>
+          <Text style={styles.members}>{t('school.members', { count: school.memberCount })}</Text>
         </View>
       </SafeAreaView>
     );
@@ -82,7 +84,7 @@ export default function SchoolScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Məktəb</Text>
+        <Text style={styles.title}>{t('school.title')}</Text>
       </View>
 
       <View style={styles.tabs}>
@@ -90,23 +92,23 @@ export default function SchoolScreen() {
           style={[styles.tab, tab === 'join' && styles.tabActive]}
           onPress={() => setTab('join')}
         >
-          <Text style={[styles.tabText, tab === 'join' && styles.tabTextActive]}>Qoşul</Text>
+          <Text style={[styles.tabText, tab === 'join' && styles.tabTextActive]}>{t('school.tabJoin')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, tab === 'create' && styles.tabActive]}
           onPress={() => setTab('create')}
         >
-          <Text style={[styles.tabText, tab === 'create' && styles.tabTextActive]}>Yarat</Text>
+          <Text style={[styles.tabText, tab === 'create' && styles.tabTextActive]}>{t('school.tabCreate')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.form}>
         {tab === 'join' ? (
           <>
-            <Text style={styles.label}>Məktəb kodu</Text>
+            <Text style={styles.label}>{t('school.codeFieldLabel')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="KIMI1234"
+              placeholder={t('school.codePlaceholder')}
               placeholderTextColor={Colors.textMuted}
               value={code}
               onChangeText={setCode}
@@ -117,15 +119,15 @@ export default function SchoolScreen() {
               onPress={() => join()}
               disabled={joining || code.trim().length < 4}
             >
-              <Text style={styles.btnText}>{joining ? 'Qoşulur...' : 'Qoşul'}</Text>
+              <Text style={styles.btnText}>{joining ? t('school.joining') : t('school.join')}</Text>
             </TouchableOpacity>
           </>
         ) : (
           <>
-            <Text style={styles.label}>Məktəb adı</Text>
+            <Text style={styles.label}>{t('school.nameFieldLabel')}</Text>
             <TextInput
               style={styles.input}
-              placeholder="Bakı 20 saylı məktəb"
+              placeholder={t('school.namePlaceholder')}
               placeholderTextColor={Colors.textMuted}
               value={name}
               onChangeText={setName}
@@ -135,7 +137,7 @@ export default function SchoolScreen() {
               onPress={() => create()}
               disabled={creating || name.trim().length < 3}
             >
-              <Text style={styles.btnText}>{creating ? 'Yaradılır...' : 'Məktəb Yarat'}</Text>
+              <Text style={styles.btnText}>{creating ? t('school.creating') : t('school.create')}</Text>
             </TouchableOpacity>
           </>
         )}

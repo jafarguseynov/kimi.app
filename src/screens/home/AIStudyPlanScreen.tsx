@@ -6,23 +6,25 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface Task { id: string; title: string; done: boolean; }
+interface Task { id: string; titleKey: string; done: boolean; }
 
 const INITIAL: Task[] = [
-  { id: '1', title: 'Faizlərə dair 10 sual həll et', done: false },
-  { id: '2', title: 'Yeni 5 fleşkartı öyrən', done: false },
-  { id: '3', title: 'Dünənki səhvləri təkrarla', done: true },
+  { id: '1', titleKey: 'aiStudyPlan.task1', done: false },
+  { id: '2', titleKey: 'aiStudyPlan.task2', done: false },
+  { id: '3', titleKey: 'aiStudyPlan.task3', done: true },
 ];
 
 const PRIORITY_TOPICS = ['Kəsrlər', 'Faiz artımı', 'Mürəkkəb tənliklər'];
 
 export default function AIStudyPlanScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>(INITIAL);
-  const toggle = (id: string) => setTasks((p) => p.map((t) => t.id === id ? { ...t, done: !t.done } : t));
+  const toggle = (id: string) => setTasks((p) => p.map((task) => task.id === id ? { ...task, done: !task.done } : task));
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -30,15 +32,15 @@ export default function AIStudyPlanScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Tədris Planı</Text>
+        <Text style={styles.headerTitle}>{t('aiStudyPlan.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header section */}
         <View>
-          <Text style={styles.title}>Bugünkü Planın</Text>
-          <Text style={styles.subtitle}>Sənin üçün xüsusi hazırlanmış öyrənmə yolu.</Text>
+          <Text style={styles.title}>{t('aiStudyPlan.title')}</Text>
+          <Text style={styles.subtitle}>{t('aiStudyPlan.subtitle')}</Text>
         </View>
 
         {/* AI Recommendation card */}
@@ -51,15 +53,15 @@ export default function AIStudyPlanScreen() {
               <View style={styles.botPill}>
                 <Ionicons name="hardware-chip" size={16} color="#fff" />
               </View>
-              <Text style={styles.recKicker}>BUGÜN ÜÇÜN TÖVSİYƏ OLUNAN PLAN</Text>
+              <Text style={styles.recKicker}>{t('aiStudyPlan.recKicker')}</Text>
             </View>
-            <Text style={styles.recTopic}>Mövzu: Faizlər</Text>
+            <Text style={styles.recTopic}>{t('aiStudyPlan.recTopic')}</Text>
           </LinearGradient>
 
           <View style={styles.recBody}>
             <View>
-              <Text style={styles.recBodyKicker}>HƏDƏF HƏCMİ</Text>
-              <Text style={styles.recBodyValue}>10 sual + 5 fleşkart</Text>
+              <Text style={styles.recBodyKicker}>{t('aiStudyPlan.targetLabel')}</Text>
+              <Text style={styles.recBodyValue}>{t('aiStudyPlan.targetValue')}</Text>
             </View>
             <View style={styles.recBodyIcon}>
               <Ionicons name="analytics" size={22} color={Colors.primary} />
@@ -69,23 +71,23 @@ export default function AIStudyPlanScreen() {
 
         {/* Task list */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Bu gün nə etməlisən</Text>
-          {tasks.map((t) => (
-            <TouchableOpacity key={t.id} style={styles.taskRow} activeOpacity={0.85} onPress={() => toggle(t.id)}>
-              {t.done ? (
+          <Text style={styles.sectionTitle}>{t('aiStudyPlan.todoTitle')}</Text>
+          {tasks.map((task) => (
+            <TouchableOpacity key={task.id} style={styles.taskRow} activeOpacity={0.85} onPress={() => toggle(task.id)}>
+              {task.done ? (
                 <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
               ) : (
                 <Ionicons name="ellipse-outline" size={24} color={Colors.outline ?? Colors.textMuted} />
               )}
-              <Text style={[styles.taskText, t.done && styles.taskTextDone]}>{t.title}</Text>
+              <Text style={[styles.taskText, task.done && styles.taskTextDone]}>{t(task.titleKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Priority topics */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Prioritet mövzular</Text>
-          <Text style={styles.priorityHint}>Süni intellekt bu mövzularda çətinlik çəkdiyini müəyyən edib.</Text>
+          <Text style={styles.sectionTitle}>{t('aiStudyPlan.priorityTitle')}</Text>
+          <Text style={styles.priorityHint}>{t('aiStudyPlan.priorityHint')}</Text>
           <View style={styles.chipsRow}>
             {PRIORITY_TOPICS.map((p) => (
               <View key={p} style={styles.priorityChip}>
@@ -97,19 +99,19 @@ export default function AIStudyPlanScreen() {
 
         {/* Daha çox AI alətləri */}
         <View style={aiActStyles.section}>
-          <Text style={aiActStyles.title}>Daha çox</Text>
+          <Text style={aiActStyles.title}>{t('aiStudyPlan.moreTitle')}</Text>
           <View style={aiActStyles.row}>
             <TouchableOpacity style={aiActStyles.card} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.AIPracticeBuilder)}>
               <Ionicons name="construct" size={20} color={Colors.primary} />
-              <Text style={aiActStyles.cardTitle}>Məşq Yarat</Text>
+              <Text style={aiActStyles.cardTitle}>{t('aiStudyPlan.buildPractice')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={aiActStyles.card} activeOpacity={0.85} onPress={() => navigation.getParent()?.navigate('Exams', { screen: Routes.AIExamRecommendations })}>
               <Ionicons name="sparkles" size={20} color={Colors.primary} />
-              <Text style={aiActStyles.cardTitle}>İmt. Tövsiyə</Text>
+              <Text style={aiActStyles.cardTitle}>{t('aiStudyPlan.examRec')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={aiActStyles.card} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MotivationReminder)}>
               <Ionicons name="notifications-circle" size={20} color="#F97316" />
-              <Text style={aiActStyles.cardTitle}>Xatırlatma</Text>
+              <Text style={aiActStyles.cardTitle}>{t('aiStudyPlan.reminder')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -120,7 +122,7 @@ export default function AIStudyPlanScreen() {
       <View style={styles.footer}>
         <TouchableOpacity activeOpacity={0.85}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-            <Text style={styles.startBtnText}>Başla</Text>
+            <Text style={styles.startBtnText}>{t('aiStudyPlan.start')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

@@ -21,6 +21,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { OTP_RESEND_SECONDS } from '../../constants/config';
 import { useVerifyOTP, useRequestOtp } from '../../hooks/useAuth';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.OTP>;
@@ -28,6 +29,7 @@ type Props = {
 };
 
 export default function OTPScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { phone } = route.params;
   const [countdown, setCountdown] = useState(OTP_RESEND_SECONDS);
   const [otpValue, setOtpValue] = useState('');
@@ -38,7 +40,7 @@ export default function OTPScreen({ navigation, route }: Props) {
     resendOtp(phone, {
       onSuccess: () => setCountdown(OTP_RESEND_SECONDS),
       onError: (err: any) => {
-        Alert.alert('Xəta', err?.response?.data?.message || 'Kod yenidən göndərilə bilmədi');
+        Alert.alert(t('otp.errorTitle'), err?.response?.data?.message || t('otp.resendError'));
       },
     });
   }, [phone, resendOtp]);
@@ -59,7 +61,7 @@ export default function OTPScreen({ navigation, route }: Props) {
           }
         },
         onError: (err: any) => {
-          Alert.alert('Xəta', err?.response?.data?.message || 'OTP yanlışdır');
+          Alert.alert(t('otp.errorTitle'), err?.response?.data?.message || t('otp.otpError'));
         },
       },
     );
@@ -84,7 +86,7 @@ export default function OTPScreen({ navigation, route }: Props) {
         >
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verifikasiya</Text>
+        <Text style={styles.headerTitle}>{t('otp.headerTitle')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -125,11 +127,11 @@ export default function OTPScreen({ navigation, route }: Props) {
 
         {/* Text */}
         <View style={styles.textSection}>
-          <Text style={styles.title}>Təsdiqləmə kodu</Text>
+          <Text style={styles.title}>{t('otp.title')}</Text>
           <Text style={styles.subtitle}>
-            Zəhmət olmasa,{' '}
+            {t('otp.subtitlePre')}
             <Text style={styles.phoneHighlight}>{phone}</Text>
-            {' '}nömrəsinə göndərilən 6 rəqəmli kodu daxil edin.
+            {t('otp.subtitlePost')}
           </Text>
         </View>
 
@@ -153,11 +155,11 @@ export default function OTPScreen({ navigation, route }: Props) {
         <View style={styles.timerRow}>
           <Ionicons name="time-outline" size={18} color={Colors.textSecondary} />
           {countdown > 0 ? (
-            <Text style={styles.timerText}>Kodu yenidən göndər ({mm}:{ss})</Text>
+            <Text style={styles.timerText}>{t('otp.resendCountdown', { time: `${mm}:${ss}` })}</Text>
           ) : (
             <TouchableOpacity onPress={onResend} disabled={isResending}>
               <Text style={styles.resendText}>
-                {isResending ? 'Göndərilir...' : 'Kodu yenidən göndər'}
+                {isResending ? t('otp.resending') : t('otp.resend')}
               </Text>
             </TouchableOpacity>
           )}
@@ -183,7 +185,7 @@ export default function OTPScreen({ navigation, route }: Props) {
               <ActivityIndicator color="#fff" />
             ) : (
               <>
-                <Text style={styles.submitBtnText}>Təsdiqlə</Text>
+                <Text style={styles.submitBtnText}>{t('otp.confirm')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </>
             )}

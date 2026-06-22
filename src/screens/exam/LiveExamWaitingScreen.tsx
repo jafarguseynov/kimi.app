@@ -9,6 +9,7 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useStartExam } from '../../hooks/useExams';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.LiveExamWaiting>;
@@ -25,6 +26,7 @@ function format(seconds: number): { m: string; s: string } {
 }
 
 export default function LiveExamWaitingScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { examId, title = 'Riyaziyyat' } = route.params;
   const [countdown, setCountdown] = useState(COUNTDOWN_START);
   const [participants, setParticipants] = useState(900);
@@ -39,8 +41,8 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (isError) {
-      Alert.alert('Xəta', (error as any)?.message || 'İmtahanı başlatmaq mümkün olmadı', [
-        { text: 'Geri', onPress: () => navigation.goBack() },
+      Alert.alert(t('liveExams.errorTitle'), (error as any)?.message || t('liveExams.startFailed'), [
+        { text: t('liveExams.back'), onPress: () => navigation.goBack() },
       ]);
     }
   }, [isError]);
@@ -55,19 +57,19 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
   }, [pulse]);
 
   useEffect(() => {
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setCountdown((c) => (c <= 1 ? 0 : c - 1));
       setParticipants((p) => Math.min(PARTICIPANTS_TOTAL, p + Math.floor(Math.random() * 20) + 5));
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
   }, []);
 
   // When countdown ends OR user clicked Hazıram, navigate as soon as data is ready
   useEffect(() => {
     const shouldGo = (countdown === 0 || pendingStart) && isReady;
     if (shouldGo) {
-      const t = setTimeout(() => navigation.replace(Routes.LiveExamSession), 200);
-      return () => clearTimeout(t);
+      const timer = setTimeout(() => navigation.replace(Routes.LiveExamSession), 200);
+      return () => clearTimeout(timer);
     }
   }, [countdown, pendingStart, isReady]);
 
@@ -90,7 +92,7 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Canlı İmtahan</Text>
+          <Text style={styles.headerTitle}>{t('liveExams.detailHeader')}</Text>
         </View>
         <Ionicons name="help-circle-outline" size={22} color={Colors.textMuted} />
       </View>
@@ -99,7 +101,7 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
         {/* Mascot */}
         <View style={styles.mascotWrap}>
           <View style={styles.readyBadge}>
-            <Text style={styles.readyBadgeText}>Hazır ol!</Text>
+            <Text style={styles.readyBadgeText}>{t('liveExams.getReady')}</Text>
           </View>
           <LinearGradient
             colors={[Colors.gradientStart, Colors.gradientEnd]}
@@ -113,7 +115,7 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
 
         {/* Countdown */}
         <View style={styles.countdownWrap}>
-          <Text style={styles.countdownLabel}>İmtahan Başlayır</Text>
+          <Text style={styles.countdownLabel}>{t('liveExams.examStarting')}</Text>
           <View style={styles.countdownRow}>
             <Text style={styles.countdownDigit}>{m}</Text>
             <Animated.Text style={[styles.countdownColon, { opacity: pulse }]}>:</Animated.Text>
@@ -132,7 +134,7 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
             <Ionicons name="calculator" size={26} color="#fff" />
           </LinearGradient>
           <View style={{ flex: 1 }}>
-            <Text style={styles.topicLabel}>İmtahan mövzusu</Text>
+            <Text style={styles.topicLabel}>{t('liveExams.examTopic')}</Text>
             <Text style={styles.topicValue} numberOfLines={1}>{title}</Text>
           </View>
         </View>
@@ -141,8 +143,8 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
         <View style={styles.participantCard}>
           <View style={styles.participantTop}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.participantLabel}>İştirakçı sayı</Text>
-              <Text style={styles.participantValue}>{participants.toLocaleString()} nəfər</Text>
+              <Text style={styles.participantLabel}>{t('liveExams.participantsCount')}</Text>
+              <Text style={styles.participantValue}>{t('liveExams.peopleCount', { n: participants.toLocaleString() })}</Text>
             </View>
             <View style={styles.avatarStack}>
               {[0, 1, 2].map((i) => (
@@ -159,7 +161,7 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
           <View style={styles.fillTrack}>
             <View style={[styles.fillBar, { width: `${fillPercent}%` }]} />
           </View>
-          <Text style={styles.participantSub}>Otaq dolmaq üzrədir...</Text>
+          <Text style={styles.participantSub}>{t('liveExams.roomFilling')}</Text>
         </View>
 
         {/* CTA */}
@@ -173,16 +175,16 @@ export default function LiveExamWaitingScreen({ navigation, route }: Props) {
             {ctaLoading ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <ActivityIndicator color="#fff" size="small" />
-                <Text style={styles.ctaBtnText}>Yüklənir...</Text>
+                <Text style={styles.ctaBtnText}>{t('liveExams.loading')}</Text>
               </View>
             ) : (
-              <Text style={styles.ctaBtnText}>Hazıram!</Text>
+              <Text style={styles.ctaBtnText}>{t('liveExams.imReady')}</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>
 
         <Text style={styles.footerText}>
-          İmtahan başladığı an sistem avtomatik olaraq sualları açacaq. Zəhmət olmasa internet bağlantınızı yoxlayın.
+          {t('liveExams.waitFooter')}
         </Text>
       </ScrollView>
     </SafeAreaView>

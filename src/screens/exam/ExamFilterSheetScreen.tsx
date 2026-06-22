@@ -7,27 +7,33 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamFilterSheet>;
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const SUBJECTS = ['Riyaziyyat', 'İngilis dili', 'Fizika', 'Azərbaycan dili', 'Kimya'] as const;
+const SUBJECT_TKEY: Record<string, string> = {
+  'Riyaziyyat': 'examFilter.subjMath', 'İngilis dili': 'examFilter.subjEn', 'Fizika': 'examFilter.subjPhysics',
+  'Azərbaycan dili': 'examFilter.subjAz', 'Kimya': 'examFilter.subjChem',
+};
 
 type Difficulty = 'easy' | 'medium' | 'hard';
-const DIFFICULTIES: { id: Difficulty; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: 'easy',   label: 'Asan',  icon: 'happy-outline' },
-  { id: 'medium', label: 'Orta',  icon: 'remove-circle-outline' },
-  { id: 'hard',   label: 'Çətin', icon: 'sad-outline' },
+const DIFFICULTIES: { id: Difficulty; labelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'easy',   labelKey: 'examList.diff.easy',   icon: 'happy-outline' },
+  { id: 'medium', labelKey: 'examList.diff.medium', icon: 'remove-circle-outline' },
+  { id: 'hard',   labelKey: 'examList.diff.hard',   icon: 'sad-outline' },
 ];
 
 type ExamKind = 'practice' | 'live' | 'monthly';
-const KINDS: { id: ExamKind; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: 'practice', label: 'Practice',    icon: 'create-outline' },
-  { id: 'live',     label: 'Canlı',       icon: 'radio-outline' },
-  { id: 'monthly',  label: 'Aylıq sınaq', icon: 'calendar-outline' },
+const KINDS: { id: ExamKind; labelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'practice', labelKey: 'examFilterSheet.kindPractice', icon: 'create-outline' },
+  { id: 'live',     labelKey: 'examFilterSheet.kindLive',     icon: 'radio-outline' },
+  { id: 'monthly',  labelKey: 'examFilterSheet.kindMonthly',  icon: 'calendar-outline' },
 ];
 
 export default function ExamFilterSheetScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [subjects, setSubjects] = useState<Set<string>>(new Set(['Riyaziyyat']));
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [kind, setKind] = useState<ExamKind>('live');
@@ -56,9 +62,9 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()} hitSlop={8}>
             <Ionicons name="close" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.title}>Filtrlər</Text>
+          <Text style={styles.title}>{t('examFilterSheet.title')}</Text>
           <TouchableOpacity hitSlop={8} onPress={reset}>
-            <Text style={styles.resetText}>Sıfırla</Text>
+            <Text style={styles.resetText}>{t('examFilterSheet.reset')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -66,9 +72,9 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
           {/* Subject */}
           <View style={styles.section}>
             <View style={styles.sectionHead}>
-              <Text style={styles.sectionTitle}>Fənn</Text>
+              <Text style={styles.sectionTitle}>{t('examFilterSheet.subject')}</Text>
               <View style={styles.multiPill}>
-                <Text style={styles.multiPillText}>ÇOXLU SEÇİM</Text>
+                <Text style={styles.multiPillText}>{t('examFilterSheet.multiSelect')}</Text>
               </View>
             </View>
             <View style={styles.chipsRow}>
@@ -81,7 +87,7 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
                     onPress={() => toggleSubject(s)}
                     style={[styles.chip, active && styles.chipActive]}
                   >
-                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
+                    <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(SUBJECT_TKEY[s])}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -90,7 +96,7 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
 
           {/* Difficulty */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Çətinlik</Text>
+            <Text style={styles.sectionTitle}>{t('examFilterSheet.difficulty')}</Text>
             <View style={styles.diffGrid}>
               {DIFFICULTIES.map((d) => {
                 const active = difficulty === d.id;
@@ -102,7 +108,7 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
                     style={[styles.diffItem, active && styles.diffItemActive]}
                   >
                     <Ionicons name={d.icon} size={22} color={active ? Colors.primary : Colors.textSecondary} />
-                    <Text style={[styles.diffText, active && styles.diffTextActive]}>{d.label}</Text>
+                    <Text style={[styles.diffText, active && styles.diffTextActive]}>{t(d.labelKey)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -111,12 +117,12 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
 
           {/* Date range */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Tarix</Text>
+            <Text style={styles.sectionTitle}>{t('examFilterSheet.date')}</Text>
             <View style={styles.dateRow}>
               <View style={styles.dateInputWrap}>
                 <Ionicons name="calendar-outline" size={18} color={Colors.textSecondary} style={styles.dateIcon} />
                 <TextInput
-                  placeholder="Başlanğıc" placeholderTextColor={Colors.textMuted + 'AA'}
+                  placeholder={t('examFilterSheet.startPlaceholder')} placeholderTextColor={Colors.textMuted + 'AA'}
                   value={start} onChangeText={setStart}
                   style={styles.dateInput}
                 />
@@ -125,7 +131,7 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
               <View style={styles.dateInputWrap}>
                 <Ionicons name="calendar-clear-outline" size={18} color={Colors.textSecondary} style={styles.dateIcon} />
                 <TextInput
-                  placeholder="Son tarix" placeholderTextColor={Colors.textMuted + 'AA'}
+                  placeholder={t('examFilterSheet.endPlaceholder')} placeholderTextColor={Colors.textMuted + 'AA'}
                   value={end} onChangeText={setEnd}
                   style={styles.dateInput}
                 />
@@ -135,7 +141,7 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
 
           {/* Exam kind */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>İmtahan növü</Text>
+            <Text style={styles.sectionTitle}>{t('examFilterSheet.examType')}</Text>
             <View style={styles.chipsRow}>
               {KINDS.map((k) => {
                 const active = kind === k.id;
@@ -144,7 +150,7 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
                     <TouchableOpacity key={k.id} activeOpacity={0.85} onPress={() => setKind(k.id)}>
                       <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.kindChipActive}>
                         <Ionicons name={k.icon} size={18} color="#fff" />
-                        <Text style={styles.kindChipActiveText}>{k.label}</Text>
+                        <Text style={styles.kindChipActiveText}>{t(k.labelKey)}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   );
@@ -155,7 +161,7 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
                     style={styles.kindChip}
                   >
                     <Ionicons name={k.icon} size={18} color={Colors.textSecondary} />
-                    <Text style={styles.kindChipText}>{k.label}</Text>
+                    <Text style={styles.kindChipText}>{t(k.labelKey)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -167,11 +173,11 @@ export default function ExamFilterSheetScreen({ navigation }: Props) {
         <View style={styles.footer}>
           <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.goBack()}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.applyBtn}>
-              <Text style={styles.applyBtnText}>Tətbiq et</Text>
+              <Text style={styles.applyBtnText}>{t('examFilterSheet.apply')}</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
-          <Text style={styles.footerHint}>KIMI.AZ TƏRƏFİNDƏN TƏNZİMLƏNİR</Text>
+          <Text style={styles.footerHint}>{t('examFilterSheet.footerHint')}</Text>
         </View>
       </SafeAreaView>
     </View>

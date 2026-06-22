@@ -5,17 +5,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const BULLETS = [
-  'Xidmətlərimiz yalnız 13 yaşdan yuxarı şəxslər və ya valideyn nəzarəti olan istifadəçilər üçün nəzərdə tutulub.',
-  'Hesab məlumatlarınızın məxfiliyinə görə birbaşa siz məsuliyyət daşıyırsınız.',
-  'Platforma resurslarından yalnız şəxsi və qeyri-kommersiya məqsədləri üçün istifadə oluna bilər.',
-];
-
 export default function TermsOfServiceScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
+  const BULLETS = t('termsOfService.bullets').split('|');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -23,15 +20,15 @@ export default function TermsOfServiceScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İstifadə şərtləri</Text>
+        <Text style={styles.headerTitle}>{t('termsOfService.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={styles.heroDate}>SON YENİLƏNMƏ: 24 MAY 2024</Text>
-          <Text style={styles.heroTitle}>Xidmətlərimizdən istifadə qaydaları</Text>
+          <Text style={styles.heroDate}>{t('termsOfService.heroDate')}</Text>
+          <Text style={styles.heroTitle}>{t('termsOfService.heroTitle')}</Text>
           <LinearGradient colors={GRADIENT} style={styles.heroDivider} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} />
         </View>
 
@@ -41,11 +38,11 @@ export default function TermsOfServiceScreen() {
             <View style={[styles.sectionIconWrap, { backgroundColor: Colors.primaryLight }]}>
               <Ionicons name="shield-checkmark-outline" size={18} color={Colors.primary} />
             </View>
-            <Text style={styles.sectionTitle}>Xidmətdən istifadə</Text>
+            <Text style={styles.sectionTitle}>{t('termsOfService.sec1Title')}</Text>
           </View>
           <View style={[styles.sectionCard, styles.shadow]}>
             <Text style={styles.cardPara}>
-              Kimi.az təhsil platformasına xoş gəlmisiniz. Bizim xidmətlərimizdən istifadə etməklə siz aşağıdakı şərtləri qəbul etmiş sayılırsınız. Platforma süni intellekt əsaslı öyrənmə təcrübəsi təqdim edir.
+              {t('termsOfService.sec1Para')}
             </Text>
             <View style={styles.bulletList}>
               {BULLETS.map((text, i) => (
@@ -64,20 +61,20 @@ export default function TermsOfServiceScreen() {
             <View style={[styles.sectionIconWrap, { backgroundColor: Colors.secondaryContainer }]}>
               <Ionicons name="person-outline" size={18} color={Colors.secondary} />
             </View>
-            <Text style={styles.sectionTitle}>İstifadəçi öhdəlikləri</Text>
+            <Text style={styles.sectionTitle}>{t('termsOfService.sec2Title')}</Text>
           </View>
           <View style={[styles.sectionCard, { backgroundColor: Colors.surfaceLow }]}>
             <Text style={styles.cardPara}>
-              İstifadəçilər platformanın təhlükəsizliyini və dürüstlüyünü qorumalıdırlar. Aşağıdakı hərəkətlər qəti qadağandır:
+              {t('termsOfService.sec2Para')}
             </Text>
             <View style={styles.twoColGrid}>
               <View style={[styles.gridCard, styles.shadow]}>
-                <Text style={styles.gridCardTitle}>Resursların surəti</Text>
-                <Text style={styles.gridCardDesc}>Dərs materiallarını icazəsiz kopyalamaq, yaymaq və ya satmaq qadağandır.</Text>
+                <Text style={styles.gridCardTitle}>{t('termsOfService.sec2Card1Title')}</Text>
+                <Text style={styles.gridCardDesc}>{t('termsOfService.sec2Card1Desc')}</Text>
               </View>
               <View style={[styles.gridCard, styles.shadow]}>
-                <Text style={styles.gridCardTitle}>Etik davranış</Text>
-                <Text style={styles.gridCardDesc}>Süni intellekt və digər istifadəçilərlə qarşılıqlı əlaqədə etik qaydalara riayət olunmalıdır.</Text>
+                <Text style={styles.gridCardTitle}>{t('termsOfService.sec2Card2Title')}</Text>
+                <Text style={styles.gridCardDesc}>{t('termsOfService.sec2Card2Desc')}</Text>
               </View>
             </View>
           </View>
@@ -89,16 +86,16 @@ export default function TermsOfServiceScreen() {
             <View style={[styles.sectionIconWrap, { backgroundColor: Colors.tertiaryContainer + '40' }]}>
               <Ionicons name="hammer-outline" size={18} color={Colors.tertiary} />
             </View>
-            <Text style={styles.sectionTitle}>Məsuliyyətin məhdudlaşdırılması</Text>
+            <Text style={styles.sectionTitle}>{t('termsOfService.sec3Title')}</Text>
           </View>
           <View style={[styles.sectionCard, styles.shadow, styles.accentCard]}>
             <View style={styles.accentStripe} />
             <Text style={styles.italicText}>
-              "Kimi.az texniki xətalar, məlumat itkisi və ya süni intellekt tərəfindən yaradılan məzmunun mütləq dəqiqliyinə görə hüquqi məsuliyyət daşımır. İstifadəçi təqdim olunan məlumatları öz riski ilə istifadə edir."
+              {t('termsOfService.sec3Quote')}
             </Text>
             <View style={styles.infoBox}>
               <Text style={styles.infoBoxText}>
-                Biz mütəmadi olaraq xidmət keyfiyyətini artırırıq, lakin sistemin 100% fasiləsiz işləməsinə zəmanət vermirik.
+                {t('termsOfService.sec3Info')}
               </Text>
             </View>
           </View>
@@ -108,10 +105,10 @@ export default function TermsOfServiceScreen() {
         <View style={styles.ctaWrap}>
           <LinearGradient colors={GRADIENT} style={styles.ctaCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.ctaGlow} />
-            <Text style={styles.ctaTitle}>Sualınız var?</Text>
-            <Text style={styles.ctaSub}>Şərtlərimizlə bağlı əlavə məlumat almaq üçün dəstək komandamızla əlaqə saxlaya bilərsiniz.</Text>
+            <Text style={styles.ctaTitle}>{t('termsOfService.ctaTitle')}</Text>
+            <Text style={styles.ctaSub}>{t('termsOfService.ctaSub')}</Text>
             <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
-              <Text style={styles.ctaBtnText}>Bizimlə əlaqə</Text>
+              <Text style={styles.ctaBtnText}>{t('termsOfService.ctaBtn')}</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>

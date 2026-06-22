@@ -5,31 +5,33 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type FeatureIcon = 'school-outline' | 'sparkles-outline' | 'bar-chart-outline' | 'people-outline';
 type LinkIcon = 'document-text-outline' | 'shield-outline' | 'mail-outline' | 'star-outline';
 
-interface Feature { icon: FeatureIcon; title: string; desc: string }
-interface LinkItem { icon: LinkIcon; label: string }
+interface Feature { icon: FeatureIcon; titleKey: string; descKey: string }
+interface LinkItem { icon: LinkIcon; labelKey: string }
 
 const FEATURES: Feature[] = [
-  { icon: 'school-outline', title: 'Hesablamalar', desc: 'DİM, yarımillik, illik qiymət hesablamaları' },
-  { icon: 'sparkles-outline', title: 'AI Mentor', desc: 'Süni intellekt ilə fərdi öyrənmə' },
-  { icon: 'bar-chart-outline', title: 'Analitika', desc: 'Nəticələrini izlə və irəliləyişini gör' },
-  { icon: 'people-outline', title: 'Cəmiyyət', desc: 'Marketplas, çat, müəllim bağlantısı' },
+  { icon: 'school-outline', titleKey: 'aboutApp.featCalcTitle', descKey: 'aboutApp.featCalcDesc' },
+  { icon: 'sparkles-outline', titleKey: 'aboutApp.featAiTitle', descKey: 'aboutApp.featAiDesc' },
+  { icon: 'bar-chart-outline', titleKey: 'aboutApp.featAnalyticsTitle', descKey: 'aboutApp.featAnalyticsDesc' },
+  { icon: 'people-outline', titleKey: 'aboutApp.featCommunityTitle', descKey: 'aboutApp.featCommunityDesc' },
 ];
 
 const LINKS: LinkItem[] = [
-  { icon: 'document-text-outline', label: 'İstifadə şərtləri' },
-  { icon: 'shield-outline', label: 'Gizlilik siyasəti' },
-  { icon: 'mail-outline', label: 'Bizimlə əlaqə' },
-  { icon: 'star-outline', label: 'Tətbiqi qiymətləndir' },
+  { icon: 'document-text-outline', labelKey: 'aboutApp.linkTerms' },
+  { icon: 'shield-outline', labelKey: 'aboutApp.linkPrivacy' },
+  { icon: 'mail-outline', labelKey: 'aboutApp.linkContact' },
+  { icon: 'star-outline', labelKey: 'aboutApp.linkRate' },
 ];
 
 export default function AboutAppScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -37,7 +39,7 @@ export default function AboutAppScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tətbiq haqqında</Text>
+        <Text style={styles.headerTitle}>{t('aboutApp.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -52,12 +54,12 @@ export default function AboutAppScreen() {
           <View style={styles.versionBadge}>
             <Text style={styles.versionText}>v1.0.0 (100)</Text>
           </View>
-          <Text style={styles.heroTagline}>Premium Təhsil Platforması</Text>
+          <Text style={styles.heroTagline}>{t('aboutApp.tagline')}</Text>
         </View>
 
         {/* Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Əsas xüsusiyyətlər</Text>
+          <Text style={styles.sectionTitle}>{t('aboutApp.featuresTitle')}</Text>
           <View style={styles.listCard}>
             {FEATURES.map((f, idx) => (
               <View key={idx} style={[styles.listRow, idx === FEATURES.length - 1 && styles.listRowLast]}>
@@ -65,8 +67,8 @@ export default function AboutAppScreen() {
                   <Ionicons name={f.icon} size={20} color={Colors.primary} />
                 </View>
                 <View style={styles.featureText}>
-                  <Text style={styles.featureTitle}>{f.title}</Text>
-                  <Text style={styles.featureDesc}>{f.desc}</Text>
+                  <Text style={styles.featureTitle}>{t(f.titleKey)}</Text>
+                  <Text style={styles.featureDesc}>{t(f.descKey)}</Text>
                 </View>
               </View>
             ))}
@@ -75,7 +77,7 @@ export default function AboutAppScreen() {
 
         {/* Links */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Əlaqədar keçidlər</Text>
+          <Text style={styles.sectionTitle}>{t('aboutApp.linksTitle')}</Text>
           <View style={styles.listCard}>
             {LINKS.map((link, idx) => (
               <TouchableOpacity
@@ -86,7 +88,7 @@ export default function AboutAppScreen() {
                 <View style={styles.linkIconWrap}>
                   <Ionicons name={link.icon} size={18} color={Colors.primary} />
                 </View>
-                <Text style={styles.linkLabel}>{link.label}</Text>
+                <Text style={styles.linkLabel}>{t(link.labelKey)}</Text>
                 <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
               </TouchableOpacity>
             ))}
@@ -96,7 +98,7 @@ export default function AboutAppScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Kimi.az • Premium Educational Intelligence</Text>
-          <Text style={styles.footerCopy}>© 2024 Kimi.az. Bütün hüquqlar qorunur.</Text>
+          <Text style={styles.footerCopy}>{t('aboutApp.copyright')}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 import { useFeed } from '../../hooks/useFeed';
 import { FeedItem } from '../../api/feed.api';
 import { formatDate } from '../../utils/formatters';
@@ -35,13 +36,14 @@ function FeedCard({ item }: { item: FeedItem }) {
 }
 
 export default function FeedScreen() {
+  const { t } = useTranslation();
   const { data, isLoading, refetch, isRefetching } = useFeed();
   const items = data?.items ?? [];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Lent</Text>
+        <Text style={styles.title}>{t('feed.title')}</Text>
       </View>
       {isLoading ? (
         <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
@@ -54,7 +56,7 @@ export default function FeedScreen() {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptyText}>Hələ heç nə yoxdur</Text>
+              <Text style={styles.emptyText}>{t('feed.empty')}</Text>
             </View>
           }
           ItemSeparatorComponent={() => <View style={{ height: 12 }} />}

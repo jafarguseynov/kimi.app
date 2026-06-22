@@ -109,3 +109,21 @@ export interface GeneratedExam {
 
 export const generateExam = (payload: GenerateExamPayload) =>
   apiClient.post<GeneratedExam>('/exam/generate', payload, { timeout: 45000 }).then((r) => r.data);
+
+// ─── Çoxfənnli günlük sınaq ─────────────────────────────────────────────────
+export interface MockPayload {
+  categoryKey?: string;
+  subKey?: string;
+  grade?: string;
+  subjects: string[];
+}
+export interface MockResult {
+  id: string | null;
+  title: string | null;
+  questionCount: number;
+  preparing: boolean;
+}
+
+// Bütün fənlər üzrə günün sınağı — server fənn-fənn 25 sual birləşdirir (hamıya eyni, gündəlik).
+export const serveMock = (payload: MockPayload) =>
+  apiClient.post<MockResult>('/exam/mock', payload, { timeout: 45000 }).then((r) => r.data);

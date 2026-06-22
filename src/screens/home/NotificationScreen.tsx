@@ -18,16 +18,17 @@ import { Routes } from '../../constants/routes';
 import { useNotifications, useMarkRead, useMarkAllRead } from '../../hooks/useFeed';
 import { NotificationItem } from '../../api/notification.api';
 import { formatDate } from '../../utils/formatters';
+import { useTranslation } from '../../i18n';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
 function getNotifMeta(item: NotificationItem): { icon: IconName; iconColor: string; iconBg: string } {
-  const t = (item.title ?? '').toLowerCase();
-  if (t.includes('imtahan')) return { icon: 'clipboard-outline', iconColor: Colors.primary, iconBg: Colors.primaryLight };
-  if (t.includes('yarış') || t.includes('medal') || t.includes('liqa')) return { icon: 'ribbon-outline', iconColor: Colors.tertiary, iconBg: '#e8fdf3' };
-  if (t.includes('bonus') || t.includes('referal') || t.includes('hədiyyə')) return { icon: 'gift-outline', iconColor: Colors.secondary, iconBg: Colors.secondaryContainer };
-  if (t.includes('cavab') || t.includes('müəllim')) return { icon: 'chatbubble-outline', iconColor: Colors.textSecondary, iconBg: Colors.surfaceLow };
-  if (t.includes('dərs') || t.includes('tələb')) return { icon: 'checkmark-circle-outline', iconColor: Colors.textSecondary, iconBg: Colors.surfaceLow };
+  const title = (item.title ?? '').toLowerCase();
+  if (title.includes('imtahan')) return { icon: 'clipboard-outline', iconColor: Colors.primary, iconBg: Colors.primaryLight };
+  if (title.includes('yarış') || title.includes('medal') || title.includes('liqa')) return { icon: 'ribbon-outline', iconColor: Colors.tertiary, iconBg: '#e8fdf3' };
+  if (title.includes('bonus') || title.includes('referal') || title.includes('hədiyyə')) return { icon: 'gift-outline', iconColor: Colors.secondary, iconBg: Colors.secondaryContainer };
+  if (title.includes('cavab') || title.includes('müəllim')) return { icon: 'chatbubble-outline', iconColor: Colors.textSecondary, iconBg: Colors.surfaceLow };
+  if (title.includes('dərs') || title.includes('tələb')) return { icon: 'checkmark-circle-outline', iconColor: Colors.textSecondary, iconBg: Colors.surfaceLow };
   return { icon: 'notifications-outline', iconColor: Colors.primary, iconBg: Colors.primaryLight };
 }
 
@@ -60,6 +61,7 @@ function NotifCard({ item, onRead }: { item: NotificationItem; onRead: (id: stri
 }
 
 export default function NotificationScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { data: notifications = [], isLoading } = useNotifications();
   const { mutate: markRead } = useMarkRead();
@@ -69,18 +71,18 @@ export default function NotificationScreen() {
 
   const openMenu = () => {
     Alert.alert(
-      'Bildirişlər',
-      'Hansı əməliyyatı seçirsiniz?',
+      t('notif.title'),
+      t('notif.menuMsg'),
       [
         {
-          text: 'Hamısını oxunmuş et',
+          text: t('notif.markAllRead'),
           onPress: () => markAll(),
         },
         {
-          text: 'Bildiriş tənzimləmələri',
+          text: t('notif.settings'),
           onPress: () => navigation.navigate(Routes.NotificationSettings),
         },
-        { text: 'Ləğv et', style: 'cancel' },
+        { text: t('notif.cancel'), style: 'cancel' },
       ],
       { cancelable: true },
     );
@@ -93,7 +95,7 @@ export default function NotificationScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Bildirişlər</Text>
+          <Text style={styles.headerTitle}>{t('notif.title')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} onPress={openMenu} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={22} color={Colors.textSecondary} />
@@ -111,18 +113,18 @@ export default function NotificationScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <View style={styles.greeting}>
-              <Text style={styles.greetingTitle}>Salam! 👋</Text>
+              <Text style={styles.greetingTitle}>{t('notif.greeting')}</Text>
               <Text style={styles.greetingSub}>
                 {unread > 0
-                  ? `Bugün üçün ${unread} yeni bildirişin var.`
-                  : 'Bütün bildirişlər oxunub.'}
+                  ? t('notif.unreadSub', { n: unread })
+                  : t('notif.allRead')}
               </Text>
             </View>
           }
           ListFooterComponent={
             notifications.length > 0 ? (
               <View style={styles.footer}>
-                <Text style={styles.footerText}>Daha köhnə bildiriş yoxdur</Text>
+                <Text style={styles.footerText}>{t('notif.noOlder')}</Text>
               </View>
             ) : null
           }
@@ -143,13 +145,13 @@ export default function NotificationScreen() {
                     <Ionicons name="notifications-outline" size={48} color="#fff" />
                   </LinearGradient>
                   <View style={styles.emptyBadge}>
-                    <Text style={styles.emptyBadgeText}>Bildiriş yoxdur</Text>
+                    <Text style={styles.emptyBadgeText}>{t('notif.emptyBadge')}</Text>
                   </View>
                 </View>
               </View>
-              <Text style={styles.emptyTitle}>Hər şey sakit görünür</Text>
+              <Text style={styles.emptyTitle}>{t('notif.emptyTitle')}</Text>
               <Text style={styles.emptySub}>
-                İmtahan nəticələri, referal bonuslar və dərs xatırlatmaları burada görünəcək.
+                {t('notif.emptySub')}
               </Text>
             </View>
           }

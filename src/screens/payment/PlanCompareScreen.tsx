@@ -7,21 +7,22 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-type FeatureCell = { kind: 'check' | 'cross' | 'text' | 'infinity' | 'verified'; text?: string };
-type Row = { feature: string; free: FeatureCell; student: FeatureCell; teacher: FeatureCell };
+type FeatureCell = { kind: 'check' | 'cross' | 'text' | 'infinity' | 'verified'; textKey?: string };
+type Row = { featureKey: string; free: FeatureCell; student: FeatureCell; teacher: FeatureCell };
 
 const ROWS: Row[] = [
-  { feature: 'AI İmtahanlar',         free: { kind: 'text', text: '3 ədəd' }, student: { kind: 'infinity' }, teacher: { kind: 'infinity' } },
-  { feature: 'Analitika Dərinliyi',   free: { kind: 'text', text: 'Baza' },   student: { kind: 'check' },    teacher: { kind: 'check' } },
-  { feature: 'Profil Təsdiqi',        free: { kind: 'cross' },                student: { kind: 'cross' },    teacher: { kind: 'verified' } },
-  { feature: 'Şagird İdarəetməsi',    free: { kind: 'cross' },                student: { kind: 'cross' },    teacher: { kind: 'check' } },
-  { feature: 'Xüsusi Nişanlar',       free: { kind: 'cross' },                student: { kind: 'check' },    teacher: { kind: 'check' } },
+  { featureKey: 'pay.rowAiExams',         free: { kind: 'text', textKey: 'pay.cellThreeUnits' }, student: { kind: 'infinity' }, teacher: { kind: 'infinity' } },
+  { featureKey: 'pay.rowAnalyticsDepth',  free: { kind: 'text', textKey: 'pay.cellBase' },       student: { kind: 'check' },    teacher: { kind: 'check' } },
+  { featureKey: 'pay.rowProfileVerify',   free: { kind: 'cross' },                               student: { kind: 'cross' },    teacher: { kind: 'verified' } },
+  { featureKey: 'pay.rowStudentMgmt',     free: { kind: 'cross' },                               student: { kind: 'cross' },    teacher: { kind: 'check' } },
+  { featureKey: 'pay.rowSpecialBadges',   free: { kind: 'cross' },                               student: { kind: 'check' },    teacher: { kind: 'check' } },
 ];
 
-function Cell({ cell, tone }: { cell: FeatureCell; tone: 'primary' | 'dark' }) {
+function Cell({ cell, tone, t }: { cell: FeatureCell; tone: 'primary' | 'dark'; t: (k: string) => string }) {
   const color = tone === 'primary' ? Colors.primary : Colors.textPrimary;
   switch (cell.kind) {
     case 'check':
@@ -33,12 +34,13 @@ function Cell({ cell, tone }: { cell: FeatureCell; tone: 'primary' | 'dark' }) {
     case 'verified':
       return <Ionicons name="shield-checkmark" size={20} color={Colors.tertiary} />;
     case 'text':
-      return <Text style={styles.cellText}>{cell.text}</Text>;
+      return <Text style={styles.cellText}>{cell.textKey ? t(cell.textKey) : ''}</Text>;
   }
 }
 
 export default function PlanCompareScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -63,23 +65,23 @@ export default function PlanCompareScreen() {
             <Ionicons name="rocket" size={64} color={Colors.primary} />
           </View>
           <Text style={styles.heroTitle}>
-            Gələcəyini Kimi ilə{' '}
-            <Text style={styles.heroAccent}>Dizayn Et</Text>
+            {t('pay.comparePre')}
+            <Text style={styles.heroAccent}>{t('pay.compareAccent')}</Text>
           </Text>
-          <Text style={styles.heroSub}>Sənin üçün ən uyğun olan premium planı seç və öyrənməyə başla.</Text>
+          <Text style={styles.heroSub}>{t('pay.compareSub')}</Text>
         </View>
 
         {/* Plan cards */}
         <View style={{ gap: 18 }}>
           {/* Pulsuz */}
           <View style={styles.planCard}>
-            <Text style={styles.planNameDim}>Pulsuz</Text>
+            <Text style={styles.planNameDim}>{t('pay.planFree')}</Text>
             <View style={styles.priceRow}>
               <Text style={styles.priceNum}>0</Text>
-              <Text style={styles.priceUnit}>AZN / ay</Text>
+              <Text style={styles.priceUnit}>{t('pay.perMonthFull')}</Text>
             </View>
             <View style={styles.featuresList}>
-              {['Məhdud AI imtahanları', 'Baza tərəqqi izləmə', 'Standart dəstək'].map((f) => (
+              {t('pay.freeFeatures').split('|').map((f) => (
                 <View key={f} style={styles.featureRow}>
                   <Ionicons name="checkmark-circle" size={18} color={Colors.tertiary} />
                   <Text style={styles.featureText}>{f}</Text>
@@ -87,62 +89,58 @@ export default function PlanCompareScreen() {
               ))}
             </View>
             <TouchableOpacity style={styles.btnNeutral} activeOpacity={0.85}>
-              <Text style={styles.btnNeutralText}>İndi Başla</Text>
+              <Text style={styles.btnNeutralText}>{t('pay.startNow')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Şagird Premium — featured */}
           <View style={[styles.planCard, styles.planCardFeatured]}>
             <View style={styles.popularRibbon}>
-              <Text style={styles.popularRibbonText}>Ən Populyar</Text>
+              <Text style={styles.popularRibbonText}>{t('pay.mostPopular')}</Text>
             </View>
-            <Text style={styles.planNamePrimary}>Şagird Premium</Text>
+            <Text style={styles.planNamePrimary}>{t('pay.planStudentPremium')}</Text>
             <View style={styles.priceRow}>
               <Text style={styles.priceNum}>9.90</Text>
-              <Text style={styles.priceUnit}>AZN / ay</Text>
+              <Text style={styles.priceUnit}>{t('pay.perMonthFull')}</Text>
             </View>
             <View style={styles.featuresList}>
-              {[
-                { icon: 'star' as const, text: 'Limitsiz AI imtahanları', strong: true },
-                { icon: 'analytics' as const, text: 'Detallı AI analizi' },
-                { icon: 'locate' as const, text: 'Hədəf-əsaslı plan' },
-                { icon: 'medal' as const, text: 'Medal və Nişanlar' },
-              ].map((f) => (
-                <View key={f.text} style={styles.featureRow}>
-                  <Ionicons name={f.icon} size={18} color={Colors.primary} />
-                  <Text style={[styles.featureText, f.strong && styles.featureTextStrong]}>{f.text}</Text>
-                </View>
-              ))}
+              {(['star', 'analytics', 'locate', 'medal'] as const).map((icon, idx) => {
+                const text = t('pay.studentFeatures').split('|')[idx];
+                return (
+                  <View key={text} style={styles.featureRow}>
+                    <Ionicons name={icon} size={18} color={Colors.primary} />
+                    <Text style={[styles.featureText, idx === 0 && styles.featureTextStrong]}>{text}</Text>
+                  </View>
+                );
+              })}
             </View>
             <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.PaymentMethod)}>
               <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.btnPrimary}>
-                <Text style={styles.btnPrimaryText}>Premium-a Keç</Text>
+                <Text style={styles.btnPrimaryText}>{t('pay.goToPremium')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
           {/* Müəllim Premium */}
           <View style={styles.planCard}>
-            <Text style={styles.planNameDim}>Müəllim Premium</Text>
+            <Text style={styles.planNameDim}>{t('pay.planTeacherPremium')}</Text>
             <View style={styles.priceRow}>
               <Text style={styles.priceNum}>19.90</Text>
-              <Text style={styles.priceUnit}>AZN / ay</Text>
+              <Text style={styles.priceUnit}>{t('pay.perMonthFull')}</Text>
             </View>
             <View style={styles.featuresList}>
-              {[
-                { icon: 'people' as const, text: 'Limitsiz şagird sorğuları' },
-                { icon: 'shield-checkmark' as const, text: 'Profil təsdiq nişanı' },
-                { icon: 'eye' as const, text: 'Yüksək görünürlük' },
-                { icon: 'cash' as const, text: 'Gəlir analitikası' },
-              ].map((f) => (
-                <View key={f.text} style={styles.featureRow}>
-                  <Ionicons name={f.icon} size={18} color={Colors.textPrimary} />
-                  <Text style={styles.featureText}>{f.text}</Text>
-                </View>
-              ))}
+              {(['people', 'shield-checkmark', 'eye', 'cash'] as const).map((icon, idx) => {
+                const text = t('pay.teacherFeatures').split('|')[idx];
+                return (
+                  <View key={text} style={styles.featureRow}>
+                    <Ionicons name={icon} size={18} color={Colors.textPrimary} />
+                    <Text style={styles.featureText}>{text}</Text>
+                  </View>
+                );
+              })}
             </View>
             <TouchableOpacity style={styles.btnOutline} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.PaymentMethod)}>
-              <Text style={styles.btnOutlineText}>Peşəkar Ol</Text>
+              <Text style={styles.btnOutlineText}>{t('pay.becomePro')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -151,29 +149,29 @@ export default function PlanCompareScreen() {
         <View style={{ gap: 18, marginTop: 16 }}>
           <View style={styles.tableHeader}>
             <LinearGradient colors={GRADIENT} style={styles.tableBar} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} />
-            <Text style={styles.tableTitle}>Planların Müqayisəsi</Text>
+            <Text style={styles.tableTitle}>{t('pay.comparison')}</Text>
           </View>
 
           <View style={styles.table}>
             {/* Column headers */}
             <View style={styles.tableHeaderRow}>
-              <Text style={[styles.colHead, styles.colFeature]}>Xüsusiyyət</Text>
-              <Text style={[styles.colHead, styles.col]}>Pulsuz</Text>
-              <Text style={[styles.colHead, styles.col, { color: Colors.primary }]}>Şagird</Text>
-              <Text style={[styles.colHead, styles.col]}>Müəllim</Text>
+              <Text style={[styles.colHead, styles.colFeature]}>{t('pay.colFeature')}</Text>
+              <Text style={[styles.colHead, styles.col]}>{t('pay.colFree')}</Text>
+              <Text style={[styles.colHead, styles.col, { color: Colors.primary }]}>{t('pay.colStudent')}</Text>
+              <Text style={[styles.colHead, styles.col]}>{t('pay.colTeacher')}</Text>
             </View>
 
             {ROWS.map((r, i) => (
-              <View key={r.feature} style={[styles.tableRow, i > 0 && styles.tableRowBorder]}>
-                <Text style={[styles.rowFeature, styles.colFeature]} numberOfLines={2}>{r.feature}</Text>
+              <View key={r.featureKey} style={[styles.tableRow, i > 0 && styles.tableRowBorder]}>
+                <Text style={[styles.rowFeature, styles.colFeature]} numberOfLines={2}>{t(r.featureKey)}</Text>
                 <View style={[styles.col, styles.cellCenter]}>
-                  <Cell cell={r.free} tone="dark" />
+                  <Cell cell={r.free} tone="dark" t={t} />
                 </View>
                 <View style={[styles.col, styles.cellCenter]}>
-                  <Cell cell={r.student} tone="primary" />
+                  <Cell cell={r.student} tone="primary" t={t} />
                 </View>
                 <View style={[styles.col, styles.cellCenter]}>
-                  <Cell cell={r.teacher} tone="dark" />
+                  <Cell cell={r.teacher} tone="dark" t={t} />
                 </View>
               </View>
             ))}

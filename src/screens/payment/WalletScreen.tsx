@@ -19,23 +19,26 @@ import { getWallet, getTransactions, TransactionItem } from '../../api/payment.a
 import { Colors } from '../../constants/colors';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const TX_STATUS: Record<string, { label: string; color: string }> = {
-  topup: { label: 'Uğurlu', color: Colors.tertiary },
-  earn: { label: 'Uğurlu', color: Colors.tertiary },
-  spend: { label: 'Xərcləndi', color: Colors.danger },
-  refund: { label: 'Qaytarıldı', color: Colors.warning },
+const TX_STATUS: Record<string, { labelKey: string; color: string }> = {
+  topup: { labelKey: 'pay.txSuccess', color: Colors.tertiary },
+  earn: { labelKey: 'pay.txSuccess', color: Colors.tertiary },
+  spend: { labelKey: 'pay.txSpent', color: Colors.danger },
+  refund: { labelKey: 'pay.txRefunded', color: Colors.warning },
 };
 
 function getInitial(str: string): string {
   return (str ?? '?').charAt(0).toUpperCase();
 }
 
-function TxItem({ item }: { item: TransactionItem }) {
+function TxItem({ item, t }: { item: TransactionItem; t: TFn }) {
   const isIncome = item.type === 'topup' || item.type === 'earn';
-  const status = TX_STATUS[item.type] ?? { label: 'Gözləmədə', color: Colors.warning };
+  const status = TX_STATUS[item.type] ?? { labelKey: 'pay.txPending', color: Colors.warning };
   const name = item.description ?? item.type;
   const initial = getInitial(name);
   const amountColor = isIncome ? Colors.tertiary : Colors.textPrimary;
@@ -49,7 +52,7 @@ function TxItem({ item }: { item: TransactionItem }) {
         <Text style={styles.txName} numberOfLines={1}>{name}</Text>
         <View style={styles.txStatusRow}>
           <View style={[styles.txDot, { backgroundColor: status.color }]} />
-          <Text style={styles.txStatusText}>{status.label} • {formatDate(item.createdAt)}</Text>
+          <Text style={styles.txStatusText}>{t(status.labelKey)} • {formatDate(item.createdAt)}</Text>
         </View>
       </View>
       <Text style={[styles.txAmount, { color: amountColor }]}>
@@ -61,6 +64,7 @@ function TxItem({ item }: { item: TransactionItem }) {
 
 export default function WalletScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const { data: wallet, isLoading: walletLoading, refetch, isRefetching } = useQuery({
     queryKey: ['wallet'],
     queryFn: getWallet,
@@ -77,7 +81,7 @@ export default function WalletScreen() {
     .reduce((sum, t) => sum + t.amount, 0);
 
   const handleShare = () =>
-    Share.share({ message: 'Kimi.az referal kodunla qoşul: KIMI7788' });
+    Share.share({ message: t('pay.walletShareMessage') });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -85,7 +89,7 @@ export default function WalletScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Referal Balansı</Text>
+        <Text style={styles.headerTitle}>{t('pay.referralBalance')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -105,7 +109,7 @@ export default function WalletScreen() {
               <LinearGradient colors={GRADIENT} style={styles.heroCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={styles.heroBlob} />
                 <View style={styles.heroInner}>
-                  <Text style={styles.heroLabel}>Mövcud Balans</Text>
+                  <Text style={styles.heroLabel}>{t('pay.currentBalance')}</Text>
                   <View style={styles.heroAmountRow}>
                     <Text style={styles.heroAmount}>{balance.toFixed(2)}</Text>
                     <Text style={styles.heroCurrency}>AZN</Text>
@@ -115,7 +119,7 @@ export default function WalletScreen() {
                     onPress={() => navigation.navigate(Routes.TopUp)}
                     activeOpacity={0.9}
                   >
-                    <Text style={styles.withdrawBtnText}>Vəsaiti çıxar</Text>
+                    <Text style={styles.withdrawBtnText}>{t('pay.withdrawFunds')}</Text>
                   </TouchableOpacity>
                 </View>
               </LinearGradient>
@@ -127,7 +131,7 @@ export default function WalletScreen() {
                     <Ionicons name="ribbon-outline" size={22} color={Colors.tertiary} />
                   </View>
                   <View style={styles.bentoInfo}>
-                    <Text style={styles.bentoLabel}>Toplam Qazanc</Text>
+                    <Text style={styles.bentoLabel}>{t('pay.totalEarnings')}</Text>
                     <Text style={styles.bentoValue}>{totalEarnings > 0 ? formatCurrency(totalEarnings) : '120.00 AZN'}</Text>
                   </View>
                 </View>
@@ -136,7 +140,7 @@ export default function WalletScreen() {
                     <Ionicons name="people-outline" size={22} color={Colors.primary} />
                   </View>
                   <View style={styles.bentoInfo}>
-                    <Text style={styles.bentoLabel}>Dəvət Olunanlar</Text>
+                    <Text style={styles.bentoLabel}>{t('pay.invited')}</Text>
                     <Text style={styles.bentoValue}>24 Nəfər</Text>
                   </View>
                 </View>
@@ -151,35 +155,35 @@ export default function WalletScreen() {
                   <View style={styles.hintOnline} />
                 </View>
                 <View style={styles.hintContent}>
-                  <Text style={styles.hintTitle}>Kimi-dən məsləhət</Text>
+                  <Text style={styles.hintTitle}>{t('pay.kimiHint')}</Text>
                   <Text style={styles.hintText}>
-                    Referal linkinizi sosial şəbəkələrdə paylaşaraq hər yeni qeydiyyatdan{' '}
-                    <Text style={styles.hintBold}>5.00 AZN</Text> bonus qazana bilərsiniz!
+                    {t('pay.kimiHintPre')}
+                    <Text style={styles.hintBold}>5.00 AZN</Text>{t('pay.kimiHintPost')}
                   </Text>
                 </View>
               </View>
 
               {/* History header */}
               <View style={styles.histHeader}>
-                <Text style={styles.histTitle}>Qazanc Tarixçəsi</Text>
+                <Text style={styles.histTitle}>{t('pay.earningsHistory')}</Text>
                 <TouchableOpacity activeOpacity={0.7}>
-                  <Text style={styles.histSeeAll}>Hamısına bax</Text>
+                  <Text style={styles.histSeeAll}>{t('pay.seeAll')}</Text>
                 </TouchableOpacity>
               </View>
             </>
           }
-          renderItem={({ item }) => <TxItem item={item} />}
+          renderItem={({ item }) => <TxItem item={item} t={t} />}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="wallet-outline" size={44} color={Colors.outline} />
-              <Text style={styles.emptyText}>Hər hansı bir əməliyyat yoxdur</Text>
+              <Text style={styles.emptyText}>{t('pay.noTransactions')}</Text>
             </View>
           }
           ListFooterComponent={
             <>
               {/* Share section */}
               <View style={styles.shareCard}>
-                <Text style={styles.shareCardTitle}>Sənin Referal Kodun</Text>
+                <Text style={styles.shareCardTitle}>{t('pay.yourReferralCode')}</Text>
                 <View style={styles.codeRow}>
                   <Text style={styles.codeText}>KIMI7788</Text>
                   <TouchableOpacity onPress={handleShare} activeOpacity={0.7}>

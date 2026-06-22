@@ -8,35 +8,61 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useExamList, useStartExam } from '../../hooks/useExams';
+import { getCategoryTitle } from '../../constants/educationTaxonomy';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamInfo>;
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const DIFFICULTY: Record<string, string> = { easy: 'Asan', medium: 'Orta', hard: 'Çətin' };
+const DIFFICULTY_KEY: Record<string, string> = { easy: 'examList.diff.easy', medium: 'examList.diff.medium', hard: 'examList.diff.hard' };
+
+type IconName = keyof typeof Ionicons.glyphMap;
+
+// Fənnə uyğun ikon — bütün imtahanlarda eyni kalkulyator əvəzinə
+const SUBJECT_ICON: { match: string; icon: IconName }[] = [
+  { match: 'riyaz', icon: 'calculator' },
+  { match: 'cəbr', icon: 'calculator' },
+  { match: 'həndəs', icon: 'shapes' },
+  { match: 'fizik', icon: 'flash' },
+  { match: 'kimya', icon: 'flask' },
+  { match: 'biolog', icon: 'leaf' },
+  { match: 'coğraf', icon: 'earth' },
+  { match: 'tarix', icon: 'time' },
+  { match: 'ədəbiy', icon: 'book' },
+  { match: 'dil', icon: 'language' },
+  { match: 'informat', icon: 'laptop' },
+  { match: 'məntiq', icon: 'bulb' },
+];
+function iconForSubject(subject?: string): IconName {
+  const s = (subject ?? '').toLowerCase();
+  return SUBJECT_ICON.find((m) => s.includes(m.match))?.icon ?? 'document-text';
+}
 
 export default function ExamInfoScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { examId, title } = route.params;
   const { data: exams = [], isLoading } = useExamList();
   const exam: any = exams.find((e: any) => e.id === examId);
   const { mutate: startExamMutate, isPending: isStarting } = useStartExam();
 
-  const displayTitle = exam?.title ?? title ?? 'İmtahan';
-  const questionCount = exam?.questionCount ?? 20;
-  const duration = exam?.duration ?? 25;
-  const difficulty = DIFFICULTY[exam?.difficulty ?? 'medium'] ?? 'Orta';
-  const category = (exam as any)?.category ?? 'Magistratura';
-  const description = (exam as any)?.description ??
-    'Bu imtahan magistratura hazırlığı üçün nəzərdə tutulub. Suallar cari təhsil standartlarına uyğun olaraq süni intellekt tərəfindən seçilmişdir. İmtahanı başlatdıqdan sonra taymer işə düşəcək.';
+  const displayTitle = exam?.title ?? title ?? t('examInfo.titleFallback');
+  const questionCount = exam?.questionCount ?? route.params.questionCount ?? 20;
+  const duration = exam?.duration ?? route.params.duration ?? 25;
+  const difficulty = t(DIFFICULTY_KEY[exam?.difficulty ?? route.params.difficulty ?? 'medium'] ?? 'examList.diff.medium');
+  const subject = exam?.subject ?? route.params.subject;
+  const category = getCategoryTitle(exam?.categoryKey ?? route.params.categoryKey) ?? subject ?? t('examInfo.categoryFallback');
+  const heroIcon = iconForSubject(subject ?? displayTitle);
+  const description = (exam as any)?.description ?? t('examInfo.defaultDesc');
 
   const startExam = () => {
     if (!examId) {
-      Alert.alert('Xəta', 'İmtahan ID-si tapılmadı');
+      Alert.alert(t('examInfo.errorTitle'), t('examInfo.noId'));
       return;
     }
     startExamMutate(examId, {
       onSuccess: () => navigation.navigate(Routes.ExamSession),
       onError: (err: any) => {
-        Alert.alert('İmtahan başlana bilmədi', err?.response?.data?.message ?? err?.message ?? 'Naməlum xəta');
+        Alert.alert(t('examInfo.cantStart'), err?.response?.data?.message ?? err?.message ?? t('examInfo.unknownError'));
       },
     });
   };
@@ -58,64 +84,76 @@ export default function ExamInfoScreen({ route, navigation }: Props) {
           </View>
         ) : (
           <>
-            {/* Hero gradient frame */}
+            {/* Hero banner */}
             <LinearGradient
               colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={styles.heroFrame}
+              style={styles.hero}
             >
-              <View style={styles.heroInner}>
-                <Ionicons name="calculator" size={72} color={Colors.primary} />
-                <View style={styles.heroDecor}>
-                  <Ionicons name="git-network" size={36} color={Colors.primaryFixed} />
-                </View>
-                <View style={styles.heroDecorSm}>
-                  <Ionicons name="cube-outline" size={28} color={Colors.tertiary} />
-                </View>
+              <View style={styles.heroPattern}>
+                <Ionicons name={heroIcon} size={150} color="#fff" />
+              </View>
+              <View style={styles.heroKicker}>
+                <View style={styles.heroDot} />
+                <Text style={styles.heroKickerText}>{t('examInfo.newExam')}</Text>
+              </View>
+              <View style={styles.heroIconCircle}>
+                <Ionicons name={heroIcon} size={40} color="#fff" />
               </View>
             </LinearGradient>
 
-            {/* Title + badge */}
-            <View>
-              <View style={styles.kickerPill}>
-                <Text style={styles.kickerText}>YENİ İMTAHAN</Text>
-              </View>
+            {/* Title */}
+            <View style={{ gap: 8 }}>
               <Text style={styles.bigTitle}>{displayTitle}</Text>
+              {!!subject && (
+                <View style={styles.subjectRow}>
+                  <Ionicons name="pricetag" size={13} color={Colors.primary} />
+                  <Text style={styles.subjectText}>{subject}</Text>
+                </View>
+              )}
             </View>
 
             {/* Bento info grid */}
             <View style={styles.grid}>
               <View style={styles.infoCard}>
-                <Ionicons name="help-circle-outline" size={22} color={Colors.primary} />
-                <Text style={styles.infoLabel}>Sual sayı</Text>
-                <Text style={styles.infoValue}>{questionCount} sual</Text>
+                <View style={styles.infoIcon}><Ionicons name="help-circle" size={18} color={Colors.primary} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>{t('examInfo.questionCount')}</Text>
+                  <Text style={styles.infoValue}>{t('examInfo.questionsVal', { n: questionCount })}</Text>
+                </View>
               </View>
               <View style={styles.infoCard}>
-                <Ionicons name="time-outline" size={22} color={Colors.primary} />
-                <Text style={styles.infoLabel}>Vaxt</Text>
-                <Text style={styles.infoValue}>{duration} dəqiqə</Text>
+                <View style={styles.infoIcon}><Ionicons name="time" size={18} color={Colors.primary} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>{t('examInfo.time')}</Text>
+                  <Text style={styles.infoValue}>{t('examInfo.minutesVal', { n: duration })}</Text>
+                </View>
               </View>
               <View style={styles.infoCard}>
-                <Ionicons name="stats-chart-outline" size={22} color={Colors.primary} />
-                <Text style={styles.infoLabel}>Çətinlik</Text>
-                <Text style={styles.infoValue}>{difficulty}</Text>
+                <View style={styles.infoIcon}><Ionicons name="stats-chart" size={18} color={Colors.primary} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>{t('examInfo.difficulty')}</Text>
+                  <Text style={styles.infoValue}>{difficulty}</Text>
+                </View>
               </View>
               <View style={styles.infoCard}>
-                <Ionicons name="apps-outline" size={22} color={Colors.primary} />
-                <Text style={styles.infoLabel}>Kateqoriya</Text>
-                <Text style={styles.infoValue}>{category}</Text>
+                <View style={styles.infoIcon}><Ionicons name="albums" size={18} color={Colors.primary} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>{t('examInfo.category')}</Text>
+                  <Text style={styles.infoValue} numberOfLines={1}>{category}</Text>
+                </View>
               </View>
             </View>
 
             {/* Description */}
-            <View style={{ gap: 16 }}>
-              <Text style={styles.sectionTitle}>İmtahan haqqında</Text>
+            <View style={{ gap: 12 }}>
+              <Text style={styles.sectionTitle}>{t('examInfo.aboutExam')}</Text>
               <View style={styles.descCard}>
                 <Text style={styles.descText}>{description}</Text>
               </View>
               <View style={styles.infoHint}>
                 <Ionicons name="information-circle" size={22} color={Colors.primary} />
                 <Text style={styles.infoHintText}>
-                  İmtahan bitdikdən dərhal sonra nəticələrinizi görə biləcəksiniz.
+                  {t('examInfo.afterHint')}
                 </Text>
               </View>
             </View>
@@ -129,7 +167,7 @@ export default function ExamInfoScreen({ route, navigation }: Props) {
       <View style={styles.actionBar}>
         <TouchableOpacity style={styles.bookmarkBtn} activeOpacity={0.7}>
           <Ionicons name="bookmark-outline" size={22} color={Colors.textSecondary} />
-          <Text style={styles.bookmarkText}>Yadda Saxla</Text>
+          <Text style={styles.bookmarkText}>{t('examInfo.bookmark')}</Text>
         </TouchableOpacity>
         <TouchableOpacity activeOpacity={0.85} onPress={startExam} style={styles.startBtnWrap} disabled={isStarting}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
@@ -138,7 +176,7 @@ export default function ExamInfoScreen({ route, navigation }: Props) {
             ) : (
               <>
                 <Ionicons name="play" size={18} color="#fff" />
-                <Text style={styles.startBtnText}>İmtahanı Başlat</Text>
+                <Text style={styles.startBtnText}>{t('examInfo.startExam')}</Text>
               </>
             )}
           </LinearGradient>
@@ -160,45 +198,53 @@ const styles = StyleSheet.create({
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginHorizontal: 12, letterSpacing: -0.2 },
 
-  scroll: { padding: 24, paddingBottom: 120, gap: 32 },
+  scroll: { padding: 20, paddingBottom: 120, gap: 22 },
 
   /* Hero */
-  heroFrame: {
-    aspectRatio: 4 / 3,
-    borderRadius: 16, padding: 3,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 30, elevation: 6,
+  hero: {
+    height: 150, borderRadius: 20, padding: 18,
+    justifyContent: 'space-between', overflow: 'hidden',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 6,
   },
-  heroInner: {
-    flex: 1, backgroundColor: '#fff', borderRadius: 14,
+  heroPattern: { position: 'absolute', right: -30, bottom: -40, opacity: 0.12 },
+  heroKicker: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
+  },
+  heroDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+  heroKickerText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 1.2 },
+  heroIconCircle: {
+    width: 56, height: 56, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     alignItems: 'center', justifyContent: 'center',
-    position: 'relative', overflow: 'hidden',
   },
-  heroDecor: { position: 'absolute', right: 32, top: 32, opacity: 0.6 },
-  heroDecorSm: { position: 'absolute', left: 32, bottom: 32, opacity: 0.7 },
 
   /* Title */
-  kickerPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.primary + '14',
-    paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999,
-    marginBottom: 12,
-  },
-  kickerText: { fontSize: 11, fontWeight: '800', color: Colors.primary, letterSpacing: 1.2 },
-  bigTitle: { fontSize: 30, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.6, lineHeight: 36 },
+  bigTitle: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, lineHeight: 30 },
+  subjectRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  subjectText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
   /* Grid */
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   infoCard: {
     flexBasis: '47%', flexGrow: 1,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 20, gap: 8,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 2,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
   },
-  infoLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500', marginTop: 4 },
-  infoValue: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+  infoIcon: {
+    width: 36, height: 36, borderRadius: 11,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  infoLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
+  infoValue: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2, marginTop: 1 },
 
   /* Description */
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.2 },
-  descCard: { backgroundColor: Colors.surfaceLow, padding: 24, borderRadius: 16 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+  descCard: { backgroundColor: Colors.surfaceLow, padding: 16, borderRadius: 14 },
   descText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
   infoHint: {
     flexDirection: 'row', alignItems: 'center', gap: 12,

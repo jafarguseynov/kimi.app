@@ -16,42 +16,44 @@ import { useUserStore } from '../../store/user.store';
 import { usePushStore } from '../../store/push.store';
 import { requestAndRegister } from '../../utils/push';
 import { savePushToken } from '../../api/notification.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-type Benefit = { icon: React.ComponentProps<typeof Ionicons>['name']; text: string };
+type Benefit = { icon: React.ComponentProps<typeof Ionicons>['name']; key: string };
 
-const BENEFITS: Record<string, { sub: string; items: Benefit[] }> = {
+const BENEFITS: Record<string, { subKey: string; items: Benefit[] }> = {
   teacher: {
-    sub: 'Şagird və dərslərlə bağlı vacib heç nəyi qaçırma.',
+    subKey: 'onboarding.npTeacherSub',
     items: [
-      { icon: 'hand-right-outline', text: 'Yeni dərs sorğusu gələndə dərhal xəbər tut' },
-      { icon: 'people-outline', text: 'Şagird sinifinə qoşulanda bildiriş al' },
-      { icon: 'wallet-outline', text: 'Komissiya və qazanc yeniləmələri' },
-      { icon: 'chatbubble-ellipses-outline', text: 'Şagird mesajlarını qaçırma' },
+      { icon: 'hand-right-outline', key: 'onboarding.npTeacher1' },
+      { icon: 'people-outline', key: 'onboarding.npTeacher2' },
+      { icon: 'wallet-outline', key: 'onboarding.npTeacher3' },
+      { icon: 'chatbubble-ellipses-outline', key: 'onboarding.npTeacher4' },
     ],
   },
   parent: {
-    sub: 'Övladının təhsil prosesindən anında xəbərdar ol.',
+    subKey: 'onboarding.npParentSub',
     items: [
-      { icon: 'school-outline', text: 'Övladının imtahan nəticələri hazır olanda' },
-      { icon: 'time-outline', text: 'Dərs və imtahan xatırlatmaları' },
-      { icon: 'chatbubble-ellipses-outline', text: 'Müəllimdən gələn mesajlar' },
+      { icon: 'school-outline', key: 'onboarding.npParent1' },
+      { icon: 'time-outline', key: 'onboarding.npParent2' },
+      { icon: 'chatbubble-ellipses-outline', key: 'onboarding.npParent3' },
     ],
   },
   student: {
-    sub: 'Nəticələrini, hədəflərini və mükafatlarını qaçırma.',
+    subKey: 'onboarding.npStudentSub',
     items: [
-      { icon: 'ribbon-outline', text: 'İmtahan nəticələrin hazır olanda' },
-      { icon: 'flame-outline', text: 'Streak-ini qorumaq üçün xatırlatma' },
-      { icon: 'flag-outline', text: 'Günlük tapşırıq və hədəflər' },
-      { icon: 'gift-outline', text: 'Referal bonusu qazandıqda' },
+      { icon: 'ribbon-outline', key: 'onboarding.npStudent1' },
+      { icon: 'flame-outline', key: 'onboarding.npStudent2' },
+      { icon: 'flag-outline', key: 'onboarding.npStudent3' },
+      { icon: 'gift-outline', key: 'onboarding.npStudent4' },
     ],
   },
 };
 
 export default function NotificationPrimingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const setPrimingSeen = usePushStore((s) => s.setPrimingSeen);
   const [loading, setLoading] = useState(false);
@@ -90,17 +92,17 @@ export default function NotificationPrimingScreen() {
           <Ionicons name="notifications" size={44} color="#fff" />
         </LinearGradient>
 
-        <Text style={styles.title}>Bildirişləri aç</Text>
-        <Text style={styles.subtitle}>{content.sub}</Text>
+        <Text style={styles.title}>{t('onboarding.npTitle')}</Text>
+        <Text style={styles.subtitle}>{t(content.subKey)}</Text>
 
         {/* Benefits */}
         <View style={styles.benefitList}>
           {content.items.map((b) => (
-            <View key={b.text} style={styles.benefitRow}>
+            <View key={b.key} style={styles.benefitRow}>
               <View style={styles.benefitIcon}>
                 <Ionicons name={b.icon} size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.benefitText}>{b.text}</Text>
+              <Text style={styles.benefitText}>{t(b.key)}</Text>
             </View>
           ))}
         </View>
@@ -108,7 +110,7 @@ export default function NotificationPrimingScreen() {
         {/* Privacy note */}
         <View style={styles.noteRow}>
           <Ionicons name="lock-closed-outline" size={14} color={Colors.textMuted} />
-          <Text style={styles.noteText}>İstədiyin vaxt tənzimləmələrdən söndürə bilərsən.</Text>
+          <Text style={styles.noteText}>{t('onboarding.npNote')}</Text>
         </View>
       </View>
 
@@ -121,13 +123,13 @@ export default function NotificationPrimingScreen() {
             ) : (
               <>
                 <Ionicons name="notifications-outline" size={20} color="#fff" />
-                <Text style={styles.primaryBtnText}>İcazə ver</Text>
+                <Text style={styles.primaryBtnText}>{t('onboarding.allow')}</Text>
               </>
             )}
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryBtn} onPress={finish} disabled={loading} activeOpacity={0.8}>
-          <Text style={styles.secondaryBtnText}>İndi yox</Text>
+          <Text style={styles.secondaryBtnText}>{t('onboarding.notNow')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

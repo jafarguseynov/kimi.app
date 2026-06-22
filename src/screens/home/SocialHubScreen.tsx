@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const AVATAR = (seed: string) =>
   `https://api.dicebear.com/8.x/initials/png?seed=${encodeURIComponent(seed)}&backgroundColor=eef1f3&textColor=006190`;
@@ -24,20 +25,30 @@ const SUGGESTIONS: Suggestion[] = [
   { id: 's4', name: 'Nigar B.', subject: 'Kimya' },
 ];
 
-interface Feed { id: string; name: string; text: string; ago: string; }
+interface Feed { id: string; name: string; textKey: string; agoKey: string; }
 const FEED: Feed[] = [
-  { id: 'f1', name: 'Cavid S.', text: 'Riyaziyyat testini bitirdi və 95% nəticə göstərdi. 🚀', ago: '10 dəqiqə əvvəl' },
-  { id: 'f2', name: 'Aylin M.', text: 'yeni səviyyəyə keçdi: "Qızıl Oxucu" 📚', ago: '1 saat əvvəl' },
+  { id: 'f1', name: 'Cavid S.', textKey: 'socialHub.feed1Text', agoKey: 'socialHub.feed1Ago' },
+  { id: 'f2', name: 'Aylin M.', textKey: 'socialHub.feed2Text', agoKey: 'socialHub.feed2Ago' },
 ];
 
 export default function SocialHubScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Image source={{ uri: AVATAR('Sən') }} style={styles.headerAvatar} />
-        <Text style={styles.brand}>Sosial</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate(Routes.Home))}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.brand}>{t('socialHub.brand')}</Text>
+        </View>
         <TouchableOpacity style={styles.bellBtn} hitSlop={8}>
           <Ionicons name="notifications" size={20} color={Colors.textSecondary} />
           <View style={styles.dot} />
@@ -49,8 +60,8 @@ export default function SocialHubScreen() {
         <View style={styles.widget}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.widgetTitle}>Dostların</Text>
-              <Text style={styles.widgetSub}>Sıralamada 2-cisən 🥈</Text>
+              <Text style={styles.widgetTitle}>{t('socialHub.friendsTitle')}</Text>
+              <Text style={styles.widgetSub}>{t('socialHub.friendsRank2')}</Text>
             </View>
             <View style={styles.widgetIcon}>
               <Ionicons name="people" size={20} color={Colors.primary} />
@@ -70,8 +81,8 @@ export default function SocialHubScreen() {
                 <Text style={styles.plusText}>+5</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.viewBtn} activeOpacity={0.85}>
-              <Text style={styles.viewBtnText}>Bax</Text>
+            <TouchableOpacity style={styles.viewBtn} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MyFriends)}>
+              <Text style={styles.viewBtnText}>{t('socialHub.view')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -79,8 +90,8 @@ export default function SocialHubScreen() {
         {/* Ranking */}
         <View>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Dostlar arasında reytinq</Text>
-            <TouchableOpacity><Text style={styles.linkText}>Hamısı</Text></TouchableOpacity>
+            <Text style={styles.sectionTitle}>{t('socialHub.rankSection')}</Text>
+            <TouchableOpacity onPress={() => navigation.navigate(Routes.FriendsLeaderboard)}><Text style={styles.linkText}>{t('socialHub.all')}</Text></TouchableOpacity>
           </View>
           <View style={styles.cardSurface}>
             {RANKS.map((r, idx) => (
@@ -91,9 +102,9 @@ export default function SocialHubScreen() {
                     source={{ uri: AVATAR(r.name) }}
                     style={[styles.rankAvatar, r.me && { borderWidth: 2, borderColor: Colors.primary }]}
                   />
-                  <Text style={styles.rankName}>{r.name}</Text>
+                  <Text style={styles.rankName}>{r.me ? t('socialHub.you') : r.name}</Text>
                 </View>
-                <Text style={[styles.rankPoints, !r.me && idx === 2 && { color: Colors.textSecondary }]}>{r.points} xal</Text>
+                <Text style={[styles.rankPoints, !r.me && idx === 2 && { color: Colors.textSecondary }]}>{t('socialHub.points', { n: r.points })}</Text>
               </View>
             ))}
           </View>
@@ -102,14 +113,14 @@ export default function SocialHubScreen() {
         {/* New requests */}
         <View>
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Yeni sorğular</Text>
+            <Text style={styles.sectionTitle}>{t('socialHub.newReqSection')}</Text>
             <View style={styles.countBadge}><Text style={styles.countBadgeText}>1</Text></View>
           </View>
           <View style={[styles.cardSurface, { flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
             <Image source={{ uri: AVATAR('Leyla Q.') }} style={styles.reqAvatar} />
             <View style={{ flex: 1 }}>
               <Text style={styles.reqName}>Leyla Q.</Text>
-              <Text style={styles.reqSub}>2 ortaq dost</Text>
+              <Text style={styles.reqSub}>{t('socialHub.mutual', { n: 2 })}</Text>
             </View>
             <TouchableOpacity style={styles.iconBtnGhost} hitSlop={6}>
               <Ionicons name="close" size={18} color={Colors.textSecondary} />
@@ -122,7 +133,7 @@ export default function SocialHubScreen() {
 
         {/* Recommended friends */}
         <View>
-          <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 4 }]}>Tövsiyə edilən dostlar</Text>
+          <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 4 }]}>{t('socialHub.recommendedSection')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingHorizontal: 4 }}>
             {SUGGESTIONS.map((s) => (
               <View key={s.id} style={styles.suggestionCard}>
@@ -130,7 +141,7 @@ export default function SocialHubScreen() {
                 <Text style={styles.suggestionName}>{s.name}</Text>
                 <Text style={styles.suggestionSubject}>{s.subject}</Text>
                 <TouchableOpacity style={styles.followBtn} activeOpacity={0.85}>
-                  <Text style={styles.followBtnText}>İzlə</Text>
+                  <Text style={styles.followBtnText}>{t('socialHub.follow')}</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -139,7 +150,7 @@ export default function SocialHubScreen() {
 
         {/* Live activity */}
         <View>
-          <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 4 }]}>Canlı fəaliyyət</Text>
+          <Text style={[styles.sectionTitle, { marginBottom: 12, paddingHorizontal: 4 }]}>{t('socialHub.liveSection')}</Text>
           <View style={{ gap: 12 }}>
             {FEED.map((f) => (
               <View key={f.id} style={[styles.cardSurface, { flexDirection: 'row', gap: 12, padding: 16 }]}>
@@ -147,9 +158,9 @@ export default function SocialHubScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.feedText}>
                     <Text style={{ fontWeight: '700' }}>{f.name} </Text>
-                    {f.text}
+                    {t(f.textKey)}
                   </Text>
-                  <Text style={styles.feedTime}>{f.ago}</Text>
+                  <Text style={styles.feedTime}>{t(f.agoKey)}</Text>
                 </View>
               </View>
             ))}
@@ -163,36 +174,36 @@ export default function SocialHubScreen() {
           onPress={() => navigation.navigate(Routes.FindFriend)}
         >
           <Ionicons name="person-add" size={20} color={Colors.primary} />
-          <Text style={styles.findCtaText}>Yeni dost tap</Text>
+          <Text style={styles.findCtaText}>{t('socialHub.findCta')}</Text>
           <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
         </TouchableOpacity>
 
         {/* Daha çox — 2×2 hub grid */}
         <View>
-          <Text style={styles.sectionTitle}>Daha çox</Text>
+          <Text style={styles.sectionTitle}>{t('socialHub.moreSection')}</Text>
           <View style={{ marginTop: 12, gap: 10 }}>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity style={styles.moreCard} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MyFriends)}>
                 <View style={styles.moreIconWrap}><Ionicons name="people-circle" size={22} color={Colors.primary} /></View>
-                <Text style={styles.moreTitle}>Dostlarım</Text>
-                <Text style={styles.moreSub}>Aktiv siyahı</Text>
+                <Text style={styles.moreTitle}>{t('socialHub.moreFriends')}</Text>
+                <Text style={styles.moreSub}>{t('socialHub.moreFriendsSub')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.moreCard} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.FriendsLeaderboard)}>
                 <View style={styles.moreIconWrap}><Ionicons name="trophy" size={22} color={Colors.primary} /></View>
-                <Text style={styles.moreTitle}>Dostlar TOP</Text>
-                <Text style={styles.moreSub}>Podium reyting</Text>
+                <Text style={styles.moreTitle}>{t('socialHub.moreTop')}</Text>
+                <Text style={styles.moreSub}>{t('socialHub.moreTopSub')}</Text>
               </TouchableOpacity>
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TouchableOpacity style={styles.moreCard} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.InviteFriends)}>
                 <View style={styles.moreIconWrap}><Ionicons name="gift" size={22} color={Colors.primary} /></View>
-                <Text style={styles.moreTitle}>Dəvət et</Text>
-                <Text style={styles.moreSub}>Link + bonus</Text>
+                <Text style={styles.moreTitle}>{t('socialHub.moreInvite')}</Text>
+                <Text style={styles.moreSub}>{t('socialHub.moreInviteSub')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.moreCard} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.LeaderboardDetail)}>
                 <View style={styles.moreIconWrap}><Ionicons name="podium" size={22} color={Colors.primary} /></View>
-                <Text style={styles.moreTitle}>Liderlər</Text>
-                <Text style={styles.moreSub}>Həftəlik / Aylıq</Text>
+                <Text style={styles.moreTitle}>{t('socialHub.moreLeaders')}</Text>
+                <Text style={styles.moreSub}>{t('socialHub.moreLeadersSub')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -209,9 +220,10 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, height: 64,
+    paddingHorizontal: 16, height: 64,
   },
-  headerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.surfaceLow },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerBackBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   brand: { fontSize: 20, fontWeight: '800', color: Colors.primary, letterSpacing: -0.4 },
   bellBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   dot: { position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.danger },

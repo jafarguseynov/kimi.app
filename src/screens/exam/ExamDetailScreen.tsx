@@ -18,20 +18,59 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useStartExam, useExamList } from '../../hooks/useExams';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation, translate } from '../../i18n';
+import type { AppLanguage } from '../../store/settings.store';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamDetail>;
   route: RouteProp<ExamStackParamList, typeof Routes.ExamDetail>;
 };
 
-const DIFFICULTY_LABELS: Record<string, string> = {
-  easy: 'Asan', medium: 'Orta', hard: 'Çətin',
+const DIFFICULTY_TKEY: Record<string, string> = {
+  easy: 'examList.diff.easy', medium: 'examList.diff.medium', hard: 'examList.diff.hard',
 };
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: Colors.tertiary, medium: Colors.primary, hard: Colors.danger,
 };
 
+// Sinif nömrəsi → Azərbaycan dilində sıra şəkilçili ad (yalnız az dili üçün)
+const GRADE_LABELS: Record<number, string> = {
+  1: '1-ci', 2: '2-ci', 3: '3-cü', 4: '4-cü', 5: '5-ci', 6: '6-cı',
+  7: '7-ci', 8: '8-ci', 9: '9-cu', 10: '10-cu', 11: '11-ci',
+};
+
+// İmtahanın sinfini tapır: əvvəl `grade` sahəsi, sonra başlıqdan ("7-ci sinif").
+function detectGrade(gradeRaw?: string | null, title?: string): number {
+  const fromField = parseInt(String(gradeRaw ?? '').match(/\d+/)?.[0] ?? '', 10);
+  if (fromField >= 1 && fromField <= 11) return fromField;
+  // Başlıqda "7-ci sinif" / "6-cı sinif" formasını axtar
+  const m = String(title ?? '').match(/(\d{1,2})\s*-?\s*(?:ci|cı|cu|cü)?\s*sin[fi]/i);
+  const fromTitle = m ? parseInt(m[1], 10) : NaN;
+  return fromTitle >= 1 && fromTitle <= 11 ? fromTitle : 0;
+}
+
+// İmtahanın sinfinə uyğun standart müddət qaydası (1-8 → 120, 9-11 → 180).
+function buildDurationRule(lang: AppLanguage, gradeRaw?: string | null, title?: string) {
+  const gradeNum = detectGrade(gradeRaw, title);
+  const text =
+    gradeNum >= 1 && gradeNum <= 11
+      ? translate(lang, 'examDetail.durationGraded', {
+          grade: lang === 'az' ? GRADE_LABELS[gradeNum] : String(gradeNum),
+          min: gradeNum <= 8 ? 120 : 180,
+        })
+      : translate(lang, 'examDetail.durationGeneric');
+  return { icon: 'time-outline' as keyof typeof Ionicons.glyphMap, titleKey: 'examDetail.durationTitle', text };
+}
+
+const EXAM_RULES: { icon: keyof typeof Ionicons.glyphMap; titleKey: string; textKey: string }[] = [
+  { icon: 'sync-outline', titleKey: 'examDetail.rule1Title', textKey: 'examDetail.rule1Text' },
+  { icon: 'bar-chart-outline', titleKey: 'examDetail.rule2Title', textKey: 'examDetail.rule2Text' },
+  { icon: 'save-outline', titleKey: 'examDetail.rule3Title', textKey: 'examDetail.rule3Text' },
+  { icon: 'create-outline', titleKey: 'examDetail.rule4Title', textKey: 'examDetail.rule4Text' },
+];
+
 export default function ExamDetailScreen({ navigation, route }: Props) {
+  const { t, language } = useTranslation();
   const { examId, title } = route.params;
   const { mutate, isPending } = useStartExam();
   const { user } = useUserStore();
@@ -63,16 +102,16 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
 
   const onStart = () => {
     if (!examId) {
-      Alert.alert('Xəta', 'İmtahan ID-si tapılmadı. Yenidən cəhd edin.');
+      Alert.alert(t('examDetail.errorTitle'), t('examDetail.noId'));
       return;
     }
     mutate(examId, {
       onSuccess: () => navigation.navigate(Routes.ExamSession),
       onError: (err: any) => {
         const msg = err?.code === 'ECONNABORTED'
-          ? 'Server cavab vermədi (bağlantı vaxtı bitdi). Bir az sonra yenidən cəhd edin.'
-          : err?.response?.data?.message ?? err?.message ?? 'İmtahan başlana bilmədi. Yenidən cəhd edin.';
-        Alert.alert('İmtahan başlana bilmədi', msg);
+          ? t('examDetail.timeout')
+          : err?.response?.data?.message ?? err?.message ?? t('examDetail.startFailed');
+        Alert.alert(t('examDetail.cantStart'), msg);
       },
     });
   };
@@ -97,8 +136,8 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
             </View>
           </View>
           <View style={styles.loadingTextBlock}>
-            <Text style={styles.loadingTitle}>İmtahan hazırlanır...</Text>
-            <Text style={styles.loadingSubtitle}>SÜNİ İNTELLEKT SUALLAR SEÇİR</Text>
+            <Text style={styles.loadingTitle}>{t('examDetail.loadingTitle')}</Text>
+            <Text style={styles.loadingSubtitle}>{t('examDetail.loadingSubtitle')}</Text>
           </View>
           <View style={styles.loadingBarTrack}>
             <Animated.View style={[styles.loadingBar, { left: barLeft, width: barWidth }]} />
@@ -106,24 +145,25 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
           <View style={styles.loadingStatusRow}>
             <View style={styles.loadingStatusCard}>
               <Ionicons name="server-outline" size={18} color={Colors.primaryFixed} />
-              <Text style={styles.loadingStatusLabel}>MƏLUMAT BAZASI</Text>
-              <Text style={styles.loadingStatusValue}>Yüklənir</Text>
+              <Text style={styles.loadingStatusLabel}>{t('examDetail.loadingDb')}</Text>
+              <Text style={styles.loadingStatusValue}>{t('examDetail.loadingDbVal')}</Text>
             </View>
             <View style={styles.loadingStatusCard}>
               <Ionicons name="bulb-outline" size={18} color={Colors.tertiaryContainer} />
-              <Text style={styles.loadingStatusLabel}>ANALİZ</Text>
-              <Text style={styles.loadingStatusValue}>Tamamlanır</Text>
+              <Text style={styles.loadingStatusLabel}>{t('examDetail.loadingAnalysis')}</Text>
+              <Text style={styles.loadingStatusValue}>{t('examDetail.loadingAnalysisVal')}</Text>
             </View>
           </View>
         </View>
         <Text style={styles.loadingFooter}>
-          Uğurlar! Kimi Robot sizin bilik səviyyənizə uyğun ən effektiv sualları hazırlayır.
+          {t('examDetail.loadingFooter')}
         </Text>
       </View>
     );
   }
 
-  const diffLabel = DIFFICULTY_LABELS[exam?.difficulty ?? ''] ?? (exam?.difficulty ?? 'Orta');
+  const diffKey = DIFFICULTY_TKEY[exam?.difficulty ?? ''];
+  const diffLabel = diffKey ? t(diffKey) : (exam?.difficulty ?? t('examList.diff.medium'));
   const diffColor = DIFFICULTY_COLORS[exam?.difficulty ?? ''] ?? Colors.primary;
 
   return (
@@ -152,9 +192,9 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>{exam?.title ?? title ?? 'İmtahan'}</Text>
+          <Text style={styles.heroTitle}>{exam?.title ?? title ?? t('examDetail.titleFallback')}</Text>
           <Text style={styles.heroSub}>
-            Aşağıdakı məlumatları yoxla və imtahana başla.
+            {t('examDetail.heroSub')}
           </Text>
         </View>
 
@@ -163,33 +203,52 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
           <View style={styles.infoCard}>
             <Ionicons name="help-circle-outline" size={26} color={Colors.primary} />
             <Text style={styles.infoValue}>{exam?.questionCount ?? '?'}</Text>
-            <Text style={styles.infoLabel}>Sual sayı</Text>
+            <Text style={styles.infoLabel}>{t('examDetail.qCount')}</Text>
           </View>
           <View style={styles.infoCard}>
             <Ionicons name="time-outline" size={26} color={Colors.secondary} />
             <Text style={styles.infoValue}>{exam?.duration ?? '?'}</Text>
-            <Text style={styles.infoLabel}>Dəqiqə</Text>
+            <Text style={styles.infoLabel}>{t('examDetail.minutes')}</Text>
           </View>
           <View style={styles.infoCard}>
             <Ionicons name="bar-chart-outline" size={26} color={diffColor} />
             <Text style={[styles.infoValue, { color: diffColor }]}>{diffLabel}</Text>
-            <Text style={styles.infoLabel}>Çətinlik</Text>
+            <Text style={styles.infoLabel}>{t('examDetail.difficulty')}</Text>
           </View>
           <View style={styles.infoCard}>
             <Ionicons name="book-outline" size={26} color={Colors.tertiary} />
             <Text style={styles.infoValue} numberOfLines={1}>{exam?.subject ?? '—'}</Text>
-            <Text style={styles.infoLabel}>Fənn</Text>
+            <Text style={styles.infoLabel}>{t('examDetail.subject')}</Text>
           </View>
         </View>
 
         <View style={styles.insightCard}>
           <View style={styles.insightIconRow}>
             <Ionicons name="bulb-outline" size={18} color={Colors.primary} />
-            <Text style={styles.insightTitle}>Kimi-nin məsləhəti</Text>
+            <Text style={styles.insightTitle}>{t('examDetail.insightTitle')}</Text>
           </View>
           <Text style={styles.insightText}>
-            İmtahana başlamazdan əvvəl sakit bir mühit tap və vaxtını yaxşı idarə et. Hər suala diqqətlə yanaş!
+            {t('examDetail.insightText')}
           </Text>
+        </View>
+
+        {/* Test Qaydaları */}
+        <View style={styles.rulesCard}>
+          <View style={styles.rulesHeader}>
+            <Ionicons name="warning-outline" size={22} color={Colors.secondary} />
+            <Text style={styles.rulesTitle}>{t('examDetail.rulesTitle')}</Text>
+          </View>
+          {[buildDurationRule(language, (exam as any)?.grade, exam?.title ?? title), ...EXAM_RULES].map((r) => (
+            <View key={r.titleKey} style={styles.ruleRow}>
+              <View style={styles.ruleIconBubble}>
+                <Ionicons name={r.icon} size={18} color={Colors.primary} />
+              </View>
+              <View style={styles.ruleTextWrap}>
+                <Text style={styles.ruleTitle}>{t(r.titleKey)}</Text>
+                <Text style={styles.ruleText}>{'text' in r ? r.text : t(r.textKey)}</Text>
+              </View>
+            </View>
+          ))}
         </View>
 
         <View style={{ height: 24 }} />
@@ -199,7 +258,7 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
         <TouchableOpacity onPress={onStart} disabled={isPending} activeOpacity={0.85} style={styles.startBtnOuter}>
           <LinearGradient colors={[Colors.gradientStart, Colors.gradientEnd]} style={styles.startBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="rocket-outline" size={22} color="#fff" />
-            <Text style={styles.startBtnText}>İmtahanı başlat</Text>
+            <Text style={styles.startBtnText}>{t('examDetail.start')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -247,6 +306,24 @@ const styles = StyleSheet.create({
   insightIconRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   insightTitle: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   insightText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
+
+  // Test Qaydaları
+  rulesCard: {
+    marginTop: 20, borderRadius: 20, padding: 20,
+    backgroundColor: Colors.surfaceLowest,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 1,
+  },
+  rulesHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  rulesTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  ruleRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
+  ruleIconBubble: {
+    width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  ruleTextWrap: { flex: 1, gap: 2 },
+  ruleTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  ruleText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
 
   bottomBar: {
     paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 24,

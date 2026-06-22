@@ -8,20 +8,22 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.MyExams>;
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const RECS = [
-  { id: 'r1', title: 'Məntiq', count: 15, icon: 'calculator' as const },
-  { id: 'r2', title: 'İngilis dili', count: 12, icon: 'language' as const },
+  { id: 'r1', titleKey: 'myExams.recLogic', count: 15, icon: 'calculator' as const },
+  { id: 'r2', titleKey: 'myExams.recEnglish', count: 12, icon: 'language' as const },
 ];
 
 export default function MyExamsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
   const initial = user?.name?.charAt(0)?.toUpperCase() ?? 'S';
 
-  const start = () => navigation.navigate(Routes.ExamInfo, { examId: 'magistr-riy-1', title: 'Magistr Sınaq – Riyaziyyat' });
+  const start = () => navigation.navigate(Routes.ExamInfo, { examId: 'magistr-riy-1', title: t('myExams.packTitle') });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -30,7 +32,7 @@ export default function MyExamsScreen({ navigation }: Props) {
           <View style={styles.headerAvatar}>
             <Text style={styles.headerAvatarText}>{initial}</Text>
           </View>
-          <Text style={styles.headerTitle}>İmtahanlarım</Text>
+          <Text style={styles.headerTitle}>{t('myExams.title')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
@@ -40,12 +42,12 @@ export default function MyExamsScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={{ gap: 8 }}>
-          <Text style={styles.heroTitle}>Sənin{'\n'}Hazırlığın</Text>
+          <Text style={styles.heroTitle}>{t('myExams.heroTitle')}</Text>
           <View style={styles.heroMeta}>
             <View style={styles.activePill}>
-              <Text style={styles.activePillText}>1 Aktiv imtahan</Text>
+              <Text style={styles.activePillText}>{t('myExams.activePill')}</Text>
             </View>
-            <Text style={styles.updatedText}>Yeniləndi: İndi</Text>
+            <Text style={styles.updatedText}>{t('myExams.updated')}</Text>
           </View>
         </View>
 
@@ -54,22 +56,22 @@ export default function MyExamsScreen({ navigation }: Props) {
           <View style={styles.glow} pointerEvents="none" />
           <View style={{ gap: 16, zIndex: 1 }}>
             <View style={{ gap: 4 }}>
-              <Text style={styles.kicker}>SINAQ PAKETİ</Text>
-              <Text style={styles.mainCardTitle}>Magistr Sınaq – Riyaziyyat</Text>
+              <Text style={styles.kicker}>{t('myExams.packKicker')}</Text>
+              <Text style={styles.mainCardTitle}>{t('myExams.packTitle')}</Text>
             </View>
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <Ionicons name="document-text-outline" size={16} color={Colors.textSecondary} />
-                <Text style={styles.metaText}>20 Sual</Text>
+                <Text style={styles.metaText}>{t('myExams.nQuestions', { n: 20 })}</Text>
               </View>
               <View style={styles.metaItem}>
                 <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
-                <Text style={styles.metaText}>25 Dəqiqə</Text>
+                <Text style={styles.metaText}>{t('myExams.nMinutes', { n: 25 })}</Text>
               </View>
             </View>
             <TouchableOpacity activeOpacity={0.85} onPress={start}>
               <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-                <Text style={styles.startBtnText}>Başla</Text>
+                <Text style={styles.startBtnText}>{t('myExams.start')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -79,9 +81,9 @@ export default function MyExamsScreen({ navigation }: Props) {
         {/* Recommendations */}
         <View>
           <View style={styles.sectionHead}>
-            <Text style={styles.sectionTitle}>Tövsiyə olunanlar</Text>
+            <Text style={styles.sectionTitle}>{t('myExams.recommended')}</Text>
             <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate(Routes.ExamCategories)}>
-              <Text style={styles.sectionMore}>Hamısı</Text>
+              <Text style={styles.sectionMore}>{t('myExams.all')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.recGrid}>
@@ -91,8 +93,8 @@ export default function MyExamsScreen({ navigation }: Props) {
                   <Ionicons name={r.icon} size={22} color={Colors.primary} />
                 </View>
                 <View>
-                  <Text style={styles.recTitle}>{r.title}</Text>
-                  <Text style={styles.recCount}>{r.count} Sınaq</Text>
+                  <Text style={styles.recTitle}>{t(r.titleKey)}</Text>
+                  <Text style={styles.recCount}>{t('myExams.nMocks', { n: r.count })}</Text>
                 </View>
               </View>
             ))}
@@ -102,7 +104,7 @@ export default function MyExamsScreen({ navigation }: Props) {
         {/* Stats */}
         <View style={styles.statsCard}>
           <View style={{ flex: 1, gap: 8 }}>
-            <Text style={styles.statsKicker}>MƏQSƏDİNƏ YAXINSAN</Text>
+            <Text style={styles.statsKicker}>{t('myExams.nearGoal')}</Text>
             <View style={styles.progressTrack}>
               <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.progressFill, { width: '75%' }]} />
             </View>

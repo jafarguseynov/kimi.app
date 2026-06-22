@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -77,6 +78,7 @@ const SEED_MEMBERS: Member[] = [
 export default function LearningGroupDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const params = (route.params ?? {}) as {
     groupId: string;
@@ -92,7 +94,7 @@ export default function LearningGroupDetailScreen() {
   const [messages, setMessages] = useState<Message[]>(SEED_MESSAGES);
   const listRef = useRef<FlatList<Message>>(null);
 
-  const myName = user?.name ?? 'Sən';
+  const myName = user?.name ?? t('learning.you');
   const myInitials = myName
     .split(' ')
     .map((s) => s[0])
@@ -118,7 +120,7 @@ export default function LearningGroupDetailScreen() {
   };
 
   const openMaterial = (m: Material) => {
-    Alert.alert(m.title, `${m.meta}\n\nDemo rejimində — material baxış əlavə olunacaq.`);
+    Alert.alert(m.title, `${m.meta}\n\n${t('learning.materialDemoMsg')}`);
   };
 
   return (
@@ -131,12 +133,12 @@ export default function LearningGroupDetailScreen() {
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={styles.headerTitle} numberOfLines={1}>{params.title}</Text>
           <Text style={styles.headerSub}>
-            {(params.members ?? 0) + 1} üzv
-            {params.online != null && params.online > 0 ? ` · ${params.online} onlayn` : ''}
+            {t('learning.membersN', { n: (params.members ?? 0) + 1 })}
+            {params.online != null && params.online > 0 ? t('learning.onlineSuffix', { n: params.online }) : ''}
           </Text>
         </View>
         <TouchableOpacity style={styles.iconBtn} hitSlop={8} activeOpacity={0.7}
-          onPress={() => Alert.alert('Qrup parametrləri', 'Bildirişlər, qrupdan çıxma və s. yaxın günlərdə.')}
+          onPress={() => Alert.alert(t('learning.groupSettings'), t('learning.groupSettingsMsg'))}
         >
           <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -144,14 +146,14 @@ export default function LearningGroupDetailScreen() {
 
       {/* Tabs */}
       <View style={styles.tabBar}>
-        {(['chat', 'materials', 'members'] as Tab[]).map((t) => {
-          const labels = { chat: 'Söhbət', materials: 'Materiallar', members: 'Üzvlər' };
+        {(['chat', 'materials', 'members'] as Tab[]).map((tb) => {
+          const labels = { chat: t('learning.tabChat'), materials: t('learning.tabMaterials'), members: t('learning.tabMembers') };
           const counts = { chat: messages.length, materials: SEED_MATERIALS.length, members: SEED_MEMBERS.length + 1 };
-          const active = tab === t;
+          const active = tab === tb;
           return (
-            <TouchableOpacity key={t} style={styles.tab} activeOpacity={0.8} onPress={() => setTab(t)}>
+            <TouchableOpacity key={tb} style={styles.tab} activeOpacity={0.8} onPress={() => setTab(tb)}>
               <Text style={[styles.tabText, active && styles.tabTextActive]}>
-                {labels[t]} <Text style={[styles.tabCount, active && { color: Colors.primary }]}>{counts[t]}</Text>
+                {labels[tb]} <Text style={[styles.tabCount, active && { color: Colors.primary }]}>{counts[tb]}</Text>
               </Text>
               {active && <View style={styles.tabUnderline} />}
             </TouchableOpacity>
@@ -188,7 +190,7 @@ export default function LearningGroupDetailScreen() {
           />
           <View style={styles.inputBar}>
             <TouchableOpacity style={styles.inputAttach} hitSlop={8}
-              onPress={() => Alert.alert('Fayl əlavə et', 'Şəkil, fayl və ya səs qeydi yaxın günlərdə.')}
+              onPress={() => Alert.alert(t('learning.attachFile'), t('learning.attachFileMsg'))}
             >
               <Ionicons name="add" size={22} color={Colors.primary} />
             </TouchableOpacity>
@@ -196,7 +198,7 @@ export default function LearningGroupDetailScreen() {
               style={styles.input}
               value={draft}
               onChangeText={setDraft}
-              placeholder="Mesaj yaz..."
+              placeholder={t('learning.messagePlaceholder')}
               placeholderTextColor={Colors.textMuted}
               multiline
               returnKeyType="send"
@@ -244,8 +246,8 @@ export default function LearningGroupDetailScreen() {
               <View style={styles.onlineDot} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.memberName}>{myName} <Text style={styles.youTag}>(sən)</Text></Text>
-              <Text style={styles.memberRole}>Üzv · indi qoşuldun</Text>
+              <Text style={styles.memberName}>{myName} <Text style={styles.youTag}>{t('learning.youTag')}</Text></Text>
+              <Text style={styles.memberRole}>{t('learning.justJoined')}</Text>
             </View>
           </View>
           {SEED_MEMBERS.map((u) => (
@@ -261,7 +263,7 @@ export default function LearningGroupDetailScreen() {
               <TouchableOpacity
                 style={styles.memberAction}
                 hitSlop={8}
-                onPress={() => Alert.alert(u.name, 'Şəxsi söhbət yaxın günlərdə əlavə olunacaq.')}
+                onPress={() => Alert.alert(u.name, t('learning.dmComingSoon'))}
               >
                 <Ionicons name="chatbubble-outline" size={18} color={Colors.primary} />
               </TouchableOpacity>

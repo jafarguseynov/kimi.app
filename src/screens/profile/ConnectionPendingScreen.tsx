@@ -5,11 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ConnectionPendingScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -17,7 +19,7 @@ export default function ConnectionPendingScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hesabların Bağlanması</Text>
+        <Text style={styles.headerTitle}>{t('connectionPending.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -37,9 +39,9 @@ export default function ConnectionPendingScreen() {
 
         {/* Text */}
         <View style={styles.textSection}>
-          <Text style={styles.title}>Təsdiq gözlənilir</Text>
+          <Text style={styles.title}>{t('connectionPending.title')}</Text>
           <Text style={styles.subtitle}>
-            Övladınızın profilinə təsdiq sorğusu göndərildi. Bağlantının tamamlanması üçün şagird öz hesabından müraciəti qəbul etməlidir.
+            {t('connectionPending.subtitle')}
           </Text>
         </View>
 
@@ -50,8 +52,8 @@ export default function ConnectionPendingScreen() {
               <Ionicons name="time-outline" size={28} color={Colors.warning} />
             </View>
             <View>
-              <Text style={styles.statusLabel}>Cari Vəziyyət</Text>
-              <Text style={styles.statusValue}>Status: Gözləmədə</Text>
+              <Text style={styles.statusLabel}>{t('connectionPending.statusLabel')}</Text>
+              <Text style={styles.statusValue}>{t('connectionPending.statusValue')}</Text>
             </View>
           </View>
           <View style={styles.dotsRow}>
@@ -67,12 +69,12 @@ export default function ConnectionPendingScreen() {
           onPress={() => navigation.navigate('HomeMain' as never)}
         >
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryBtnText}>Ana səhifəyə qayıt</Text>
+            <Text style={styles.primaryBtnText}>{t('connectionPending.backHome')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-          <Text style={styles.cancelBtnText}>Sorğunu ləğv et</Text>
+          <Text style={styles.cancelBtnText}>{t('connectionPending.cancelRequest')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

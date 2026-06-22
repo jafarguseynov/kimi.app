@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -20,6 +21,7 @@ const ITEMS: Item[] = [
 
 export default function ReviewTopicsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -27,7 +29,7 @@ export default function ReviewTopicsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>Təkrar etməli olduğun mövzular</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{t('reviewTopics.title')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -37,7 +39,7 @@ export default function ReviewTopicsScreen() {
           <View style={styles.aiIcon}>
             <Ionicons name="sparkles" size={22} color={Colors.primary} />
           </View>
-          <Text style={styles.aiText}>AI yaddaşı gücləndirmək üçün bu testləri planladı</Text>
+          <Text style={styles.aiText}>{t('reviewTopics.aiPlanned')}</Text>
         </View>
 
         {/* Items */}
@@ -56,7 +58,7 @@ export default function ReviewTopicsScreen() {
                   </View>
                   <View style={[styles.statusPill, due ? styles.statusDue : styles.statusPending]}>
                     <Text style={[styles.statusText, due ? styles.statusDueText : styles.statusPendingText]}>
-                      {due ? 'Vaxtı gəldi' : 'Gözləmədə'}
+                      {due ? t('reviewTopics.statusDue') : t('reviewTopics.statusPending')}
                     </Text>
                   </View>
                 </View>
@@ -66,12 +68,12 @@ export default function ReviewTopicsScreen() {
                     onPress={() => navigation.navigate(Routes.TopicProgress, { topic: it.topic })}
                   >
                     <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-                      <Text style={styles.primaryBtnText}>Təkrar et</Text>
+                      <Text style={styles.primaryBtnText}>{t('reviewTopics.review')}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity activeOpacity={0.85} style={styles.mutedBtn}>
-                    <Text style={styles.mutedBtnText}>Təkrar et</Text>
+                    <Text style={styles.mutedBtnText}>{t('reviewTopics.review')}</Text>
                   </TouchableOpacity>
                 )}
               </View>

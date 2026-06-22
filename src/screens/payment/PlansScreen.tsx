@@ -8,6 +8,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -15,82 +16,83 @@ type RoleTab = 'teacher' | 'student';
 
 type Plan = {
   id: string;
-  badge: string;
+  badgeKey: string;
   badgeTone: 'primary' | 'tertiary';
-  title: string;
+  titleKey: string;
   price: number;
-  perMonth: string;
-  features: string[];
+  perMonthKey: string;
+  featuresKey: string;
   highlight?: boolean;
-  ribbon?: string;
+  ribbonKey?: string;
 };
 
 const TEACHER_PLANS: Plan[] = [
   {
     id: 't-3',
-    badge: 'Standart',
+    badgeKey: 'pay.badgeStandard',
     badgeTone: 'primary',
-    title: '3 Aylıq Paket',
+    titleKey: 'pay.planT3Title',
     price: 75,
-    perMonth: 'Hər ay üçün ~25 AZN',
-    features: ['3 ay tam aktivlik', 'Məhdud tələbə sorğusu', 'Bütün dərslərə baxış'],
+    perMonthKey: 'pay.planT3PerMonth',
+    featuresKey: 'pay.planT3Features',
   },
   {
     id: 't-6',
-    badge: 'Ən çox seçilən',
+    badgeKey: 'pay.badgeMostSelected',
     badgeTone: 'primary',
-    title: '6 Aylıq Paket',
+    titleKey: 'pay.planT6Title',
     price: 99,
-    perMonth: 'Hər ay üçün ~16.50 AZN',
-    features: ['6 ay tam aktivlik', 'Üstün profil görünüşü', 'Prioritetli dəstək', 'Kimi Robot assistent'],
+    perMonthKey: 'pay.planT6PerMonth',
+    featuresKey: 'pay.planT6Features',
     highlight: true,
-    ribbon: 'Məsləhətli',
+    ribbonKey: 'pay.ribbonRecommended',
   },
   {
     id: 't-12',
-    badge: 'Ən sərfəli',
+    badgeKey: 'pay.badgeBestValue',
     badgeTone: 'tertiary',
-    title: '1 İllik Paket',
+    titleKey: 'pay.planT12Title',
     price: 145,
-    perMonth: 'Hər ay üçün ~12 AZN',
-    features: ['1 il tam aktivlik', 'Limitsiz tələbə sorğusu', 'AI əsaslı analitika', 'Eksklüziv vebinarlar'],
+    perMonthKey: 'pay.planT12PerMonth',
+    featuresKey: 'pay.planT12Features',
   },
 ];
 
 const STUDENT_PLANS: Plan[] = [
   {
     id: 's-1',
-    badge: 'Başlanğıc',
+    badgeKey: 'pay.badgeStarter',
     badgeTone: 'primary',
-    title: 'Aylıq Paket',
+    titleKey: 'pay.planS1Title',
     price: 9,
-    perMonth: 'Sınaq üçün ideal',
-    features: ['Limitsiz testlər', 'Bütün imtahan materialları', 'Əsas Kimi Robot köməyi'],
+    perMonthKey: 'pay.planS1PerMonth',
+    featuresKey: 'pay.planS1Features',
   },
   {
     id: 's-3',
-    badge: 'Ən çox seçilən',
+    badgeKey: 'pay.badgeMostSelected',
     badgeTone: 'primary',
-    title: '3 Aylıq Paket',
+    titleKey: 'pay.planS3Title',
     price: 22,
-    perMonth: 'Hər ay üçün ~7.30 AZN',
-    features: ['Limitsiz testlər', 'AI mentor dəstəyi', 'Şəxsi öyrənmə planı', 'Sertifikatlar'],
+    perMonthKey: 'pay.planS3PerMonth',
+    featuresKey: 'pay.planS3Features',
     highlight: true,
-    ribbon: 'Məsləhətli',
+    ribbonKey: 'pay.ribbonRecommended',
   },
   {
     id: 's-12',
-    badge: 'Ən sərfəli',
+    badgeKey: 'pay.badgeBestValue',
     badgeTone: 'tertiary',
-    title: '1 İllik Paket',
+    titleKey: 'pay.planS12Title',
     price: 65,
-    perMonth: 'Hər ay üçün ~5.40 AZN',
-    features: ['Hər şey daxil', 'Offline rejim', 'Eksklüziv kurslar', 'Prioritetli dəstək'],
+    perMonthKey: 'pay.planS12PerMonth',
+    featuresKey: 'pay.planS12Features',
   },
 ];
 
 export default function PlansScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
   // Plans are locked to the current user's role — teachers only see teacher
   // plans, students/parents only see student plans (no cross-role browsing).
@@ -103,7 +105,7 @@ export default function PlansScreen() {
     const months = Number(plan.id.split('-')[1]) || 1;
     navigation.navigate(Routes.PaymentMethod, {
       planId: plan.id,
-      planName: plan.title,
+      planName: t(plan.titleKey),
       amount: plan.price,
       months,
       isTeacherSub: tab === 'teacher',
@@ -116,7 +118,7 @@ export default function PlansScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Abunəlik Planları</Text>
+        <Text style={styles.headerTitle}>{t('pay.plansHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -124,11 +126,11 @@ export default function PlansScreen() {
         {/* Hero */}
         <View style={styles.heroBlock}>
           <Text style={styles.heroTitle}>
-            Sizin üçün ən uyğun{' '}
-            <Text style={styles.heroAccent}>planı seçin</Text>
+            {t('pay.plansHeroPre')}
+            <Text style={styles.heroAccent}>{t('pay.plansHeroAccent')}</Text>
           </Text>
           <Text style={styles.heroSub}>
-            Təhsil yolunuzda Kimi Robot və premium imkanlarla daha sürətli irəliləyin.
+            {t('pay.plansHeroSub')}
           </Text>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -137,7 +139,7 @@ export default function PlansScreen() {
             style={styles.compareLink}
           >
             <Ionicons name="git-compare-outline" size={14} color={Colors.primary} />
-            <Text style={styles.compareLinkText}>Planları müqayisə et</Text>
+            <Text style={styles.compareLinkText}>{t('pay.comparePlans')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -148,9 +150,9 @@ export default function PlansScreen() {
               key={p.id}
               style={[styles.planCard, p.highlight && styles.planCardHighlight]}
             >
-              {p.ribbon && (
+              {p.ribbonKey && (
                 <View style={styles.ribbon}>
-                  <Text style={styles.ribbonText}>{p.ribbon}</Text>
+                  <Text style={styles.ribbonText}>{t(p.ribbonKey)}</Text>
                 </View>
               )}
 
@@ -161,19 +163,19 @@ export default function PlansScreen() {
                 <Text style={[
                   styles.planBadgeText,
                   p.badgeTone === 'tertiary' && styles.planBadgeTextTertiary,
-                ]}>{p.badge}</Text>
+                ]}>{t(p.badgeKey)}</Text>
               </View>
 
-              <Text style={styles.planTitle}>{p.title}</Text>
+              <Text style={styles.planTitle}>{t(p.titleKey)}</Text>
 
               <View style={styles.priceRow}>
                 <Text style={styles.priceNum}>{p.price}</Text>
                 <Text style={styles.priceCurrency}>AZN</Text>
               </View>
-              <Text style={styles.pricePerMonth}>{p.perMonth}</Text>
+              <Text style={styles.pricePerMonth}>{t(p.perMonthKey)}</Text>
 
               <View style={styles.featuresList}>
-                {p.features.map((f) => (
+                {t(p.featuresKey).split('|').map((f) => (
                   <View key={f} style={styles.featureRow}>
                     <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
                     <Text style={[styles.featureText, p.highlight && styles.featureTextHighlight]}>{f}</Text>
@@ -184,11 +186,11 @@ export default function PlansScreen() {
               <View style={{ gap: 8, marginTop: 18 }}>
                 <TouchableOpacity activeOpacity={0.9} onPress={() => selectPlan(p)}>
                   <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
-                    <Text style={styles.primaryBtnText}>Paketi seç</Text>
+                    <Text style={styles.primaryBtnText}>{t('pay.selectPackage')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.ghostBtn} activeOpacity={0.7} onPress={() => navigation.navigate(Routes.PremiumBenefits)}>
-                  <Text style={styles.ghostBtnText}>Daha ətraflı</Text>
+                  <Text style={styles.ghostBtnText}>{t('pay.moreDetails')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

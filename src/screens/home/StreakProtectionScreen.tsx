@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -13,12 +14,13 @@ export default function StreakProtectionScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const currentStreak = (route.params as any)?.currentStreak ?? 12;
+  const { t } = useTranslation();
 
   const activate = () => {
     Alert.alert(
-      'Streak Qoruması Aktivləşdi',
-      'Növbəti 24 saat ərzində dərs etməsən belə streak-in qorunacaq.',
-      [{ text: 'Əla!', onPress: () => navigation.goBack() }],
+      t('streak.protActivatedTitle'),
+      t('streak.protActivatedBody'),
+      [{ text: t('streak.protGreat'), onPress: () => navigation.goBack() }],
     );
   };
 
@@ -51,10 +53,8 @@ export default function StreakProtectionScreen() {
               <Ionicons name="alert" size={18} color="#fff" />
             </View>
           </View>
-          <Text style={styles.heroTitle}>Streak itirmək üzrəsən</Text>
-          <Text style={styles.heroSub}>
-            Öyrənmə daxili ardıcıllığını qorumaq üçün dondurma funksiyasını aktiv et.
-          </Text>
+          <Text style={styles.heroTitle}>{t('streak.protHeroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('streak.protHeroSub')}</Text>
         </View>
 
         {/* Main card */}
@@ -64,20 +64,18 @@ export default function StreakProtectionScreen() {
               <Ionicons name="shield-checkmark" size={22} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Streak Qoruması</Text>
-              <Text style={styles.cardSub}>
-                Bu funksiya dərslərini buraxdığın günlərdə xallarının silinməsinin qarşısını alır.
-              </Text>
+              <Text style={styles.cardTitle}>{t('streak.protCardTitle')}</Text>
+              <Text style={styles.cardSub}>{t('streak.protCardSub')}</Text>
             </View>
           </View>
 
           <View style={styles.streakStatRow}>
             <View style={styles.streakStatLeft}>
               <Ionicons name="flash" size={22} color="#F59E0B" />
-              <Text style={styles.streakStatValue}>{currentStreak} Gün</Text>
+              <Text style={styles.streakStatValue}>{t('streak.daysUnit', { n: currentStreak })}</Text>
             </View>
             <View style={styles.streakStatChip}>
-              <Text style={styles.streakStatChipText}>CARİ STREAK</Text>
+              <Text style={styles.streakStatChipText}>{t('streak.protCurrentChip')}</Text>
             </View>
           </View>
 
@@ -93,7 +91,7 @@ export default function StreakProtectionScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Ionicons name="sparkles" size={18} color="#fff" />
-              <Text style={styles.primaryBtnText}>Qoruma aktiv et</Text>
+              <Text style={styles.primaryBtnText}>{t('streak.protActivate')}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -102,7 +100,7 @@ export default function StreakProtectionScreen() {
             activeOpacity={0.7}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.secondaryBtnText}>Davam et</Text>
+            <Text style={styles.secondaryBtnText}>{t('streak.protContinue')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -110,13 +108,13 @@ export default function StreakProtectionScreen() {
         <View style={styles.bento}>
           <View style={styles.bentoCell}>
             <Ionicons name="time-outline" size={22} color={Colors.primary} />
-            <Text style={styles.bentoValue}>24 Saat</Text>
-            <Text style={styles.bentoLabel}>QALAN VAXT</Text>
+            <Text style={styles.bentoValue}>{t('streak.protTime24h')}</Text>
+            <Text style={styles.bentoLabel}>{t('streak.protTimeLeft')}</Text>
           </View>
           <View style={styles.bentoCell}>
             <Ionicons name="star" size={22} color={Colors.tertiary} />
-            <Text style={styles.bentoValue}>Premium</Text>
-            <Text style={styles.bentoLabel}>STATUS</Text>
+            <Text style={styles.bentoValue}>{t('streak.protPremium')}</Text>
+            <Text style={styles.bentoLabel}>{t('streak.protStatus')}</Text>
           </View>
         </View>
       </ScrollView>

@@ -18,7 +18,7 @@ import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { getUserStats } from '../../api/dashboard.api';
-import { getTeachers, getTeacherAnalytics, ensureProfileReminder } from '../../api/user.api';
+import { getTeachers, getTeacherAnalytics, ensureProfileReminder, getMe } from '../../api/user.api';
 import { getGlobalLeaderboard } from '../../api/leaderboard.api';
 import { getTeacherBookings } from '../../api/booking.api';
 import { listOpenRequests, expressInterest, type PublicLessonRequest } from '../../api/lessonRequest.api';
@@ -27,17 +27,18 @@ import { usePushStore } from '../../store/push.store';
 import { getPermissionStatus } from '../../utils/push';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import UpdateBanner from '../../components/UpdateBanner';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.HomeMain>;
 };
 
 const TEACHER_QUICK_ACTIONS = [
-  { icon: 'create-outline', label: 'Profili\nredaktə et', target: 'editProfile' as const },
-  { icon: 'help-circle-outline', label: 'Sorğular', target: 'requests' as const },
-  { icon: 'document-text-outline', label: 'Tələblər', target: 'lessonRequest' as const },
-  { icon: 'chatbubble-outline', label: 'Mesajlar', target: 'chat' as const },
-  { icon: 'stats-chart-outline', label: 'Statistikalar', target: 'dashboard' as const },
+  { icon: 'create-outline', labelKey: 'home.qa.editProfile', target: 'editProfile' as const },
+  { icon: 'help-circle-outline', labelKey: 'home.qa.requests', target: 'requests' as const },
+  { icon: 'document-text-outline', labelKey: 'home.qa.lessonRequest', target: 'lessonRequest' as const },
+  { icon: 'chatbubble-outline', labelKey: 'home.qa.chat', target: 'chat' as const },
+  { icon: 'stats-chart-outline', labelKey: 'home.qa.stats', target: 'dashboard' as const },
 ] as const;
 
 // ── Test Category Accordion ────────────────────────────────────────────────
@@ -139,8 +140,10 @@ const tcStyles = StyleSheet.create({
 
 // ── Component ──────────────────────────────────────────────────────────────
 export default function HomeScreen({ navigation }: Props) {
-  const { user } = useUserStore();
-  const firstName = user?.name?.split(' ')[0] || 'İstifadəçi';
+  const { t } = useTranslation();
+  const { user, setUser } = useUserStore();
+  const avatarUrl = (user as any)?.avatarUrl as string | undefined;
+  const firstName = user?.name?.split(' ')[0] || t('home.fallbackName');
   const isTeacher = user?.role === 'teacher';
   const isParent = user?.role === 'parent';
 
@@ -184,6 +187,12 @@ export default function HomeScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pushHydrated, primingSeen]);
 
+  // Profil məlumatını (avatarUrl daxil) serverdən təzələ — header avatarı üçün.
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
+  useEffect(() => {
+    if (me) setUser({ ...(user as any), ...(me as any) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
   const { data: stats } = useQuery({ queryKey: ['user-stats'], queryFn: getUserStats, enabled: !isTeacher });
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers-home'], queryFn: () => getTeachers({ limit: 3 }), enabled: !isTeacher && !isParent });
   const { data: leaderboard = [] } = useQuery({ queryKey: ['leaderboard-home'], queryFn: getGlobalLeaderboard, enabled: !isTeacher && !isParent });
@@ -205,8 +214,8 @@ export default function HomeScreen({ navigation }: Props) {
       <View style={openReqStyles.section}>
         <View style={openReqStyles.sectionHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={openReqStyles.sectionTitle}>Açıq dərs sorğuları</Text>
-            <Text style={openReqStyles.sectionSub}>Şagirdlərin yaratdığı ümumi sorğular</Text>
+            <Text style={openReqStyles.sectionTitle}>{t('home.openReq.title')}</Text>
+            <Text style={openReqStyles.sectionSub}>{t('home.openReq.sub')}</Text>
           </View>
           {isTeacher && (
             <View style={openReqStyles.proPill}>
@@ -219,7 +228,7 @@ export default function HomeScreen({ navigation }: Props) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate(Routes.AllOpenRequests)}
           >
-            <Text style={openReqStyles.seeAllBtnText}>Hamısına bax</Text>
+            <Text style={openReqStyles.seeAllBtnText}>{t('home.openReq.seeAll')}</Text>
             <Ionicons name="chevron-forward" size={13} color={Colors.primary} />
           </TouchableOpacity>
         </View>
@@ -239,7 +248,7 @@ export default function HomeScreen({ navigation }: Props) {
               </View>
               <View style={openReqStyles.cardMeta}>
                 <Ionicons name="people-outline" size={12} color={Colors.textMuted} />
-                <Text style={openReqStyles.cardMetaText}>{r.interestedCount} müəllim maraqlanıb</Text>
+                <Text style={openReqStyles.cardMetaText}>{t('home.openReq.interested', { n: r.interestedCount })}</Text>
               </View>
               <TouchableOpacity
                 style={openReqStyles.interestBtn}
@@ -248,7 +257,7 @@ export default function HomeScreen({ navigation }: Props) {
               >
                 <Ionicons name={isTeacher ? 'hand-right-outline' : 'eye-outline'} size={14} color="#fff" />
                 <Text style={openReqStyles.interestBtnText}>
-                  {isTeacher ? 'Maraqlan' : 'Bax'}
+                  {isTeacher ? t('home.openReq.actTeacher') : t('home.openReq.actStudent')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -261,27 +270,27 @@ export default function HomeScreen({ navigation }: Props) {
   const handleInterest = async (id: string) => {
     if (!isTeacher) {
       Alert.alert(
-        'Müəllim hesabı tələb olunur',
-        'Yalnız müəllimlər sorğularla maraqlana bilər.',
+        t('home.interest.needTeacherTitle'),
+        t('home.interest.needTeacherMsg'),
       );
       return;
     }
     try {
       await expressInterest(id);
-      Alert.alert('Uğurlu', 'Maraq bildirildi. Şagird sizinlə əlaqə saxlaya bilər.');
+      Alert.alert(t('home.interest.successTitle'), t('home.interest.successMsg'));
     } catch (e: any) {
       const msg = e?.response?.data?.message;
       if (msg === 'SUBSCRIPTION_REQUIRED' || e?.response?.status === 403) {
         Alert.alert(
-          'Premium paket lazımdır',
-          'Açıq dərs sorğularıyla maraqlanmaq üçün abonə paketi alın.',
+          t('home.interest.premiumTitle'),
+          t('home.interest.premiumMsg'),
           [
-            { text: 'İmtina', style: 'cancel' },
-            { text: 'Paketi al', onPress: () => navigation.navigate(Routes.Plans) },
+            { text: t('home.interest.decline'), style: 'cancel' },
+            { text: t('home.interest.buyPlan'), onPress: () => navigation.navigate(Routes.Plans) },
           ],
         );
       } else {
-        Alert.alert('Xəta', msg || 'Əməliyyat alınmadı');
+        Alert.alert(t('home.interest.errorTitle'), msg || t('home.interest.errorMsg'));
       }
     }
   };
@@ -291,14 +300,23 @@ export default function HomeScreen({ navigation }: Props) {
       {/* ── Shared Top Bar ── */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
-          <LinearGradient
-            colors={[Colors.gradientStart, Colors.gradientEnd]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.topAvatar}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => (navigation as any).navigate(Routes.Profile)}
           >
-            <Ionicons name="person" size={16} color="#fff" />
-          </LinearGradient>
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.topAvatar} />
+            ) : (
+              <LinearGradient
+                colors={[Colors.gradientStart, Colors.gradientEnd]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.topAvatar}
+              >
+                <Ionicons name="person" size={16} color="#fff" />
+              </LinearGradient>
+            )}
+          </TouchableOpacity>
           <Image
             source={require('../../../assets/logo.png')}
             style={styles.logoImage}
@@ -313,7 +331,7 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={() => navigation.navigate(Routes.StreakDashboard)}
             >
               <Ionicons name="flame" size={15} color="#f97316" />
-              <Text style={styles.streakText}>{stats?.streak ?? 0} gün streak</Text>
+              <Text style={styles.streakText}>{t('home.streak', { n: stats?.streak ?? 0 })}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -342,8 +360,8 @@ export default function HomeScreen({ navigation }: Props) {
           <>
             {/* Greeting */}
             <View style={styles.greetSection}>
-              <Text style={styles.greetSmall}>Xoş gəldiniz,</Text>
-              <Text style={styles.greetTitle}>Salam, {firstName} müəllim 👋</Text>
+              <Text style={styles.greetSmall}>{t('home.greetTeacherSmall')}</Text>
+              <Text style={styles.greetTitle}>{t('home.greetTeacher', { name: firstName })}</Text>
             </View>
 
             {/* Earnings Card */}
@@ -355,17 +373,17 @@ export default function HomeScreen({ navigation }: Props) {
             >
               <View style={styles.earningsTop}>
                 <View>
-                  <Text style={styles.earningsLabel}>Aylıq qazanc</Text>
+                  <Text style={styles.earningsLabel}>{t('home.teacher.monthlyEarnings')}</Text>
                   <Text style={styles.earningsAmount}>{analytics?.monthlyEarnings ?? 0} AZN</Text>
                 </View>
                 <View style={styles.premiumBadge}>
                   <Ionicons name="star" size={11} color="#fff" />
-                  <Text style={styles.premiumText}>PREMİUM</Text>
+                  <Text style={styles.premiumText}>{t('home.teacher.premium')}</Text>
                 </View>
               </View>
               <View style={styles.earningsTrend}>
                 <Ionicons name="trending-up" size={14} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.earningsTrendText}>Ötən aya nisbətən +12% artım</Text>
+                <Text style={styles.earningsTrendText}>{t('home.teacher.trend')}</Text>
               </View>
               <View style={styles.earningsGlow} />
             </LinearGradient>
@@ -399,7 +417,7 @@ export default function HomeScreen({ navigation }: Props) {
                   <View style={styles.quickActionIcon}>
                     <Ionicons name={a.icon} size={22} color={Colors.primary} />
                   </View>
-                  <Text style={styles.quickActionLabel}>{a.label}</Text>
+                  <Text style={styles.quickActionLabel}>{t(a.labelKey)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -408,18 +426,18 @@ export default function HomeScreen({ navigation }: Props) {
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
                 <Text style={styles.statValue}>{analytics?.totalStudents ?? 0}</Text>
-                <Text style={styles.statLabel}>Aktiv şagird</Text>
+                <Text style={styles.statLabel}>{t('home.teacher.activeStudents')}</Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statValue}>{analytics?.profileViews ?? 0}</Text>
-                <Text style={styles.statLabel}>Profil baxışı</Text>
+                <Text style={styles.statLabel}>{t('home.teacher.profileViews')}</Text>
               </View>
               <View style={styles.statCard}>
                 <View style={styles.ratingWrap}>
                   <Text style={styles.statValue}>{analytics?.rating?.toFixed(1) ?? '—'}</Text>
                   <Ionicons name="star" size={14} color="#f59e0b" />
                 </View>
-                <Text style={styles.statLabel}>Reytinq</Text>
+                <Text style={styles.statLabel}>{t('home.teacher.rating')}</Text>
               </View>
             </View>
 
@@ -429,10 +447,8 @@ export default function HomeScreen({ navigation }: Props) {
                 <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.aiTitle}>AI Tövsiyəsi</Text>
-                <Text style={styles.aiText}>
-                  Profilinizi tamamlayaraq 20% daha çox şagird cəlb edə bilərsiniz.
-                </Text>
+                <Text style={styles.aiTitle}>{t('home.teacher.aiTitle')}</Text>
+                <Text style={styles.aiText}>{t('home.teacher.aiText')}</Text>
               </View>
             </View>
 
@@ -451,27 +467,27 @@ export default function HomeScreen({ navigation }: Props) {
                 <Ionicons name="calculator" size={24} color="#fff" />
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={styles.calcTitle}>Sinif Qiymət Kalkulyatoru</Text>
-                <Text style={styles.calcSub}>Şagirdlərin yarımillik & illik qiymətini, keyfiyyət faizini anında hesabla</Text>
+                <Text style={styles.calcTitle}>{t('home.teacher.calcTitle')}</Text>
+                <Text style={styles.calcSub}>{t('home.teacher.calcSub')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
 
             {/* New Requests */}
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Yeni sorğular</Text>
+              <Text style={styles.sectionTitle}>{t('home.teacher.newRequests')}</Text>
               <TouchableOpacity onPress={() => (navigation.getParent() as any)?.navigate('Booking', { screen: Routes.BookingHistory })}>
-                <Text style={styles.seeAll}>Hamısına bax</Text>
+                <Text style={styles.seeAll}>{t('home.teacher.seeAll')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.requestList}>
               {pendingBookings.length === 0 ? (
                 <View style={styles.requestCard}>
-                  <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>Yeni sorğu yoxdur</Text>
+                  <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>{t('home.teacher.noRequests')}</Text>
                 </View>
               ) : (
                 pendingBookings.map((b) => {
-                  const name = b.student?.name ?? 'Şagird';
+                  const name = b.student?.name ?? t('home.teacher.student');
                   const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
                   return (
                     <View key={b.id} style={styles.requestCard}>
@@ -481,7 +497,7 @@ export default function HomeScreen({ navigation }: Props) {
                         </View>
                         <View>
                           <Text style={styles.requestName}>{name}</Text>
-                          <Text style={styles.requestDetail}>{b.subject ?? 'Ümumi dərs'}</Text>
+                          <Text style={styles.requestDetail}>{b.subject ?? t('home.teacher.generalLesson')}</Text>
                         </View>
                       </View>
                       <TouchableOpacity style={styles.requestChevron} onPress={() => (navigation.getParent() as any)?.navigate('Booking', { screen: Routes.BookingHistory })}>
@@ -495,15 +511,15 @@ export default function HomeScreen({ navigation }: Props) {
 
             {/* Upcoming Lessons */}
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Gələn dərs tələbləri</Text>
+              <Text style={styles.sectionTitle}>{t('home.teacher.upcoming')}</Text>
               <TouchableOpacity onPress={() => (navigation.getParent() as any)?.navigate('Booking', { screen: Routes.BookingHistory })}>
-                <Text style={styles.seeAll}>Təqvim</Text>
+                <Text style={styles.seeAll}>{t('home.teacher.calendar')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.lessonList}>
               {confirmedBookings.length === 0 ? (
                 <View style={styles.lessonItem}>
-                  <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>Planlanmış dərs yoxdur</Text>
+                  <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>{t('home.teacher.noPlanned')}</Text>
                 </View>
               ) : (
                 confirmedBookings.map((b, i) => {
@@ -511,7 +527,7 @@ export default function HomeScreen({ navigation }: Props) {
                   const dayNum = d.getDate().toString();
                   const dayLabel = d.toLocaleDateString('az-AZ', { weekday: 'short' });
                   const timeStr = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
-                  const studentName = b.student?.name ?? 'Şagird';
+                  const studentName = b.student?.name ?? t('home.teacher.student');
                   return (
                     <View key={b.id} style={[styles.lessonItem, i < confirmedBookings.length - 1 && styles.lessonItemBorder]}>
                       <View style={styles.lessonLeft}>
@@ -520,7 +536,7 @@ export default function HomeScreen({ navigation }: Props) {
                           <Text style={styles.lessonDayNum}>{dayNum}</Text>
                         </View>
                         <View>
-                          <Text style={styles.lessonTitle}>{studentName} ilə dərs</Text>
+                          <Text style={styles.lessonTitle}>{t('home.teacher.lessonWith', { name: studentName })}</Text>
                           <View style={styles.lessonTimeRow}>
                             <Ionicons name="time-outline" size={11} color={Colors.textMuted} />
                             <Text style={styles.lessonTime}>{timeStr}</Text>
@@ -542,8 +558,8 @@ export default function HomeScreen({ navigation }: Props) {
           <>
             {/* Greeting */}
             <View style={styles.greetSection}>
-              <Text style={styles.greetTitle}>Salam, {firstName} xanım 👋</Text>
-              <Text style={styles.greetSub}>Övladınızın təhsil yoluna nəzər salın.</Text>
+              <Text style={styles.greetTitle}>{t('home.greetParent', { name: firstName })}</Text>
+              <Text style={styles.greetSub}>{t('home.greetParentSub')}</Text>
             </View>
 
             {/* Child Summary + Weak Subjects row */}
@@ -557,21 +573,21 @@ export default function HomeScreen({ navigation }: Props) {
               >
                 <View>
                   <Text style={styles.childName}>{(user as any)?.profile?.childName || (user as any)?.childName || firstName}</Text>
-                  <Text style={styles.childGrade}>{(user as any)?.profile?.grade ? `${(user as any).profile.grade} • Övladınız` : 'Övladınızın hesabı'}</Text>
+                  <Text style={styles.childGrade}>{(user as any)?.profile?.grade ? `${(user as any).profile.grade} • ${t('home.parent.yourChild')}` : t('home.parent.childAccount')}</Text>
                 </View>
                 <View style={styles.streakPill}>
-                  <Text style={styles.streakPillText}>🔥 {stats?.streak ?? 0} gün</Text>
+                  <Text style={styles.streakPillText}>{t('home.parent.days', { n: stats?.streak ?? 0 })}</Text>
                 </View>
                 <View style={styles.childBadgeRow}>
                   <Ionicons name="star" size={12} color="#fde68a" />
-                  <Text style={styles.childBadgeText}>İmtahan sayı: {stats?.totalExams ?? 0}</Text>
+                  <Text style={styles.childBadgeText}>{t('home.parent.examCount', { n: stats?.totalExams ?? 0 })}</Text>
                 </View>
               </LinearGradient>
 
               {/* Weak Subjects Card */}
               <View style={styles.weakCard}>
-                <Text style={styles.weakLabel}>ZƏİF MÖVZULAR</Text>
-                <Text style={styles.weakChipText}>Tezliklə əlavə olunacaq</Text>
+                <Text style={styles.weakLabel}>{t('home.parent.weakTopics')}</Text>
+                <Text style={styles.weakChipText}>{t('home.parent.comingSoon')}</Text>
               </View>
             </View>
 
@@ -579,39 +595,37 @@ export default function HomeScreen({ navigation }: Props) {
             <View style={styles.parentAiCard}>
               <View style={styles.parentAiHeader}>
                 <Ionicons name="hardware-chip-outline" size={20} color={Colors.primary} />
-                <Text style={styles.parentAiTitle}>AI Tövsiyələri</Text>
+                <Text style={styles.parentAiTitle}>{t('home.parent.aiTips')}</Text>
               </View>
-              <Text style={styles.parentAiText}>
-                "Cəfər kəsrlər mövzusunda çətinlik çəkir, bir az təkrar etməsi məsləhətdir. Bu gün 15 dəqiqəlik əlavə məşq onun nəticəsini 20% artıra bilər."
-              </Text>
+              <Text style={styles.parentAiText}>{t('home.parent.aiQuote')}</Text>
             </View>
 
             {/* Today's Activity */}
             <View style={styles.activityCard}>
-              <Text style={styles.activityTitle}>Bugünkü aktivlik</Text>
-              <Text style={styles.activityLabel}>Tezliklə əlavə olunacaq</Text>
+              <Text style={styles.activityTitle}>{t('home.parent.todayActivity')}</Text>
+              <Text style={styles.activityLabel}>{t('home.parent.comingSoon')}</Text>
             </View>
 
             {/* Recent Results */}
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Övladın son nəticələri</Text>
-              <TouchableOpacity onPress={() => Alert.alert('Nəticələr', 'Hamısına bax')}>
-                <Text style={styles.seeAll}>Hamısı</Text>
+              <Text style={styles.sectionTitle}>{t('home.parent.recentResults')}</Text>
+              <TouchableOpacity onPress={() => Alert.alert(t('home.parent.results'), t('home.openReq.seeAll'))}>
+                <Text style={styles.seeAll}>{t('home.parent.all')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.resultList}>
-              <Text style={styles.resultSubject}>Tezliklə əlavə olunacaq</Text>
+              <Text style={styles.resultSubject}>{t('home.parent.comingSoon')}</Text>
             </View>
 
             {/* Future Exams */}
             <View style={styles.examsCard}>
-              <Text style={styles.examsTitle}>Gələcək imtahanlar</Text>
-              <Text style={styles.examItemTime}>Tezliklə əlavə olunacaq</Text>
+              <Text style={styles.examsTitle}>{t('home.parent.futureExams')}</Text>
+              <Text style={styles.examItemTime}>{t('home.parent.comingSoon')}</Text>
             </View>
 
             {/* Recommended Teachers */}
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Tövsiyə olunan müəllimlər</Text>
-            <Text style={styles.examItemTime}>Tezliklə əlavə olunacaq</Text>
+            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{t('home.parent.recommendedTeachers')}</Text>
+            <Text style={styles.examItemTime}>{t('home.parent.comingSoon')}</Text>
 
             {/* Açıq dərs sorğuları (Parent) */}
             {renderOpenRequests()}
@@ -621,8 +635,8 @@ export default function HomeScreen({ navigation }: Props) {
           <>
             {/* Greeting */}
             <View style={styles.greetSection}>
-              <Text style={styles.greetTitle}>Salam {firstName} 👋</Text>
-              <Text style={styles.greetSub}>Bu gün öyrənmək üçün əla gündür.</Text>
+              <Text style={styles.greetTitle}>{t('home.greetStudent', { name: firstName })}</Text>
+              <Text style={styles.greetSub}>{t('home.greetStudentSub')}</Text>
             </View>
 
             {/* Hero Card */}
@@ -632,30 +646,28 @@ export default function HomeScreen({ navigation }: Props) {
               end={{ x: 1, y: 1 }}
               style={styles.heroCard}
             >
-              <Text style={styles.heroTitle}>Biliklərini yoxlamağa hazırsan?</Text>
-              <Text style={styles.heroSub}>
-                Yeni imtahan sessiyası səni gözləyir. İndi başla və rəqibləri geridə qoy.
-              </Text>
+              <Text style={styles.heroTitle}>{t('home.student.heroTitle')}</Text>
+              <Text style={styles.heroSub}>{t('home.student.heroSub')}</Text>
               <TouchableOpacity
                 style={styles.heroBtn}
                 activeOpacity={0.85}
                 onPress={() => (navigation.getParent() as any)?.navigate('Exams' as never)}
               >
-                <Text style={styles.heroBtnText}>İmtahan başlat</Text>
+                <Text style={styles.heroBtnText}>{t('home.student.startExam')}</Text>
               </TouchableOpacity>
             </LinearGradient>
 
             {/* Quick Actions */}
             <View style={styles.quickSectionHeader}>
               <Ionicons name="flash-outline" size={20} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Sürətli keçidlər</Text>
+              <Text style={styles.sectionTitle}>{t('home.student.quickLinks')}</Text>
               <TouchableOpacity
                 style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 }}
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate(Routes.SmartFeed as never)}
               >
                 <Ionicons name="sparkles" size={14} color={Colors.primary} />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>Sənin üçün</Text>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>{t('home.student.forYou')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.quickRow}>
@@ -667,7 +679,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: Colors.primaryLight }]}>
                   <Ionicons name="document-text-outline" size={24} color={Colors.primary} />
                 </View>
-                <Text style={styles.quickItemLabel}>{'İmtahan\nbaşlat'}</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qStartExam')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.quickItem}
@@ -677,7 +689,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: '#f3e8ff' }]}>
                   <Ionicons name="hardware-chip-outline" size={24} color="#7c3aed" />
                 </View>
-                <Text style={styles.quickItemLabel}>{'AI sual\nsoruş'}</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qAiAsk')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.quickItem}
@@ -687,7 +699,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: '#ecfdf5' }]}>
                   <Ionicons name="school-outline" size={24} color="#059669" />
                 </View>
-                <Text style={styles.quickItemLabel}>{'Müəllim\ntap'}</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qFindTeacher')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.quickItem}
@@ -697,7 +709,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: Colors.warningLight }]}>
                   <Ionicons name="calculator-outline" size={24} color={Colors.warning} />
                 </View>
-                <Text style={styles.quickItemLabel}>Kalkulyator</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qCalc')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -711,7 +723,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: '#dbeafe' }]}>
                   <Ionicons name="book-outline" size={24} color="#2563eb" />
                 </View>
-                <Text style={styles.quickItemLabel}>Öyrən</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qLearn')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.quickItem}
@@ -721,7 +733,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: '#fef3c7' }]}>
                   <Ionicons name="storefront-outline" size={24} color="#d97706" />
                 </View>
-                <Text style={styles.quickItemLabel}>Market</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qMarket')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.quickItem}
@@ -731,7 +743,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: '#fce7f3' }]}>
                   <Ionicons name="bookmark-outline" size={24} color="#db2777" />
                 </View>
-                <Text style={styles.quickItemLabel}>Yaddaş</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qSaved')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.quickItem}
@@ -741,7 +753,7 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={[styles.quickItemIcon, { backgroundColor: '#e0e7ff' }]}>
                   <Ionicons name="chatbubbles-outline" size={24} color="#4f46e5" />
                 </View>
-                <Text style={styles.quickItemLabel}>Mesaj</Text>
+                <Text style={styles.quickItemLabel}>{t('home.student.qMessage')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -750,7 +762,7 @@ export default function HomeScreen({ navigation }: Props) {
               <View style={{ marginBottom: 28, gap: 10 }}>
                 <View style={styles.quickSectionHeader}>
                   <Ionicons name="sparkles-outline" size={20} color={Colors.primary} />
-                  <Text style={styles.sectionTitle}>Yeni ekranlar</Text>
+                  <Text style={styles.sectionTitle}>{t('home.student.newScreens')}</Text>
                 </View>
 
                 {/* Duel dəvəti — notification banner */}
@@ -767,59 +779,59 @@ export default function HomeScreen({ navigation }: Props) {
                     <Ionicons name="notifications" size={20} color="#DC2626" />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#991B1B' }}>Duel dəvəti!</Text>
-                    <Text style={{ fontSize: 11, color: '#7F1D1D' }}>Leyla səni yarışa çağırır — qəbul/imtina</Text>
+                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#991B1B' }}>{t('home.student.duelTitle')}</Text>
+                    <Text style={{ fontSize: 11, color: '#7F1D1D' }}>{t('home.student.duelSub')}</Text>
                   </View>
                   <Ionicons name="chevron-forward" size={18} color="#991B1B" />
                 </TouchableOpacity>
 
                 {/* 👥 Sosial & İcma */}
-                <TestCategoryAccordion title="👥 Sosial & İcma" count={5} defaultOpen>
+                <TestCategoryAccordion title={t('home.student.accSocial')} count={5} defaultOpen>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="Sosial Mərkəz" sub="Hub: reyting + feed" icon="people" onPress={() => navigation.navigate(Routes.SocialHub)} />
+                    <TestCard title={t('home.student.cardSocialHub')} sub={t('home.student.cardSocialHubSub')} icon="people" onPress={() => navigation.navigate(Routes.SocialHub)} />
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="Dost tap" sub="Axtarış + statuslar" icon="person-add" onPress={() => navigation.navigate(Routes.FindFriend)} />
-                    <TestCard title="Dostlarım" sub="Challenge düymələri" icon="people-circle" onPress={() => navigation.navigate(Routes.MyFriends)} />
+                    <TestCard title={t('home.student.cardFindFriend')} sub={t('home.student.cardFindFriendSub')} icon="person-add" onPress={() => navigation.navigate(Routes.FindFriend)} />
+                    <TestCard title={t('home.student.cardMyFriends')} sub={t('home.student.cardMyFriendsSub')} icon="people-circle" onPress={() => navigation.navigate(Routes.MyFriends)} />
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="Liderlər" sub="Dostlar / Hamı" icon="podium" onPress={() => navigation.navigate(Routes.LeaderboardDetail)} />
-                    <TestCard title="Lent" sub="Fəaliyyət + xəbərlər" icon="pulse" iconColor={Colors.tertiary} onPress={() => navigation.navigate(Routes.LiveActivity)} />
+                    <TestCard title={t('home.student.cardLeaders')} sub={t('home.student.cardLeadersSub')} icon="podium" onPress={() => navigation.navigate(Routes.LeaderboardDetail)} />
+                    <TestCard title={t('home.student.cardFeed')} sub={t('home.student.cardFeedSub')} icon="pulse" iconColor={Colors.tertiary} onPress={() => navigation.navigate(Routes.LiveActivity)} />
                   </View>
                 </TestCategoryAccordion>
 
                 {/* 📊 Performans & Analitika */}
-                <TestCategoryAccordion title="📊 Performans & Analitika" count={7}>
-                  <Text style={perfStyles.groupLabel}>📈 Statistika</Text>
+                <TestCategoryAccordion title={t('home.student.accPerf')} count={7}>
+                  <Text style={perfStyles.groupLabel}>{t('home.student.grpStats')}</Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="Proqres" sub="7 günlük grafik" icon="trending-up" iconColor={Colors.tertiary} onPress={() => navigation.navigate(Routes.LearningProgress)} />
-                    <TestCard title="Performans" sub="Donut + insight" icon="pie-chart" onPress={() => navigation.navigate(Routes.PerformanceSummary)} />
+                    <TestCard title={t('home.student.cardProgress')} sub={t('home.student.cardProgressSub')} icon="trending-up" iconColor={Colors.tertiary} onPress={() => navigation.navigate(Routes.LearningProgress)} />
+                    <TestCard title={t('home.student.cardPerf')} sub={t('home.student.cardPerfSub')} icon="pie-chart" onPress={() => navigation.navigate(Routes.PerformanceSummary)} />
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="Həftəlik Hesabat" sub="Sparkline + mövzular" icon="bar-chart" onPress={() => navigation.navigate(Routes.WeeklyReport)} />
+                    <TestCard title={t('home.student.cardWeekly')} sub={t('home.student.cardWeeklySub')} icon="bar-chart" onPress={() => navigation.navigate(Routes.WeeklyReport)} />
                     <View style={{ flex: 1 }} />
                   </View>
 
-                  <Text style={perfStyles.groupLabel}>🤖 AI ilə inkişaf</Text>
+                  <Text style={perfStyles.groupLabel}>{t('home.student.grpAiDev')}</Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="Zəif Mövzu" sub="AI analiz" icon="alert-circle" iconColor={Colors.danger} onPress={() => navigation.navigate(Routes.WeakTopics)} />
-                    <TestCard title="Təkrar Test" sub="AI planı" icon="refresh-circle" onPress={() => navigation.navigate(Routes.ReviewTopics)} />
+                    <TestCard title={t('home.student.cardWeak')} sub={t('home.student.cardWeakSub')} icon="alert-circle" iconColor={Colors.danger} onPress={() => navigation.navigate(Routes.WeakTopics)} />
+                    <TestCard title={t('home.student.cardReview')} sub={t('home.student.cardReviewSub')} icon="refresh-circle" onPress={() => navigation.navigate(Routes.ReviewTopics)} />
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="AI Tövsiyə" sub="İnkişaf planı" icon="bulb" onPress={() => navigation.navigate(Routes.ImprovementTips)} />
-                    <TestCard title="Mövzu" sub="İnkişaf yolu" icon="git-network" onPress={() => navigation.navigate(Routes.TopicProgress, { topic: 'Faizlər' })} />
+                    <TestCard title={t('home.student.cardTips')} sub={t('home.student.cardTipsSub')} icon="bulb" onPress={() => navigation.navigate(Routes.ImprovementTips)} />
+                    <TestCard title={t('home.student.cardTopic')} sub={t('home.student.cardTopicSub')} icon="git-network" onPress={() => navigation.navigate(Routes.TopicProgress, { topic: 'Faizlər' })} />
                   </View>
                 </TestCategoryAccordion>
 
                 {/* 🤖 AI & Tapşırıq */}
-                <TestCategoryAccordion title="🤖 AI & Tapşırıq" count={4}>
+                <TestCategoryAccordion title={t('home.student.accAi')} count={4}>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="AI Plan" sub="Tədris yolu" icon="hardware-chip" onPress={() => navigation.navigate(Routes.AIStudyPlan)} />
-                    <TestCard title="Məşq Yarat" sub="AI generator" icon="construct" onPress={() => navigation.navigate(Routes.AIPracticeBuilder)} />
+                    <TestCard title={t('home.student.cardAiPlan')} sub={t('home.student.cardAiPlanSub')} icon="hardware-chip" onPress={() => navigation.navigate(Routes.AIStudyPlan)} />
+                    <TestCard title={t('home.student.cardBuilder')} sub={t('home.student.cardBuilderSub')} icon="construct" onPress={() => navigation.navigate(Routes.AIPracticeBuilder)} />
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title="Bugün" sub="Tapşırıq + xatırlatma" icon="checkmark-done-circle" onPress={() => navigation.navigate(Routes.TodaysTasks)} />
-                    <TestCard title="Missiyalar" sub="Tərəqqi + mükafat" icon="flame" onPress={() => navigation.navigate(Routes.MissionStart)} />
+                    <TestCard title={t('home.student.cardToday')} sub={t('home.student.cardTodaySub')} icon="checkmark-done-circle" onPress={() => navigation.navigate(Routes.TodaysTasks)} />
+                    <TestCard title={t('home.student.cardMissions')} sub={t('home.student.cardMissionsSub')} icon="flame" onPress={() => navigation.navigate(Routes.MissionStart)} />
                   </View>
                 </TestCategoryAccordion>
 
@@ -841,20 +853,20 @@ export default function HomeScreen({ navigation }: Props) {
                   <Ionicons name="gift" size={26} color="#fff" />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.spinBannerTitle}>Hədiyyə Çarxı</Text>
-                  <Text style={styles.spinBannerSub}>Günlük şansını sına, mükafatını qazan!</Text>
+                  <Text style={styles.spinBannerTitle}>{t('home.student.spinTitle')}</Text>
+                  <Text style={styles.spinBannerSub}>{t('home.student.spinSub')}</Text>
                 </View>
                 <View style={styles.spinBannerPill}>
-                  <Text style={styles.spinBannerPillText}>YENİ</Text>
+                  <Text style={styles.spinBannerPillText}>{t('home.student.new')}</Text>
                 </View>
               </LinearGradient>
             </TouchableOpacity>
 
             {/* Daily Missions shortcut */}
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Bugünkü tapşırıqlar</Text>
+              <Text style={styles.sectionTitle}>{t('home.student.todayTasks')}</Text>
               <TouchableOpacity onPress={() => navigation.navigate(Routes.DailyMissions)}>
-                <Text style={styles.seeAll}>Hamısına bax</Text>
+                <Text style={styles.seeAll}>{t('home.student.seeAll')}</Text>
               </TouchableOpacity>
             </View>
             <View style={styles.todayTaskList}>
@@ -873,8 +885,8 @@ export default function HomeScreen({ navigation }: Props) {
                     <Ionicons name="calculator-outline" size={20} color={Colors.primary} />
                   </View>
                   <View style={styles.todayTaskInfo}>
-                    <Text style={styles.todayTaskTitle}>Riyaziyyat testi</Text>
-                    <Text style={styles.todayTaskSub}>Kvadrat tənliklər • 15 dəq</Text>
+                    <Text style={styles.todayTaskTitle}>{t('home.student.mathTest')}</Text>
+                    <Text style={styles.todayTaskSub}>{t('home.student.mathTestSub')}</Text>
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={22} color={Colors.outlineVariant} />
@@ -894,8 +906,8 @@ export default function HomeScreen({ navigation }: Props) {
                     <Ionicons name="language-outline" size={20} color={Colors.tertiary} />
                   </View>
                   <View style={styles.todayTaskInfo}>
-                    <Text style={styles.todayTaskTitle}>5 yeni söz öyrən</Text>
-                    <Text style={styles.todayTaskSub}>İngilis dili • Orta səviyyə</Text>
+                    <Text style={styles.todayTaskTitle}>{t('home.student.learnWords')}</Text>
+                    <Text style={styles.todayTaskSub}>{t('home.student.learnWordsSub')}</Text>
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={22} color={Colors.primary} />
@@ -910,21 +922,21 @@ export default function HomeScreen({ navigation }: Props) {
             >
               <View style={styles.aiPlanHeader}>
                 <Ionicons name="sparkles" size={18} color={Colors.primary} />
-                <Text style={styles.aiPlanTitle}>AI Tədris Planı</Text>
+                <Text style={styles.aiPlanTitle}>{t('home.student.aiPlanTitle')}</Text>
                 <View style={{ flex: 1 }} />
                 <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
               </View>
               <View style={styles.aiPlanGrid}>
                 <View style={[styles.aiTopicCard, { borderBottomColor: '#fca5a5' }]}>
-                  <Text style={styles.aiTopicBadgeWeak}>Zəif mövzu</Text>
-                  <Text style={styles.aiTopicName}>Kəsrlər</Text>
+                  <Text style={styles.aiTopicBadgeWeak}>{t('home.student.weakTopic')}</Text>
+                  <Text style={styles.aiTopicName}>{t('home.student.fractions')}</Text>
                   <View style={styles.aiProgressTrack}>
                     <View style={[styles.aiProgressFill, { width: '33%', backgroundColor: '#f87171' }]} />
                   </View>
                 </View>
                 <View style={[styles.aiTopicCard, { borderBottomColor: '#6ee7b7' }]}>
-                  <Text style={styles.aiTopicBadgeStrong}>Güclü mövzu</Text>
-                  <Text style={styles.aiTopicName}>Sinonimlər</Text>
+                  <Text style={styles.aiTopicBadgeStrong}>{t('home.student.strongTopic')}</Text>
+                  <Text style={styles.aiTopicName}>{t('home.student.synonyms')}</Text>
                   <View style={styles.aiProgressTrack}>
                     <View style={[styles.aiProgressFill, { width: '80%', backgroundColor: Colors.tertiary }]} />
                   </View>
@@ -934,12 +946,12 @@ export default function HomeScreen({ navigation }: Props) {
 
             {/* Recommended Teachers */}
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Tövsiyə olunan müəllimlər</Text>
+              <Text style={styles.sectionTitle}>{t('home.student.recommendedTeachers')}</Text>
               <TouchableOpacity
                 onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherList } as never)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.seeAll}>Hamısı</Text>
+                <Text style={styles.seeAll}>{t('home.student.all')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -948,18 +960,18 @@ export default function HomeScreen({ navigation }: Props) {
               contentContainerStyle={styles.teachersRow}
               style={{ marginHorizontal: -24 }}
             >
-              {teachers.map((t) => {
-                const initials = t.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
-                const hasRating = typeof t.rating === 'number' && t.rating > 0;
-                const subject = t.subjects?.[0] || 'Müxtəlif fənlər';
-                const experience = (t as any).experienceYears;
-                const avatarUrl = (t as any).avatarUrl as string | undefined;
+              {teachers.map((tch) => {
+                const initials = tch.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+                const hasRating = typeof tch.rating === 'number' && tch.rating > 0;
+                const subject = tch.subjects?.[0] || t('home.student.variousSubjects');
+                const experience = (tch as any).experienceYears;
+                const avatarUrl = (tch as any).avatarUrl as string | undefined;
                 return (
                   <TouchableOpacity
-                    key={t.id}
+                    key={tch.id}
                     style={styles.teacherCardRich}
                     activeOpacity={0.85}
-                    onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherProfile, params: { teacher: t } } as never)}
+                    onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherProfile, params: { teacher: tch } } as never)}
                   >
                     <View style={styles.teacherCardTop}>
                       {avatarUrl ? (
@@ -975,19 +987,19 @@ export default function HomeScreen({ navigation }: Props) {
                         </LinearGradient>
                       )}
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.teacherNameRich} numberOfLines={1}>{t.name}</Text>
+                        <Text style={styles.teacherNameRich} numberOfLines={1}>{tch.name}</Text>
                         <Text style={styles.teacherSubjectRich} numberOfLines={1}>
-                          {subject}{experience ? ` • ${experience} il təcrübə` : ''}
+                          {subject}{experience ? ` • ${t('home.student.expYears', { n: experience })}` : ''}
                         </Text>
                       </View>
                     </View>
                     <View style={styles.teacherCardBottom}>
                       <View style={styles.ratingRow}>
                         <Ionicons name="star" size={13} color="#f59e0b" />
-                        <Text style={styles.ratingText}>{hasRating ? t.rating!.toFixed(1) : 'Yeni'}</Text>
+                        <Text style={styles.ratingText}>{hasRating ? tch.rating!.toFixed(1) : t('home.student.newTeacher')}</Text>
                       </View>
                       <View style={styles.teacherViewBtn}>
-                        <Text style={styles.teacherViewBtnText}>Profilə bax</Text>
+                        <Text style={styles.teacherViewBtnText}>{t('home.student.viewProfile')}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -999,15 +1011,15 @@ export default function HomeScreen({ navigation }: Props) {
             {renderOpenRequests()}
 
             {/* Competitions */}
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>Yarışlar</Text>
+            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{t('home.student.competitions')}</Text>
             <View style={styles.competitionCard}>
               <View style={styles.compLeft}>
                 <View style={styles.compIcon}>
                   <Ionicons name="trophy-outline" size={20} color="#d97706" />
                 </View>
                 <View>
-                  <Text style={styles.compTitle}>Respublika Olimpiadası</Text>
-                  <Text style={styles.compSub}>Son qeydiyyat: 3 gün qaldı</Text>
+                  <Text style={styles.compTitle}>{t('home.student.olympiad')}</Text>
+                  <Text style={styles.compSub}>{t('home.student.lastReg')}</Text>
                 </View>
               </View>
               <TouchableOpacity
@@ -1019,7 +1031,7 @@ export default function HomeScreen({ navigation }: Props) {
                   else navigation.navigate(Routes.Leaderboard);
                 }}
               >
-                <Text style={styles.joinBtnText}>Qoşul</Text>
+                <Text style={styles.joinBtnText}>{t('home.student.join')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -1030,9 +1042,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.85}
                 onPress={() => navigation.navigate(Routes.Leaderboard)}
               >
-                <Text style={styles.leaderTitle}>Top şagirdlər</Text>
+                <Text style={styles.leaderTitle}>{t('home.student.topStudents')}</Text>
                 {topStudents.length === 0 ? (
-                  <Text style={[styles.leaderName, { color: Colors.textMuted }]}>Hələ data yoxdur</Text>
+                  <Text style={[styles.leaderName, { color: Colors.textMuted }]}>{t('home.student.noData')}</Text>
                 ) : (
                   topStudents.map((s) => (
                     <View key={s.userId} style={styles.leaderItem}>
@@ -1057,10 +1069,10 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.85}
                 onPress={() => navigation.navigate(Routes.SchoolRanking)}
               >
-                <Text style={styles.leaderTitle}>Top məktəblər</Text>
+                <Text style={styles.leaderTitle}>{t('home.student.topSchools')}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
                   <Ionicons name="school-outline" size={16} color={Colors.primary} />
-                  <Text style={[styles.leaderName, { color: Colors.primary, fontWeight: '600' }]}>Reytinqə bax →</Text>
+                  <Text style={[styles.leaderName, { color: Colors.primary, fontWeight: '600' }]}>{t('home.student.viewRanking')}</Text>
                 </View>
               </TouchableOpacity>
             </View>

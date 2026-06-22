@@ -13,6 +13,7 @@ import { getExamLeaderboard } from '../../api/leaderboard.api';
 import { getExamResult } from '../../api/certificate.api';
 import Confetti from '../../components/effects/Confetti';
 import { playSuccess, playSoft } from '../../utils/sound';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -25,6 +26,7 @@ function formatTime(seconds: number): string {
 }
 
 export default function ExamResultScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { result, examId: storeExamId, resetExam } = useExamStore();
   const user = useUserStore((s) => s.user);
   const paramExamId = route.params?.examId;
@@ -94,10 +96,10 @@ export default function ExamResultScreen({ navigation, route }: Props) {
   // Subject — submit nəticəsində artıq gəlir (store), API fallback əlavə təhlükəsizlik
   const subjectRaw = result?.subject ?? fallback?.subject ?? '';
   const subject = subjectRaw.toLowerCase();
-  const examTitle = result?.examTitle ?? fallback?.examTitle ?? 'İmtahan nəticəsi';
+  const examTitle = result?.examTitle ?? fallback?.examTitle ?? t('examResult.resultFallback');
   const examDate = fallback?.completedAt ? new Date(fallback.completedAt) : new Date();
-  const AZ_MONTHS = ['Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'İyun', 'İyul', 'Avqust', 'Sentyabr', 'Oktyabr', 'Noyabr', 'Dekabr'];
-  const examDateStr = `${examDate.getDate()} ${AZ_MONTHS[examDate.getMonth()]} ${examDate.getFullYear()}`;
+  const MONTHS = t('examResult.months').split('|');
+  const examDateStr = `${examDate.getDate()} ${MONTHS[examDate.getMonth()]} ${examDate.getFullYear()}`;
 
   // Subject-aware topic pool. Question entity-də topic field yoxdur, ona görə
   // hər fənn üçün ümumi mövzu siyahısı saxlayırıq, score əsasında bölünür.
@@ -122,8 +124,8 @@ export default function ExamResultScreen({ navigation, route }: Props) {
   // Mövcud subject-ə uyğun pool tap; tapılmırsa subject-in özünü label kimi göstər
   const matchedPool = TOPIC_POOLS.find((p) => p.match.test(subject));
   const subjectPool = matchedPool ?? {
-    label: subjectRaw || 'İmtahan',
-    topics: ['Ümumi mövzular', 'Əsas anlayışlar', 'Praktik tətbiq'],
+    label: subjectRaw || t('examResult.examFallback'),
+    topics: t('examResult.genericTopics').split('|'),
   };
   const allTopics = subjectPool.topics;
   const strongCount = scorePercent >= 75 ? Math.min(3, Math.ceil(allTopics.length / 2))
@@ -134,15 +136,15 @@ export default function ExamResultScreen({ navigation, route }: Props) {
 
   const aiAnalysis =
     scorePercent >= 85
-      ? `${subjectPool.label} üzrə güclü performans göstərdin, lakin zəif mövzulara da diqqət ayır.`
+      ? t('examResult.aiStrong', { subject: subjectPool.label })
     : scorePercent >= 60
-      ? `Yaxşı nəticədir! ${subjectPool.label} üzrə zəif mövzulara fokuslan.`
-    : `${subjectPool.label} əsaslarını yenidən təkrarla — irəlilək üçün şans var.`;
+      ? t('examResult.aiGood', { subject: subjectPool.label })
+    : t('examResult.aiWeak', { subject: subjectPool.label });
 
   const readiness = Math.min(100, Math.round(scorePercent * 0.95 + 5));
 
   const handleShare = () => {
-    Share.share({ message: `Kimi.az imtahanımda ${correctCount}/${total} aldım! 🎉` });
+    Share.share({ message: t('examResult.shareMsg', { correct: correctCount, total }) });
   };
 
   return (
@@ -157,7 +159,7 @@ export default function ExamResultScreen({ navigation, route }: Props) {
         >
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İmtahan Nəticəsi</Text>
+        <Text style={styles.headerTitle}>{t('examResult.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} onPress={handleShare} hitSlop={8} activeOpacity={0.7}>
           <Ionicons name="share-outline" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -184,13 +186,13 @@ export default function ExamResultScreen({ navigation, route }: Props) {
               </View>
             </View>
             <View style={styles.scoreBox}>
-              <Text style={styles.scoreBoxLabel}>NƏTİCƏ</Text>
+              <Text style={styles.scoreBoxLabel}>{t('examResult.score')}</Text>
               <Text style={styles.scoreBoxValue}>
                 {total > 0 ? `${scorePercent}` : '—'}
                 <Text style={styles.scoreBoxOf}> /100</Text>
               </Text>
               {total > 0 && (
-                <Text style={styles.scoreBoxFraction}>{correctCount}/{total} düz</Text>
+                <Text style={styles.scoreBoxFraction}>{t('examResult.correctFraction', { correct: correctCount, total })}</Text>
               )}
             </View>
           </View>
@@ -203,8 +205,8 @@ export default function ExamResultScreen({ navigation, route }: Props) {
               onPress={() => examId && navigation.navigate(Routes.ExamReview, { examId, filter: 'correct' })}
             >
               <Ionicons name="checkmark-circle" size={22} color={Colors.tertiary} />
-              <Text style={[styles.summaryStatValue, { color: Colors.tertiary }]}>{correctCount} düzgün</Text>
-              <Text style={styles.summaryStatLabel}>Cavablar {examId ? '↗' : ''}</Text>
+              <Text style={[styles.summaryStatValue, { color: Colors.tertiary }]}>{t('examResult.correctAnswers', { n: correctCount })}</Text>
+              <Text style={styles.summaryStatLabel}>{t('examResult.answers')} {examId ? '↗' : ''}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               activeOpacity={examId ? 0.7 : 1}
@@ -213,15 +215,15 @@ export default function ExamResultScreen({ navigation, route }: Props) {
               onPress={() => examId && navigation.navigate(Routes.ExamReview, { examId, filter: 'wrong' })}
             >
               <Ionicons name="close-circle" size={22} color={Colors.danger} />
-              <Text style={[styles.summaryStatValue, { color: Colors.danger }]}>{wrongCount} səhv</Text>
-              <Text style={styles.summaryStatLabel}>Səhvlər {examId ? '↗' : ''}</Text>
+              <Text style={[styles.summaryStatValue, { color: Colors.danger }]}>{t('examResult.wrongN', { n: wrongCount })}</Text>
+              <Text style={styles.summaryStatLabel}>{t('examResult.mistakes')} {examId ? '↗' : ''}</Text>
             </TouchableOpacity>
             <View style={styles.summaryStatItem}>
               <Ionicons name="time-outline" size={22} color={Colors.textSecondary} />
               <Text style={[styles.summaryStatValue, { color: Colors.textPrimary }]}>
                 {timeSpent ? formatTime(timeSpent) : '—'}
               </Text>
-              <Text style={styles.summaryStatLabel}>Zaman</Text>
+              <Text style={styles.summaryStatLabel}>{t('examResult.time')}</Text>
             </View>
           </View>
         </View>
@@ -239,9 +241,9 @@ export default function ExamResultScreen({ navigation, route }: Props) {
             </LinearGradient>
             <View style={{ flex: 1 }}>
               <View style={styles.aiTitleRow}>
-                <Text style={styles.aiTitle}>Kimi AI Təhlili</Text>
+                <Text style={styles.aiTitle}>{t('examResult.aiTitle')}</Text>
                 <View style={styles.aiBadge}>
-                  <Text style={styles.aiBadgeText}>SMART</Text>
+                  <Text style={styles.aiBadgeText}>{t('examResult.smart')}</Text>
                 </View>
               </View>
               <Text style={styles.aiQuote}>“{aiAnalysis}”</Text>
@@ -250,14 +252,14 @@ export default function ExamResultScreen({ navigation, route }: Props) {
         </View>
 
         {/* Topic Breakdown */}
-        <Text style={styles.sectionTitle}>Mövzu Təhlili</Text>
+        <Text style={styles.sectionTitle}>{t('examResult.topicAnalysis')}</Text>
 
         <View style={styles.topicCard}>
           <View style={styles.topicHeaderRow}>
             <View style={[styles.topicIconBox, { backgroundColor: Colors.tertiary + '1A' }]}>
               <Ionicons name="checkmark-circle" size={18} color={Colors.tertiary} />
             </View>
-            <Text style={styles.topicTitle}>Güclü mövzular</Text>
+            <Text style={styles.topicTitle}>{t('examResult.strongTopics')}</Text>
           </View>
           <View style={styles.topicChips}>
             {strongTopics.map((t) => (
@@ -273,7 +275,7 @@ export default function ExamResultScreen({ navigation, route }: Props) {
             <View style={[styles.topicIconBox, { backgroundColor: Colors.danger + '1A' }]}>
               <Ionicons name="trending-down" size={18} color={Colors.danger} />
             </View>
-            <Text style={styles.topicTitle}>Zəif mövzular</Text>
+            <Text style={styles.topicTitle}>{t('examResult.weakTopics')}</Text>
           </View>
           <View style={styles.topicChips}>
             {weakTopics.map((t) => (
@@ -293,11 +295,11 @@ export default function ExamResultScreen({ navigation, route }: Props) {
         >
           <View style={styles.readyDecorRing} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.readyTitle}>Hazırlıq səviyyəsi: {readiness}%</Text>
+            <Text style={styles.readyTitle}>{t('examResult.readiness', { n: readiness })}</Text>
             <Text style={styles.readySub}>
               {rank !== null && totalParticipants > 0
-                ? `${rank}-cü yer • ${totalParticipants} iştirakçı`
-                : `Növbəti hədəf: ${weakTopics[0] ?? subjectPool.label} (Mastery)`}
+                ? t('examResult.rankLine', { rank, total: totalParticipants })
+                : t('examResult.nextGoal', { topic: weakTopics[0] ?? subjectPool.label })}
             </Text>
           </View>
           <View style={styles.readyCircle}>
@@ -323,7 +325,7 @@ export default function ExamResultScreen({ navigation, route }: Props) {
               end={{ x: 1, y: 0 }}
             >
               <Ionicons name="ribbon" size={20} color="#fff" />
-              <Text style={styles.primaryBtnText}>Sertifikata bax</Text>
+              <Text style={styles.primaryBtnText}>{t('examResult.viewCert')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         ) : null}
@@ -333,7 +335,7 @@ export default function ExamResultScreen({ navigation, route }: Props) {
           onPress={() => navigation.navigate(Routes.ExamList)}
         >
           <Ionicons name="refresh" size={20} color={Colors.textPrimary} />
-          <Text style={styles.secondaryBtnText}>Yenidən həll et</Text>
+          <Text style={styles.secondaryBtnText}>{t('examResult.retry')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

@@ -7,11 +7,21 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
+
+type TFunc = (key: string, vars?: Record<string, string | number>) => string;
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.SchoolExams>;
 type SubjectFilter = 'Hamısı' | 'Riyaziyyat' | 'Azərbaycan dili' | 'İngilis dili' | 'Digər';
 
 const SUBJECTS: SubjectFilter[] = ['Hamısı', 'Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Digər'];
+const SUBJECT_TKEY: Record<string, string> = {
+  'Hamısı': 'examFilter.tabAll', 'Riyaziyyat': 'examFilter.subjMath', 'Azərbaycan dili': 'examFilter.subjAz',
+  'İngilis dili': 'examFilter.subjEn', 'Digər': 'examBrowse.filterOther',
+};
+const DIFFICULTY_TKEY: Record<string, string> = {
+  Asan: 'examList.diff.easy', Orta: 'examList.diff.medium', Çətin: 'examList.diff.hard',
+};
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type ExamTier = 'free' | 'premium' | 'paid';
@@ -42,11 +52,12 @@ const DIFFICULTY_COLOR: Record<SchoolExam['difficulty'], string> = {
 };
 
 const RECS = [
-  { id: 'r1', title: 'Təkmilləşdirilmiş Kimya', sub: 'Zəif olduğun mövzulara əsasən hazırlanıb.', icon: 'sparkles' as const, tint: Colors.primary, bg: '#E0F2FE', cta: 'İndi başla' },
-  { id: 'r2', title: 'Tarix – Ümumi Təkrar',    sub: 'Son 3 ayın ən populyar sualları burada.',     icon: 'time' as const,     tint: Colors.tertiary, bg: '#DCFCE7',     cta: 'Daha çox' },
+  { id: 'r1', titleKey: 'schoolExams.rec1Title', subKey: 'schoolExams.rec1Sub', icon: 'sparkles' as const, tint: Colors.primary, bg: '#E0F2FE', ctaKey: 'schoolExams.rec1Cta' },
+  { id: 'r2', titleKey: 'schoolExams.rec2Title', subKey: 'schoolExams.rec2Sub', icon: 'time' as const, tint: Colors.tertiary, bg: '#DCFCE7', ctaKey: 'schoolExams.rec2Cta' },
 ];
 
 export default function SchoolExamsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [subject, setSubject] = useState<SubjectFilter>('Hamısı');
 
@@ -65,8 +76,8 @@ export default function SchoolExamsScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <View>
-          <Text style={styles.headerTitle}>İmtahanlar</Text>
-          <Text style={styles.headerSub}>UYĞUN İMTAHANI SEÇ</Text>
+          <Text style={styles.headerTitle}>{t('examList.title')}</Text>
+          <Text style={styles.headerSub}>{t('schoolExams.headerSub')}</Text>
         </View>
       </View>
 
@@ -76,7 +87,7 @@ export default function SchoolExamsScreen({ navigation }: Props) {
           <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
           <TextInput
             value={query} onChangeText={setQuery}
-            placeholder="İmtahan axtar..."
+            placeholder={t('examBrowse.searchPlaceholder')}
             placeholderTextColor={Colors.textMuted}
             style={styles.searchInput}
           />
@@ -98,14 +109,14 @@ export default function SchoolExamsScreen({ navigation }: Props) {
               return (
                 <TouchableOpacity key={s} activeOpacity={0.85} onPress={() => setSubject(s)}>
                   <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.chipActive}>
-                    <Text style={styles.chipActiveText}>{s}</Text>
+                    <Text style={styles.chipActiveText}>{t(SUBJECT_TKEY[s])}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               );
             }
             return (
               <TouchableOpacity key={s} style={styles.chip} activeOpacity={0.85} onPress={() => setSubject(s)}>
-                <Text style={styles.chipText}>{s}</Text>
+                <Text style={styles.chipText}>{t(SUBJECT_TKEY[s])}</Text>
               </TouchableOpacity>
             );
           })}
@@ -114,30 +125,30 @@ export default function SchoolExamsScreen({ navigation }: Props) {
 
         {/* List header */}
         <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Məktəb İmtahanları</Text>
+          <Text style={styles.listTitle}>{t('examBrowse.sectionTitle')}</Text>
           <View style={styles.counterPill}>
-            <Text style={styles.counterText}>{filtered.length} nəticə</Text>
+            <Text style={styles.counterText}>{t('schoolExams.nResults', { n: filtered.length })}</Text>
           </View>
         </View>
 
         {/* Cards */}
         <View style={{ gap: 24 }}>
-          {filtered.map((e) => renderCard(e, navigation))}
+          {filtered.map((e) => renderCard(e, navigation, t))}
         </View>
 
         {/* Recommendations */}
         <View style={styles.recSection}>
-          <Text style={styles.recTitle}>Sənə tövsiyə olunur</Text>
+          <Text style={styles.recTitle}>{t('schoolExams.recommended')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recRow}>
             {RECS.map((r) => (
               <TouchableOpacity key={r.id} style={styles.recCard} activeOpacity={0.85}>
                 <View style={[styles.recIconBox, { backgroundColor: r.bg }]}>
                   <Ionicons name={r.icon} size={22} color={r.tint} />
                 </View>
-                <Text style={styles.recCardTitle}>{r.title}</Text>
-                <Text style={styles.recCardSub}>{r.sub}</Text>
+                <Text style={styles.recCardTitle}>{t(r.titleKey)}</Text>
+                <Text style={styles.recCardSub}>{t(r.subKey)}</Text>
                 <View style={styles.recLinkRow}>
-                  <Text style={styles.recLinkText}>{r.cta}</Text>
+                  <Text style={styles.recLinkText}>{t(r.ctaKey)}</Text>
                   <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
                 </View>
               </TouchableOpacity>
@@ -151,7 +162,7 @@ export default function SchoolExamsScreen({ navigation }: Props) {
   );
 }
 
-function renderCard(e: SchoolExam, navigation: Props['navigation']) {
+function renderCard(e: SchoolExam, navigation: Props['navigation'], t: TFunc) {
   const diffColor = DIFFICULTY_COLOR[e.difficulty];
   const isFree = e.tier === 'free';
   const isPremium = e.tier === 'premium';
@@ -161,21 +172,21 @@ function renderCard(e: SchoolExam, navigation: Props['navigation']) {
     if (e.badge === 'Populyar') {
       return (
         <View style={[styles.badgePill, { backgroundColor: '#DCFCE7' }]}>
-          <Text style={[styles.badgeText, { color: Colors.tertiary }]}>POPULYAR</Text>
+          <Text style={[styles.badgeText, { color: Colors.tertiary }]}>{t('schoolExams.badgePopular')}</Text>
         </View>
       );
     }
     if (e.badge === 'Yeni') {
       return (
         <View style={[styles.badgePill, { backgroundColor: Colors.primary }]}>
-          <Text style={[styles.badgeText, { color: '#fff' }]}>YENİ</Text>
+          <Text style={[styles.badgeText, { color: '#fff' }]}>{t('schoolExams.badgeNew')}</Text>
         </View>
       );
     }
     return (
       <View style={[styles.badgePill, styles.liveBadge]}>
         <View style={styles.livePulse} />
-        <Text style={[styles.badgeText, { color: Colors.danger }]}>CANLI</Text>
+        <Text style={[styles.badgeText, { color: Colors.danger }]}>{t('schoolExams.badgeLive')}</Text>
       </View>
     );
   };
@@ -185,7 +196,7 @@ function renderCard(e: SchoolExam, navigation: Props['navigation']) {
       return (
         <View style={styles.priceRow}>
           <Ionicons name="lock-open" size={16} color={Colors.tertiary} />
-          <Text style={[styles.priceText, { color: Colors.tertiary }]}>Pulsuz</Text>
+          <Text style={[styles.priceText, { color: Colors.tertiary }]}>{t('examBrowse.free')}</Text>
         </View>
       );
     }
@@ -194,10 +205,10 @@ function renderCard(e: SchoolExam, navigation: Props['navigation']) {
         <View style={styles.priceRow}>
           <Ionicons name="lock-closed" size={16} color={isPremium ? Colors.primary : Colors.textMuted} />
           <Text style={[styles.priceText, { color: isPremium ? Colors.primary : Colors.textPrimary }]}>
-            {e.price?.toFixed(2)} AZN
+            {e.price?.toFixed(2)} {t('schoolExams.azn')}
           </Text>
         </View>
-        {isPremium && <Text style={styles.premiumKicker}>PREMIUM</Text>}
+        {isPremium && <Text style={styles.premiumKicker}>{t('schoolExams.premium')}</Text>}
       </View>
     );
   };
@@ -218,13 +229,13 @@ function renderCard(e: SchoolExam, navigation: Props['navigation']) {
       <View style={styles.metaRow}>
         <View style={styles.metaItem}>
           <Ionicons name="help-circle-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.metaText}>{e.questions} sual</Text>
+          <Text style={styles.metaText}>{t('examBrowse.nQuestions', { n: e.questions })}</Text>
         </View>
         <View style={styles.metaItem}>
           <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-          <Text style={styles.metaText}>{e.durationMin} dəq</Text>
+          <Text style={styles.metaText}>{t('examBrowse.nMin', { n: e.durationMin })}</Text>
         </View>
-        <Text style={[styles.metaText, { color: diffColor, fontWeight: '600' }]}>{e.difficulty}</Text>
+        <Text style={[styles.metaText, { color: diffColor, fontWeight: '600' }]}>{t(DIFFICULTY_TKEY[e.difficulty])}</Text>
       </View>
 
       {isPremium ? (
@@ -234,22 +245,22 @@ function renderCard(e: SchoolExam, navigation: Props['navigation']) {
             onPress={() => navigation.navigate(Routes.ExamPurchaseConfirm, { examId: e.id, title: e.title, price: e.price ?? 0, subject: e.subject, questions: e.questions })}
           >
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Al və başla</Text>
+              <Text style={styles.primaryBtnText}>{t('schoolExams.buyStart')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.85} style={styles.outlineBtn} onPress={() => navigation.navigate(Routes.ExamDetail, { examId: e.id, title: e.title })}>
-            <Text style={styles.outlineBtnText}>Detallara bax</Text>
+            <Text style={styles.outlineBtnText}>{t('catExams.details')}</Text>
           </TouchableOpacity>
         </View>
       ) : isFree ? (
         <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate(Routes.ExamInfo, { examId: e.id, title: e.title })}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-            <Text style={styles.primaryBtnText}>Başla</Text>
+            <Text style={styles.primaryBtnText}>{t('schoolExams.start')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       ) : (
         <TouchableOpacity activeOpacity={0.85} style={styles.mutedBtn} onPress={() => navigation.navigate(Routes.ExamInfo, { examId: e.id, title: e.title })}>
-          <Text style={styles.mutedBtnText}>Yoxla</Text>
+          <Text style={styles.mutedBtnText}>{t('schoolExams.check')}</Text>
         </TouchableOpacity>
       )}
     </View>

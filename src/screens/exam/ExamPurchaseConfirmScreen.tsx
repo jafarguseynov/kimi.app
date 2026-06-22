@@ -7,12 +7,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamPurchaseConfirm>;
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ExamPurchaseConfirmScreen({ route, navigation }: Props) {
   const { examId, title, price, subject, questions } = route.params;
+  const { t } = useTranslation();
   const balance = 20;
 
   const pulse = React.useRef(new Animated.Value(0)).current;
@@ -25,7 +27,7 @@ export default function ExamPurchaseConfirmScreen({ route, navigation }: Props) 
 
   const confirm = () => {
     navigation.replace(Routes.ExamPurchaseSuccess, {
-      examId, title: title ?? 'İmtahan', subject, questions: questions ?? 50, successRate: 85,
+      examId, title: title ?? t('examPurchase.defaultExam'), subject, questions: questions ?? 50, successRate: 85,
     });
   };
 
@@ -42,32 +44,32 @@ export default function ExamPurchaseConfirmScreen({ route, navigation }: Props) 
             </View>
           </View>
 
-          <Text style={styles.title}>İmtahanı al</Text>
-          <Text style={styles.subtitle}>Sınağa dərhal başlamaq üçün ödənişi təsdiqləyin.</Text>
+          <Text style={styles.title}>{t('examPurchase.confirmTitle')}</Text>
+          <Text style={styles.subtitle}>{t('examPurchase.confirmSub')}</Text>
 
           <View style={styles.txCard}>
             <View style={styles.txRow}>
-              <Text style={styles.txLabel}>Qiymət</Text>
+              <Text style={styles.txLabel}>{t('examPurchase.price')}</Text>
               <Text style={styles.txValueBig}>{price.toFixed(2)} AZN</Text>
             </View>
             <View style={styles.txRow}>
-              <Text style={styles.txLabel}>Balans</Text>
+              <Text style={styles.txLabel}>{t('examPurchase.balance')}</Text>
               <Text style={styles.txValue}>{balance} AZN</Text>
             </View>
             <View style={styles.txDivider} />
             <View style={styles.txHint}>
               <Ionicons name="information-circle" size={14} color={Colors.primary} />
-              <Text style={styles.txHintText}>BALANSDAN ÇIXILACAQ</Text>
+              <Text style={styles.txHintText}>{t('examPurchase.deductNote')}</Text>
             </View>
           </View>
 
           <TouchableOpacity activeOpacity={0.85} onPress={confirm} style={{ width: '100%' }}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Al və başla</Text>
+              <Text style={styles.primaryBtnText}>{t('examPurchase.buyAndStart')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.85} style={styles.cancelBtn} onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelBtnText}>Ləğv et</Text>
+            <Text style={styles.cancelBtnText}>{t('examPurchase.cancel')}</Text>
           </TouchableOpacity>
         </View>
       </View>

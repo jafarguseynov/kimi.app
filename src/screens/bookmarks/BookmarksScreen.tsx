@@ -23,8 +23,11 @@ import {
   type BookmarkTargetType,
 } from '../../api/bookmark.api';
 import { useRecentTeachersStore, type RecentTeacher } from '../../store/recentTeachers.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+const DATE_LOCALE: Record<string, string> = { az: 'az-AZ', ru: 'ru-RU', en: 'en-US' };
 
 type MainTab = 'saved' | 'recent';
 type SubTab = 'teacher' | 'request';
@@ -58,6 +61,7 @@ interface RequestMeta {
 
 export default function BookmarksScreen() {
   const navigation = useNavigation<any>();
+  const { t, language } = useTranslation();
   const [mainTab, setMainTab] = useState<MainTab>('saved');
   const [subTab, setSubTab] = useState<SubTab>('teacher');
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -95,17 +99,17 @@ export default function BookmarksScreen() {
   };
 
   const handleRemove = (bm: Bookmark) => {
-    Alert.alert('Silinsin?', `"${bm.title ?? 'Bu yer işarəsi'}" silinsin?`, [
-      { text: 'Ləğv et', style: 'cancel' },
+    Alert.alert(t('bookmarks.removeTitle'), t('bookmarks.removeMsg', { title: bm.title ?? t('bookmarks.defaultBookmark') }), [
+      { text: t('bookmarks.cancel'), style: 'cancel' },
       {
-        text: 'Sil',
+        text: t('bookmarks.delete'),
         style: 'destructive',
         onPress: async () => {
           try {
             await removeBookmark(bm.id);
             setBookmarks((prev) => prev.filter((b) => b.id !== bm.id));
           } catch {
-            Alert.alert('Xəta', 'Silinə bilmədi.');
+            Alert.alert(t('bookmarks.errorTitle'), t('bookmarks.removeFailed'));
           }
         },
       },
@@ -114,10 +118,10 @@ export default function BookmarksScreen() {
 
   const parseTeacher = (bm: Bookmark): TeacherMeta => {
     let meta: Partial<TeacherMeta> = {};
-    try { meta = bm.title ? JSON.parse(bm.title) : {}; } catch { meta = { name: bm.title ?? 'Müəllim' }; }
+    try { meta = bm.title ? JSON.parse(bm.title) : {}; } catch { meta = { name: bm.title ?? t('bookmarks.defaultTeacher') }; }
     return {
-      name: meta.name ?? bm.title ?? 'Müəllim',
-      subject: meta.subject ?? 'Müxtəlif fənlər',
+      name: meta.name ?? bm.title ?? t('bookmarks.defaultTeacher'),
+      subject: meta.subject ?? t('bookmarks.variousSubjects'),
       rating: meta.rating ?? 0,
       experience: meta.experience ?? '—',
       hourlyRate: meta.hourlyRate ?? 0,
@@ -128,10 +132,10 @@ export default function BookmarksScreen() {
 
   const parseRequest = (bm: Bookmark): RequestMeta => {
     let meta: Partial<RequestMeta> = {};
-    try { meta = bm.title ? JSON.parse(bm.title) : {}; } catch { meta = { title: bm.title ?? 'Sorğu' }; }
+    try { meta = bm.title ? JSON.parse(bm.title) : {}; } catch { meta = { title: bm.title ?? t('bookmarks.defaultRequest') }; }
     return {
-      title: meta.title ?? bm.title ?? 'Sorğu',
-      subject: meta.subject ?? 'Ümumi',
+      title: meta.title ?? bm.title ?? t('bookmarks.defaultRequest'),
+      subject: meta.subject ?? t('bookmarks.generalSubject'),
       status: meta.status ?? 'active',
       grade: meta.grade,
       priceRange: meta.priceRange,
@@ -142,10 +146,10 @@ export default function BookmarksScreen() {
   const formatRelative = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime();
     const days = Math.floor(diff / 86400000);
-    if (days === 0) return 'Bugün';
-    if (days === 1) return 'Dünən';
-    if (days < 7) return `${days} gün əvvəl`;
-    return new Date(iso).toLocaleDateString('az-AZ', { day: 'numeric', month: 'short' });
+    if (days === 0) return t('bookmarks.relToday');
+    if (days === 1) return t('bookmarks.relYesterday');
+    if (days < 7) return t('bookmarks.relDays', { n: days });
+    return new Date(iso).toLocaleDateString(DATE_LOCALE[language] ?? 'az-AZ', { day: 'numeric', month: 'short' });
   };
 
   const initials = (name: string) =>
@@ -161,18 +165,18 @@ export default function BookmarksScreen() {
   };
 
   const renderTeacherCard = (bm: Bookmark) => {
-    const t = parseTeacher(bm);
+    const teacher = parseTeacher(bm);
     return (
       <View key={bm.id} style={styles.teacherCard}>
         <View style={styles.teacherPhotoWrap}>
-          {t.avatarUrl ? (
-            <Image source={{ uri: t.avatarUrl }} style={styles.teacherPhoto} />
+          {teacher.avatarUrl ? (
+            <Image source={{ uri: teacher.avatarUrl }} style={styles.teacherPhoto} />
           ) : (
             <LinearGradient colors={GRADIENT} style={styles.teacherPhoto} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={styles.teacherPhotoInitial}>{initials(t.name)}</Text>
+              <Text style={styles.teacherPhotoInitial}>{initials(teacher.name)}</Text>
             </LinearGradient>
           )}
-          {t.isVerified && (
+          {teacher.isVerified && (
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark" size={12} color="#fff" />
             </View>
@@ -181,8 +185,8 @@ export default function BookmarksScreen() {
         <View style={styles.teacherBody}>
           <View style={styles.teacherTopRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.teacherName} numberOfLines={1}>{t.name}</Text>
-              <Text style={styles.teacherSubject}>{t.subject.toUpperCase()}</Text>
+              <Text style={styles.teacherName} numberOfLines={1}>{teacher.name}</Text>
+              <Text style={styles.teacherSubject}>{teacher.subject.toUpperCase()}</Text>
             </View>
             <TouchableOpacity onPress={() => handleRemove(bm)} hitSlop={8}>
               <Ionicons name="bookmark" size={22} color={Colors.primary} />
@@ -191,23 +195,23 @@ export default function BookmarksScreen() {
           <View style={styles.teacherMetaRow}>
             <View style={styles.metaItem}>
               <Ionicons name="star" size={14} color="#f59e0b" />
-              <Text style={styles.metaTextBold}>{t.rating > 0 ? t.rating.toFixed(1) : 'Yeni'}</Text>
+              <Text style={styles.metaTextBold}>{teacher.rating > 0 ? teacher.rating.toFixed(1) : t('bookmarks.ratingNew')}</Text>
             </View>
             <View style={styles.metaItem}>
               <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-              <Text style={styles.metaText}>{t.experience}</Text>
+              <Text style={styles.metaText}>{teacher.experience}</Text>
             </View>
           </View>
           <View style={styles.teacherFooter}>
             <View style={styles.priceRow}>
-              <Text style={styles.priceValue}>{t.hourlyRate > 0 ? `${t.hourlyRate} AZN` : '—'}</Text>
-              <Text style={styles.priceUnit}>/saat</Text>
+              <Text style={styles.priceValue}>{teacher.hourlyRate > 0 ? `${teacher.hourlyRate} AZN` : '—'}</Text>
+              <Text style={styles.priceUnit}>{t('bookmarks.perHour')}</Text>
             </View>
             <TouchableOpacity
               style={styles.viewBtn}
               onPress={() => navigation.getParent()?.navigate('Booking', { screen: Routes.TeacherList })}
             >
-              <Text style={styles.viewBtnText}>Profilə bax</Text>
+              <Text style={styles.viewBtnText}>{t('bookmarks.viewProfile')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -232,7 +236,7 @@ export default function BookmarksScreen() {
               {subjectChip(r.subject)}
               <View style={[styles.statusBadge, r.status === 'active' ? styles.statusActive : styles.statusFinished]}>
                 <Text style={[styles.statusText, r.status === 'active' ? styles.statusActiveText : styles.statusFinishedText]}>
-                  {r.status === 'active' ? 'AKTİV' : 'BİTİB'}
+                  {r.status === 'active' ? t('bookmarks.statusActive') : t('bookmarks.statusFinished')}
                 </Text>
               </View>
             </View>
@@ -286,7 +290,7 @@ export default function BookmarksScreen() {
   };
 
   const bucketLabel = (b: 'today' | 'yesterday' | 'week' | 'older') =>
-    b === 'today' ? 'BU GÜN' : b === 'yesterday' ? 'DÜNƏN' : b === 'week' ? 'BU HƏFTƏ' : 'DAHA ƏVVƏL';
+    b === 'today' ? t('bookmarks.bucketToday') : b === 'yesterday' ? t('bookmarks.bucketYesterday') : b === 'week' ? t('bookmarks.bucketWeek') : t('bookmarks.bucketOlder');
 
   const groupedRecent = (() => {
     const groups: Record<string, RecentTeacher[]> = { today: [], yesterday: [], week: [], older: [] };
@@ -301,37 +305,37 @@ export default function BookmarksScreen() {
   const relativeTime = (ts: number) => {
     const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'indicə';
-    if (mins < 60) return `${mins} dəq əvvəl`;
+    if (mins < 1) return t('bookmarks.relNow');
+    if (mins < 60) return t('bookmarks.relMin', { n: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours} saat əvvəl`;
+    if (hours < 24) return t('bookmarks.relHour', { n: hours });
     const days = Math.floor(hours / 24);
-    if (days === 1) return 'Dünən';
-    if (days < 7) return `${days} gün əvvəl`;
-    return new Date(ts).toLocaleDateString('az-AZ', { day: 'numeric', month: 'short' });
+    if (days === 1) return t('bookmarks.relYesterday');
+    if (days < 7) return t('bookmarks.relDays', { n: days });
+    return new Date(ts).toLocaleDateString(DATE_LOCALE[language] ?? 'az-AZ', { day: 'numeric', month: 'short' });
   };
 
-  const renderRecentTeacher = (t: RecentTeacher) => {
-    const subj = t.subject ?? 'Müxtəlif fənlər';
+  const renderRecentTeacher = (teacher: RecentTeacher) => {
+    const subj = teacher.subject ?? t('bookmarks.variousSubjects');
     const c = SUBJECT_COLORS[subj] ?? { bg: Colors.primaryLight, fg: Colors.primary };
     return (
       <TouchableOpacity
-        key={t.id + t.viewedAt}
+        key={teacher.id + teacher.viewedAt}
         style={styles.recentCard}
         activeOpacity={0.85}
         onPress={() =>
           navigation.getParent()?.navigate('Booking', {
             screen: Routes.TeacherProfile,
-            params: { teacher: t },
+            params: { teacher },
           })
         }
       >
         <View style={styles.recentPhotoWrap}>
-          {t.avatarUrl ? (
-            <Image source={{ uri: t.avatarUrl }} style={styles.recentPhoto} />
+          {teacher.avatarUrl ? (
+            <Image source={{ uri: teacher.avatarUrl }} style={styles.recentPhoto} />
           ) : (
             <LinearGradient colors={GRADIENT} style={styles.recentPhoto} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={styles.recentInitial}>{initials(t.name)}</Text>
+              <Text style={styles.recentInitial}>{initials(teacher.name)}</Text>
             </LinearGradient>
           )}
         </View>
@@ -340,15 +344,15 @@ export default function BookmarksScreen() {
             <View style={[styles.subjectChip, { backgroundColor: c.bg }]}>
               <Text style={[styles.subjectChipText, { color: c.fg }]}>{subj.toUpperCase()}</Text>
             </View>
-            <Text style={styles.recentTime}>{relativeTime(t.viewedAt)}</Text>
+            <Text style={styles.recentTime}>{relativeTime(teacher.viewedAt)}</Text>
           </View>
-          <Text style={styles.recentName} numberOfLines={1}>{t.name}</Text>
-          <Text style={styles.recentExp} numberOfLines={1}>{t.experience ?? 'Tədris üzrə mütəxəssis'}</Text>
+          <Text style={styles.recentName} numberOfLines={1}>{teacher.name}</Text>
+          <Text style={styles.recentExp} numberOfLines={1}>{teacher.experience ?? t('bookmarks.defaultExpert')}</Text>
           <View style={styles.recentMetaRow}>
             <Ionicons name="star" size={14} color="#f59e0b" />
-            <Text style={styles.metaTextBold}>{t.rating && t.rating > 0 ? t.rating.toFixed(1) : '—'}</Text>
-            {typeof t.hourlyRate === 'number' && t.hourlyRate > 0 && (
-              <Text style={styles.recentPrice}>{t.hourlyRate} AZN<Text style={styles.priceUnit}>/saat</Text></Text>
+            <Text style={styles.metaTextBold}>{teacher.rating && teacher.rating > 0 ? teacher.rating.toFixed(1) : '—'}</Text>
+            {typeof teacher.hourlyRate === 'number' && teacher.hourlyRate > 0 && (
+              <Text style={styles.recentPrice}>{teacher.hourlyRate} AZN<Text style={styles.priceUnit}>{t('bookmarks.perHour')}</Text></Text>
             )}
           </View>
         </View>
@@ -364,7 +368,7 @@ export default function BookmarksScreen() {
           <View style={styles.avatarCircle}>
             <Ionicons name="bookmark" size={18} color={Colors.primary} />
           </View>
-          <Text style={styles.headerTitle}>Yaddaş</Text>
+          <Text style={styles.headerTitle}>{t('bookmarks.header')}</Text>
         </View>
         <TouchableOpacity
           style={styles.headerBtn}
@@ -386,14 +390,14 @@ export default function BookmarksScreen() {
             onPress={() => setMainTab('saved')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.segText, mainTab === 'saved' && styles.segTextActive]}>Yadda saxlanılanlar</Text>
+            <Text style={[styles.segText, mainTab === 'saved' && styles.segTextActive]}>{t('bookmarks.tabSaved')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.segBtn, mainTab === 'recent' && styles.segBtnActive]}
             onPress={() => setMainTab('recent')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.segText, mainTab === 'recent' && styles.segTextActive]}>Son baxılanlar</Text>
+            <Text style={[styles.segText, mainTab === 'recent' && styles.segTextActive]}>{t('bookmarks.tabRecent')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -404,14 +408,14 @@ export default function BookmarksScreen() {
             onPress={() => setSubTab('teacher')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.chipText, subTab === 'teacher' && styles.chipTextActive]}>Müəllimlər</Text>
+            <Text style={[styles.chipText, subTab === 'teacher' && styles.chipTextActive]}>{t('bookmarks.teachers')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.chip, subTab === 'request' && styles.chipActive]}
             onPress={() => setSubTab('request')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.chipText, subTab === 'request' && styles.chipTextActive]}>Sorğular</Text>
+            <Text style={[styles.chipText, subTab === 'request' && styles.chipTextActive]}>{t('bookmarks.subRequests')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -425,11 +429,11 @@ export default function BookmarksScreen() {
               <LinearGradient colors={GRADIENT} style={styles.emptyIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <Ionicons name="bookmark-outline" size={32} color="#fff" />
               </LinearGradient>
-              <Text style={styles.emptyTitle}>Yer işarəsi yoxdur</Text>
+              <Text style={styles.emptyTitle}>{t('bookmarks.noBookmarksTitle')}</Text>
               <Text style={styles.emptySub}>
                 {subTab === 'teacher'
-                  ? 'Bəyəndiyiniz müəllimləri yadda saxlayın'
-                  : 'Maraqlandığınız sorğuları yadda saxlayın'}
+                  ? t('bookmarks.saveTeachersSub')
+                  : t('bookmarks.saveRequestsSub')}
               </Text>
             </View>
           ) : (
@@ -445,23 +449,23 @@ export default function BookmarksScreen() {
               <LinearGradient colors={GRADIENT} style={styles.emptyIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <Ionicons name="time-outline" size={32} color="#fff" />
               </LinearGradient>
-              <Text style={styles.emptyTitle}>Hələ baxılan yoxdur</Text>
-              <Text style={styles.emptySub}>Açdığınız müəllim profilləri burada görünəcək</Text>
+              <Text style={styles.emptyTitle}>{t('bookmarks.noRecentTitle')}</Text>
+              <Text style={styles.emptySub}>{t('bookmarks.noRecentSub')}</Text>
             </View>
           ) : (
             <View>
               <View style={styles.recentToolbar}>
-                <Text style={styles.recentToolbarTitle}>Müəllimlər</Text>
+                <Text style={styles.recentToolbarTitle}>{t('bookmarks.teachers')}</Text>
                 <TouchableOpacity
                   hitSlop={8}
                   onPress={() =>
-                    Alert.alert('Tarixçə təmizlənsin?', 'Bütün son baxılanlar silinəcək.', [
-                      { text: 'Ləğv et', style: 'cancel' },
-                      { text: 'Təmizlə', style: 'destructive', onPress: () => clearRecentTeachers() },
+                    Alert.alert(t('bookmarks.clearHistoryTitle'), t('bookmarks.clearHistoryMsg'), [
+                      { text: t('bookmarks.cancel'), style: 'cancel' },
+                      { text: t('bookmarks.clear'), style: 'destructive', onPress: () => clearRecentTeachers() },
                     ])
                   }
                 >
-                  <Text style={styles.recentClearText}>Təmizlə</Text>
+                  <Text style={styles.recentClearText}>{t('bookmarks.clear')}</Text>
                 </TouchableOpacity>
               </View>
               {groupedRecent.map((g) => (
@@ -477,14 +481,14 @@ export default function BookmarksScreen() {
             <LinearGradient colors={GRADIENT} style={styles.emptyIcon} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <Ionicons name="time-outline" size={32} color="#fff" />
             </LinearGradient>
-            <Text style={styles.emptyTitle}>Son sorğu yoxdur</Text>
-            <Text style={styles.emptySub}>Baxdığınız sorğular burada görünəcək</Text>
+            <Text style={styles.emptyTitle}>{t('bookmarks.noRecentRequestTitle')}</Text>
+            <Text style={styles.emptySub}>{t('bookmarks.noRecentRequestSub')}</Text>
           </View>
         )}
 
         {/* Daha çox */}
         <View style={bmExtraStyles.section}>
-          <Text style={bmExtraStyles.title}>Daha çox</Text>
+          <Text style={bmExtraStyles.title}>{t('bookmarks.more')}</Text>
           <View style={bmExtraStyles.row}>
             <TouchableOpacity
               style={bmExtraStyles.card}
@@ -494,8 +498,8 @@ export default function BookmarksScreen() {
               <View style={[bmExtraStyles.iconWrap, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="heart" size={20} color="#DC2626" />
               </View>
-              <Text style={bmExtraStyles.cardTitle}>Sevimlilər</Text>
-              <Text style={bmExtraStyles.cardSub}>Kolleksiyam</Text>
+              <Text style={bmExtraStyles.cardTitle}>{t('bookmarks.favHeroTitle')}</Text>
+              <Text style={bmExtraStyles.cardSub}>{t('bookmarks.myCollection')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={bmExtraStyles.card}
@@ -505,8 +509,8 @@ export default function BookmarksScreen() {
               <View style={[bmExtraStyles.iconWrap, { backgroundColor: Colors.primaryLight }]}>
                 <Ionicons name="time" size={20} color={Colors.primary} />
               </View>
-              <Text style={bmExtraStyles.cardTitle}>Son Baxılanlar</Text>
-              <Text style={bmExtraStyles.cardSub}>Timeline tarixçə</Text>
+              <Text style={bmExtraStyles.cardTitle}>{t('bookmarks.rvTitle')}</Text>
+              <Text style={bmExtraStyles.cardSub}>{t('bookmarks.timelineHistory')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -522,17 +526,17 @@ export default function BookmarksScreen() {
             <Ionicons name="sparkles" size={22} color="#fff" />
           </View>
           <Text style={styles.aiHeroTitle}>
-            {subTab === 'teacher' ? 'Daha çox müəllim axtarırsınız?' : 'Yeni sorğu yaratmaq istəyirsiniz?'}
+            {subTab === 'teacher' ? t('bookmarks.aiHeroTitleTeacher') : t('bookmarks.aiHeroTitleRequest')}
           </Text>
           <Text style={styles.aiHeroSub}>
-            Kimi süni intellekt köməkçisi sizə fərdi ehtiyaclarınıza ən uyğun nəticəni dərhal tapmaqda kömək edəcək.
+            {t('bookmarks.aiHeroSub')}
           </Text>
           <TouchableOpacity
             style={styles.aiHeroBtn}
             onPress={() => navigation.getParent()?.navigate(Routes.AIMentor)}
             activeOpacity={0.85}
           >
-            <Text style={styles.aiHeroBtnText}>Kimi-dən soruş</Text>
+            <Text style={styles.aiHeroBtnText}>{t('bookmarks.askKimi')}</Text>
           </TouchableOpacity>
         </LinearGradient>
 

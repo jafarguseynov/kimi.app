@@ -7,6 +7,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.LiveExamsList>;
 type DayFilter = 'all' | 'today' | 'tomorrow';
@@ -33,6 +34,7 @@ const EXAMS: LiveExam[] = [
 ];
 
 export default function LiveExamsListScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [day, setDay] = useState<DayFilter>('all');
 
   const filtered = useMemo(() => {
@@ -53,7 +55,7 @@ export default function LiveExamsListScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İmtahan Mərkəzi</Text>
+        <Text style={styles.headerTitle}>{t('liveExams.center')}</Text>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -70,28 +72,28 @@ export default function LiveExamsListScreen({ navigation }: Props) {
             <Ionicons name="rocket" size={96} color="rgba(255,255,255,0.2)" />
           </View>
           <View style={styles.livePill}>
-            <Text style={styles.livePillText}>CANLI RƏQABƏT</Text>
+            <Text style={styles.livePillText}>{t('liveExams.liveCompetition')}</Text>
           </View>
-          <Text style={styles.heroTitle}>Biliklərinizi Real Vaxtda Sınayın</Text>
+          <Text style={styles.heroTitle}>{t('liveExams.heroTitle')}</Text>
           <Text style={styles.heroSub}>
-            Minlərlə tələbə ilə eyni vaxtda yarışın, liderlik lövhəsində yerinizi tutun və intellektual potensialınızı kəşf edin.
+            {t('liveExams.heroSub')}
           </Text>
         </LinearGradient>
 
         {/* Title + counter */}
         <View style={styles.titleRow}>
-          <Text style={styles.title}>Canlı İmtahanlar</Text>
+          <Text style={styles.title}>{t('liveExams.liveExamsTitle')}</Text>
           <View style={styles.counterPill}>
-            <Text style={styles.counterText}>{liveCount} Aktiv</Text>
+            <Text style={styles.counterText}>{t('liveExams.active', { n: liveCount })}</Text>
           </View>
         </View>
 
         {/* Day segmented */}
         <View style={styles.segmented}>
           {([
-            { id: 'all', label: 'Hamısı' },
-            { id: 'today', label: 'Bu gün' },
-            { id: 'tomorrow', label: 'Sabah' },
+            { id: 'all', label: t('liveExams.all') },
+            { id: 'today', label: t('liveExams.today') },
+            { id: 'tomorrow', label: t('liveExams.tomorrow') },
           ] as { id: DayFilter; label: string }[]).map((opt) => {
             const active = day === opt.id;
             return (
@@ -110,7 +112,7 @@ export default function LiveExamsListScreen({ navigation }: Props) {
         {filtered.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="time-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>Bu intervalda canlı imtahan yoxdur</Text>
+            <Text style={styles.emptyTitle}>{t('liveExams.emptyTitle')}</Text>
           </View>
         ) : (
           <View style={{ gap: 24 }}>
@@ -123,7 +125,7 @@ export default function LiveExamsListScreen({ navigation }: Props) {
                       <View style={[styles.statusBadge, isLive ? styles.statusLive : styles.statusSoon]}>
                         {isLive && <View style={styles.liveDot} />}
                         <Text style={[styles.statusText, isLive ? styles.statusLiveText : styles.statusSoonText]}>
-                          {isLive ? 'Canlı' : 'Tezliklə'}
+                          {isLive ? t('liveExams.live') : t('liveExams.soon')}
                         </Text>
                       </View>
                       <Text style={styles.cardTitle}>{ex.title}</Text>
@@ -140,14 +142,14 @@ export default function LiveExamsListScreen({ navigation }: Props) {
                     </View>
                     <View style={styles.metaItem}>
                       <Ionicons name="people-outline" size={16} color={Colors.textSecondary} />
-                      <Text style={styles.metaText}>{ex.participants.toLocaleString('az-AZ')} iştirakçı</Text>
+                      <Text style={styles.metaText}>{t('liveExams.participants', { n: ex.participants.toLocaleString('az-AZ') })}</Text>
                     </View>
                   </View>
 
                   {isLive ? (
                     <TouchableOpacity activeOpacity={0.85} onPress={() => join(ex)}>
                       <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaPrimary}>
-                        <Text style={styles.ctaPrimaryText}>Qoşul</Text>
+                        <Text style={styles.ctaPrimaryText}>{t('liveExams.join')}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   ) : (
@@ -155,7 +157,7 @@ export default function LiveExamsListScreen({ navigation }: Props) {
                       activeOpacity={0.85} style={styles.ctaSecondary}
                       onPress={() => navigation.navigate(Routes.LiveExamDetail, { examId: ex.id, title: ex.title, participants: ex.participants })}
                     >
-                      <Text style={styles.ctaSecondaryText}>Xatırlat</Text>
+                      <Text style={styles.ctaSecondaryText}>{t('liveExams.remind')}</Text>
                     </TouchableOpacity>
                   )}
                 </View>

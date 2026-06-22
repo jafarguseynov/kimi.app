@@ -8,6 +8,7 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,13 +21,12 @@ import { getOrCreateChat } from '../../api/chat.api';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
+import { useTranslation } from '../../i18n';
 
 const { width } = Dimensions.get('window');
 const PHOTO_SIZE = Math.min(width - 40, 320);
 
-const DAY_LABELS: Record<number, string> = {
-  0: 'B.E', 1: 'Ç.Ə', 2: 'ÇƏR', 3: 'CÜM.Ə', 4: 'CÜM', 5: 'ŞƏN', 6: 'BAZ',
-};
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 const AVATAR_PALETTE = [
   { bg: Colors.primaryLight, text: Colors.primary },
@@ -36,18 +36,20 @@ const AVATAR_PALETTE = [
   { bg: '#E0E7FF', text: '#4F46E5' },
 ];
 
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: TFn): string {
   const diff = Date.now() - new Date(iso).getTime();
   const day = 24 * 60 * 60 * 1000;
-  if (diff < day) return 'Bu gün';
-  if (diff < 2 * day) return 'Dünən';
-  if (diff < 7 * day) return `${Math.floor(diff / day)} gün əvvəl`;
-  if (diff < 30 * day) return `${Math.floor(diff / (7 * day))} həftə əvvəl`;
-  return `${Math.floor(diff / (30 * day))} ay əvvəl`;
+  if (diff < day) return t('booking.today');
+  if (diff < 2 * day) return t('booking.yesterday');
+  if (diff < 7 * day) return t('booking.daysAgo', { n: Math.floor(diff / day) });
+  if (diff < 30 * day) return t('booking.weeksAgo', { n: Math.floor(diff / (7 * day)) });
+  return t('booking.monthsAgo', { n: Math.floor(diff / (30 * day)) });
 }
 
 export default function TeacherProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
+  const DAY_LABELS = t('teacherProfile.dayShort').split('|');
   const route = useRoute<any>();
   const teacher = route.params?.teacher;
   const teacherId: string | undefined = teacher?.id;
@@ -90,8 +92,8 @@ export default function TeacherProfileScreen() {
     const booking = myBookings.find((b) => b.teacher?.id === teacherId);
     if (!booking) {
       Alert.alert(
-        'Rezervasiya tələb olunur',
-        'Bu müəllimə rəy yazmaq üçün əvvəlcə dərs sifariş etməlisən.',
+        t('booking.bookingRequired'),
+        t('booking.bookingRequiredMsg'),
       );
       return;
     }
@@ -117,6 +119,7 @@ export default function TeacherProfileScreen() {
   const topReviews = reviews.slice(0, 2);
   const initial = teacher?.name?.[0]?.toUpperCase() ?? '?';
   const subject = teacher?.subjects?.[0] ?? 'Riyaziyyat';
+  const DATE_FALLBACK_DAY = t('teacherProfile.dayFallback');
 
   if (!teacher) {
     return (
@@ -125,16 +128,16 @@ export default function TeacherProfileScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Müəllim Profili</Text>
+          <Text style={styles.headerTitle}>{t('teacherProfile.header')}</Text>
           <View style={styles.headerBtn} />
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 }}>
           <Ionicons name="alert-circle-outline" size={48} color={Colors.textMuted} />
           <Text style={{ fontSize: 16, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' }}>
-            Müəllim məlumatı tapılmadı
+            {t('teacherProfile.notFound')}
           </Text>
           <Text style={{ fontSize: 13, color: Colors.textMuted, textAlign: 'center' }}>
-            Müəllim siyahısından bir müəllim seçin
+            {t('teacherProfile.notFoundSub')}
           </Text>
         </View>
       </SafeAreaView>
@@ -148,7 +151,7 @@ export default function TeacherProfileScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Müəllim Profili</Text>
+        <Text style={styles.headerTitle}>{t('teacherProfile.header')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -162,24 +165,30 @@ export default function TeacherProfileScreen() {
         {/* Hero */}
         <View style={styles.heroSection}>
           <View style={[styles.photoBox, { width: PHOTO_SIZE, height: PHOTO_SIZE }]}>
-            <LinearGradient
-              colors={[Colors.gradientStart, Colors.gradientEnd]}
-              style={StyleSheet.absoluteFill}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            />
-            <Text style={styles.photoInitial}>{initial}</Text>
+            {teacher?.avatarUrl ? (
+              <Image source={{ uri: teacher.avatarUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            ) : (
+              <>
+                <LinearGradient
+                  colors={[Colors.gradientStart, Colors.gradientEnd]}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                />
+                <Text style={styles.photoInitial}>{initial}</Text>
+              </>
+            )}
           </View>
 
           <View style={styles.heroInfo}>
             <View style={styles.heroNameRow}>
-              <Text style={styles.heroName}>{teacher?.name ?? 'Müəllim'}</Text>
+              <Text style={styles.heroName}>{teacher?.name ?? t('booking.defaultTeacher')}</Text>
               <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
             </View>
             <View style={styles.ratingPill}>
               <Ionicons name="star" size={16} color="#F59E0B" />
               <Text style={styles.ratingVal}>{teacher?.rating?.toFixed(1) ?? '4.9'}</Text>
-              <Text style={styles.ratingCount}>(120 rəy)</Text>
+              <Text style={styles.ratingCount}>{t('teacherProfile.ratingCountDemo')}</Text>
             </View>
           </View>
         </View>
@@ -190,44 +199,44 @@ export default function TeacherProfileScreen() {
             <View style={styles.statIconBox}>
               <Ionicons name="time-outline" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.statMeta}>TƏCRÜBƏ</Text>
-            <Text style={styles.statVal}>8 il təcrübə</Text>
+            <Text style={styles.statMeta}>{t('teacherProfile.metaExperience')}</Text>
+            <Text style={styles.statVal}>{t('teacherProfile.expValue')}</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statIconBox}>
               <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.statMeta}>QİYMƏT</Text>
-            <Text style={styles.statVal}>{teacher?.hourlyRate ?? 15} AZN / dərs</Text>
+            <Text style={styles.statMeta}>{t('teacherProfile.metaPrice')}</Text>
+            <Text style={styles.statVal}>{t('teacherProfile.priceValue', { rate: teacher?.hourlyRate ?? 15 })}</Text>
           </View>
           <View style={[styles.statCard, styles.statCardWide]}>
             <View style={styles.statIconBox}>
               <Ionicons name="laptop-outline" size={20} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.statMeta}>DƏRS FORMATI</Text>
-              <Text style={styles.statVal}>Online, Evdə</Text>
+              <Text style={styles.statMeta}>{t('teacherProfile.metaFormat')}</Text>
+              <Text style={styles.statVal}>{t('teacherProfile.formatValue')}</Text>
             </View>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statIconBox}>
               <Ionicons name="location-outline" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.statMeta}>ŞƏHƏR</Text>
-            <Text style={styles.statVal}>{teacher?.city ?? 'Qeyd olunmayıb'}</Text>
+            <Text style={styles.statMeta}>{t('teacherProfile.metaCity')}</Text>
+            <Text style={styles.statVal}>{teacher?.city ?? t('teacherProfile.notSpecified')}</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statIconBox}>
               <Ionicons name="person-outline" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.statMeta}>YAŞ</Text>
-            <Text style={styles.statVal}>{teacher?.age != null ? `${teacher.age} yaş` : 'Qeyd olunmayıb'}</Text>
+            <Text style={styles.statMeta}>{t('teacherProfile.metaAge')}</Text>
+            <Text style={styles.statVal}>{teacher?.age != null ? t('teacherProfile.ageValue', { age: teacher.age }) : t('teacherProfile.notSpecified')}</Text>
           </View>
         </View>
 
         {/* Subjects */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>FƏNLƏR</Text>
+          <Text style={styles.sectionLabel}>{t('teacherProfile.subjectsLabel')}</Text>
           <View style={styles.subjectsRow}>
             {(teacher?.subjects?.length ? teacher.subjects : [subject, 'Cəbr', 'Həndəsə']).map((s: string) => (
               <View key={s} style={styles.subjectChip}>
@@ -239,9 +248,9 @@ export default function TeacherProfileScreen() {
 
         {/* Biography */}
         <View style={styles.bioCard}>
-          <Text style={styles.sectionLabel}>BİOQRAFİYA</Text>
+          <Text style={styles.sectionLabel}>{t('teacherProfile.bioLabel')}</Text>
           <Text style={styles.bioText}>
-            Riyaziyyat üzrə mütəxəssis, 500+ şagirdə qəbul hazırlığında kömək etmişəm. Dərslərimdə hər bir tələbəyə fərdi yanaşma tətbiq edirəm və mürəkkəb mövzuları ən sadə dillə izah edirəm.
+            {t('teacherProfile.bioText')}
           </Text>
           <View style={styles.bioWatermark} pointerEvents="none">
             <Ionicons name="school-outline" size={80} color={Colors.textPrimary} style={{ opacity: 0.03 }} />
@@ -251,9 +260,9 @@ export default function TeacherProfileScreen() {
         {/* Schedule */}
         <View style={styles.section}>
           <View style={styles.scheduleHeader}>
-            <Text style={styles.sectionLabel}>MÖVCUD SAATLAR</Text>
+            <Text style={styles.sectionLabel}>{t('teacherProfile.availableHours')}</Text>
             <View style={styles.weekBadge}>
-              <Text style={styles.weekBadgeText}>Cari həftə</Text>
+              <Text style={styles.weekBadgeText}>{t('teacherProfile.currentWeek')}</Text>
             </View>
           </View>
           {isLoading ? (
@@ -275,10 +284,10 @@ export default function TeacherProfileScreen() {
                     onPress={() => avail && navigation.navigate(Routes.BookingConfirm, { teacher, slot })}
                   >
                     <Text style={[styles.slotDay, !avail && styles.slotTextDisabled]}>
-                      {DAY_LABELS[slot.dayOfWeek] ?? 'GÜN'}
+                      {DAY_LABELS[slot.dayOfWeek] ?? DATE_FALLBACK_DAY}
                     </Text>
                     <Text style={[styles.slotTime, !avail && styles.slotTextDisabled]}>
-                      {avail ? slot.startTime : 'Dolu'}
+                      {avail ? slot.startTime : t('teacherProfile.full')}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -290,9 +299,9 @@ export default function TeacherProfileScreen() {
         {/* Reviews */}
         <View style={styles.reviewsSection}>
           <View style={styles.reviewsHeader}>
-            <Text style={styles.sectionLabel}>ŞAGİRD RƏYLƏRİ</Text>
+            <Text style={styles.sectionLabel}>{t('teacherProfile.studentReviews')}</Text>
             <TouchableOpacity activeOpacity={0.7} onPress={handleWriteReview}>
-              <Text style={styles.writeReview}>Rəy yaz</Text>
+              <Text style={styles.writeReview}>{t('booking.writeReview')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -310,7 +319,7 @@ export default function TeacherProfileScreen() {
                   />
                 ))}
               </View>
-              <Text style={styles.reviewCount}>{reviewCount} rəy əsasında</Text>
+              <Text style={styles.reviewCount}>{t('teacherProfile.reviewsBasedOn', { count: reviewCount })}</Text>
             </View>
 
             {/* Progress bars */}
@@ -330,11 +339,11 @@ export default function TeacherProfileScreen() {
             <View style={styles.reviewItems}>
               {topReviews.length === 0 ? (
                 <Text style={{ textAlign: 'center', color: Colors.textMuted, paddingVertical: 16 }}>
-                  Hələ rəy yoxdur
+                  {t('booking.noReviewsTitle')}
                 </Text>
               ) : topReviews.map((r, i) => {
                 const palette = AVATAR_PALETTE[i % AVATAR_PALETTE.length];
-                const name = r.student?.name ?? 'Anonim';
+                const name = r.student?.name ?? t('teacherProfile.anonymous');
                 return (
                   <View key={r.id}>
                     {i > 0 && <View style={styles.reviewDivider} />}
@@ -348,7 +357,7 @@ export default function TeacherProfileScreen() {
                           </View>
                           <View>
                             <Text style={styles.reviewerName}>{name}</Text>
-                            <Text style={styles.reviewerTime}>{relativeTime(r.createdAt)}</Text>
+                            <Text style={styles.reviewerTime}>{relativeTime(r.createdAt, t)}</Text>
                           </View>
                         </View>
                         <View style={styles.reviewStars}>
@@ -375,7 +384,7 @@ export default function TeacherProfileScreen() {
                 activeOpacity={0.7}
                 onPress={() => navigation.navigate(Routes.AllReviews, { teacherId: teacher?.id })}
               >
-                <Text style={styles.allReviewsBtnText}>Bütün rəylərə bax</Text>
+                <Text style={styles.allReviewsBtnText}>{t('teacherProfile.viewAllReviews')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -395,7 +404,7 @@ export default function TeacherProfileScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.bookBtnText}>Dərs tələbi göndər</Text>
+            <Text style={styles.bookBtnText}>{t('teacherProfile.sendRequest')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -409,10 +418,10 @@ export default function TeacherProfileScreen() {
               const parent = navigation.getParent() as any;
               parent?.navigate('Chat', {
                 screen: Routes.ChatRoom,
-                params: { chatId: chat.id, name: teacher?.name ?? 'Müəllim' },
+                params: { chatId: chat.id, name: teacher?.name ?? t('booking.defaultTeacher') },
               });
             } catch (e: any) {
-              Alert.alert('Xəta', e?.response?.data?.message || 'Söhbət açıla bilmədi');
+              Alert.alert(t('booking.errorTitle'), e?.response?.data?.message || t('booking.chatOpenFailed'));
             }
           }}
         >

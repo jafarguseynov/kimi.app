@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing, Alert, Share, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,7 +12,8 @@ import { playSpin, stopSpin, playReward } from '../../utils/sound';
 import { hapticMedium, hapticHeavy, hapticSuccess, hapticLight } from '../../utils/haptics';
 import { useSpinStreakStore, STREAK_BONUS_THRESHOLD } from '../../store/spinStreak.store';
 import { useSpinWheelStore } from '../../store/spinWheel.store';
-import { logSpin } from '../../api/spin.api';
+import { getSpinRewards, getSpinStatus, spinServer, SpinReward, SpinRarity } from '../../api/spin.api';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.SpinWheel> };
 
@@ -26,90 +27,41 @@ const SEG_WIDTH = 60;
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
+// Çarx seqmenti — admin paneldəki SpinReward-dan qurulur. Bücaq dinamik hesablanır.
 type Segment = {
+  id: string;
   icon: IoniconsName;
   iconColor: string;
   label: string;
-  angle: number;
-  rarity: 'common' | 'rare' | 'epic' | 'legendary';
-  reward: { type: 'xp' | 'coin' | 'premium' | 'book' | 'tablet' | 'surprise'; amount?: number };
+  angle: number; // seqmentin mərkəz bucağı (dərəcə)
+  rarity: SpinRarity;
+  type: SpinReward['type'];
+  value: number;
 };
 
-const SEGMENTS: Segment[] = [
-  { icon: 'flash',           iconColor: '#10B981', label: '100 XP',     angle: 22.5,  rarity: 'common',    reward: { type: 'xp', amount: 100 } },
-  { icon: 'star',            iconColor: '#F59E0B', label: 'Premium',    angle: 67.5,  rarity: 'rare',      reward: { type: 'premium' } },
-  { icon: 'cash',            iconColor: '#EAB308', label: '250 Sikkə',  angle: 112.5, rarity: 'common',    reward: { type: 'coin', amount: 250 } },
-  { icon: 'flash',           iconColor: '#34D399', label: '50 XP',      angle: 157.5, rarity: 'common',    reward: { type: 'xp', amount: 50 } },
-  { icon: 'tablet-portrait', iconColor: '#6366F1', label: 'Tablet',     angle: 202.5, rarity: 'legendary', reward: { type: 'tablet' } },
-  { icon: 'flash',           iconColor: '#0EA5E9', label: '200 XP',     angle: 247.5, rarity: 'common',    reward: { type: 'xp', amount: 200 } },
-  { icon: 'book',            iconColor: '#A855F7', label: 'Dərslik',    angle: 292.5, rarity: 'epic',      reward: { type: 'book' } },
-  { icon: 'gift',            iconColor: '#F43F5E', label: 'Sürpriz',    angle: 337.5, rarity: 'rare',      reward: { type: 'surprise' } },
-];
-
-// drop weights — common appears more, legendary much less
-const WEIGHTS: Record<Segment['rarity'], number> = {
-  common: 50,
-  rare: 18,
-  epic: 6,
-  legendary: 1,
+const RARITY_META: Record<SpinRarity, { labelKey: string; color: string }> = {
+  common:    { labelKey: 'spin.rarityCommon',    color: '#16A34A' },
+  rare:      { labelKey: 'spin.rarityRare',      color: Colors.primary },
+  epic:      { labelKey: 'spin.rarityEpic',      color: '#A855F7' },
+  legendary: { labelKey: 'spin.rarityLegendary', color: '#DC2626' },
 };
 
-const pickSegment = (): number => {
-  const totals = SEGMENTS.map((s) => WEIGHTS[s.rarity]);
-  const total = totals.reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < SEGMENTS.length; i++) {
-    r -= totals[i];
-    if (r <= 0) return i;
-  }
-  return 0;
+// Backend mükafatlarından çarx seqmentləri qur (bərabər paylanmış bucaqlar).
+const buildSegments = (rewards: SpinReward[]): Segment[] => {
+  const active = rewards.filter((r) => r.isActive);
+  const n = active.length;
+  const step = n > 0 ? 360 / n : 360;
+  return active.map((r, i) => ({
+    id: r.id,
+    icon: (r.icon || 'gift') as IoniconsName,
+    iconColor: r.color || Colors.primary,
+    label: r.label,
+    angle: i * step + step / 2,
+    rarity: r.rarity,
+    type: r.type,
+    value: Number(r.value) || 0,
+  }));
 };
-
-const RARITY_META: Record<Segment['rarity'], { label: string; color: string }> = {
-  common:    { label: 'ADİ',       color: '#16A34A' },
-  rare:      { label: 'NADİR',     color: Colors.primary },
-  epic:      { label: 'EPİK',      color: '#A855F7' },
-  legendary: { label: 'EFSANƏVİ',  color: '#DC2626' },
-};
-
-const REWARDS = [
-  {
-    icon: 'star' as IoniconsName,
-    iconColor: '#F59E0B',
-    bg: '#FEF9C3',
-    title: '7 Günlük Premium',
-    sub: 'Bütün dərslərə məhdudiyyətsiz giriş',
-    badge: 'NADİR',
-    badgeColor: Colors.primary,
-  },
-  {
-    icon: 'tablet-portrait' as IoniconsName,
-    iconColor: '#6366F1',
-    bg: '#EEF2FF',
-    title: 'Samsung Tab A9',
-    sub: 'Fiziki hədiyyə · kuryer ilə çatdırılır',
-    badge: 'EFSANƏVİ',
-    badgeColor: '#DC2626',
-  },
-  {
-    icon: 'book' as IoniconsName,
-    iconColor: '#A855F7',
-    bg: '#F3E8FF',
-    title: 'Buraxılış imtahanı dərsliyi',
-    sub: 'PDF + fiziki nüsxə',
-    badge: 'EPİK',
-    badgeColor: '#A855F7',
-  },
-  {
-    icon: 'cash' as IoniconsName,
-    iconColor: '#EAB308',
-    bg: '#FEF9C3',
-    title: '250 Sikkə',
-    sub: 'Tətbiq daxilində alış-veriş üçün',
-    badge: 'ADİ',
-    badgeColor: '#16A34A',
-  },
-];
 
 const getItemPos = (angle: number) => {
   const rad = (angle - 90) * (Math.PI / 180);
@@ -119,21 +71,42 @@ const getItemPos = (angle: number) => {
   };
 };
 
-export default function SpinWheelScreen({ navigation }: Props) {
-  const {
-    spinsLeft, coins, stars, history,
-    ensureDailyReset, decrementSpin, addCoins, addStars, grantExtraSpin, addHistoryEntry,
-  } = useSpinWheelStore();
+// Seqmentlər arası ayırıcı xətlərin bucaqları (diametr boyu xətt = 2 sərhəd). 180°-dən kiçik unikal sərhədlər.
+const dividerAngles = (n: number): number[] => {
+  if (n <= 1) return [];
+  const step = 360 / n;
+  const set = new Set<number>();
+  for (let i = 0; i < n; i++) set.add(Math.round((i * step) % 180));
+  return [...set];
+};
 
+export default function SpinWheelScreen({ navigation }: Props) {
+  const { t } = useTranslation();
+  const { coins, stars, history, addCoins, addStars, addHistoryEntry } = useSpinWheelStore();
+
+  const [segments, setSegments] = useState<Segment[]>([]);
+  const [spinsLeft, setSpinsLeft] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [spinning, setSpinning] = useState(false);
   const [lastReward, setLastReward] = useState<string>('—');
   const [confettiOn, setConfettiOn] = useState(false);
   const rotation = useRef(new Animated.Value(0)).current;
   const totalRotation = useRef(0);
 
-  useEffect(() => {
-    ensureDailyReset();
-  }, [ensureDailyReset]);
+  // Backenddən seqmentlər + limit yüklə
+  const load = useCallback(async () => {
+    try {
+      const [rewards, status] = await Promise.all([getSpinRewards(), getSpinStatus()]);
+      setSegments(buildSegments(rewards));
+      setSpinsLeft(status.spinsLeft);
+    } catch {
+      // şəbəkə xətası — boş qalır, istifadəçi sonra yenidən cəhd edə bilər
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   // Ekrandan çıxarkən fırlanma səsini dayandır
   useEffect(() => () => { stopSpin(); }, []);
@@ -144,45 +117,43 @@ export default function SpinWheelScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [history]);
 
-  const { streak, spinsSinceRarePlus, registerSpin, shouldGuaranteeRarePlus, resetPity } = useSpinStreakStore();
+  const { streak, spinsSinceRarePlus, registerSpin } = useSpinStreakStore();
   const isBonusDay = streak > 0 && streak % STREAK_BONUS_THRESHOLD === 0;
 
-  const spin = () => {
-    if (spinning || spinsLeft <= 0) {
-      if (spinsLeft <= 0) {
-        Alert.alert(
-          'Şans yoxdur',
-          'Növbəti fırlatmanız üçün 24 saat gözləyin.\n\nReklam baxaraq əlavə şans qazana bilərsən (demo).',
-          [
-            { text: 'Bağla', style: 'cancel' },
-            {
-              text: 'Reklam bax (+1 şans)',
-              onPress: () => grantExtraSpin(),
-            },
-          ],
-        );
-      }
+  const spin = async () => {
+    if (spinning) return;
+    if (spinsLeft <= 0) {
+      Alert.alert(
+        t('spin.noChanceTitle'),
+        t('spin.noChanceBody'),
+        [{ text: t('spin.close'), style: 'cancel' }],
+      );
       return;
     }
+    if (segments.length === 0) {
+      Alert.alert(t('spin.notReadyTitle'), t('spin.notReadyBody'));
+      return;
+    }
+
     setSpinning(true);
     hapticMedium();
     playSpin(); // çarx fırlanma səsi (yavaşlayan tıqqıltı)
 
-    // Pity timer: after 10 spins without rare+, guarantee rare+
-    const guaranteeRare = shouldGuaranteeRarePlus();
-    let segIndex = pickSegment();
-    if (guaranteeRare && SEGMENTS[segIndex].rarity === 'common') {
-      const rarePool = SEGMENTS
-        .map((s, i) => ({ s, i }))
-        .filter((x) => x.s.rarity !== 'common');
-      segIndex = rarePool[Math.floor(Math.random() * rarePool.length)].i;
+    // SERVER mükafatı seçir (çəkiyə görə), limiti azaldır və admin paneldə loglayır.
+    let result;
+    try {
+      result = await spinServer();
+    } catch (err: any) {
+      setSpinning(false);
+      stopSpin();
+      const msg = err?.response?.data?.message ?? t('spin.spinFailed');
+      Alert.alert(t('spin.errorTitle'), String(msg));
+      load(); // limit/statusu yenilə
+      return;
     }
-    // Bonus day (every 7-day streak): re-roll once if common
-    if (isBonusDay && SEGMENTS[segIndex].rarity === 'common') {
-      const reroll = pickSegment();
-      if (SEGMENTS[reroll].rarity !== 'common') segIndex = reroll;
-    }
-    const targetSeg = SEGMENTS[segIndex];
+
+    const segIndex = Math.max(0, segments.findIndex((s) => s.id === result.reward.id));
+    const targetSeg = segments[segIndex] ?? segments[0];
     const fullSpins = 6;
     const finalAngle = 360 - targetSeg.angle;
     const target = totalRotation.current + fullSpins * 360 + finalAngle;
@@ -196,12 +167,14 @@ export default function SpinWheelScreen({ navigation }: Props) {
     }).start(() => {
       setSpinning(false);
       stopSpin(); // tıqqıltını dayandır
+      setSpinsLeft((n) => Math.max(0, n - 1));
+
       // Mükafat səsi + titrəyiş (nadirliyə uyğun)
       playReward(targetSeg.rarity);
       if (targetSeg.rarity === 'legendary') hapticHeavy();
       else if (targetSeg.rarity === 'common') hapticLight();
       else hapticSuccess();
-      decrementSpin();
+
       setLastReward(targetSeg.label);
       addHistoryEntry({
         id: `h-${Date.now()}`,
@@ -210,32 +183,20 @@ export default function SpinWheelScreen({ navigation }: Props) {
         at: Date.now(),
       });
 
-      const r = targetSeg.reward;
-      if (r.type === 'xp' && r.amount) addStars(r.amount);
-      if (r.type === 'coin' && r.amount) addCoins(r.amount);
+      // Lokal balans göstəricisini yenilə (server coin-i onsuz da hesaba yazıb)
+      if (targetSeg.type === 'xp' && targetSeg.value) addStars(targetSeg.value);
+      if (targetSeg.type === 'coin' && targetSeg.value) addCoins(targetSeg.value);
 
       const meta = RARITY_META[targetSeg.rarity];
       const detail =
-        r.type === 'xp' ? `+${r.amount} XP hesabına əlavə olundu` :
-        r.type === 'coin' ? `+${r.amount} sikkə hesabına əlavə olundu` :
-        r.type === 'premium' ? '7 günlük Premium aktivləşdi' :
-        r.type === 'book' ? 'Dərslik kuryer ilə çatdırılacaq' :
-        r.type === 'tablet' ? 'Hədiyyə ünvanın üçün admin sizinlə əlaqə saxlayacaq' :
-        'Sürpriz qutusunu profil → bildirişlərdən aç';
+        targetSeg.type === 'xp' ? t('spin.detailXp', { n: targetSeg.value }) :
+        targetSeg.type === 'coin' ? t('spin.detailCoin', { n: targetSeg.value }) :
+        targetSeg.type === 'premium' ? t('spin.detailPremium') :
+        targetSeg.type === 'spin' ? t('spin.detailSpin') :
+        t('spin.detailGift');
 
       const isRarePlus = targetSeg.rarity !== 'common';
       const { newStreak, isBonusDay: hitBonus } = registerSpin(isRarePlus);
-      if (isRarePlus) resetPity();
-
-      logSpin({
-        label: targetSeg.label,
-        rarity: targetSeg.rarity,
-        rewardType: r.type,
-        amount: r.amount,
-        streak: newStreak,
-        isBonusDay: hitBonus,
-        pityTriggered: guaranteeRare && isRarePlus,
-      });
 
       // Confetti for epic+ wins
       if (targetSeg.rarity === 'epic' || targetSeg.rarity === 'legendary') {
@@ -244,29 +205,30 @@ export default function SpinWheelScreen({ navigation }: Props) {
       }
 
       const buttons: { text: string; onPress?: () => void; style?: 'cancel' | 'default' }[] = [
-        { text: 'Möhtəşəm!', style: 'default' },
+        { text: t('spin.awesome'), style: 'default' },
       ];
       if (targetSeg.rarity === 'legendary') {
         buttons.unshift({
-          text: 'Paylaş',
+          text: t('spin.share'),
           onPress: () =>
             Share.share({
-              message: `🎉 Kimi.az çarxından "${targetSeg.label}" qazandım! Sən də bəxtini sına: kimi.az`,
+              message: t('spin.shareMsg', { label: targetSeg.label }),
             }).catch(() => {}),
         });
       }
 
       Alert.alert(
-        `🎉 ${meta.label} mükafat!${guaranteeRare && isRarePlus ? ' (Pity bonus)' : ''}`,
-        `"${targetSeg.label}"\n\n${detail}${hitBonus ? `\n\n🔥 ${newStreak} günlük streak bonusu!` : ''}`,
+        t('spin.rewardAlertTitle', { rarity: t(meta.labelKey) }),
+        t('spin.rewardBody', { label: targetSeg.label, detail }) + (hitBonus ? t('spin.streakBonus', { n: newStreak }) : ''),
         buttons,
       );
     });
   };
 
   const showAllRewards = () => {
-    const lines = SEGMENTS.map((s) => `${RARITY_META[s.rarity].label.padEnd(10, ' ')} · ${s.label}`).join('\n');
-    Alert.alert('Bütün mümkün mükafatlar', lines);
+    if (segments.length === 0) { Alert.alert(t('spin.allRewardsTitle'), t('spin.noRewardsYet')); return; }
+    const lines = segments.map((s) => `${t(RARITY_META[s.rarity].labelKey).padEnd(10, ' ')} · ${s.label}`).join('\n');
+    Alert.alert(t('spin.allPossibleTitle'), lines);
   };
 
   const wheelRotateStyle = {
@@ -287,7 +249,7 @@ export default function SpinWheelScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hədiyyə Çarxı</Text>
+        <Text style={styles.headerTitle}>{t('spin.headerTitle')}</Text>
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={styles.starsRow}>
             <Ionicons name="flash" size={14} color={Colors.primary} />
@@ -310,10 +272,10 @@ export default function SpinWheelScreen({ navigation }: Props) {
         {/* Hero */}
         <View style={styles.heroSection}>
           <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>GÜNLÜK ŞANS</Text>
+            <Text style={styles.heroBadgeText}>{t('spin.heroBadge')}</Text>
           </View>
           <Text style={styles.heroTitle}>
-            Bəxtini <Text style={{ color: Colors.primary }}>Sına</Text>,{'\n'}Mükafatını Qazan!
+            {t('spin.heroTitle1')}<Text style={{ color: Colors.primary }}>{t('spin.heroTitleAccent')}</Text>{t('spin.heroTitle2')}
           </Text>
         </View>
 
@@ -324,11 +286,11 @@ export default function SpinWheelScreen({ navigation }: Props) {
               <Ionicons name="flame" size={20} color={isBonusDay ? '#F59E0B' : '#DC2626'} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.streakValue}>{streak} gün ardıcıl</Text>
+              <Text style={styles.streakValue}>{t('spin.streakDays', { n: streak })}</Text>
               <Text style={styles.streakHint}>
                 {isBonusDay
-                  ? '🔥 Bonus gün — adi mükafat avtomatik təkrar atılır'
-                  : `${STREAK_BONUS_THRESHOLD - (streak % STREAK_BONUS_THRESHOLD)} gün sonra bonus`}
+                  ? t('spin.bonusDayHint')
+                  : t('spin.daysToBonus', { n: STREAK_BONUS_THRESHOLD - (streak % STREAK_BONUS_THRESHOLD) })}
               </Text>
             </View>
           </View>
@@ -338,7 +300,7 @@ export default function SpinWheelScreen({ navigation }: Props) {
               <View style={[styles.pityBarFill, { width: `${Math.min(spinsSinceRarePlus * 10, 100)}%` }]} />
             </View>
             <Text style={styles.pityText}>
-              {spinsSinceRarePlus >= 10 ? 'Zəmanətli nadir+' : `${10 - spinsSinceRarePlus} spin qaldı`}
+              {spinsSinceRarePlus >= 10 ? t('spin.pityGuaranteed') : t('spin.pityLeft', { n: 10 - spinsSinceRarePlus })}
             </Text>
           </View>
         </View>
@@ -361,8 +323,8 @@ export default function SpinWheelScreen({ navigation }: Props) {
             {/* Light aura tint */}
             <View style={styles.wheelTint} />
 
-            {/* Divider Lines — 4 lines × 2 directions = 8 segments */}
-            {([0, 45, 90, 135] as const).map((angle) => (
+            {/* Divider Lines — seqment sayına görə dinamik */}
+            {dividerAngles(segments.length).map((angle) => (
               <View
                 key={angle}
                 style={[styles.dividerLine, { transform: [{ rotate: `${angle}deg` }] }]}
@@ -370,10 +332,10 @@ export default function SpinWheelScreen({ navigation }: Props) {
             ))}
 
             {/* Segment Icon + Label */}
-            {SEGMENTS.map((seg) => {
+            {segments.map((seg) => {
               const pos = getItemPos(seg.angle);
               return (
-                <View key={seg.angle} style={[styles.segItem, { left: pos.left, top: pos.top }]}>
+                <View key={seg.id} style={[styles.segItem, { left: pos.left, top: pos.top }]}>
                   <Ionicons name={seg.icon} size={22} color={seg.iconColor} />
                   <Text style={styles.segLabel}>{seg.label}</Text>
                 </View>
@@ -406,13 +368,13 @@ export default function SpinWheelScreen({ navigation }: Props) {
                 color={spinning || spinsLeft <= 0 ? Colors.textSecondary : '#fff'}
               />
               <Text style={[styles.spinBtnText, (spinning || spinsLeft <= 0) && { color: Colors.textSecondary }]}>
-                {spinning ? 'Fırlanır...' : spinsLeft <= 0 ? '24 saat sonra' : 'Fırlat'}
+                {spinning ? t('spin.spinning') : spinsLeft <= 0 ? t('spin.after24h') : t('spin.spinBtn')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
           <View style={styles.spinsLeftRow}>
             <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.spinsLeftText}>{spinsLeft} fırlatma şansınız qalıb</Text>
+            <Text style={styles.spinsLeftText}>{t('spin.spinsLeft', { n: spinsLeft })}</Text>
           </View>
         </View>
 
@@ -422,15 +384,15 @@ export default function SpinWheelScreen({ navigation }: Props) {
             <View style={[styles.infoIconBox, { backgroundColor: '#ECFDF5' }]}>
               <Ionicons name="time" size={20} color="#10B981" />
             </View>
-            <Text style={styles.infoCardMeta}>SON UDUŞ</Text>
+            <Text style={styles.infoCardMeta}>{t('spin.lastWin')}</Text>
             <Text style={styles.infoCardValue}>{lastReward}</Text>
           </View>
           <View style={styles.infoCard}>
             <View style={[styles.infoIconBox, { backgroundColor: Colors.primaryLight }]}>
               <Ionicons name="timer-outline" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.infoCardMeta}>NÖVBƏTİ ŞANS</Text>
-            <Text style={styles.infoCardValue}>{spinsLeft > 0 ? 'Hazır!' : '24 Saat Sonra'}</Text>
+            <Text style={styles.infoCardMeta}>{t('spin.nextChance')}</Text>
+            <Text style={styles.infoCardValue}>{spinsLeft > 0 ? t('spin.ready') : t('spin.after24hTitle')}</Text>
           </View>
         </View>
 
@@ -439,7 +401,7 @@ export default function SpinWheelScreen({ navigation }: Props) {
           <View style={styles.historyCard}>
             <View style={styles.historyHead}>
               <Ionicons name="time-outline" size={16} color={Colors.primary} />
-              <Text style={styles.historyTitle}>Son uduşların</Text>
+              <Text style={styles.historyTitle}>{t('spin.recentWins')}</Text>
             </View>
             {history.map((h) => {
               const meta = RARITY_META[h.rarity];
@@ -448,7 +410,7 @@ export default function SpinWheelScreen({ navigation }: Props) {
                   <View style={[styles.historyDot, { backgroundColor: meta.color }]} />
                   <Text style={styles.historyLabel}>{h.label}</Text>
                   <View style={[styles.historyTag, { backgroundColor: meta.color + '1F' }]}>
-                    <Text style={[styles.historyTagText, { color: meta.color }]}>{meta.label}</Text>
+                    <Text style={[styles.historyTagText, { color: meta.color }]}>{t(meta.labelKey)}</Text>
                   </View>
                 </View>
               );
@@ -459,26 +421,40 @@ export default function SpinWheelScreen({ navigation }: Props) {
         {/* Rewards List */}
         <View style={styles.rewardsList}>
           <View style={styles.rewardsHeader}>
-            <Text style={styles.rewardsTitle}>Mümkün Mükafatlar</Text>
+            <Text style={styles.rewardsTitle}>{t('spin.possibleRewards')}</Text>
             <TouchableOpacity activeOpacity={0.7} onPress={showAllRewards}>
-              <Text style={styles.rewardsAll}>Hamısı</Text>
+              <Text style={styles.rewardsAll}>{t('spin.all')}</Text>
             </TouchableOpacity>
           </View>
 
-          {REWARDS.map((r) => (
-            <View key={r.title} style={styles.rewardRow}>
-              <View style={[styles.rewardIconBox, { backgroundColor: r.bg }]}>
-                <Ionicons name={r.icon} size={22} color={r.iconColor} />
+          {segments.length === 0 && (
+            <Text style={{ fontSize: 12, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 12 }}>
+              {loading ? t('spin.loading') : t('spin.noRewardsYet')}
+            </Text>
+          )}
+          {segments.map((seg) => {
+            const meta = RARITY_META[seg.rarity];
+            const sub =
+              seg.type === 'xp' ? t('spin.subXp', { n: seg.value }) :
+              seg.type === 'coin' ? t('spin.subCoin', { n: seg.value }) :
+              seg.type === 'premium' ? t('spin.subPremium') :
+              seg.type === 'spin' ? t('spin.subSpin') :
+              t('spin.subGift');
+            return (
+              <View key={seg.id} style={styles.rewardRow}>
+                <View style={[styles.rewardIconBox, { backgroundColor: seg.iconColor + '1F' }]}>
+                  <Ionicons name={seg.icon} size={22} color={seg.iconColor} />
+                </View>
+                <View style={styles.rewardInfo}>
+                  <Text style={styles.rewardTitle}>{seg.label}</Text>
+                  <Text style={styles.rewardSub}>{sub}</Text>
+                </View>
+                <View style={[styles.rewardBadge, { backgroundColor: meta.color + '18' }]}>
+                  <Text style={[styles.rewardBadgeText, { color: meta.color }]}>{t(meta.labelKey)}</Text>
+                </View>
               </View>
-              <View style={styles.rewardInfo}>
-                <Text style={styles.rewardTitle}>{r.title}</Text>
-                <Text style={styles.rewardSub}>{r.sub}</Text>
-              </View>
-              <View style={[styles.rewardBadge, { backgroundColor: r.badgeColor + '18' }]}>
-                <Text style={[styles.rewardBadgeText, { color: r.badgeColor }]}>{r.badge}</Text>
-              </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </ScrollView>
     </SafeAreaView>

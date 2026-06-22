@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const { height: SCREEN_H } = Dimensions.get('window');
@@ -17,7 +18,7 @@ type CardKind = 'featured' | 'weak' | 'teacher';
 type Card = {
   id: string;
   kind: CardKind;
-  title: string;
+  titleKey: string;
   subject?: string;
   duration?: string;
   questions?: number;
@@ -33,21 +34,21 @@ type Card = {
 const CARDS: Card[] = [
   {
     id: '1', kind: 'featured',
-    title: 'Bu testi et',
+    titleKey: 'smartFeed.titleFeatured',
     subject: 'Riyaziyyat: Funksiyalar və Qrafiklər',
     duration: '15 dəq', questions: 20, xp: 50,
     description: 'Bu günə olan xüsusi seçilmiş riyaziyyat sınağıdır. Səviyyənizə uyğun çətinlik dərəcəsi tənzimlənib.',
   },
   {
     id: '2', kind: 'weak',
-    title: 'Bu mövzu zəifdir',
+    titleKey: 'smartFeed.titleWeak',
     weakTopic: 'Kəsrlər',
     weakScore: 45,
     description: '"Kimi deyir: Kəsrlərin vurulması mövzusunda kiçik boşluqların var. Gəl bu gün bu bölməni tamamlayaq!"',
   },
   {
     id: '3', kind: 'teacher',
-    title: 'Bu müəllim sənə uyğundur',
+    titleKey: 'smartFeed.titleTeacher',
     teacherName: 'Gülər Məmmədova',
     teacherRating: 4.9,
     subject: 'Riyaziyyat',
@@ -57,6 +58,7 @@ const CARDS: Card[] = [
 ];
 
 function FeaturedCard({ card, navigation }: { card: Card; navigation: any }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.card}>
       <LinearGradient
@@ -67,10 +69,10 @@ function FeaturedCard({ card, navigation }: { card: Card; navigation: any }) {
       >
         <View style={styles.featuredHeroOverlay} />
         <View style={styles.featuredLabel}>
-          <Text style={styles.featuredLabelText}>FEATURED</Text>
+          <Text style={styles.featuredLabelText}>{t('smartFeed.featured')}</Text>
         </View>
         <View style={styles.featuredHeroBottom}>
-          <Text style={styles.featuredHeroTitle}>{card.title}</Text>
+          <Text style={styles.featuredHeroTitle}>{t(card.titleKey)}</Text>
           <Text style={styles.featuredHeroSub}>{card.subject}</Text>
         </View>
         <Ionicons name="calculator-outline" size={84} color="rgba(255,255,255,0.18)" style={styles.featuredBgIcon} />
@@ -83,11 +85,11 @@ function FeaturedCard({ card, navigation }: { card: Card; navigation: any }) {
           </View>
           <View style={styles.metaPill}>
             <Ionicons name="help-circle-outline" size={14} color={Colors.primary} />
-            <Text style={styles.metaPillText}>{card.questions} Sual</Text>
+            <Text style={styles.metaPillText}>{t('smartFeed.questionsUnit', { n: card.questions ?? 0 })}</Text>
           </View>
           <View style={styles.metaPill}>
             <Ionicons name="trending-up" size={14} color={Colors.primary} />
-            <Text style={styles.metaPillText}>+{card.xp} Xal</Text>
+            <Text style={styles.metaPillText}>{t('smartFeed.xpUnit', { n: card.xp ?? 0 })}</Text>
           </View>
         </View>
         <Text style={styles.bodyText}>{card.description}</Text>
@@ -96,7 +98,7 @@ function FeaturedCard({ card, navigation }: { card: Card; navigation: any }) {
           onPress={() => (navigation.getParent() as any)?.navigate('Exams' as never)}
         >
           <LinearGradient colors={GRADIENT} style={styles.cardCta} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.cardCtaText}>Başla</Text>
+            <Text style={styles.cardCtaText}>{t('smartFeed.start')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -105,15 +107,16 @@ function FeaturedCard({ card, navigation }: { card: Card; navigation: any }) {
 }
 
 function WeakCard({ card, navigation }: { card: Card; navigation: any }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.card, styles.cardWeak]}>
       <View style={styles.weakHeader}>
         <View>
           <View style={styles.weakLabelRow}>
             <Ionicons name="analytics" size={16} color={Colors.primary} />
-            <Text style={styles.weakLabel}>AI ANALİZ</Text>
+            <Text style={styles.weakLabel}>{t('smartFeed.aiAnalysis')}</Text>
           </View>
-          <Text style={styles.weakTitle}>{card.title}</Text>
+          <Text style={styles.weakTitle}>{t(card.titleKey)}</Text>
         </View>
         <View style={styles.weakIconBox}>
           <Ionicons name="bulb" size={26} color={Colors.primary} />
@@ -127,7 +130,7 @@ function WeakCard({ card, navigation }: { card: Card; navigation: any }) {
           </View>
           <View>
             <Text style={styles.weakBubbleTopic}>{card.weakTopic}</Text>
-            <Text style={styles.weakBubbleMeta}>Son 3 sınaqda {card.weakScore}% nəticə</Text>
+            <Text style={styles.weakBubbleMeta}>{t('smartFeed.weakMeta', { n: card.weakScore ?? 0 })}</Text>
           </View>
         </View>
         <View style={styles.weakProgressTrack}>
@@ -138,12 +141,12 @@ function WeakCard({ card, navigation }: { card: Card; navigation: any }) {
 
       <View style={styles.weakGrid}>
         <View style={styles.weakGridCell}>
-          <Text style={styles.weakGridLabel}>DƏRS VİDEO</Text>
-          <Text style={styles.weakGridValue}>12 dəqiqəlik izah</Text>
+          <Text style={styles.weakGridLabel}>{t('smartFeed.lessonVideoLabel')}</Text>
+          <Text style={styles.weakGridValue}>{t('smartFeed.lessonVideoValue')}</Text>
         </View>
         <View style={styles.weakGridCell}>
-          <Text style={styles.weakGridLabel}>MƏŞQ</Text>
-          <Text style={styles.weakGridValue}>15 test tapşırığı</Text>
+          <Text style={styles.weakGridLabel}>{t('smartFeed.practiceLabel')}</Text>
+          <Text style={styles.weakGridValue}>{t('smartFeed.practiceValue')}</Text>
         </View>
       </View>
 
@@ -153,13 +156,14 @@ function WeakCard({ card, navigation }: { card: Card; navigation: any }) {
         onPress={() => (navigation.getParent() as any)?.navigate('Learn' as never)}
       >
         <Ionicons name="refresh" size={18} color="#fff" />
-        <Text style={styles.weakCtaText}>Təkrar et</Text>
+        <Text style={styles.weakCtaText}>{t('smartFeed.repeat')}</Text>
       </TouchableOpacity>
     </View>
   );
 }
 
 function TeacherCard({ card, navigation }: { card: Card; navigation: any }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.card}>
       <LinearGradient
@@ -179,7 +183,7 @@ function TeacherCard({ card, navigation }: { card: Card; navigation: any }) {
       <View style={styles.teacherBody}>
         <View style={styles.teacherTopRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.teacherTitle}>{card.title}</Text>
+            <Text style={styles.teacherTitle}>{t(card.titleKey)}</Text>
             <Text style={styles.teacherName}>{card.teacherName}</Text>
           </View>
           <View style={styles.teacherSubjectChip}>
@@ -187,9 +191,9 @@ function TeacherCard({ card, navigation }: { card: Card; navigation: any }) {
           </View>
         </View>
         <View style={styles.tagRow}>
-          {card.teacherTags?.map((t) => (
-            <View key={t} style={styles.tag}>
-              <Text style={styles.tagText}>{t}</Text>
+          {card.teacherTags?.map((tag) => (
+            <View key={tag} style={styles.tag}>
+              <Text style={styles.tagText}>{tag}</Text>
             </View>
           ))}
         </View>
@@ -200,7 +204,7 @@ function TeacherCard({ card, navigation }: { card: Card; navigation: any }) {
             activeOpacity={0.85}
             onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never)}
           >
-            <Text style={styles.teacherProfileText}>Profilə bax</Text>
+            <Text style={styles.teacherProfileText}>{t('smartFeed.viewProfile')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.teacherChatBtn}
@@ -217,6 +221,7 @@ function TeacherCard({ card, navigation }: { card: Card; navigation: any }) {
 
 export default function SmartFeedScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabKey>('foryou');
 
   const renderCard = ({ item }: { item: Card }) => (
@@ -233,7 +238,7 @@ export default function SmartFeedScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sənin üçün</Text>
+        <Text style={styles.headerTitle}>{t('smartFeed.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="sparkles" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -246,14 +251,14 @@ export default function SmartFeedScreen() {
             onPress={() => setTab('foryou')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, tab === 'foryou' && styles.tabTextActive]}>Sənin üçün</Text>
+            <Text style={[styles.tabText, tab === 'foryou' && styles.tabTextActive]}>{t('smartFeed.tabForYou')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.tab, tab === 'trends' && styles.tabActive]}
             onPress={() => setTab('trends')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, tab === 'trends' && styles.tabTextActive]}>Trendlər</Text>
+            <Text style={[styles.tabText, tab === 'trends' && styles.tabTextActive]}>{t('smartFeed.tabTrends')}</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -23,6 +23,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { useUserStore } from '../../store/user.store';
 import MessageBubble from '../../components/chat/MessageBubble';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -33,6 +34,7 @@ type Props = {
 
 export default function ChatRoomScreen({ navigation, route }: Props) {
   const { chatId, name } = route.params as { chatId: string; name: string };
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const { token } = useAuthStore();
   const { messages, setMessages, addMessage } = useChatStore();
@@ -99,7 +101,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
             </View>
             <View>
               <Text style={styles.headerName}>{name}</Text>
-              <Text style={styles.headerStatus}>Onlayn</Text>
+              <Text style={styles.headerStatus}>{t('chat.online')}</Text>
             </View>
           </View>
           <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
@@ -118,7 +120,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
             contentContainerStyle={styles.msgList}
             ListHeaderComponent={
               <View style={styles.datePill}>
-                <Text style={styles.datePillText}>Bugün</Text>
+                <Text style={styles.datePillText}>{t('chat.today')}</Text>
               </View>
             }
             renderItem={({ item }) => (
@@ -146,7 +148,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
           <View style={styles.inputWrap}>
             <TextInput
               style={styles.input}
-              placeholder="Mesaj yaz..."
+              placeholder={t('chat.inputPlaceholder')}
               placeholderTextColor={Colors.outline}
               value={text}
               onChangeText={setText}

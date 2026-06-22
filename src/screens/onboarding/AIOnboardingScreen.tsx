@@ -14,14 +14,9 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
-const QUESTIONS = [
-  'Hansı fənlər sizi ən çox maraqlandırır? (Riyaziyyat, Fizika, Kimya...)',
-  'Hazırda ən çox çətinlik çəkdiyiniz mövzu nədir?',
-  'Gündə neçə saat öyrənməyə vaxt ayıra bilərsiniz?',
-  'Yaxın 6 ayda hansı məqsədinizə çatmaq istəyirsiniz?',
-  'Öyrənmənin hansı üsulu sizə daha uyğundur? (video, oxumaq, məşq etmək...)',
-];
+const QUESTION_KEYS = ['onboarding.q1', 'onboarding.q2', 'onboarding.q3', 'onboarding.q4', 'onboarding.q5'];
 
 interface LearningPlanItem {
   subject: string;
@@ -31,8 +26,9 @@ interface LearningPlanItem {
 
 export default function AIOnboardingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<string[]>(Array(QUESTIONS.length).fill(''));
+  const [answers, setAnswers] = useState<string[]>(Array(QUESTION_KEYS.length).fill(''));
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<LearningPlanItem[] | null>(null);
 
@@ -43,7 +39,7 @@ export default function AIOnboardingScreen() {
   };
 
   const goNext = async () => {
-    if (step < QUESTIONS.length - 1) {
+    if (step < QUESTION_KEYS.length - 1) {
       setStep((s) => s + 1);
     } else {
       setLoading(true);
@@ -51,7 +47,7 @@ export default function AIOnboardingScreen() {
         const { data } = await api.post<{ plan: LearningPlanItem[] }>('/ai/onboarding', { answers });
         setPlan(data.plan);
       } catch {
-        Alert.alert('Xəta', 'Plan hazırlanmadı. Daha sonra cəhd edin.');
+        Alert.alert(t('onboarding.errorTitle'), t('onboarding.planFailed'));
         navigation.replace(Routes.Home);
       } finally {
         setLoading(false);
@@ -63,14 +59,14 @@ export default function AIOnboardingScreen() {
     return (
       <ScrollView style={styles.container} contentContainerStyle={styles.planContent}>
         <Text style={styles.planEmoji}>🎯</Text>
-        <Text style={styles.planTitle}>Fərdi Öyrənmə Planınız</Text>
-        <Text style={styles.planSubtitle}>AI-nin tövsiyəsinə əsasən hazırlanmışdır</Text>
+        <Text style={styles.planTitle}>{t('onboarding.planTitle')}</Text>
+        <Text style={styles.planSubtitle}>{t('onboarding.planSubtitle')}</Text>
 
         {plan.map((item, i) => (
           <View key={i} style={styles.planCard}>
             <View style={styles.planCardHeader}>
               <Text style={styles.planSubject}>{item.subject}</Text>
-              <Text style={styles.planMinutes}>{item.dailyMinutes} dəq/gün</Text>
+              <Text style={styles.planMinutes}>{t('onboarding.minPerDay', { n: item.dailyMinutes })}</Text>
             </View>
             <Text style={styles.planGoal}>{item.goal}</Text>
           </View>
@@ -80,7 +76,7 @@ export default function AIOnboardingScreen() {
           style={styles.startBtn}
           onPress={() => navigation.replace(Routes.Home)}
         >
-          <Text style={styles.startBtnText}>Başlayaq! 🚀</Text>
+          <Text style={styles.startBtnText}>{t('onboarding.letsStart')}</Text>
         </TouchableOpacity>
       </ScrollView>
     );
@@ -89,19 +85,19 @@ export default function AIOnboardingScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.progressBar}>
-        <View style={[styles.progressFill, { width: `${((step + 1) / QUESTIONS.length) * 100}%` }]} />
+        <View style={[styles.progressFill, { width: `${((step + 1) / QUESTION_KEYS.length) * 100}%` }]} />
       </View>
 
-      <Text style={styles.stepText}>{step + 1} / {QUESTIONS.length}</Text>
+      <Text style={styles.stepText}>{step + 1} / {QUESTION_KEYS.length}</Text>
 
       <View style={styles.questionCard}>
         <Text style={styles.questionEmoji}>🤖</Text>
-        <Text style={styles.question}>{QUESTIONS[step]}</Text>
+        <Text style={styles.question}>{t(QUESTION_KEYS[step])}</Text>
       </View>
 
       <TextInput
         style={styles.answer}
-        placeholder="Cavabınızı yazın..."
+        placeholder={t('onboarding.answerPlaceholder')}
         placeholderTextColor={Colors.textMuted}
         value={currentAnswer}
         onChangeText={updateAnswer}
@@ -120,7 +116,7 @@ export default function AIOnboardingScreen() {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.nextBtnText}>
-            {step < QUESTIONS.length - 1 ? 'Növbəti →' : 'Plan hazırla 🎯'}
+            {step < QUESTION_KEYS.length - 1 ? t('onboarding.next') : t('onboarding.makePlan')}
           </Text>
         )}
       </TouchableOpacity>
@@ -129,7 +125,7 @@ export default function AIOnboardingScreen() {
         style={styles.skipBtn}
         onPress={() => navigation.replace(Routes.Home)}
       >
-        <Text style={styles.skipText}>Keç</Text>
+        <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
       </TouchableOpacity>
     </View>
   );

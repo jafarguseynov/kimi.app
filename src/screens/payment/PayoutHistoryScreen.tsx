@@ -6,13 +6,16 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { getWallet, getTransactions, type TransactionItem } from '../../api/payment.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+const DATE_LOCALE: Record<string, string> = { az: 'az-AZ', ru: 'ru-RU', en: 'en-US' };
 
 type TxIcon = 'wallet-outline' | 'time-outline' | 'alert-circle-outline';
 
 interface StatusConfig {
-  label: string;
+  labelKey: string;
   badgeBg: string;
   badgeColor: string;
   iconBg: string;
@@ -21,21 +24,21 @@ interface StatusConfig {
 
 const STATUS_CFG: Record<string, StatusConfig> = {
   completed: {
-    label: 'Tamamlandı',
+    labelKey: 'pay.statusCompleted',
     badgeBg: '#d1fae5',
     badgeColor: '#059669',
     iconBg: '#d1fae5',
     icon: 'wallet-outline',
   },
   pending: {
-    label: 'Gözləyir',
+    labelKey: 'pay.statusPending',
     badgeBg: '#fef9c3',
     badgeColor: '#ca8a04',
     iconBg: '#fef9c3',
     icon: 'time-outline',
   },
   rejected: {
-    label: 'Rədd edildi',
+    labelKey: 'pay.statusRejected',
     badgeBg: '#fee2e2',
     badgeColor: '#dc2626',
     iconBg: '#fee2e2',
@@ -43,14 +46,15 @@ const STATUS_CFG: Record<string, StatusConfig> = {
   },
 };
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('az-AZ', {
+function formatDate(iso: string, lang: string) {
+  return new Date(iso).toLocaleDateString(DATE_LOCALE[lang] ?? 'az-AZ', {
     day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 }
 
 export default function PayoutHistoryScreen() {
   const navigation = useNavigation<any>();
+  const { t, language } = useTranslation();
   const [balance, setBalance] = useState<number>(0);
   const [withdrawals, setWithdrawals] = useState<TransactionItem[]>([]);
   const [totalEarned, setTotalEarned] = useState(0);
@@ -87,7 +91,7 @@ export default function PayoutHistoryScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ödəniş Tarixçəsi</Text>
+        <Text style={styles.headerTitle}>{t('pay.payoutHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -99,7 +103,7 @@ export default function PayoutHistoryScreen() {
         {/* Summary banner */}
         <View style={styles.bannerWrap}>
           <LinearGradient colors={GRADIENT} style={styles.banner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Text style={styles.bannerLabel}>Ümumi Qazanc</Text>
+            <Text style={styles.bannerLabel}>{t('pay.totalEarningsBig')}</Text>
             {loading ? (
               <ActivityIndicator size="small" color="#fff" style={{ marginVertical: 8 }} />
             ) : (
@@ -107,26 +111,26 @@ export default function PayoutHistoryScreen() {
             )}
             <View style={styles.bannerStats}>
               <View style={styles.bannerStatBox}>
-                <Text style={styles.bannerStatKey}>Bu Ay</Text>
+                <Text style={styles.bannerStatKey}>{t('pay.thisMonth')}</Text>
                 <Text style={styles.bannerStatVal}>+{monthEarned.toFixed(2)} AZN</Text>
               </View>
               <View style={styles.bannerStatBox}>
-                <Text style={styles.bannerStatKey}>Balans</Text>
+                <Text style={styles.bannerStatKey}>{t('pay.balanceLabel')}</Text>
                 <Text style={styles.bannerStatVal}>{balance.toFixed(2)} AZN</Text>
               </View>
             </View>
           </LinearGradient>
           <View style={styles.insightPill}>
             <Ionicons name="sparkles-outline" size={14} color={Colors.primaryFixed} />
-            <Text style={styles.insightPillText}>Çıxarış tarixçəniz</Text>
+            <Text style={styles.insightPillText}>{t('pay.yourWithdrawHistory')}</Text>
           </View>
         </View>
 
         {/* Section header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Çıxarışlar</Text>
+          <Text style={styles.sectionTitle}>{t('pay.withdrawalsTitle')}</Text>
           <View style={styles.sectionChip}>
-            <Text style={styles.sectionChipText}>{withdrawals.length} əməliyyat</Text>
+            <Text style={styles.sectionChipText}>{t('pay.txCount', { n: withdrawals.length })}</Text>
           </View>
         </View>
 
@@ -136,8 +140,8 @@ export default function PayoutHistoryScreen() {
         ) : withdrawals.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="wallet-outline" size={48} color={Colors.primaryFixed} />
-            <Text style={styles.emptyTitle}>Çıxarış yoxdur</Text>
-            <Text style={styles.emptySub}>Hələ heç bir pul çıxarışı etməmisən.</Text>
+            <Text style={styles.emptyTitle}>{t('pay.noWithdrawTitle')}</Text>
+            <Text style={styles.emptySub}>{t('pay.noWithdrawSub')}</Text>
           </View>
         ) : (
           <View style={styles.txList}>
@@ -152,11 +156,11 @@ export default function PayoutHistoryScreen() {
                       </View>
                       <View>
                         <Text style={styles.txAmount}>{tx.amount.toFixed(2)} AZN</Text>
-                        <Text style={styles.txDate}>{formatDate(tx.createdAt)}</Text>
+                        <Text style={styles.txDate}>{formatDate(tx.createdAt, language)}</Text>
                       </View>
                     </View>
                     <View style={[styles.txBadge, { backgroundColor: cfg.badgeBg }]}>
-                      <Text style={[styles.txBadgeText, { color: cfg.badgeColor }]}>{cfg.label}</Text>
+                      <Text style={[styles.txBadgeText, { color: cfg.badgeColor }]}>{t(cfg.labelKey)}</Text>
                     </View>
                   </View>
 

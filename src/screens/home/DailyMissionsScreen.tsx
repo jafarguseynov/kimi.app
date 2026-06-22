@@ -9,6 +9,7 @@ import { Colors } from '../../constants/colors';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import api from '../../api/client';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -33,6 +34,7 @@ const TYPE_CONFIG: Record<string, { icon: keyof typeof import('@expo/vector-icon
 };
 
 export default function DailyMissionsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { data: missions = [], isLoading } = useQuery<Mission[]>({
     queryKey: ['dailyMissions'],
     queryFn: () => api.get('/engagement/missions').then((r) => r.data),
@@ -57,7 +59,7 @@ export default function DailyMissionsScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Gündəlik tapşırıqlar</Text>
+        <Text style={styles.headerTitle}>{t('dailyMissionsScreen.title')}</Text>
         <View style={{ width: 48 }} />
       </View>
 
@@ -65,9 +67,9 @@ export default function DailyMissionsScreen({ navigation }: Props) {
         {/* Progress hero */}
         <LinearGradient colors={GRADIENT} style={styles.heroCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View>
-            <Text style={styles.heroLabel}>Bugünki proqres</Text>
+            <Text style={styles.heroLabel}>{t('dailyMissionsScreen.todayProgress')}</Text>
             <Text style={styles.heroPct}>{pct}%</Text>
-            <Text style={styles.heroSub}>{completedCount} / {total} tamamlandı</Text>
+            <Text style={styles.heroSub}>{t('dailyMissionsScreen.completedOf', { done: completedCount, total })}</Text>
           </View>
           <View style={styles.xpBadge}>
             <Ionicons name="flash" size={16} color="#fbbf24" />
@@ -83,8 +85,8 @@ export default function DailyMissionsScreen({ navigation }: Props) {
         ) : missions.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="checkmark-done-circle-outline" size={56} color={Colors.primaryFixed} />
-            <Text style={styles.emptyTitle}>Bütün tapşırıqlar tamamlandı!</Text>
-            <Text style={styles.emptySub}>Sabah yeni tapşırıqlar üçün geri qayıt.</Text>
+            <Text style={styles.emptyTitle}>{t('dailyMissionsScreen.allDone')}</Text>
+            <Text style={styles.emptySub}>{t('dailyMissionsScreen.allDoneSub')}</Text>
           </View>
         ) : (
           <View style={styles.list}>

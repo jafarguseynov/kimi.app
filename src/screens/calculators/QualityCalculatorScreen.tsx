@@ -15,6 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -22,6 +23,7 @@ type Result = { muveffaqiyyat: number; keyfiyyat: number };
 
 export default function QualityCalculatorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [total, setTotal] = useState('');
   const [grade2, setGrade2] = useState('');
   const [grade3, setGrade3] = useState('');
@@ -48,12 +50,12 @@ export default function QualityCalculatorScreen() {
 
   const GRADE_ROWS: { label: string; value: string; set: (v: string) => void; dot: string }[][] = [
     [
-      { label: '2 alanlar', value: grade2, set: setGrade2, dot: Colors.danger },
-      { label: '3 alanlar', value: grade3, set: setGrade3, dot: Colors.secondary },
+      { label: t('calc.grade2'), value: grade2, set: setGrade2, dot: Colors.danger },
+      { label: t('calc.grade3'), value: grade3, set: setGrade3, dot: Colors.secondary },
     ],
     [
-      { label: '4 alanlar', value: grade4, set: setGrade4, dot: Colors.primaryFixed },
-      { label: '5 alanlar', value: grade5, set: setGrade5, dot: Colors.tertiary },
+      { label: t('calc.grade4'), value: grade4, set: setGrade4, dot: Colors.primaryFixed },
+      { label: t('calc.grade5'), value: grade5, set: setGrade5, dot: Colors.tertiary },
     ],
   ];
 
@@ -64,7 +66,7 @@ export default function QualityCalculatorScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Təhsil Keyfiyyəti</Text>
+          <Text style={styles.headerTitle}>{t('calc.qualityHeader')}</Text>
           <View style={styles.headerBtn}>
             <Ionicons name="school-outline" size={22} color={Colors.primary} />
           </View>
@@ -74,15 +76,15 @@ export default function QualityCalculatorScreen() {
           {/* Hero */}
           <LinearGradient colors={GRADIENT} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.heroBlob} />
-            <Text style={styles.heroTitle}>Sinif göstəricilərini analiz edin.</Text>
-            <Text style={styles.heroSub}>Akademik nəticələri anında hesablayın</Text>
+            <Text style={styles.heroTitle}>{t('calc.qualHero')}</Text>
+            <Text style={styles.heroSub}>{t('calc.qualHeroSub')}</Text>
           </LinearGradient>
 
           {/* Inputs */}
           <View style={styles.inputSection}>
             {/* Total */}
             <View>
-              <Text style={styles.inputLabel}>Ümumi şagird sayı</Text>
+              <Text style={styles.inputLabel}>{t('calc.totalStudents')}</Text>
               <View style={styles.inputCard}>
                 <TextInput
                   style={styles.inputField}
@@ -124,16 +126,16 @@ export default function QualityCalculatorScreen() {
           <TouchableOpacity onPress={calculate} activeOpacity={0.9}>
             <LinearGradient colors={GRADIENT} style={styles.calcBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <Ionicons name="calculator-outline" size={22} color="#fff" />
-              <Text style={styles.calcBtnText}>Hesabla</Text>
+              <Text style={styles.calcBtnText}>{t('calc.calculate')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
             <Ionicons name="refresh-outline" size={20} color={Colors.outline} />
-            <Text style={styles.resetBtnText}>Sıfırla</Text>
+            <Text style={styles.resetBtnText}>{t('calc.reset')}</Text>
           </TouchableOpacity>
 
           {/* Results */}
-          <Text style={styles.sectionTitle}>Nəticələr</Text>
+          <Text style={styles.sectionTitle}>{t('calc.results')}</Text>
           <View style={styles.resultRow}>
             {/* Müvəffəqiyyət */}
             <View style={[styles.resultCard, styles.resultCardBorderPrimary]}>
@@ -145,7 +147,7 @@ export default function QualityCalculatorScreen() {
                   {result ? `${result.muveffaqiyyat}%` : '—'}
                 </Text>
               </View>
-              <Text style={styles.resultLabel}>Müvəffəqiyyət faizi</Text>
+              <Text style={styles.resultLabel}>{t('calc.successPct')}</Text>
               <View style={styles.progressTrack}>
                 <LinearGradient
                   colors={GRADIENT}
@@ -165,7 +167,7 @@ export default function QualityCalculatorScreen() {
                   {result ? `${result.keyfiyyat}%` : '—'}
                 </Text>
               </View>
-              <Text style={styles.resultLabel}>Keyfiyyət faizi</Text>
+              <Text style={styles.resultLabel}>{t('calc.qualityPct')}</Text>
               <View style={styles.progressTrack}>
                 <View
                   style={[styles.progressFillSolid, { width: result ? `${Math.min(result.keyfiyyat, 100)}%` as any : '0%' }]}

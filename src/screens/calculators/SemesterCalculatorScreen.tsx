@@ -17,15 +17,18 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const KSQ_OPTIONS = [3, 4, 5, 6] as const;
 
-function getGrade(score: number): string {
-  if (score >= 91) return '5 (Əla)';
-  if (score >= 71) return '4 (Yaxşı)';
-  if (score >= 51) return '3 (Kafi)';
-  return '2 (Qeyri-kafi)';
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+function getGrade(score: number, t: TFn): string {
+  if (score >= 91) return t('calc.gradeExcellentFull');
+  if (score >= 71) return t('calc.gradeGoodFull');
+  if (score >= 51) return t('calc.gradeFairFull');
+  return t('calc.gradePoorFull');
 }
 
 type Result = {
@@ -38,6 +41,7 @@ type Result = {
 
 export default function SemesterCalculatorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
 
   const [step, setStep] = useState<'setup' | 'input'>('setup');
   const [ksqCount, setKsqCount] = useState<number>(3);
@@ -63,31 +67,31 @@ export default function SemesterCalculatorScreen() {
   const calculate = () => {
     const filled = ksq.filter((v) => v.trim() !== '').map(Number);
     if (filled.length === 0) {
-      Alert.alert('Məlumat çatmır', 'Ən azı bir KSQ qiyməti daxil edin');
+      Alert.alert(t('calc.missingData'), t('calc.atLeastKsq'));
       return;
     }
     if (filled.some((v) => isNaN(v) || v < 0 || v > 100)) {
-      Alert.alert('Yanlış qiymət', 'KSQ qiymətləri 0-100 aralığında olmalıdır');
+      Alert.alert(t('calc.invalidScore'), t('calc.ksqRange'));
       return;
     }
     const ksqAvg = filled.reduce((a, b) => a + b, 0) / filled.length;
     if (hasBsq) {
       if (!bsq.trim()) {
-        Alert.alert('Məlumat çatmır', 'BSQ qiymətini daxil edin');
+        Alert.alert(t('calc.missingData'), t('calc.enterBsq'));
         return;
       }
       const bsqNum = Number(bsq);
       if (isNaN(bsqNum) || bsqNum < 0 || bsqNum > 100) {
-        Alert.alert('Yanlış qiymət', 'BSQ 0-100 aralığında olmalıdır');
+        Alert.alert(t('calc.invalidScore'), t('calc.bsqRange'));
         return;
       }
       const ksq40 = ksqAvg * 0.4;
       const bsq60 = bsqNum * 0.6;
       const final = Math.min(100, ksq40 + bsq60);
-      setResult({ ksqAvg, ksq40, bsq60, final, grade: getGrade(final) });
+      setResult({ ksqAvg, ksq40, bsq60, final, grade: getGrade(final, t) });
     } else {
       // No BSQ: semester grade = KSQ average
-      setResult({ ksqAvg, ksq40: ksqAvg, bsq60: 0, final: ksqAvg, grade: getGrade(ksqAvg) });
+      setResult({ ksqAvg, ksq40: ksqAvg, bsq60: 0, final: ksqAvg, grade: getGrade(ksqAvg, t) });
     }
   };
 
@@ -113,7 +117,7 @@ export default function SemesterCalculatorScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={onBack} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Semestr Balı</Text>
+          <Text style={styles.headerTitle}>{t('calc.semesterHeader')}</Text>
           <Text style={styles.brand}>Kimi.az</Text>
         </View>
 
@@ -129,15 +133,15 @@ export default function SemesterCalculatorScreen() {
 
             {/* Hero */}
             <View style={styles.heroBlock}>
-              <Text style={styles.heroTitle}>Yarımillik Qiymətləndirmə</Text>
-              <Text style={styles.heroSub}>KSQ sayını seçin və BSQ-nin olub-olmadığını qeyd edin.</Text>
+              <Text style={styles.heroTitle}>{t('calc.semHero')}</Text>
+              <Text style={styles.heroSub}>{t('calc.semHeroSub')}</Text>
             </View>
 
             {/* KSQ count */}
             <View style={styles.fieldBlock}>
               <View style={styles.fieldLabelRow}>
                 <Ionicons name="list-outline" size={18} color={Colors.primary} />
-                <Text style={styles.fieldLabel}>KSQ sayı</Text>
+                <Text style={styles.fieldLabel}>{t('calc.ksqCount')}</Text>
               </View>
               <View style={styles.segmented}>
                 {KSQ_OPTIONS.map((n) => {
@@ -163,8 +167,8 @@ export default function SemesterCalculatorScreen() {
                   <Ionicons name="checkmark-done" size={22} color={Colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.toggleTitle}>BSQ var</Text>
-                  <Text style={styles.toggleSub}>Böyük Summativ Qiymətləndirmə</Text>
+                  <Text style={styles.toggleTitle}>{t('calc.bsqYes')}</Text>
+                  <Text style={styles.toggleSub}>{t('calc.bsqSub')}</Text>
                 </View>
               </View>
               <Switch
@@ -179,13 +183,13 @@ export default function SemesterCalculatorScreen() {
             {/* Tip banner */}
             <View style={styles.tipBanner}>
               <Ionicons name="sparkles" size={18} color={Colors.primary} />
-              <Text style={styles.tipText}>Kimi Robot ilə balını saniyələr ərzində hesabla!</Text>
+              <Text style={styles.tipText}>{t('calc.semTip')}</Text>
             </View>
 
             {/* CTA */}
             <TouchableOpacity activeOpacity={0.9} onPress={goToInput} style={{ marginTop: 8 }}>
               <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
-                <Text style={styles.ctaText}>Davam et</Text>
+                <Text style={styles.ctaText}>{t('calc.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -196,27 +200,27 @@ export default function SemesterCalculatorScreen() {
             <View style={styles.summaryRow}>
               <View style={styles.summaryChip}>
                 <Ionicons name="list-outline" size={14} color={Colors.primary} />
-                <Text style={styles.summaryChipText}>{ksqCount} KSQ</Text>
+                <Text style={styles.summaryChipText}>{t('calc.ksqN', { n: ksqCount })}</Text>
               </View>
               <View style={[styles.summaryChip, !hasBsq && styles.summaryChipMuted]}>
                 <Ionicons name={hasBsq ? 'checkmark-circle' : 'close-circle'} size={14} color={hasBsq ? Colors.tertiary : Colors.outline} />
                 <Text style={[styles.summaryChipText, !hasBsq && { color: Colors.textSecondary }]}>
-                  {hasBsq ? 'BSQ var' : 'BSQ yox'}
+                  {hasBsq ? t('calc.bsqYesShort') : t('calc.bsqNoShort')}
                 </Text>
               </View>
               <TouchableOpacity style={styles.summaryEdit} onPress={() => setStep('setup')} hitSlop={8}>
                 <Ionicons name="create-outline" size={14} color={Colors.primary} />
-                <Text style={styles.summaryEditText}>Dəyiş</Text>
+                <Text style={styles.summaryEditText}>{t('calc.edit')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* KSQ inputs */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>KSQ Qiymətləri</Text>
+              <Text style={styles.sectionTitle}>{t('calc.ksqGrades')}</Text>
               <View style={styles.inputGrid}>
                 {ksq.map((val, idx) => (
                   <View key={idx} style={styles.inputCard}>
-                    <Text style={styles.inputLabel}>KSQ {idx + 1}</Text>
+                    <Text style={styles.inputLabel}>{t('calc.ksqIdx', { n: idx + 1 })}</Text>
                     <TextInput
                       style={styles.inputField}
                       value={val}
@@ -234,18 +238,18 @@ export default function SemesterCalculatorScreen() {
             {/* BSQ input */}
             {hasBsq && (
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>BSQ Qiyməti</Text>
+                <Text style={styles.sectionTitle}>{t('calc.bsqGrade')}</Text>
                 <View style={styles.bsqCard}>
                   <View style={styles.bsqIconBox}>
                     <Ionicons name="ribbon-outline" size={22} color={Colors.primary} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.inputLabel}>Yekun BSQ balı</Text>
+                    <Text style={styles.inputLabel}>{t('calc.bsqFinal')}</Text>
                     <TextInput
                       style={styles.inputField}
                       value={bsq}
                       onChangeText={setBsq}
-                      placeholder="Balı daxil edin"
+                      placeholder={t('calc.enterScore')}
                       placeholderTextColor={Colors.outlineVariant}
                       keyboardType="numeric"
                       maxLength={3}
@@ -259,22 +263,22 @@ export default function SemesterCalculatorScreen() {
             <TouchableOpacity onPress={calculate} activeOpacity={0.9}>
               <LinearGradient colors={GRADIENT} style={styles.calcBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                 <Ionicons name="calculator-outline" size={22} color="#fff" />
-                <Text style={styles.calcBtnText}>Hesabla</Text>
+                <Text style={styles.calcBtnText}>{t('calc.calculate')}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
               <Ionicons name="refresh-outline" size={20} color={Colors.danger} />
-              <Text style={styles.resetBtnText}>Sıfırla</Text>
+              <Text style={styles.resetBtnText}>{t('calc.reset')}</Text>
             </TouchableOpacity>
 
             {/* Result */}
             {result && (
               <View style={styles.resultSection}>
-                <Text style={styles.sectionTitle}>Nəticə</Text>
+                <Text style={styles.sectionTitle}>{t('calc.result')}</Text>
                 <View style={styles.resultCard}>
                   <View style={styles.resultRowWide}>
                     <View>
-                      <Text style={styles.resultLabel}>KSQ ortalaması</Text>
+                      <Text style={styles.resultLabel}>{t('calc.ksqAvg')}</Text>
                       <Text style={styles.resultValue}>{result.ksqAvg.toFixed(1)}</Text>
                     </View>
                     <View style={styles.resultIconBox}>
@@ -284,11 +288,11 @@ export default function SemesterCalculatorScreen() {
                   {hasBsq && (
                     <View style={styles.resultRow2}>
                       <View style={styles.resultHalf}>
-                        <Text style={styles.resultLabelSm}>KSQ-nin 40%-i</Text>
+                        <Text style={styles.resultLabelSm}>{t('calc.ksq40')}</Text>
                         <Text style={styles.resultValueMd}>{result.ksq40.toFixed(1)}</Text>
                       </View>
                       <View style={styles.resultHalf}>
-                        <Text style={styles.resultLabelSm}>BSQ-nin 60%-i</Text>
+                        <Text style={styles.resultLabelSm}>{t('calc.bsq60')}</Text>
                         <Text style={styles.resultValueMd}>{result.bsq60.toFixed(1)}</Text>
                       </View>
                     </View>
@@ -296,7 +300,7 @@ export default function SemesterCalculatorScreen() {
                   <LinearGradient colors={GRADIENT} style={styles.finalCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                     <View style={styles.finalBlob} />
                     <View>
-                      <Text style={styles.finalLabel}>Yekun bal və qiymət</Text>
+                      <Text style={styles.finalLabel}>{t('calc.finalScoreGrade')}</Text>
                       <View style={styles.finalAmountRow}>
                         <Text style={styles.finalAmount}>{result.final.toFixed(1)}</Text>
                         <Text style={styles.finalMax}> / 100</Text>

@@ -5,11 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function BookingConfirmedScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -17,7 +19,7 @@ export default function BookingConfirmedScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Müraciət Təsdiqləndi</Text>
+        <Text style={styles.headerTitle}>{t('booking.confirmedHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -33,9 +35,9 @@ export default function BookingConfirmedScreen() {
               <Ionicons name="checkmark" size={22} color="#fff" />
             </View>
           </View>
-          <Text style={styles.heroTitle}>Müraciətiniz qəbul edildi!</Text>
+          <Text style={styles.heroTitle}>{t('booking.confirmedTitle')}</Text>
           <Text style={styles.heroSubtitle}>
-            Təbriklər! Müəllim dərsi təsdiqlədi. Hazırlaşmağa başlaya bilərsiniz.
+            {t('booking.confirmedSub')}
           </Text>
         </View>
 
@@ -68,19 +70,19 @@ export default function BookingConfirmedScreen() {
 
         {/* Lesson details card */}
         <View style={styles.detailsCard}>
-          <Text style={styles.detailsLabel}>Dərs məlumatları</Text>
+          <Text style={styles.detailsLabel}>{t('booking.lessonInfo')}</Text>
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
               <View style={styles.detailIconRow}>
                 <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
-                <Text style={styles.detailKey}>Tarix</Text>
+                <Text style={styles.detailKey}>{t('booking.dateLabel')}</Text>
               </View>
               <Text style={styles.detailValue}>25 Yanvar, 2024</Text>
             </View>
             <View style={[styles.detailItem, { alignItems: 'flex-end' }]}>
               <View style={[styles.detailIconRow, { flexDirection: 'row-reverse' }]}>
                 <Ionicons name="time-outline" size={18} color={Colors.primary} />
-                <Text style={styles.detailKey}>Saat</Text>
+                <Text style={styles.detailKey}>{t('booking.timeLabel')}</Text>
               </View>
               <Text style={styles.detailValue}>18:00 - 19:30</Text>
             </View>
@@ -90,7 +92,7 @@ export default function BookingConfirmedScreen() {
               <Ionicons name="videocam-outline" size={20} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.formatLabel}>Format</Text>
+              <Text style={styles.formatLabel}>{t('booking.formatLabel')}</Text>
               <Text style={styles.formatValue}>Online - Zoom</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.primaryFixed} style={{ marginLeft: 'auto' }} />
@@ -101,13 +103,13 @@ export default function BookingConfirmedScreen() {
         <TouchableOpacity activeOpacity={0.9}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="chatbubble" size={20} color="#fff" />
-            <Text style={styles.primaryBtnText}>Müəllimə mesaj yaz</Text>
+            <Text style={styles.primaryBtnText}>{t('booking.messageTeacher')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
           <Ionicons name="calendar" size={20} color={Colors.textPrimary} />
-          <Text style={styles.secondaryBtnText}>Təqvimə əlavə et</Text>
+          <Text style={styles.secondaryBtnText}>{t('booking.addToCalendar')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

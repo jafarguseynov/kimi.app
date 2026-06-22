@@ -18,44 +18,45 @@ import { getTeacherAnalytics } from '../../api/user.api';
 import { useUserStore } from '../../store/user.store';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 interface Message { id: string; role: 'user' | 'ai'; text: string; isWelcome?: boolean; }
 
-const STUDENT_WELCOME =
-  'Salam! Keçən həftəki performansını analiz etdim. Gəl zəif mövzularını birlikdə gücləndirək.';
-const TEACHER_WELCOME =
-  'Salam! İmtahan sualı, dərs planı və şagird analizi üçün buradayam. Nədən başlayaq?';
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
-function makeWelcome(isTeacher: boolean): Message {
-  return { id: 'welcome', role: 'ai', isWelcome: true, text: isTeacher ? TEACHER_WELCOME : STUDENT_WELCOME };
+const DATE_LOCALE: Record<string, string> = { az: 'az-AZ', ru: 'ru-RU', en: 'en-US' };
+
+function makeWelcome(isTeacher: boolean, t: TFn): Message {
+  return { id: 'welcome', role: 'ai', isWelcome: true, text: isTeacher ? t('aiMentor.teacherWelcome') : t('aiMentor.studentWelcome') };
 }
 
 const pad2 = (n: number) => n.toString().padStart(2, '0');
-function formatChatDate(iso: string): string {
+function formatChatDate(iso: string, t: TFn, lang: string): string {
   const d = new Date(iso);
   const now = new Date();
   const yest = new Date(now);
   yest.setDate(now.getDate() - 1);
-  if (d.toDateString() === now.toDateString()) return `Bugün ${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-  if (d.toDateString() === yest.toDateString()) return 'Dünən';
-  return d.toLocaleDateString('az-AZ');
+  if (d.toDateString() === now.toDateString()) return t('aiMentor.todayAt', { time: `${pad2(d.getHours())}:${pad2(d.getMinutes())}` });
+  if (d.toDateString() === yest.toDateString()) return t('aiMentor.yesterday');
+  return d.toLocaleDateString(DATE_LOCALE[lang] ?? 'az-AZ');
 }
-
-// Müəllim sürətli düymələri üçün input şablonları (müəllim [...] yerlərini doldurur)
-const TEACHER_TEMPLATES = {
-  exam: '[Fənn] fənni, [sinif] sinif üçün orta çətinlikdə 5 test sualı hazırla (hər biri 4 variantlı, düzgün cavabı qeyd et).',
-  lesson: '[Fənn], [mövzu] üzrə 45 dəqiqəlik dərs planı hazırla.',
-  homework: '[Fənn], [mövzu] üzrə şagirdlər üçün ev tapşırığı hazırla.',
-};
 
 const DAILY_GOAL = 20;
 
 export default function AIMentorScreen() {
   const navigation = useNavigation<any>();
+  const { t, language } = useTranslation();
   const user = useUserStore((s) => s.user);
   const isTeacher = user?.role === 'teacher';
 
-  const [messages, setMessages] = useState<Message[]>(() => [makeWelcome(isTeacher)]);
+  // Müəllim sürətli düymələri üçün input şablonları (müəllim [...] yerlərini doldurur)
+  const TEACHER_TEMPLATES = {
+    exam: t('aiMentor.templateExam'),
+    lesson: t('aiMentor.templateLesson'),
+    homework: t('aiMentor.templateHomework'),
+  };
+
+  const [messages, setMessages] = useState<Message[]>(() => [makeWelcome(isTeacher, t)]);
   const [input, setInput] = useState('');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -82,17 +83,17 @@ export default function AIMentorScreen() {
       setMessages(
         detail.messages.length
           ? detail.messages.map((m) => ({ id: m.id, role: m.role, text: m.text }))
-          : [makeWelcome(isTeacher)],
+          : [makeWelcome(isTeacher, t)],
       );
     } catch {
-      Alert.alert('Xəta', 'Söhbət yüklənmədi.');
+      Alert.alert(t('aiMentor.errorTitle'), t('aiMentor.loadError'));
     }
   };
 
   const startNewChat = () => {
     setHistoryOpen(false);
     setConversationId(null);
-    setMessages([makeWelcome(isTeacher)]);
+    setMessages([makeWelcome(isTeacher, t)]);
   };
 
   const removeConversation = async (id: string) => {
@@ -101,14 +102,14 @@ export default function AIMentorScreen() {
       if (id === conversationId) startNewChat();
       refetchConversations();
     } catch {
-      Alert.alert('Xəta', 'Söhbət silinmədi.');
+      Alert.alert(t('aiMentor.errorTitle'), t('aiMentor.deleteFailed'));
     }
   };
 
   const confirmDelete = (id: string) => {
-    Alert.alert('Söhbəti sil', 'Bu söhbət silinsin?', [
-      { text: 'Ləğv', style: 'cancel' },
-      { text: 'Sil', style: 'destructive', onPress: () => removeConversation(id) },
+    Alert.alert(t('aiMentor.deleteTitle'), t('aiMentor.deleteMsg'), [
+      { text: t('aiMentor.cancel'), style: 'cancel' },
+      { text: t('aiMentor.delete'), style: 'destructive', onPress: () => removeConversation(id) },
     ]);
   };
 
@@ -150,50 +151,52 @@ export default function AIMentorScreen() {
     if (!override) setInput('');
     mutate({ message: msg, conversationId }, {
       onSuccess: (data) => {
-        appendAi(data.reply || 'Cavab boş gəldi.');
+        appendAi(data.reply || t('aiMentor.emptyReply'));
         if (data.conversationId && data.conversationId !== conversationId) setConversationId(data.conversationId);
         refetchConversations();
       },
       onError: (err: any) => {
         const detail = err?.response?.data?.message;
-        appendAi(detail ? `Xəta: ${detail}` : 'Hal-hazırda AI-ya qoşula bilmədim. Bir az sonra yenidən cəhd et.');
+        appendAi(detail ? t('aiMentor.errorPrefix', { detail }) : t('aiMentor.connectError'));
       },
     });
   };
 
   const handleAnalyze = () => {
     if (isAnalyzing) return;
-    appendUser('Performansımı analiz et');
+    appendUser(t('aiMentor.analyzeUserMsg'));
     runAnalyze(undefined, {
       onSuccess: (data) => {
         const weak = data.weakTopics.length
-          ? `Zəif mövzular: ${data.weakTopics.map((t) => `${t.subject} (${t.avg}%)`).join(', ')}`
-          : 'Zəif mövzu görünmür — yaxşı gedirsən!';
+          ? t('aiMentor.weakTopicsLabel', { topics: data.weakTopics.map((wt) => `${wt.subject} (${wt.avg}%)`).join(', ') })
+          : t('aiMentor.noWeakTopics');
         const recs = data.recommendations.length
-          ? `\n\nTövsiyələr:\n• ${data.recommendations.join('\n• ')}`
+          ? `\n\n${t('aiMentor.recommendationsHeading')}:\n• ${data.recommendations.join('\n• ')}`
           : '';
-        appendAi(`Orta xal: ${data.averageScore}%\n${weak}${recs}`);
+        appendAi(`${t('aiMentor.averageScore', { score: data.averageScore })}\n${weak}${recs}`);
       },
-      onError: () => appendAi('Analiz alınmadı. İmtahan verdiyini yoxla və yenidən cəhd et.'),
+      onError: () => appendAi(t('aiMentor.analyzeError')),
     });
   };
 
   const handleTeacherAnalyze = () => {
     if (isTeacherAnalyzing) return;
-    appendUser('Müəllim fəaliyyətimi analiz et');
+    appendUser(t('aiMentor.teacherAnalyzeUserMsg'));
     runTeacherAnalyze(undefined, {
       onSuccess: (data) => {
         const m = data.metrics;
-        const head = `Bu ay: ${m.monthlyEarnings} AZN  •  Şagird: ${m.totalStudents}  •  Aktiv sorğu: ${m.activeQueries}  •  Reytinq: ${m.rating}/5`;
+        const head = t('aiMentor.teacherHead', {
+          earnings: m.monthlyEarnings, students: m.totalStudents, queries: m.activeQueries, rating: m.rating,
+        });
         const weak = data.studentWeakTopics.length
-          ? `\nŞagirdlərin zəif fənləri: ${data.studentWeakTopics.map((t) => `${t.subject} (${t.avg}%)`).join(', ')}`
-          : '\nŞagirdlərdə qabarıq zəif fənn görünmür.';
+          ? `\n${t('aiMentor.teacherWeak', { topics: data.studentWeakTopics.map((wt) => `${wt.subject} (${wt.avg}%)`).join(', ') })}`
+          : `\n${t('aiMentor.teacherNoWeak')}`;
         const recs = data.recommendations.length
-          ? `\n\nTövsiyələr:\n• ${data.recommendations.join('\n• ')}`
+          ? `\n\n${t('aiMentor.recommendationsHeading')}:\n• ${data.recommendations.join('\n• ')}`
           : '';
         appendAi(`${head}${weak}${recs}`);
       },
-      onError: () => appendAi('Analiz alınmadı. Bir az sonra yenidən cəhd et.'),
+      onError: () => appendAi(t('aiMentor.teacherAnalyzeError')),
     });
   };
 
@@ -206,9 +209,9 @@ export default function AIMentorScreen() {
     startNewChat();
   };
 
-  const handleAttach = () => Alert.alert('Tezliklə', 'Fayl əlavə etmə funksiyası tezliklə əlavə olunacaq.');
-  const handleImage = () => Alert.alert('Tezliklə', 'Şəkil yükləmə funksiyası tezliklə əlavə olunacaq.');
-  const handleMic = () => Alert.alert('Tezliklə', 'Səs yazma funksiyası tezliklə əlavə olunacaq.');
+  const handleAttach = () => Alert.alert(t('aiMentor.comingSoon'), t('aiMentor.attachSoon'));
+  const handleImage = () => Alert.alert(t('aiMentor.comingSoon'), t('aiMentor.imageSoon'));
+  const handleMic = () => Alert.alert(t('aiMentor.comingSoon'), t('aiMentor.micSoon'));
 
   const renderMessage = ({ item }: { item: Message }) => {
     if (item.role === 'user') {
@@ -234,20 +237,20 @@ export default function AIMentorScreen() {
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
                   <Ionicons name="document-text-outline" size={16} color="#fff" />
-                  <Text style={styles.aiActionBtnText}>İmtahan sualları</Text>
+                  <Text style={styles.aiActionBtnText}>{t('aiMentor.examQuestions')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.aiActionBtnSecondary} activeOpacity={0.8} onPress={() => prefill(TEACHER_TEMPLATES.lesson)}>
                 <Ionicons name="easel-outline" size={16} color={Colors.textPrimary} />
-                <Text style={styles.aiActionBtnSecondaryText}>Dərs planı</Text>
+                <Text style={styles.aiActionBtnSecondaryText}>{t('aiMentor.lessonPlan')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.aiActionBtnSecondary} activeOpacity={0.8} onPress={() => prefill(TEACHER_TEMPLATES.homework)}>
                 <Ionicons name="reader-outline" size={16} color={Colors.textPrimary} />
-                <Text style={styles.aiActionBtnSecondaryText}>Ev tapşırığı</Text>
+                <Text style={styles.aiActionBtnSecondaryText}>{t('aiMentor.homework')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.aiActionBtnSecondary} activeOpacity={0.8} onPress={handleTeacherAnalyze} disabled={isTeacherAnalyzing}>
                 <Ionicons name="analytics-outline" size={16} color={Colors.textPrimary} />
-                <Text style={styles.aiActionBtnSecondaryText}>{isTeacherAnalyzing ? 'Analiz olunur...' : 'Müəllim Analizi'}</Text>
+                <Text style={styles.aiActionBtnSecondaryText}>{isTeacherAnalyzing ? t('aiMentor.analyzing') : t('aiMentor.teacherAnalysis')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -260,7 +263,7 @@ export default function AIMentorScreen() {
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
                   <Ionicons name="refresh" size={16} color="#fff" />
-                  <Text style={styles.aiActionBtnText}>Təkrar et</Text>
+                  <Text style={styles.aiActionBtnText}>{t('aiMentor.replay')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity
@@ -270,7 +273,7 @@ export default function AIMentorScreen() {
                 disabled={isAnalyzing}
               >
                 <Ionicons name="analytics-outline" size={16} color={Colors.textPrimary} />
-                <Text style={styles.aiActionBtnSecondaryText}>{isAnalyzing ? 'Analiz olunur...' : 'AI Analiz'}</Text>
+                <Text style={styles.aiActionBtnSecondaryText}>{isAnalyzing ? t('aiMentor.analyzing') : t('aiMentor.aiAnalysis')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -284,6 +287,14 @@ export default function AIMentorScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate(Routes.Home))}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
           <View style={styles.avatarWrap}>
             <View style={styles.avatarCircle}>
               <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
@@ -291,8 +302,8 @@ export default function AIMentorScreen() {
             <View style={styles.onlineDot} />
           </View>
           <View>
-            <Text style={styles.headerTitle}>{isTeacher ? 'Kimi Müəllim Asistenti' : 'Kimi AI Mentor'}</Text>
-            <Text style={styles.headerOnline}>Onlayn</Text>
+            <Text style={styles.headerTitle}>{isTeacher ? t('aiMentor.teacherHeaderTitle') : t('aiMentor.studentHeaderTitle')}</Text>
+            <Text style={styles.headerOnline}>{t('aiMentor.online')}</Text>
           </View>
         </View>
         <View style={styles.headerActions}>
@@ -319,14 +330,14 @@ export default function AIMentorScreen() {
           onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
           ListHeaderComponent={
             <View style={styles.dateBadge}>
-              <Text style={styles.dateBadgeText}>Bugün</Text>
+              <Text style={styles.dateBadgeText}>{t('aiMentor.today')}</Text>
             </View>
           }
           renderItem={renderMessage}
           ListFooterComponent={
             isPending ? (
               <View style={styles.typingRow}>
-                <Text style={styles.typingText}>Kimi yazır...</Text>
+                <Text style={styles.typingText}>{t('aiMentor.typing')}</Text>
               </View>
             ) : null
           }
@@ -340,19 +351,19 @@ export default function AIMentorScreen() {
                 <Ionicons name="briefcase-outline" size={20} color={Colors.primary} />
               </View>
               <View>
-                <Text style={styles.goalTitle}>Müəllim Paneli</Text>
-                <Text style={styles.goalSub}>Cavab gözləyən sorğular və bu ayın gəliri</Text>
+                <Text style={styles.goalTitle}>{t('aiMentor.teacherPanelTitle')}</Text>
+                <Text style={styles.goalSub}>{t('aiMentor.teacherPanelSub')}</Text>
               </View>
             </View>
             <View style={styles.teacherStatsRow}>
               <View style={styles.teacherStat}>
                 <Text style={styles.teacherStatValue}>{teacherStats?.activeQueries ?? '—'}</Text>
-                <Text style={styles.teacherStatLabel}>Aktiv sorğu</Text>
+                <Text style={styles.teacherStatLabel}>{t('aiMentor.activeQueries')}</Text>
               </View>
               <View style={styles.teacherStatDivider} />
               <View style={styles.teacherStat}>
                 <Text style={styles.teacherStatValue}>{teacherStats?.monthlyEarnings ?? '—'} AZN</Text>
-                <Text style={styles.teacherStatLabel}>Bu ay</Text>
+                <Text style={styles.teacherStatLabel}>{t('aiMentor.thisMonth')}</Text>
               </View>
             </View>
           </View>
@@ -363,16 +374,16 @@ export default function AIMentorScreen() {
                 <Ionicons name="stats-chart-outline" size={20} color={Colors.primary} />
               </View>
               <View>
-                <Text style={styles.goalTitle}>Gündəlik Hədəf</Text>
-                <Text style={styles.goalSub}>Bu gün {DAILY_GOAL} yeni sual həll etməlisən</Text>
+                <Text style={styles.goalTitle}>{t('aiMentor.dailyGoal')}</Text>
+                <Text style={styles.goalSub}>{t('aiMentor.dailyGoalSub', { count: DAILY_GOAL })}</Text>
               </View>
             </View>
             <View style={styles.goalProgressBar}>
               <View style={[styles.goalProgressFill, { width: `${todayProgress.pct}%` }]} />
             </View>
             <View style={styles.goalProgressRow}>
-              <Text style={styles.goalProgressLeft}>{todayProgress.solved}/{DAILY_GOAL} sual</Text>
-              <Text style={styles.goalProgressRight}>{todayProgress.pct}% tamamlandı</Text>
+              <Text style={styles.goalProgressLeft}>{t('aiMentor.goalQuestions', { solved: todayProgress.solved, goal: DAILY_GOAL })}</Text>
+              <Text style={styles.goalProgressRight}>{t('aiMentor.goalCompleted', { pct: todayProgress.pct })}</Text>
             </View>
           </View>
         )}
@@ -385,7 +396,7 @@ export default function AIMentorScreen() {
               style={styles.textInput}
               value={input}
               onChangeText={setInput}
-              placeholder={isTeacher ? 'Sual, mövzu və ya tapşırıq yaz...' : 'Sualını yaz...'}
+              placeholder={isTeacher ? t('aiMentor.teacherInputPlaceholder') : t('aiMentor.studentInputPlaceholder')}
               placeholderTextColor={Colors.textMuted}
               multiline
               maxLength={500}
@@ -421,17 +432,17 @@ export default function AIMentorScreen() {
         <Pressable style={styles.historyBackdrop} onPress={() => setHistoryOpen(false)}>
           <Pressable style={styles.historyPanel} onPress={() => {}}>
             <View style={styles.historyHeader}>
-              <Text style={styles.historyTitle}>Söhbət tarixçəsi</Text>
+              <Text style={styles.historyTitle}>{t('aiMentor.historyTitle')}</Text>
               <TouchableOpacity style={styles.historyNewBtn} activeOpacity={0.85} onPress={startNewChat}>
                 <Ionicons name="add" size={16} color="#fff" />
-                <Text style={styles.historyNewText}>Yeni</Text>
+                <Text style={styles.historyNewText}>{t('aiMentor.historyNew')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
               {conversations.length === 0 ? (
                 <View style={styles.historyEmptyWrap}>
                   <Ionicons name="chatbubbles-outline" size={32} color={Colors.textMuted} />
-                  <Text style={styles.historyEmpty}>Hələ söhbət yoxdur</Text>
+                  <Text style={styles.historyEmpty}>{t('aiMentor.historyEmpty')}</Text>
                 </View>
               ) : (
                 conversations.map((c) => (
@@ -444,7 +455,7 @@ export default function AIMentorScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.historyRowTitle} numberOfLines={1}>{c.title}</Text>
                       {!!c.preview && <Text style={styles.historyRowPreview} numberOfLines={1}>{c.preview}</Text>}
-                      <Text style={styles.historyRowDate}>{formatChatDate(c.updatedAt)}</Text>
+                      <Text style={styles.historyRowDate}>{formatChatDate(c.updatedAt, t, language)}</Text>
                     </View>
                     <TouchableOpacity hitSlop={10} onPress={() => confirmDelete(c.id)} style={styles.historyDelBtn}>
                       <Ionicons name="trash-outline" size={17} color={Colors.danger} />
@@ -469,7 +480,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.8)',
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerBackBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   avatarWrap: { position: 'relative' },
   avatarCircle: {
     width: 48, height: 48, borderRadius: 24,

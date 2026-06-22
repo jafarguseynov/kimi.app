@@ -8,6 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -33,6 +34,7 @@ export default function DuelMatchScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { user } = useUserStore();
+  const { t } = useTranslation();
   const p: Params = (route.params ?? {}) as Params;
 
   const mode: 'bot' | 'live' = p.mode ?? 'live';
@@ -40,7 +42,7 @@ export default function DuelMatchScreen() {
   const questionCount = p.questionCount ?? 10;
   const stake = p.stake ?? 25;
   const prize = p.prize ?? stake * 2;
-  const myName = user?.name?.split(' ')[0] ?? 'Sən';
+  const myName = user?.name?.split(' ')[0] ?? t('duel.me');
   const myLevel = 12;
 
   const [phase, setPhase] = useState<'matching' | 'ready'>(mode === 'bot' ? 'ready' : 'matching');
@@ -70,12 +72,12 @@ export default function DuelMatchScreen() {
 
   useEffect(() => {
     if (mode !== 'live' || phase !== 'matching') return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       const pick = LIVE_OPPONENTS[Math.floor(Math.random() * LIVE_OPPONENTS.length)];
       setOpponent(pick);
       setPhase('ready');
     }, 2800);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [mode, phase]);
 
   const opponentName = opponent.name;
@@ -89,7 +91,7 @@ export default function DuelMatchScreen() {
     Animated.spring(countdownScale, { toValue: 1, friction: 4, useNativeDriver: true }).start();
 
     if (countdown === 0) {
-      const t = setTimeout(() => {
+      const timer = setTimeout(() => {
         navigation.replace(Routes.DuelSession, {
           mode,
           opponentName,
@@ -99,10 +101,10 @@ export default function DuelMatchScreen() {
           stake,
         });
       }, 700);
-      return () => clearTimeout(t);
+      return () => clearTimeout(timer);
     }
-    const t = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 900);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setCountdown((c) => (c === null ? null : c - 1)), 900);
+    return () => clearTimeout(timer);
   }, [countdown]);
 
   const startDuel = () => setCountdown(3);
@@ -113,16 +115,16 @@ export default function DuelMatchScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>1v1 Yarış</Text>
+        <Text style={styles.headerTitle}>{t('duel.matchTitle')}</Text>
         <TouchableOpacity
           style={styles.headerBtn}
           activeOpacity={0.7}
           hitSlop={8}
           onPress={() =>
             Alert.alert(
-              '1v1 Yarış nədir?',
-              'Bu, real vaxt rejimində eyni səviyyəli başqa bir şagirdlə yarış formatıdır.\n\n• Sistem sənə uyğun rəqib tapır\n• Hər ikiniz eyni sualları eyni vaxtda alırsınız\n• Daha çox doğru cavab verib daha sürətli olan qalib gəlir\n• Qalib xal və medallar qazanır, reytinqdə yüksəlir',
-              [{ text: 'Anladım' }],
+              t('duel.whatTitle'),
+              t('duel.whatBody'),
+              [{ text: t('duel.gotIt') }],
             )
           }
         >
@@ -134,15 +136,15 @@ export default function DuelMatchScreen() {
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>
             {phase === 'matching'
-              ? 'Rəqib axtarılır...'
+              ? t('duel.searching')
               : isBot
-              ? 'Bot hazırdır!'
-              : 'Sənə rəqib tapıldı!'}
+              ? t('duel.botReady')
+              : t('duel.opponentFound')}
           </Text>
           <Text style={styles.heroSub}>
             {phase === 'matching'
-              ? 'Sənin səviyyəndə oyunçu tapılır...'
-              : 'Biliklərini sınamaq üçün hazırsan?'}
+              ? t('duel.searchingSub')
+              : t('duel.readySub')}
           </Text>
         </View>
 
@@ -162,7 +164,7 @@ export default function DuelMatchScreen() {
               </View>
             </LinearGradient>
             <View style={[styles.levelBadge, { backgroundColor: Colors.primary }]}>
-              <Text style={styles.levelBadgeText}>LEVEL {myLevel}</Text>
+              <Text style={styles.levelBadgeText}>{t('duel.level')} {myLevel}</Text>
             </View>
             <Text style={styles.playerName}>{myName}</Text>
           </View>
@@ -207,11 +209,11 @@ export default function DuelMatchScreen() {
               phase === 'matching' && { backgroundColor: Colors.textSecondary },
             ]}>
               <Text style={styles.levelBadgeText}>
-                {phase === 'matching' ? '...' : isBot ? 'BOT' : `LEVEL ${opponentLevel}`}
+                {phase === 'matching' ? '...' : isBot ? t('duel.bot') : `${t('duel.level')} ${opponentLevel}`}
               </Text>
             </View>
             <Text style={styles.playerName}>
-              {phase === 'matching' ? 'Axtarılır...' : opponentName}
+              {phase === 'matching' ? t('duel.searchingShort') : opponentName}
             </Text>
           </View>
         </View>
@@ -223,20 +225,20 @@ export default function DuelMatchScreen() {
               <Ionicons name="trophy" size={20} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.prizeTitle}>Mükafat: {prize} XP</Text>
+              <Text style={styles.prizeTitle}>{t('duel.prizeAmount', { n: prize })}</Text>
               <Text style={styles.prizeSub}>
-                Mərc: {stake} XP • Qalib hamısını götürür
+                {t('duel.stakeWinnerTakes', { n: stake })}
               </Text>
             </View>
           </View>
           <View style={styles.metaGrid}>
             <View style={styles.metaCard}>
-              <Text style={styles.metaLabel}>MÖVZU</Text>
+              <Text style={styles.metaLabel}>{t('duel.topicUpper')}</Text>
               <Text style={styles.metaValue}>{subject}</Text>
             </View>
             <View style={styles.metaCard}>
-              <Text style={styles.metaLabel}>SUALLAR</Text>
-              <Text style={styles.metaValue}>{questionCount} Sual</Text>
+              <Text style={styles.metaLabel}>{t('duel.questionsUpper')}</Text>
+              <Text style={styles.metaValue}>{questionCount} {t('duel.qShort')}</Text>
             </View>
           </View>
         </View>
@@ -254,7 +256,7 @@ export default function DuelMatchScreen() {
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           >
             <Text style={[styles.startBtnText, phase === 'matching' && { color: Colors.textSecondary }]}>
-              {phase === 'matching' ? 'GÖZLƏ...' : 'BAŞLA'}
+              {phase === 'matching' ? t('duel.waitDots') : t('duel.start')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -263,10 +265,10 @@ export default function DuelMatchScreen() {
           <Animated.View style={[styles.waitingDot, { opacity: pulse }]} />
           <Text style={styles.waitingText}>
             {phase === 'matching'
-              ? 'Rəqib axtarılır...'
+              ? t('duel.searching')
               : isBot
-              ? 'Bot səviyyənə uyğun ayarlandı'
-              : 'Rəqib hazırdır'}
+              ? t('duel.botTuned')
+              : t('duel.opponentReady')}
           </Text>
         </View>
       </View>
@@ -274,7 +276,7 @@ export default function DuelMatchScreen() {
       {/* Countdown overlay */}
       <Modal visible={countdown !== null} transparent animationType="fade" onRequestClose={() => {}}>
         <View style={styles.overlay}>
-          <Text style={styles.overlayHint}>Yarış başlayır...</Text>
+          <Text style={styles.overlayHint}>{t('duel.duelStarting')}</Text>
           <Animated.View style={[styles.countdownWrap, { transform: [{ scale: countdownScale }] }]}>
             <LinearGradient
               colors={GRADIENT}
@@ -282,7 +284,7 @@ export default function DuelMatchScreen() {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             >
               <Text style={styles.countdownText}>
-                {countdown === 0 ? 'BAŞLA!' : countdown}
+                {countdown === 0 ? t('duel.go') : countdown}
               </Text>
             </LinearGradient>
           </Animated.View>

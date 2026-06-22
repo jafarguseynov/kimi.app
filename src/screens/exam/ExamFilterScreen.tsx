@@ -7,16 +7,25 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamFilter> };
 
 const TYPE_TABS = ['Hamısı', 'Sınaq', 'Aylıq', 'Milli'] as const;
+const TYPE_TKEY: Record<string, string> = {
+  'Hamısı': 'examFilter.tabAll', 'Sınaq': 'examFilter.tabMock', 'Aylıq': 'examFilter.tabMonthly', 'Milli': 'examFilter.tabNational',
+};
 const SUBJECTS = ['Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Fizika', 'Kimya', 'Tarix'];
+const SUBJECT_TKEY: Record<string, string> = {
+  'Riyaziyyat': 'examFilter.subjMath', 'Azərbaycan dili': 'examFilter.subjAz', 'İngilis dili': 'examFilter.subjEn',
+  'Fizika': 'examFilter.subjPhysics', 'Kimya': 'examFilter.subjChem', 'Tarix': 'examFilter.subjHistory',
+};
 const MAX_SCORE = 700;
 
 export default function ExamFilterScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [examType, setExamType] = useState<(typeof TYPE_TABS)[number]>('Hamısı');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(['Riyaziyyat', 'İngilis dili']);
   const [dateFrom, setDateFrom] = useState('01.10.2023');
@@ -61,28 +70,28 @@ export default function ExamFilterScreen({ navigation }: Props) {
           >
             <Ionicons name="close" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Filtrlər</Text>
+          <Text style={styles.headerTitle}>{t('examFilter.title')}</Text>
         </View>
         <TouchableOpacity onPress={clearAll} activeOpacity={0.7} style={styles.clearBtn}>
-          <Text style={styles.clearText}>Təmizlə</Text>
+          <Text style={styles.clearText}>{t('examFilter.clear')}</Text>
         </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* İmtahan növü */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>İmtahan növü</Text>
+          <Text style={styles.sectionLabel}>{t('examFilter.examType')}</Text>
           <View style={styles.segment}>
-            {TYPE_TABS.map((t) => {
-              const active = examType === t;
+            {TYPE_TABS.map((tab) => {
+              const active = examType === tab;
               return (
                 <TouchableOpacity
-                  key={t}
+                  key={tab}
                   style={[styles.segmentBtn, active && styles.segmentBtnActive]}
-                  onPress={() => setExamType(t)}
+                  onPress={() => setExamType(tab)}
                   activeOpacity={0.85}
                 >
-                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{t}</Text>
+                  <Text style={[styles.segmentText, active && styles.segmentTextActive]}>{t(TYPE_TKEY[tab])}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -91,7 +100,7 @@ export default function ExamFilterScreen({ navigation }: Props) {
 
         {/* Fənn */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Fənn seçin</Text>
+          <Text style={styles.sectionLabel}>{t('examFilter.pickSubject')}</Text>
           <View style={styles.chipsWrap}>
             {SUBJECTS.map((s) => {
               const active = selectedSubjects.includes(s);
@@ -102,7 +111,7 @@ export default function ExamFilterScreen({ navigation }: Props) {
                   activeOpacity={0.85}
                   style={[styles.subjectChip, active && styles.subjectChipActive]}
                 >
-                  <Text style={[styles.subjectChipText, active && styles.subjectChipTextActive]}>{s}</Text>
+                  <Text style={[styles.subjectChipText, active && styles.subjectChipTextActive]}>{t(SUBJECT_TKEY[s])}</Text>
                   {active ? <Ionicons name="checkmark" size={16} color="#fff" /> : null}
                 </TouchableOpacity>
               );
@@ -112,14 +121,14 @@ export default function ExamFilterScreen({ navigation }: Props) {
 
         {/* Tarix aralığı */}
         <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Tarix aralığı</Text>
+          <Text style={styles.sectionLabel}>{t('examFilter.dateRange')}</Text>
           <View style={styles.dateGrid}>
             <View style={styles.dateCard}>
-              <Text style={styles.dateLabel}>Başlanğıc</Text>
+              <Text style={styles.dateLabel}>{t('examFilter.start')}</Text>
               <Text style={styles.dateValue}>{dateFrom || '— —'}</Text>
             </View>
             <View style={styles.dateCard}>
-              <Text style={styles.dateLabel}>Bitmə</Text>
+              <Text style={styles.dateLabel}>{t('examFilter.end')}</Text>
               <Text style={styles.dateValue}>{dateTo || '— —'}</Text>
             </View>
           </View>
@@ -128,10 +137,10 @@ export default function ExamFilterScreen({ navigation }: Props) {
         {/* Bal aralığı */}
         <View style={styles.section}>
           <View style={styles.scoreHead}>
-            <Text style={styles.sectionLabel}>Bal aralığı</Text>
+            <Text style={styles.sectionLabel}>{t('examFilter.scoreRange')}</Text>
             <View style={styles.scoreValueRow}>
               <Text style={styles.scoreValueNum}>0 - {scoreMax}</Text>
-              <Text style={styles.scoreValueUnit}>BAL</Text>
+              <Text style={styles.scoreValueUnit}>{t('examFilter.balUnit')}</Text>
             </View>
           </View>
 
@@ -145,7 +154,7 @@ export default function ExamFilterScreen({ navigation }: Props) {
               pointerEvents="none"
             >
               <View style={styles.mascotTag}>
-                <Text style={styles.mascotTagText}>Kimi Robot</Text>
+                <Text style={styles.mascotTagText}>{t('examFilter.robotTag')}</Text>
               </View>
               <LinearGradient
                 colors={GRADIENT}
@@ -170,8 +179,8 @@ export default function ExamFilterScreen({ navigation }: Props) {
             </Pressable>
 
             <View style={styles.sliderLabelsRow}>
-              <Text style={styles.sliderLabel}>MİNİMUM</Text>
-              <Text style={styles.sliderLabel}>MAKSİMUM</Text>
+              <Text style={styles.sliderLabel}>{t('examFilter.min')}</Text>
+              <Text style={styles.sliderLabel}>{t('examFilter.max')}</Text>
             </View>
           </View>
         </View>
@@ -188,7 +197,7 @@ export default function ExamFilterScreen({ navigation }: Props) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.applyBtnText}>Nəticələri göstər</Text>
+            <Text style={styles.applyBtnText}>{t('examFilter.showResults')}</Text>
             <Ionicons name="trending-up" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

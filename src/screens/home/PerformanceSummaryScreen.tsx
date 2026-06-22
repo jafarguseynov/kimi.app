@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const CORRECT_PCT = 82;
 
 export default function PerformanceSummaryScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -16,7 +18,7 @@ export default function PerformanceSummaryScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.avatar} activeOpacity={0.8}>
           <Text style={styles.avatarText}>TP</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nəticələr</Text>
+        <Text style={styles.headerTitle}>{t('perfSummary.headerTitle')}</Text>
         <TouchableOpacity style={styles.bellBtn} hitSlop={8}>
           <Ionicons name="notifications" size={20} color={Colors.primary} />
         </TouchableOpacity>
@@ -25,8 +27,8 @@ export default function PerformanceSummaryScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Title */}
         <View style={{ alignItems: 'center', gap: 4 }}>
-          <Text style={styles.title}>Sənin performansın</Text>
-          <Text style={styles.titleSub}>Son 30 günün statistikası</Text>
+          <Text style={styles.title}>{t('perfSummary.title')}</Text>
+          <Text style={styles.titleSub}>{t('perfSummary.titleSub')}</Text>
         </View>
 
         {/* Donut card */}
@@ -37,18 +39,18 @@ export default function PerformanceSummaryScreen() {
             <View style={[styles.donutFill, { transform: [{ rotate: '115deg' }] }]} />
             <View style={styles.donutInner}>
               <Text style={styles.donutPct}>{CORRECT_PCT}%</Text>
-              <Text style={styles.donutLabel}>Düzgün</Text>
+              <Text style={styles.donutLabel}>{t('perfSummary.correct')}</Text>
             </View>
           </View>
 
           <View style={styles.legendRow}>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: Colors.primary }]} />
-              <Text style={styles.legendText}>Düzgün ({CORRECT_PCT}%)</Text>
+              <Text style={styles.legendText}>{t('perfSummary.correctLegend', { n: CORRECT_PCT })}</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: Colors.errorContainer }]} />
-              <Text style={styles.legendText}>Səhv ({100 - CORRECT_PCT}%)</Text>
+              <Text style={styles.legendText}>{t('perfSummary.wrongLegend', { n: 100 - CORRECT_PCT })}</Text>
             </View>
           </View>
         </View>
@@ -58,18 +60,18 @@ export default function PerformanceSummaryScreen() {
           <View style={styles.statCard}>
             <View style={styles.statHead}>
               <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
-              <Text style={styles.statLabel}>Düzgün{'\n'}cavab faizi</Text>
+              <Text style={styles.statLabel}>{t('perfSummary.correctPctLabel')}</Text>
             </View>
             <Text style={styles.statValue}>{CORRECT_PCT}%</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statHead}>
               <Ionicons name="trending-up" size={20} color={Colors.tertiary} />
-              <Text style={styles.statLabel}>Orta nəticə</Text>
+              <Text style={styles.statLabel}>{t('perfSummary.avgResult')}</Text>
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
               <Text style={styles.statValue}>420</Text>
-              <Text style={styles.statUnit}>bal</Text>
+              <Text style={styles.statUnit}>{t('perfSummary.pointsUnit')}</Text>
             </View>
           </View>
         </View>
@@ -80,10 +82,10 @@ export default function PerformanceSummaryScreen() {
             <Ionicons name="trophy" size={22} color={Colors.tertiary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.insightLabel}>Ən güclü mövzu</Text>
+            <Text style={styles.insightLabel}>{t('perfSummary.strongTopic')}</Text>
             <Text style={styles.insightTitle}>Riyaziyyat</Text>
             <View style={styles.insightHintRow}>
-              <Text style={[styles.insightHint, { color: Colors.tertiary }]}>Mükəmməl irəliləyiş!</Text>
+              <Text style={[styles.insightHint, { color: Colors.tertiary }]}>{t('perfSummary.strongHint')}</Text>
               <Ionicons name="checkbox" size={14} color={Colors.tertiary} />
             </View>
           </View>
@@ -95,10 +97,10 @@ export default function PerformanceSummaryScreen() {
             <Ionicons name="warning" size={22} color={Colors.danger} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.insightLabel}>Zəif mövzu</Text>
+            <Text style={styles.insightLabel}>{t('perfSummary.weakTopic')}</Text>
             <Text style={styles.insightTitle}>Faizlər</Text>
             <View style={styles.insightHintRow}>
-              <Text style={[styles.insightHint, { color: Colors.danger }]}>Daha çox məşq etməlisən</Text>
+              <Text style={[styles.insightHint, { color: Colors.danger }]}>{t('perfSummary.weakHint')}</Text>
               <Ionicons name="warning" size={14} color={Colors.danger} />
             </View>
           </View>
@@ -108,7 +110,7 @@ export default function PerformanceSummaryScreen() {
         <View style={styles.footerPillWrap}>
           <View style={styles.footerPill}>
             <Ionicons name="information-circle" size={14} color={Colors.primary} />
-            <Text style={styles.footerPillText}>Ümumi nəticən sabitdir</Text>
+            <Text style={styles.footerPillText}>{t('perfSummary.footerStable')}</Text>
           </View>
         </View>
 

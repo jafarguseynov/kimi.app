@@ -9,18 +9,21 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { getExamResults, getCertificates, type Certificate } from '../../api/certificate.api';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.Achievements> };
 
 const STREAK_GOAL = 30;
 const XP_PER_LEVEL = 1000;
+const DATE_LOCALE: Record<string, string> = { az: 'az-Latn-AZ', ru: 'ru-RU', en: 'en-US' };
 
-type MedalDef = { id: string; label: string; bg: string; border: string; color: string };
-type BadgeDef = { id: string; label: string; icon: keyof typeof Ionicons.glyphMap; color: string; unlocked: boolean };
+type MedalDef = { id: string; labelKey: string; bg: string; border: string; color: string };
+type BadgeDef = { id: string; labelKey: string; icon: keyof typeof Ionicons.glyphMap; color: string; unlocked: boolean };
 
 export default function AchievementsScreen({ navigation }: Props) {
+  const { t, language } = useTranslation();
   const user = useUserStore((s) => s.user);
-  const firstName = user?.name?.split(' ')[0] ?? 'şagird';
+  const firstName = user?.name?.split(' ')[0] ?? t('achievements.defaultName');
   const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
   const { data: certs = [] } = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
 
@@ -59,19 +62,19 @@ export default function AchievementsScreen({ navigation }: Props) {
 
   const medals: MedalDef[] = useMemo(() => {
     const list: MedalDef[] = [];
-    if (stats.topCount >= 1) list.push({ id: 'gold', label: 'Qızıl Lider', bg: '#FFFBEB', border: '#FEF3C7', color: '#F59E0B' });
-    if (stats.passedCount >= 3) list.push({ id: 'silver', label: 'Gümüş Sürət', bg: '#F8FAFC', border: '#F1F5F9', color: '#94A3B8' });
-    if (stats.examCount >= 1) list.push({ id: 'bronze', label: 'Bürünc Əzm', bg: '#FFF7ED', border: '#FFEDD5', color: '#FB923C' });
+    if (stats.topCount >= 1) list.push({ id: 'gold', labelKey: 'achievements.medalGold', bg: '#FFFBEB', border: '#FEF3C7', color: '#F59E0B' });
+    if (stats.passedCount >= 3) list.push({ id: 'silver', labelKey: 'achievements.medalSilver', bg: '#F8FAFC', border: '#F1F5F9', color: '#94A3B8' });
+    if (stats.examCount >= 1) list.push({ id: 'bronze', labelKey: 'achievements.medalBronze', bg: '#FFF7ED', border: '#FFEDD5', color: '#FB923C' });
     return list;
   }, [stats]);
 
   const badges: BadgeDef[] = useMemo(() => [
-    { id: 'fast',   label: 'Sürətli Öyrənən',    icon: 'flash',     color: Colors.primary, unlocked: stats.examCount >= 3 },
-    { id: 'night',  label: 'Gecə Quşu',          icon: 'moon',      color: '#6366F1',     unlocked: stats.examCount >= 5 },
-    { id: 'math',   label: 'Riyaziyyat Dahisi',  icon: 'calculator',color: '#F59E0B',     unlocked: stats.topCount >= 1 },
-    { id: 'book',   label: 'Kitab Qurdu',        icon: 'book',      color: '#10B981',     unlocked: stats.certCount >= 2 },
-    { id: 'precise',label: 'Dəqiq Şagird',       icon: 'eye',       color: '#0EA5E9',     unlocked: stats.passedCount >= 5 },
-    { id: 'master', label: 'Master',             icon: 'star',      color: '#A855F7',     unlocked: stats.currentLevel >= 7 },
+    { id: 'fast',   labelKey: 'achievements.badgeFast',    icon: 'flash',     color: Colors.primary, unlocked: stats.examCount >= 3 },
+    { id: 'night',  labelKey: 'achievements.badgeNight',   icon: 'moon',      color: '#6366F1',     unlocked: stats.examCount >= 5 },
+    { id: 'math',   labelKey: 'achievements.badgeMath',    icon: 'calculator',color: '#F59E0B',     unlocked: stats.topCount >= 1 },
+    { id: 'book',   labelKey: 'achievements.badgeBook',    icon: 'book',      color: '#10B981',     unlocked: stats.certCount >= 2 },
+    { id: 'precise',labelKey: 'achievements.badgePrecise', icon: 'eye',       color: '#0EA5E9',     unlocked: stats.passedCount >= 5 },
+    { id: 'master', labelKey: 'achievements.badgeMaster',  icon: 'star',      color: '#A855F7',     unlocked: stats.currentLevel >= 7 },
   ], [stats]);
 
   return (
@@ -82,7 +85,7 @@ export default function AchievementsScreen({ navigation }: Props) {
           <View style={styles.brandAvatar}>
             <Ionicons name="school" size={18} color={Colors.primary} />
           </View>
-          <Text style={styles.headerTitle}>Nailiyyətlər</Text>
+          <Text style={styles.headerTitle}>{t('achievements.headerTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={() => navigation.goBack()}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
@@ -92,11 +95,11 @@ export default function AchievementsScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Greeting */}
         <View style={{ gap: 6 }}>
-          <Text style={styles.greetingTitle}>Uğurlarınla fəxr edirik, {firstName}!</Text>
+          <Text style={styles.greetingTitle}>{t('achievements.greetingTitle', { name: firstName })}</Text>
           <Text style={styles.greetingSub}>
             {stats.examCount > 0
-              ? `Bu vaxta qədər ${stats.examCount} imtahan tamamlamısan.`
-              : 'Bu gün ilk imtahanına başlamaq üçün ən yaxşı andır.'}
+              ? t('achievements.greetingDone', { n: stats.examCount })
+              : t('achievements.greetingNone')}
           </Text>
         </View>
 
@@ -112,9 +115,9 @@ export default function AchievementsScreen({ navigation }: Props) {
             activeOpacity={0.7}
             hitSlop={8}
             onPress={() => Alert.alert(
-              'Streak necə işləyir?',
-              'Streak — ardıcıl günlərdə tətbiqdə fəal olduğun gün sayıdır. Hər gün ən azı 1 imtahan tamamladığında streak +1 olur.\n\n• Hədəf: 30 gün üst-üstə davam etmək\n• Bir gün belə dərs etməsən streak sıfırlanır\n• Yuxarıdakı zolaq cari irəliləyişini göstərir\n• Kartı tıkla → Streak qoruması ekranı (premium dondurma)\n\nStreak sənə intizam verir və yüksək streak nailiyyət xalları (XP) qazandırır.',
-              [{ text: 'Anladım' }],
+              t('achievements.streakInfoTitle'),
+              t('achievements.streakInfoBody'),
+              [{ text: t('achievements.ok') }],
             )}
           >
             <Ionicons name="information-circle-outline" size={18} color="rgba(255,255,255,0.85)" />
@@ -123,18 +126,18 @@ export default function AchievementsScreen({ navigation }: Props) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 }}>
               <Ionicons name="flame" size={22} color="#fff" />
               <Text style={styles.streakTitle}>
-                {stats.streak > 0 ? `${stats.streak} günlük streak!` : 'Streak başlat'}
+                {stats.streak > 0 ? t('achievements.streakActive', { n: stats.streak }) : t('achievements.streakStart')}
               </Text>
             </View>
-            <Text style={styles.streakGoal}>Hədəf: {STREAK_GOAL} gün</Text>
+            <Text style={styles.streakGoal}>{t('achievements.streakGoal', { n: STREAK_GOAL })}</Text>
           </View>
           <View style={{ gap: 8 }}>
             <View style={styles.streakTrack}>
               <View style={[styles.streakFill, { width: `${stats.streakPct}%` }]} />
             </View>
             <View style={styles.streakLabels}>
-              <Text style={styles.streakLabel}>Başlanğıc</Text>
-              <Text style={styles.streakLabel}>Məqsəd</Text>
+              <Text style={styles.streakLabel}>{t('achievements.streakStartLabel')}</Text>
+              <Text style={styles.streakLabel}>{t('achievements.streakGoalLabel')}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -147,15 +150,15 @@ export default function AchievementsScreen({ navigation }: Props) {
               activeOpacity={0.7}
               hitSlop={8}
               onPress={() => Alert.alert(
-                'Qələbə nədir?',
-                'Qələbə — keçid balından (50%) yuxarı nəticə ilə bitirdiyin imtahanların sayıdır.\n\nHər uğurlu imtahan bir qələbə kimi sayılır və profilinə əlavə olunur. Qələbə sayı medallar (Bürünc Əzm, Gümüş Sürət) və nişanlar (Dəqiq Şagird) qazanmaq üçün vacibdir.',
-                [{ text: 'Anladım' }],
+                t('achievements.winsInfoTitle'),
+                t('achievements.winsInfoBody'),
+                [{ text: t('achievements.ok') }],
               )}
             >
               <Ionicons name="information-circle-outline" size={16} color={Colors.outline} />
             </TouchableOpacity>
             <Text style={styles.statNum}>{stats.passedCount}</Text>
-            <Text style={styles.statLabel}>QƏLƏBƏ</Text>
+            <Text style={styles.statLabel}>{t('achievements.statWins')}</Text>
           </View>
           <View style={styles.statCard}>
             <TouchableOpacity
@@ -163,30 +166,30 @@ export default function AchievementsScreen({ navigation }: Props) {
               activeOpacity={0.7}
               hitSlop={8}
               onPress={() => Alert.alert(
-                'TOP 10 nədir?',
-                'TOP 10 — imtahanda 90%-dən yuxarı nəticə qazanaraq ən yaxşı 10 iştirakçı sırasına düşdüyün dəfələrin sayıdır.\n\nTOP 10-a düşmək çətindir və hər dəfə Qızıl Lider medalına yaxınlaşırsan. Liderlik cədvəlində adın görünür, başqa şagirdlərə nümunə olursan.',
-                [{ text: 'Anladım' }],
+                t('achievements.top10InfoTitle'),
+                t('achievements.top10InfoBody'),
+                [{ text: t('achievements.ok') }],
               )}
             >
               <Ionicons name="information-circle-outline" size={16} color={Colors.outline} />
             </TouchableOpacity>
             <Text style={styles.statNum}>{stats.topCount}</Text>
-            <Text style={styles.statLabel}>TOP 10</Text>
+            <Text style={styles.statLabel}>{t('achievements.statTop10')}</Text>
           </View>
         </View>
 
         {/* Medals */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Medallar</Text>
+            <Text style={styles.sectionTitle}>{t('achievements.medalsTitle')}</Text>
             <TouchableOpacity
               style={styles.infoBtn}
               activeOpacity={0.7}
               hitSlop={8}
               onPress={() => Alert.alert(
-                'Medallar nədir?',
-                'Medallar imtahan nəticələrinə görə qazandığın xüsusi mükafatlardır. 3 növü var:\n\n🥇 Qızıl Lider — ən azı 1 imtahanda top sıralamaya düş\n🥈 Gümüş Sürət — 3 imtahandan keç\n🥉 Bürünc Əzm — ilk imtahanını tamamla\n\nNişanlardan fərqli olaraq medallar yalnız imtahan performansına əsaslanır və avtomatik qazanılır.',
-                [{ text: 'Anladım' }],
+                t('achievements.medalsInfoTitle'),
+                t('achievements.medalsInfoBody'),
+                [{ text: t('achievements.ok') }],
               )}
             >
               <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} />
@@ -203,27 +206,27 @@ export default function AchievementsScreen({ navigation }: Props) {
                   <View style={[styles.medalCircle, { backgroundColor: m.bg, borderColor: m.border }]}>
                     <Ionicons name="medal" size={36} color={m.color} />
                   </View>
-                  <Text style={styles.medalLabel}>{m.label}</Text>
+                  <Text style={styles.medalLabel}>{t(m.labelKey)}</Text>
                 </View>
               ))}
             </ScrollView>
           ) : (
-            <Text style={styles.emptyHint}>İlk imtahanını tamamla — medallarını burada görəcəksən.</Text>
+            <Text style={styles.emptyHint}>{t('achievements.medalsEmpty')}</Text>
           )}
         </View>
 
         {/* Level milestones timeline */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Səviyyə Mərhələləri</Text>
+            <Text style={styles.sectionTitle}>{t('achievements.levelsTitle')}</Text>
             <TouchableOpacity
               style={styles.infoBtn}
               activeOpacity={0.7}
               hitSlop={8}
               onPress={() => Alert.alert(
-                'Səviyyə Mərhələləri necə işləyir?',
-                'Hər fəaliyyətinə görə XP (təcrübə xalları) qazanırsan. 1000 XP topladıqda növbəti səviyyəyə yüksəlirsən.\n\n• ✅ Tamamlanmış səviyyələr yaşıl işarələnir\n• 🔵 Cari səviyyə mavi rənglə göstərilir + irəliləyiş indikatoru\n• 🔒 Növbəti səviyyələr kilidli qalır — onları açmaq üçün cari səviyyənin XP-sini doldurmalısan\n\nXP qazanmaq üçün: imtahan tamamla, gündəlik missiyaları yerinə yetir, sertifikat qazan və ya AI mentor ilə öyrən.',
-                [{ text: 'Anladım' }],
+                t('achievements.levelsInfoTitle'),
+                t('achievements.levelsInfoBody'),
+                [{ text: t('achievements.ok') }],
               )}
             >
               <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} />
@@ -238,8 +241,8 @@ export default function AchievementsScreen({ navigation }: Props) {
                 <Ionicons name="checkmark" size={12} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.timelineTitle}>Səviyyə {Math.max(1, stats.currentLevel - 1)}</Text>
-                <Text style={styles.timelineSub}>Tamamlandı</Text>
+                <Text style={styles.timelineTitle}>{t('achievements.level', { n: Math.max(1, stats.currentLevel - 1) })}</Text>
+                <Text style={styles.timelineSub}>{t('achievements.completed')}</Text>
               </View>
             </View>
 
@@ -251,10 +254,10 @@ export default function AchievementsScreen({ navigation }: Props) {
               <View style={{ flex: 1, gap: 8 }}>
                 <View>
                   <Text style={[styles.timelineTitle, { color: Colors.primary }]}>
-                    Səviyyə {stats.currentLevel} (Cari)
+                    {t('achievements.levelCurrent', { n: stats.currentLevel })}
                   </Text>
                   <Text style={styles.timelineSub}>
-                    {stats.xpInLevel} / {XP_PER_LEVEL} XP
+                    {t('achievements.xpOf', { xp: stats.xpInLevel, total: XP_PER_LEVEL })}
                   </Text>
                 </View>
                 <View style={styles.timelineTrack}>
@@ -267,8 +270,8 @@ export default function AchievementsScreen({ navigation }: Props) {
             <View style={[styles.timelineItem, { opacity: 0.45 }]}>
               <View style={[styles.timelineDot, { backgroundColor: '#E2E8F0' }]} />
               <View style={{ flex: 1 }}>
-                <Text style={styles.timelineTitle}>Səviyyə {stats.currentLevel + 1}</Text>
-                <Text style={styles.timelineSub}>Kilidi açılmayıb</Text>
+                <Text style={styles.timelineTitle}>{t('achievements.level', { n: stats.currentLevel + 1 })}</Text>
+                <Text style={styles.timelineSub}>{t('achievements.locked')}</Text>
               </View>
             </View>
           </View>
@@ -278,12 +281,12 @@ export default function AchievementsScreen({ navigation }: Props) {
         {certs.length > 0 && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Sertifikatlar</Text>
+              <Text style={styles.sectionTitle}>{t('achievements.certsTitle')}</Text>
               <TouchableOpacity
                 hitSlop={8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Exams', { screen: Routes.CertificateList })}
               >
-                <Text style={styles.sectionLink}>Hamısı</Text>
+                <Text style={styles.sectionLink}>{t('achievements.all')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView
@@ -312,7 +315,7 @@ export default function AchievementsScreen({ navigation }: Props) {
                   <View style={{ padding: 14, gap: 4 }}>
                     <Text style={styles.certTitle} numberOfLines={1}>{c.examTitle}</Text>
                     <Text style={styles.certDate}>
-                      {c.issuedAt ? new Date(c.issuedAt).toLocaleDateString('az-Latn-AZ', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}
+                      {c.issuedAt ? new Date(c.issuedAt).toLocaleDateString(DATE_LOCALE[language] ?? 'az-Latn-AZ', { day: '2-digit', month: 'long', year: 'numeric' }) : ''}
                     </Text>
                   </View>
                 </TouchableOpacity>
@@ -324,15 +327,15 @@ export default function AchievementsScreen({ navigation }: Props) {
         {/* Badges grid */}
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
-            <Text style={styles.sectionTitle}>Nişanlar</Text>
+            <Text style={styles.sectionTitle}>{t('achievements.badgesTitle')}</Text>
             <TouchableOpacity
               style={styles.infoBtn}
               activeOpacity={0.7}
               hitSlop={8}
               onPress={() => Alert.alert(
-                'Nişanlar nədir?',
-                'Nişanlar tətbiqdəki fəaliyyətinə görə qazandığın xüsusi simvollardır. Hər nişanın öz şərti var:\n\n• Sürətli Öyrənən — 3 imtahan tamamla\n• Gecə Quşu — 5 imtahan tamamla\n• Riyaziyyat Dahisi — 1 dəfə top sıralamaya çıx\n• Kitab Qurdu — 2 sertifikat qazan\n• Dəqiq Şagird — 5 imtahandan keç\n• Master — 7-ci səviyyəyə çat\n\nKilidli (🔒) nişanlar şərt tamamlandıqdan sonra avtomatik açılır.',
-                [{ text: 'Anladım' }],
+                t('achievements.badgesInfoTitle'),
+                t('achievements.badgesInfoBody'),
+                [{ text: t('achievements.ok') }],
               )}
             >
               <Ionicons name="information-circle-outline" size={18} color={Colors.textSecondary} />
@@ -352,7 +355,7 @@ export default function AchievementsScreen({ navigation }: Props) {
                   />
                 </View>
                 <Text style={[styles.badgeLabel, !b.unlocked && { opacity: 0.45 }]} numberOfLines={2}>
-                  {b.label}
+                  {t(b.labelKey)}
                 </Text>
               </View>
             ))}

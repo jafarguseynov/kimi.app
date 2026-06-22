@@ -6,11 +6,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ConnectionSuccessScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -18,7 +20,7 @@ export default function ConnectionSuccessScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bağlantı Tamamlandı</Text>
+        <Text style={styles.headerTitle}>{t('connectionSuccess.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -28,7 +30,7 @@ export default function ConnectionSuccessScreen() {
           <View style={styles.successCircle}>
             <Ionicons name="checkmark-circle" size={56} color={Colors.tertiary} />
           </View>
-          <Text style={styles.successTitle}>Bağlantı uğurludur!</Text>
+          <Text style={styles.successTitle}>{t('connectionSuccess.successTitle')}</Text>
         </View>
 
         {/* Child info card */}
@@ -45,7 +47,7 @@ export default function ConnectionSuccessScreen() {
             </View>
             <Text style={styles.childName}>Cəfər Yusifov</Text>
             <View style={styles.gradeBadge}>
-              <Text style={styles.gradeBadgeText}>7-ci sinif</Text>
+              <Text style={styles.gradeBadgeText}>{t('connectionSuccess.gradeBadge')}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.detailRow}>
@@ -53,7 +55,7 @@ export default function ConnectionSuccessScreen() {
                 <Ionicons name="school-outline" size={20} color={Colors.textSecondary} />
               </View>
               <View>
-                <Text style={styles.detailLabel}>Məktəb</Text>
+                <Text style={styles.detailLabel}>{t('connectionSuccess.schoolLabel')}</Text>
                 <Text style={styles.detailValue}>23 nömrəli tam orta məktəb</Text>
               </View>
             </View>
@@ -62,7 +64,7 @@ export default function ConnectionSuccessScreen() {
                 <Ionicons name="calendar-outline" size={20} color={Colors.textSecondary} />
               </View>
               <View>
-                <Text style={styles.detailLabel}>Tədris ili</Text>
+                <Text style={styles.detailLabel}>{t('connectionSuccess.yearLabel')}</Text>
                 <Text style={styles.detailValue}>2023 - 2024</Text>
               </View>
             </View>
@@ -73,7 +75,7 @@ export default function ConnectionSuccessScreen() {
         <View style={styles.mascotSection}>
           <View style={styles.speechBubble}>
             <Text style={styles.speechText}>
-              Artıq Cəfərin tərəqqisini birbaşa izləyə bilərsiniz!
+              {t('connectionSuccess.speech')}
             </Text>
           </View>
           <View style={styles.speechArrow} />
@@ -87,7 +89,7 @@ export default function ConnectionSuccessScreen() {
       <View style={styles.footer}>
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.ParentChildren)}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryBtnText}>Panelə keç</Text>
+            <Text style={styles.primaryBtnText}>{t('connectionSuccess.goPanel')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

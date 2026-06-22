@@ -13,6 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -20,8 +21,8 @@ type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
 type CalcCard = {
   route: string;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
   icon: IconName;
   iconColor: string;
   iconBg: string;
@@ -32,24 +33,24 @@ type CalcCard = {
 const CARDS: CalcCard[] = [
   {
     route: Routes.SemesterCalc,
-    title: 'Yarımillik qiymətləndirmə',
-    desc: 'BSQ və KSQ ballarına əsasən yarımillik nəticənin hesablanması.',
+    titleKey: 'calc.semesterTitle',
+    descKey: 'calc.semesterDesc',
     icon: 'calendar-outline',
     iconColor: Colors.primary,
     iconBg: Colors.primaryLight,
   },
   {
     route: Routes.AnnualCalc,
-    title: 'İllik qiymətləndirmə',
-    desc: 'İki yarımillik əsasında yekun illik balın təyini.',
+    titleKey: 'calc.annualTitle',
+    descKey: 'calc.annualDesc',
     icon: 'calendar-clear-outline',
     iconColor: Colors.tertiary,
     iconBg: Colors.onTertiary,
   },
   {
     route: Routes.ScoreCalc,
-    title: 'Sual sayına görə bal',
-    desc: 'Düz və səhv cavabların bal ekvivalentini müəyyən et.',
+    titleKey: 'calc.scoreTitle',
+    descKey: 'calc.scoreDesc',
     icon: 'help-circle-outline',
     iconColor: '#fff',
     iconBg: 'gradient',
@@ -58,16 +59,16 @@ const CARDS: CalcCard[] = [
   },
   {
     route: Routes.QualityCalc,
-    title: 'Keyfiyyət və müvəffəqiyyət',
-    desc: 'Sinif üzrə ümumi keyfiyyət faizinin avtomatik analizi.',
+    titleKey: 'calc.qualityTitle',
+    descKey: 'calc.qualityDesc',
     icon: 'stats-chart-outline',
     iconColor: Colors.secondary,
     iconBg: Colors.secondaryContainer,
   },
   {
     route: Routes.DIMCalc,
-    title: 'DİM kalkulyatoru',
-    desc: 'Rəsmi imtahan formatına uyğun bal hesablama aləti.',
+    titleKey: 'calc.dimTitle',
+    descKey: 'calc.dimDesc',
     icon: 'school-outline',
     iconColor: Colors.primary,
     iconBg: Colors.primaryLight,
@@ -76,10 +77,11 @@ const CARDS: CalcCard[] = [
 
 export default function CalculatorsHomeScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
 
   const renderCard = (card: CalcCard) => (
     <TouchableOpacity
-      key={card.route + card.title}
+      key={card.route + card.titleKey}
       style={[styles.card, card.fullWidth && styles.cardFull]}
       onPress={() => navigation.navigate(card.route as any)}
       activeOpacity={0.8}
@@ -94,8 +96,8 @@ export default function CalculatorsHomeScreen() {
         </View>
       )}
       <View style={card.fullWidth ? styles.cardInfoRow : styles.cardInfo}>
-        <Text style={styles.cardTitle}>{card.title}</Text>
-        <Text style={styles.cardDesc}>{card.desc}</Text>
+        <Text style={styles.cardTitle}>{t(card.titleKey)}</Text>
+        <Text style={styles.cardDesc}>{t(card.descKey)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -109,7 +111,7 @@ export default function CalculatorsHomeScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Kalkulyatorlar</Text>
+        <Text style={styles.headerTitle}>{t('calc.title')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -117,8 +119,8 @@ export default function CalculatorsHomeScreen() {
         {/* Hero */}
         <LinearGradient colors={GRADIENT} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={styles.heroBlob} />
-          <Text style={styles.heroTitle}>Düzgün hesabla,{'\n'}nəticəni dərhal gör!</Text>
-          <Text style={styles.heroSub}>Akademik göstəricilərini asanlıqla izlə və analiz et.</Text>
+          <Text style={styles.heroTitle}>{t('calc.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('calc.heroSub')}</Text>
         </LinearGradient>
 
         {/* Shortcuts */}
@@ -132,8 +134,8 @@ export default function CalculatorsHomeScreen() {
               <Ionicons name="time-outline" size={18} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.shortcutTitle}>Tarixçə</Text>
-              <Text style={styles.shortcutSub}>Bütün hesablamalar</Text>
+              <Text style={styles.shortcutTitle}>{t('calc.history')}</Text>
+              <Text style={styles.shortcutSub}>{t('calc.allCalcs')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.primaryFixed} />
           </TouchableOpacity>
@@ -147,8 +149,8 @@ export default function CalculatorsHomeScreen() {
               <Ionicons name="bookmark" size={18} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.shortcutTitle}>Yaddaş</Text>
-              <Text style={styles.shortcutSub}>Saxlanılanlar</Text>
+              <Text style={styles.shortcutTitle}>{t('calc.saved')}</Text>
+              <Text style={styles.shortcutSub}>{t('calc.savedItems')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.primaryFixed} />
           </TouchableOpacity>
@@ -173,7 +175,7 @@ export default function CalculatorsHomeScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <Ionicons name="shield-checkmark-outline" size={20} color={Colors.outlineVariant} />
-          <Text style={styles.footerText}>ARTİ Standartlarına Uyğundur</Text>
+          <Text style={styles.footerText}>{t('calc.footerStandard')}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

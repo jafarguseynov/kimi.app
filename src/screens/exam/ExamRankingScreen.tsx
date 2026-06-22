@@ -9,6 +9,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { getExamLeaderboard, type ExamRankEntry } from '../../api/leaderboard.api';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamRanking>;
 
@@ -19,6 +20,7 @@ const RANK_BG: Record<number, string> = {
 };
 
 export default function ExamRankingScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const examId = (route.params as { examId?: string } | undefined)?.examId;
   const [entries, setEntries] = useState<ExamRankEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,15 +58,15 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate(Routes.ExamList)} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İmtahan Reytinqi</Text>
+        <Text style={styles.headerTitle}>{t('examRanking.title')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       {!examId ? (
         <View style={styles.center}>
           <Ionicons name="trophy-outline" size={56} color={Colors.primaryFixed} />
-          <Text style={styles.emptyTitle}>İmtahan seçilməyib</Text>
-          <Text style={styles.emptySub}>Reytinqi görmək üçün imtahanı tamamlayın.</Text>
+          <Text style={styles.emptyTitle}>{t('examRanking.noExamTitle')}</Text>
+          <Text style={styles.emptySub}>{t('examRanking.noExamSub')}</Text>
         </View>
       ) : loading ? (
         <View style={styles.center}>
@@ -78,9 +80,9 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
         >
           {/* Top Message */}
           <View style={styles.topCard}>
-            <Text style={styles.topCardSub}>{total} iştirakçı</Text>
+            <Text style={styles.topCardSub}>{t('examRanking.nParticipants', { n: total })}</Text>
             <Text style={styles.topCardTitle}>
-              {myEntry ? 'Əla nəticə! Sənin mövqeyin aşağıda göstərilir.' : 'Bu imtahanda iştirak etməmisən.'}
+              {myEntry ? t('examRanking.goodResult') : t('examRanking.notParticipated')}
             </Text>
           </View>
 
@@ -93,19 +95,19 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
               end={{ x: 1, y: 1 }}
             >
               <View style={styles.rankGlow} />
-              <Text style={styles.rankCardLabel}>Sənin mövqeyin</Text>
+              <Text style={styles.rankCardLabel}>{t('examRanking.yourPosition')}</Text>
               <View style={styles.rankRow}>
-                <Text style={styles.rankValue}>{myEntry.rank}-ci</Text>
-                <Text style={styles.rankTotal}>/ {total} nəfər</Text>
+                <Text style={styles.rankValue}>{t('examRanking.rankValue', { n: myEntry.rank })}</Text>
+                <Text style={styles.rankTotal}>{t('examRanking.ofPeople', { n: total })}</Text>
               </View>
               {myPercentile !== null && (
                 <View style={styles.topBadge}>
                   <Ionicons name="star" size={14} color="#FFD700" />
-                  <Text style={styles.topBadgeText}>Top {100 - myPercentile + 1}% arasındasan</Text>
+                  <Text style={styles.topBadgeText}>{t('examRanking.topPercent', { n: 100 - myPercentile + 1 })}</Text>
                 </View>
               )}
               <View style={styles.scoreRow}>
-                <Text style={styles.scoreLabel}>Bal: </Text>
+                <Text style={styles.scoreLabel}>{t('examRanking.scoreLabel')}</Text>
                 <Text style={styles.scoreValue}>{myEntry.score}/{myEntry.total}</Text>
                 <Text style={styles.pctValue}> ({myEntry.percentage}%)</Text>
               </View>
@@ -115,12 +117,12 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
           {/* Comparative Analysis */}
           {myEntry && total > 0 && (
             <View style={styles.compareCard}>
-              <Text style={styles.compareTitle}>Müqayisəli Analiz</Text>
+              <Text style={styles.compareTitle}>{t('examRanking.compareTitle')}</Text>
 
               <View style={styles.compareRow}>
                 <View style={styles.compareLabelRow}>
-                  <Text style={styles.compareLabel}>Sənin Balın</Text>
-                  <Text style={styles.compareValueMine}>{myEntry.score} bal</Text>
+                  <Text style={styles.compareLabel}>{t('examRanking.yourScore')}</Text>
+                  <Text style={styles.compareValueMine}>{t('examRanking.nBal', { n: myEntry.score })}</Text>
                 </View>
                 <View style={styles.compareTrack}>
                   <LinearGradient
@@ -134,8 +136,8 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
 
               <View style={styles.compareRow}>
                 <View style={styles.compareLabelRow}>
-                  <Text style={styles.compareLabel}>Ölkə Ortalaması</Text>
-                  <Text style={styles.compareValueAvg}>{avgScore} bal</Text>
+                  <Text style={styles.compareLabel}>{t('examRanking.countryAvg')}</Text>
+                  <Text style={styles.compareValueAvg}>{t('examRanking.nBal', { n: avgScore })}</Text>
                 </View>
                 <View style={styles.compareTrack}>
                   <View style={[styles.compareFillAvg, { width: `${avgBarPct}%` as any }]} />
@@ -146,9 +148,9 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
                 <View style={styles.insightRow}>
                   <Ionicons name="analytics-outline" size={20} color={Colors.primary} />
                   <Text style={styles.insightText}>
-                    Sənin balın ölkə ortalamasından{' '}
+                    {t('examRanking.insightPre')}
                     <Text style={styles.insightAccent}>{diffPct > 0 ? `${diffPct}%` : `${Math.abs(diffPct)}%`}</Text>
-                    {diffPct >= 0 ? ' daha yüksəkdir.' : ' aşağıdır.'}
+                    {diffPct >= 0 ? t('examRanking.insightHigher') : t('examRanking.insightLower')}
                   </Text>
                 </View>
               )}
@@ -158,7 +160,7 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
           {/* Top entries */}
           <View style={styles.top10Section}>
             <View style={styles.top10Header}>
-              <Text style={styles.top10Title}>Ən yüksək nəticələr</Text>
+              <Text style={styles.top10Title}>{t('examRanking.topResults')}</Text>
               <Ionicons name="trophy-outline" size={22} color={Colors.primaryFixedDim} />
             </View>
 
@@ -173,12 +175,12 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
                     <Text style={styles.rankCircleText}>{s.rank}</Text>
                   </View>
                   <View style={styles.studentInfo}>
-                    <Text style={styles.studentName}>{s.userId === user?.id ? 'Sən' : s.name}</Text>
+                    <Text style={styles.studentName}>{s.userId === user?.id ? t('examRanking.you') : s.name}</Text>
                     <Text style={styles.studentSchool}>{s.percentage}% · {s.timeSpent}s</Text>
                   </View>
                   <View style={styles.scoreCol}>
                     <Text style={styles.studentScore}>{s.score}</Text>
-                    <Text style={styles.scoreUnit}>BAL</Text>
+                    <Text style={styles.scoreUnit}>{t('examRanking.balUnit')}</Text>
                   </View>
                 </View>
               ))}
@@ -187,14 +189,14 @@ export default function ExamRankingScreen({ navigation, route }: Props) {
                 {entries.slice(3, 10).map((s) => (
                   <View key={s.userId} style={[styles.compactRow, s.userId === user?.id && styles.compactRowMe]}>
                     <Text style={styles.compactRank}>{s.rank}</Text>
-                    <Text style={styles.compactName}>{s.userId === user?.id ? 'Sən' : s.name}</Text>
+                    <Text style={styles.compactName}>{s.userId === user?.id ? t('examRanking.you') : s.name}</Text>
                     <Text style={styles.compactScore}>{s.score}</Text>
                   </View>
                 ))}
               </View>
 
               {entries.length === 0 && (
-                <Text style={styles.emptyInner}>Hələ heç kim bu imtahanda iştirak etməyib.</Text>
+                <Text style={styles.emptyInner}>{t('examRanking.emptyInner')}</Text>
               )}
             </View>
           </View>

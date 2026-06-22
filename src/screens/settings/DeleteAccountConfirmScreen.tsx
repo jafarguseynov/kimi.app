@@ -6,19 +6,21 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.DeleteAccountConfirm>;
 };
 
 export default function DeleteAccountConfirmScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hesabın İdarə Edilməsi</Text>
+        <Text style={styles.headerTitle}>{t('deleteAccount.headerTitle')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -36,11 +38,11 @@ export default function DeleteAccountConfirmScreen({ navigation }: Props) {
 
         {/* Text */}
         <View style={styles.textBlock}>
-          <Text style={styles.title}>Hesabı silmək istədiyinizə əminsiniz?</Text>
+          <Text style={styles.title}>{t('deleteAccount.title')}</Text>
           <Text style={styles.subtitle}>
-            Bu əməliyyatdan sonra bütün məlumatlar, qazanılmış{' '}
-            <Text style={styles.highlight}>XP</Text> və{' '}
-            <Text style={styles.highlight}>sertifikatlar</Text> geri qaytarılmaya bilər.
+            {t('deleteAccount.subtitlePre')}
+            <Text style={styles.highlight}>{t('deleteAccount.subtitleXp')}</Text>{t('deleteAccount.subtitleMid')}
+            <Text style={styles.highlight}>{t('deleteAccount.subtitleCerts')}</Text>{t('deleteAccount.subtitlePost')}
           </Text>
         </View>
 
@@ -48,11 +50,11 @@ export default function DeleteAccountConfirmScreen({ navigation }: Props) {
         <View style={styles.lossGrid}>
           <View style={styles.lossCard}>
             <Ionicons name="ribbon-outline" size={26} color={Colors.textSecondary} />
-            <Text style={styles.lossLabel}>Sertifikatlar</Text>
+            <Text style={styles.lossLabel}>{t('deleteAccount.lossCerts')}</Text>
           </View>
           <View style={styles.lossCard}>
             <Ionicons name="trending-up-outline" size={26} color={Colors.textSecondary} />
-            <Text style={styles.lossLabel}>XP Səviyyəsi</Text>
+            <Text style={styles.lossLabel}>{t('deleteAccount.lossXp')}</Text>
           </View>
         </View>
 
@@ -63,10 +65,10 @@ export default function DeleteAccountConfirmScreen({ navigation }: Props) {
             activeOpacity={0.85}
             onPress={() => navigation.navigate(Routes.AccountDeactivated)}
           >
-            <Text style={styles.deleteBtnText}>Hesabı sil</Text>
+            <Text style={styles.deleteBtnText}>{t('deleteAccount.deleteNow')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.backBtnAction} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-            <Text style={styles.backBtnText}>Geri qayıt</Text>
+            <Text style={styles.backBtnText}>{t('deleteAccount.goBack')}</Text>
           </TouchableOpacity>
         </View>
       </View>

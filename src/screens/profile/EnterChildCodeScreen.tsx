@@ -6,11 +6,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function EnterChildCodeScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [studentId, setStudentId] = useState('');
   const [focused, setFocused] = useState(false);
 
@@ -20,7 +22,7 @@ export default function EnterChildCodeScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Şagird Bağı</Text>
+        <Text style={styles.headerTitle}>{t('enterChildCode.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -33,14 +35,14 @@ export default function EnterChildCodeScreen() {
         <View style={styles.iconBox}>
           <Ionicons name="link" size={32} color={Colors.primary} />
         </View>
-        <Text style={styles.title}>Şagird Bağı</Text>
+        <Text style={styles.title}>{t('enterChildCode.title')}</Text>
         <Text style={styles.subtitle}>
-          Övladınızın təhsil tərəqqisini izləmək üçün onun Şagird ID-sini daxil edin.
+          {t('enterChildCode.subtitle')}
         </Text>
 
         {/* Input */}
         <View style={styles.inputSection}>
-          <Text style={styles.inputLabel}>Şagird ID daxil et</Text>
+          <Text style={styles.inputLabel}>{t('enterChildCode.inputLabel')}</Text>
           <View style={[styles.inputWrap, focused && styles.inputWrapFocused]}>
             <Ionicons
               name="card-outline"
@@ -52,7 +54,7 @@ export default function EnterChildCodeScreen() {
               style={styles.input}
               value={studentId}
               onChangeText={setStudentId}
-              placeholder="Məsələn: KM-849201"
+              placeholder={t('enterChildCode.placeholder')}
               placeholderTextColor={Colors.outlineVariant}
               autoCapitalize="characters"
               onFocus={() => setFocused(true)}
@@ -73,7 +75,7 @@ export default function EnterChildCodeScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.primaryBtnText}>Bağlan</Text>
+            <Text style={styles.primaryBtnText}>{t('enterChildCode.connect')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -81,8 +83,7 @@ export default function EnterChildCodeScreen() {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle" size={20} color={Colors.primary} style={{ marginTop: 1 }} />
           <Text style={styles.infoText}>
-            Şagird ID-ni övladınızın profil bölməsindən tapa bilərsiniz. Əgər hələ də çətinliyiniz varsa,
-            məktəb rəhbərliyinə müraciət edin.
+            {t('enterChildCode.infoText')}
           </Text>
         </View>
 
@@ -90,13 +91,13 @@ export default function EnterChildCodeScreen() {
         <View style={styles.featureRow}>
           <View style={[styles.featureCard, { borderBottomColor: Colors.primaryFixed + '40' }]}>
             <Ionicons name="analytics" size={22} color={Colors.primary} />
-            <Text style={styles.featureLabel}>TƏRƏQQİ</Text>
-            <Text style={styles.featureSub}>Real-vaxt analitika</Text>
+            <Text style={styles.featureLabel}>{t('enterChildCode.featureProgress')}</Text>
+            <Text style={styles.featureSub}>{t('enterChildCode.featureProgressSub')}</Text>
           </View>
           <View style={[styles.featureCard, { borderBottomColor: Colors.tertiaryContainer }]}>
             <Ionicons name="shield-checkmark" size={22} color={Colors.tertiary} />
-            <Text style={styles.featureLabel}>TƏHLÜKƏSİZ</Text>
-            <Text style={styles.featureSub}>Şifrələnmiş məlumat</Text>
+            <Text style={styles.featureLabel}>{t('enterChildCode.featureSecure')}</Text>
+            <Text style={styles.featureSub}>{t('enterChildCode.featureSecureSub')}</Text>
           </View>
         </View>
       </ScrollView>

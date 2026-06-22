@@ -8,26 +8,28 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useExamListForUser } from '../../hooks/useExams';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.CategoryExams>;
-type Mode = 'all' | 'practice' | 'monthly' | 'live';
+type Mode = 'all' | 'live';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const DIFFICULTY_META: Record<string, { label: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
-  easy:   { label: 'Asan', icon: 'happy-outline',     color: Colors.tertiary },
-  medium: { label: 'Orta', icon: 'bar-chart-outline', color: Colors.textSecondary },
-  hard:   { label: 'Çətin', icon: 'trending-up',      color: Colors.danger },
+const DIFFICULTY_META: Record<string, { tKey: string; icon: keyof typeof Ionicons.glyphMap; color: string }> = {
+  easy:   { tKey: 'examList.diff.easy',   icon: 'happy-outline',     color: Colors.tertiary },
+  medium: { tKey: 'examList.diff.medium', icon: 'bar-chart-outline', color: Colors.textSecondary },
+  hard:   { tKey: 'examList.diff.hard',   icon: 'trending-up',       color: Colors.danger },
 };
 
 type BadgeKind = 'new' | 'popular' | 'live';
-const BADGE_META: Record<BadgeKind, { bg: string; fg: string; label: string }> = {
-  new:     { bg: '#DCFCE7', fg: Colors.tertiary,        label: 'Yeni' },
-  popular: { bg: Colors.surfaceLow ?? '#E5E9EB', fg: Colors.textSecondary, label: 'Populyar' },
-  live:    { bg: '#DC2626', fg: '#fff',                 label: 'Canlı' },
+const BADGE_META: Record<BadgeKind, { bg: string; fg: string; tKey: string }> = {
+  new:     { bg: '#DCFCE7', fg: Colors.tertiary,        tKey: 'catExams.badgeToday' },
+  popular: { bg: Colors.surfaceLow ?? '#E5E9EB', fg: Colors.textSecondary, tKey: 'catExams.badgePopular' },
+  live:    { bg: '#DC2626', fg: '#fff',                 tKey: 'catExams.badgeLive' },
 };
 
 export default function CategoryExamsScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { categoryTitle, categoryKey, subKey, subject } = route.params;
   const [mode, setMode] = useState<Mode>('all');
   const { data: exams = [], isLoading, error, refetch } = useExamListForUser({ categoryKey, subKey, subject, limit: 6 });
@@ -37,11 +39,9 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
   // Fənn çatışmırsa, subKey və ya categoryTitle-dan istifadə et
   const effectiveSubject = subject ?? subKey ?? categoryTitle.split('·').pop()?.trim() ?? categoryTitle;
 
-  const badgesFor = (idx: number): BadgeKind[] => {
-    if (idx === 0) return ['new', 'popular'];
-    if (idx === 1) return ['live'];
-    return [];
-  };
+  // Bugünkü paylaşılan imtahan — yalnız "bugünkü" nişanı (saxta "canlı" nişanı götürüldü;
+  // canlı imtahanlar ayrıca "Canlı" tabından açılır).
+  const badgesFor = (idx: number): BadgeKind[] => (idx === 0 ? ['new'] : []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -49,7 +49,7 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>{categoryTitle} imtahanları</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{t('catExams.examsSuffix', { title: categoryTitle })}</Text>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -58,17 +58,15 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Welcome hero */}
         <View>
-          <Text style={styles.welcomeTitle}>Xoş gəldiniz</Text>
-          <Text style={styles.welcomeSub}>Uyğun imtahanı seç və başla</Text>
+          <Text style={styles.welcomeTitle}>{t('catExams.welcome')}</Text>
+          <Text style={styles.welcomeSub}>{t('catExams.welcomeSub')}</Text>
         </View>
 
         {/* Mode tabs (4 options) */}
         <View style={styles.segmented}>
           {([
-            { id: 'all',      label: 'Hamısı' },
-            { id: 'practice', label: 'Practice' },
-            { id: 'monthly',  label: 'Aylıq sınaq' },
-            { id: 'live',     label: 'Canlı' },
+            { id: 'all',  label: t('catExams.all') },
+            { id: 'live', label: t('catExams.live') },
           ] as { id: Mode; label: string }[]).map((opt) => {
             const active = mode === opt.id;
             if (active) {
@@ -92,26 +90,27 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
           })}
         </View>
 
-        {/* Filter pills */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          <TouchableOpacity style={[styles.filterChip, styles.filterChipPrimary]} activeOpacity={0.85}>
-            <Ionicons name="filter-outline" size={16} color={Colors.primary} />
-            <Text style={[styles.filterChipText, { color: Colors.textPrimary }]}>Fənn</Text>
-          </TouchableOpacity>
-          {[
-            { label: 'Çətinlik', icon: 'chevron-down' as const },
-            { label: 'Tarix', icon: 'calendar-outline' as const },
-            { label: 'İmtahan növü', icon: 'apps-outline' as const },
-          ].map((f) => (
-            <TouchableOpacity key={f.label} style={styles.filterChip} activeOpacity={0.85}>
-              <Text style={styles.filterChipText}>{f.label}</Text>
-              <Ionicons name={f.icon} size={16} color={Colors.textSecondary} />
+        {/* Canlı tab → əsl canlı imtahanlar siyahısına keç */}
+        {mode === 'live' ? (
+          <View style={styles.liveCta}>
+            <View style={styles.liveIconCircle}>
+              <View style={styles.livePulseWhite} />
+              <Ionicons name="radio" size={26} color="#fff" />
+            </View>
+            <Text style={styles.liveCtaTitle}>{t('catExams.liveTitle')}</Text>
+            <Text style={styles.liveCtaSub}>{t('catExams.liveSub')}</Text>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={styles.liveCtaBtnWrap}
+              onPress={() => navigation.navigate(Routes.LiveExamsList)}
+            >
+              <LinearGradient colors={['#DC2626', '#F97316']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.liveCtaBtn}>
+                <Text style={styles.liveCtaBtnText}>{t('catExams.liveBtn')}</Text>
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </LinearGradient>
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Cards */}
-        {isLoading ? (
+          </View>
+        ) : isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
@@ -119,19 +118,19 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
           error ? (
             <View style={styles.empty}>
               <Ionicons name="cloud-offline-outline" size={42} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>Bağlantı problemi</Text>
-              <Text style={styles.emptySub}>Server bağlantısında problem var. Bir az sonra yenidən cəhd et.</Text>
+              <Text style={styles.emptyTitle}>{t('catExams.connErr')}</Text>
+              <Text style={styles.emptySub}>{t('catExams.connErrSub')}</Text>
               <TouchableOpacity activeOpacity={0.85} onPress={() => refetch()} style={{ marginTop: 12 }}>
-                <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}>Yenidən yoxla</Text>
+                <Text style={{ fontSize: 13, color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}>{t('catExams.recheck')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
             // Hovuz boşdur — backend fonda hazırlayır, ekran avtomatik yenilənir
             <View style={styles.empty}>
               <ActivityIndicator size="large" color={Colors.primary} />
-              <Text style={[styles.emptyTitle, { marginTop: 12 }]}>İmtahanlar hazırlanır…</Text>
+              <Text style={[styles.emptyTitle, { marginTop: 12 }]}>{t('catExams.preparing')}</Text>
               <Text style={styles.emptySub}>
-                {`Sənə uyğun imtahanlar hazırlanır. Bir neçə saniyə — bu ekran avtomatik yenilənəcək.\nFənn: ${effectiveSubject}`}
+                {t('catExams.preparingSub', { subject: effectiveSubject })}
               </Text>
               <TouchableOpacity
                 activeOpacity={0.85}
@@ -139,7 +138,7 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
                 style={{ marginTop: 16 }}
               >
                 <Text style={{ fontSize: 13, color: Colors.textSecondary, textDecorationLine: 'underline' }}>
-                  Özün üçün xüsusi imtahan yarat
+                  {t('catExams.createCustom')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -159,35 +158,53 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
                         return (
                           <View key={b} style={[styles.badge, { backgroundColor: meta.bg }]}>
                             {b === 'live' && <View style={styles.livePulseWhite} />}
-                            <Text style={[styles.badgeText, { color: meta.fg }]}>{meta.label}</Text>
+                            <Text style={[styles.badgeText, { color: meta.fg }]}>{t(meta.tKey)}</Text>
                           </View>
                         );
                       })}
                     </View>
                   )}
                   <Text style={styles.cardTitle} numberOfLines={2}>{ex.title}</Text>
+                  {!!ex.servedDate && (
+                    <View style={styles.variantRow}>
+                      <Ionicons name="sparkles-outline" size={13} color={Colors.primary} />
+                      <Text style={styles.variantText}>
+                        {ex.variantTotal > 1
+                          ? t('catExams.variantDailyN', { date: ex.servedDate, v: ex.variant, total: ex.variantTotal })
+                          : t('catExams.variantDaily', { date: ex.servedDate })}
+                      </Text>
+                    </View>
+                  )}
                   <View style={styles.metaRow}>
                     <View style={styles.metaItem}>
                       <Ionicons name="help-circle-outline" size={18} color={Colors.primary} />
-                      <Text style={styles.metaText}>{ex.questionCount ?? ex.totalQuestions ?? 30} sual</Text>
+                      <Text style={styles.metaText}>{t('catExams.questions', { n: ex.questionCount ?? ex.totalQuestions ?? 30 })}</Text>
                     </View>
                     <View style={styles.metaItem}>
                       <Ionicons name="time-outline" size={18} color={Colors.primary} />
-                      <Text style={styles.metaText}>{ex.duration ?? 45} dəqiqə</Text>
+                      <Text style={styles.metaText}>{t('catExams.minutes', { n: ex.duration ?? 45 })}</Text>
                     </View>
                     <View style={styles.metaItem}>
                       <Ionicons name={diff.icon} size={18} color={diff.color} />
-                      <Text style={[styles.metaText, { color: diff.color }]}>{diff.label}</Text>
+                      <Text style={[styles.metaText, { color: diff.color }]}>{t(diff.tKey)}</Text>
                     </View>
                   </View>
                   <View style={styles.ctaRow}>
                     <TouchableOpacity
                       activeOpacity={0.85}
                       style={styles.startBtnWrap}
-                      onPress={() => navigation.navigate(Routes.ExamInfo, { examId: ex.id, title: ex.title })}
+                      onPress={() => navigation.navigate(Routes.ExamInfo, {
+                        examId: ex.id,
+                        title: ex.title,
+                        questionCount: ex.questionCount ?? ex.totalQuestions,
+                        duration: ex.duration,
+                        difficulty: ex.difficulty,
+                        categoryKey: ex.categoryKey ?? categoryKey,
+                        subject: ex.subject ?? subject,
+                      })}
                     >
                       <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-                        <Text style={styles.startBtnText}>{isLive ? 'Qoşul' : 'Başla'}</Text>
+                        <Text style={styles.startBtnText}>{isLive ? t('catExams.join') : t('catExams.start')}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -195,17 +212,17 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
                       style={styles.detailsBtn}
                       onPress={() => navigation.navigate(Routes.ExamDetail, { examId: ex.id, title: ex.title })}
                     >
-                      <Text style={styles.detailsBtnText}>Detallara bax</Text>
+                      <Text style={styles.detailsBtnText}>{t('catExams.details')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               );
             })}
 
-            {/* Decorative empty card */}
+            {/* Gündəlik yenilənmə qeydi */}
             <View style={styles.dashedCard}>
-              <Ionicons name="ellipsis-horizontal" size={32} color={Colors.textMuted + '66'} />
-              <Text style={styles.dashedText}>Daha çox imtahan yolda...</Text>
+              <Ionicons name="refresh-outline" size={28} color={Colors.textMuted + '99'} />
+              <Text style={styles.dashedText}>{t('catExams.dailyRefresh')}</Text>
             </View>
           </View>
         )}
@@ -243,18 +260,6 @@ const styles = StyleSheet.create({
   welcomeTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, marginBottom: 4 },
   welcomeSub: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500', opacity: 0.85 },
 
-  filterRow: { gap: 12, paddingRight: 8 },
-  filterChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 8,
-    backgroundColor: Colors.surfaceLowest,
-    borderRadius: 999,
-    borderWidth: 1, borderColor: Colors.borderLight,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 1,
-  },
-  filterChipPrimary: { borderColor: Colors.primary + '33' },
-  filterChipText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
-
   segmented: {
     flexDirection: 'row', padding: 6,
     backgroundColor: Colors.surfaceLow, borderRadius: 999, gap: 4,
@@ -285,7 +290,9 @@ const styles = StyleSheet.create({
   },
   livePulseWhite: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
   badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 16, paddingRight: 96, letterSpacing: -0.2 },
+  cardTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8, paddingRight: 96, letterSpacing: -0.2 },
+  variantRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
+  variantText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
   metaRow: { flexDirection: 'row', gap: 16, marginBottom: 16, flexWrap: 'wrap' },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
@@ -309,7 +316,25 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: Colors.surfaceLow + '66',
   },
-  dashedText: { fontSize: 13, fontWeight: '500', color: Colors.textMuted },
+  dashedText: { fontSize: 13, fontWeight: '500', color: Colors.textMuted, textAlign: 'center', paddingHorizontal: 16 },
+
+  liveCta: {
+    alignItems: 'center', gap: 10, paddingVertical: 32, paddingHorizontal: 20,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 20,
+    shadowColor: '#DC2626', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.08, shadowRadius: 24, elevation: 2,
+  },
+  liveIconCircle: {
+    width: 64, height: 64, borderRadius: 32, backgroundColor: '#DC2626',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  liveCtaTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginTop: 4 },
+  liveCtaSub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', maxWidth: 280, lineHeight: 19 },
+  liveCtaBtnWrap: { marginTop: 8, width: '100%' },
+  liveCtaBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 15, borderRadius: 999,
+  },
+  liveCtaBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
 
   mascotWrap: { alignItems: 'center', marginTop: 32, opacity: 0.7 },
   mascotCircle: {

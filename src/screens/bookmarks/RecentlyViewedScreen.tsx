@@ -9,6 +9,9 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useRecentTeachersStore, type RecentTeacher } from '../../store/recentTeachers.store';
 import { getExamResults, type ExamResultRow } from '../../api/certificate.api';
+import { useTranslation } from '../../i18n';
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 type Tab = 'all' | 'teachers' | 'exams';
 type Bucket = 'today' | 'yesterday' | 'older';
@@ -20,16 +23,16 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const initials = (name: string) => name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
-function relativeTime(ts: number) {
+function relativeTime(ts: number, t: TFn) {
   const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'indicə';
-  if (mins < 60) return `${mins} dəq əvvəl`;
+  if (mins < 1) return t('bookmarks.relNow');
+  if (mins < 60) return t('bookmarks.relMin', { n: mins });
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} saat əvvəl`;
+  if (hours < 24) return t('bookmarks.relHour', { n: hours });
   const days = Math.floor(hours / 24);
-  if (days === 1) return '1 gün əvvəl';
-  return `${days} gün əvvəl`;
+  if (days === 1) return t('bookmarks.relOneDay');
+  return t('bookmarks.relDays', { n: days });
 }
 
 function bucketOf(ts: number): Bucket {
@@ -41,10 +44,11 @@ function bucketOf(ts: number): Bucket {
   return 'older';
 }
 
-const BUCKET_LABEL: Record<Bucket, string> = { today: 'BUGÜN', yesterday: 'DÜNƏN', older: 'DAHA ƏVVƏL' };
+const BUCKET_LABEL_KEYS: Record<Bucket, string> = { today: 'bookmarks.bucketToday', yesterday: 'bookmarks.bucketYesterday', older: 'bookmarks.bucketOlder' };
 
 export default function RecentlyViewedScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('all');
   const recentTeachers = useRecentTeachersStore((s) => s.list);
 
@@ -55,9 +59,9 @@ export default function RecentlyViewedScreen() {
   });
 
   const entries: Entry[] = useMemo(() => {
-    const t: Entry[] = recentTeachers.map((x) => ({ kind: 'teacher', data: x, ts: x.viewedAt }));
+    const tch: Entry[] = recentTeachers.map((x) => ({ kind: 'teacher', data: x, ts: x.viewedAt }));
     const e: Entry[] = examResults.slice(0, 10).map((x) => ({ kind: 'exam', data: x, ts: new Date(x.completedAt).getTime() }));
-    const filtered: Entry[] = tab === 'teachers' ? t : tab === 'exams' ? e : [...t, ...e];
+    const filtered: Entry[] = tab === 'teachers' ? tch : tab === 'exams' ? e : [...tch, ...e];
     return filtered.sort((a, b) => b.ts - a.ts);
   }, [recentTeachers, examResults, tab]);
 
@@ -65,26 +69,26 @@ export default function RecentlyViewedScreen() {
     const map: Record<Bucket, Entry[]> = { today: [], yesterday: [], older: [] };
     entries.forEach((e) => map[bucketOf(e.ts)].push(e));
     return (['today', 'yesterday', 'older'] as Bucket[])
-      .map((k) => ({ key: k, label: BUCKET_LABEL[k], items: map[k] }))
+      .map((k) => ({ key: k, labelKey: BUCKET_LABEL_KEYS[k], items: map[k] }))
       .filter((g) => g.items.length > 0);
   }, [entries]);
 
-  const renderTeacher = (t: RecentTeacher) => (
+  const renderTeacher = (teacher: RecentTeacher) => (
     <TouchableOpacity
-      key={`t-${t.id}-${t.viewedAt}`}
+      key={`t-${teacher.id}-${teacher.viewedAt}`}
       style={[styles.card, { marginLeft: 16 }]}
       activeOpacity={0.88}
-      onPress={() => navigation.getParent()?.navigate('Booking', { screen: Routes.TeacherProfile, params: { teacher: t } })}
+      onPress={() => navigation.getParent()?.navigate('Booking', { screen: Routes.TeacherProfile, params: { teacher } })}
     >
       <View style={styles.photoWrap}>
-        {t.avatarUrl ? (
-          <Image source={{ uri: t.avatarUrl }} style={styles.photo} />
+        {teacher.avatarUrl ? (
+          <Image source={{ uri: teacher.avatarUrl }} style={styles.photo} />
         ) : (
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.photo}>
-            <Text style={styles.photoInitial}>{initials(t.name)}</Text>
+            <Text style={styles.photoInitial}>{initials(teacher.name)}</Text>
           </LinearGradient>
         )}
-        {t.isVerified && (
+        {teacher.isVerified && (
           <View style={styles.photoBadge}>
             <Ionicons name="checkmark-circle" size={14} color={Colors.tertiary} />
           </View>
@@ -92,13 +96,13 @@ export default function RecentlyViewedScreen() {
       </View>
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <View style={styles.cardTopRow}>
-          <Text style={styles.cardName} numberOfLines={1}>{t.name}</Text>
-          <Text style={styles.timeChip}>{relativeTime(t.viewedAt)}</Text>
+          <Text style={styles.cardName} numberOfLines={1}>{teacher.name}</Text>
+          <Text style={styles.timeChip}>{relativeTime(teacher.viewedAt, t)}</Text>
         </View>
-        <Text style={styles.cardSub}>{t.subject ?? 'Müxtəlif fənlər'}{t.experience ? ` • ${t.experience}` : ''}</Text>
+        <Text style={styles.cardSub}>{teacher.subject ?? t('bookmarks.variousSubjects')}{teacher.experience ? ` • ${teacher.experience}` : ''}</Text>
         <View style={styles.cardActionRow}>
           <Ionicons name="eye-outline" size={14} color={Colors.primary} />
-          <Text style={styles.cardActionText}>Profilə baxıldı</Text>
+          <Text style={styles.cardActionText}>{t('bookmarks.profileViewed')}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -117,12 +121,12 @@ export default function RecentlyViewedScreen() {
       <View style={{ flex: 1, justifyContent: 'center' }}>
         <View style={styles.cardTopRow}>
           <Text style={styles.cardName} numberOfLines={1}>{r.examTitle}</Text>
-          <Text style={styles.timeChip}>{relativeTime(new Date(r.completedAt).getTime())}</Text>
+          <Text style={styles.timeChip}>{relativeTime(new Date(r.completedAt).getTime(), t)}</Text>
         </View>
-        <Text style={styles.cardSub}>{r.subject ?? 'İmtahan'} • {r.score}/{r.total}</Text>
+        <Text style={styles.cardSub}>{r.subject ?? t('bookmarks.examFallback')} • {r.score}/{r.total}</Text>
         <View style={styles.cardActionRow}>
           <Ionicons name="checkmark-done" size={14} color={Colors.tertiary} />
-          <Text style={[styles.cardActionText, { color: Colors.tertiary }]}>Nəticə: {r.percentage}%</Text>
+          <Text style={[styles.cardActionText, { color: Colors.tertiary }]}>{t('bookmarks.resultPct', { pct: r.percentage })}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -134,24 +138,24 @@ export default function RecentlyViewedScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Təhsil</Text>
+        <Text style={styles.headerTitle}>{t('bookmarks.eduHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Page header */}
         <View style={styles.pageHeader}>
-          <Text style={styles.title}>Son Baxılanlar</Text>
-          <Text style={styles.subtitle}>Son fəaliyyətləriniz və baxış tarixçəniz</Text>
+          <Text style={styles.title}>{t('bookmarks.rvTitle')}</Text>
+          <Text style={styles.subtitle}>{t('bookmarks.rvSubtitle')}</Text>
         </View>
 
         {/* Segmented */}
         <View style={styles.segmented}>
           {([
-            { id: 'all', label: 'Hamısı' },
-            { id: 'teachers', label: 'Müəllimlər' },
-            { id: 'exams', label: 'İmtahanlar' },
-          ] as { id: Tab; label: string }[]).map((opt) => {
+            { id: 'all', labelKey: 'bookmarks.all' },
+            { id: 'teachers', labelKey: 'bookmarks.teachers' },
+            { id: 'exams', labelKey: 'bookmarks.exams' },
+          ] as { id: Tab; labelKey: string }[]).map((opt) => {
             const active = tab === opt.id;
             return (
               <TouchableOpacity
@@ -159,7 +163,7 @@ export default function RecentlyViewedScreen() {
                 style={[styles.segItem, active && styles.segItemActive]}
                 onPress={() => setTab(opt.id)}
               >
-                <Text style={[styles.segText, active && styles.segTextActive]}>{opt.label}</Text>
+                <Text style={[styles.segText, active && styles.segTextActive]}>{t(opt.labelKey)}</Text>
               </TouchableOpacity>
             );
           })}
@@ -170,8 +174,8 @@ export default function RecentlyViewedScreen() {
         ) : groups.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="time-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>Hələ baxılan yoxdur</Text>
-            <Text style={styles.emptySub}>Müəllim və imtahan baxışlarınız burada görünəcək</Text>
+            <Text style={styles.emptyTitle}>{t('bookmarks.rvEmptyTitle')}</Text>
+            <Text style={styles.emptySub}>{t('bookmarks.rvEmptySub')}</Text>
           </View>
         ) : (
           <View style={{ gap: 40, position: 'relative' }}>
@@ -185,7 +189,7 @@ export default function RecentlyViewedScreen() {
                       ? { backgroundColor: Colors.primary, shadowColor: Colors.primary, shadowOpacity: 0.4, shadowRadius: 8 }
                       : { backgroundColor: Colors.surfaceHigh },
                   ]} />
-                  <Text style={[styles.dateLabel, gi === 0 && { color: Colors.primary }]}>{g.label}</Text>
+                  <Text style={[styles.dateLabel, gi === 0 && { color: Colors.primary }]}>{t(g.labelKey)}</Text>
                 </View>
                 {g.items.map((entry) => entry.kind === 'teacher' ? renderTeacher(entry.data) : renderExam(entry.data))}
               </View>
@@ -201,12 +205,12 @@ export default function RecentlyViewedScreen() {
           >
             <View style={styles.aiKickerRow}>
               <Ionicons name="flash" size={14} color="rgba(255,255,255,0.85)" />
-              <Text style={styles.aiKicker}>KİMİ ROBOT TÖVSİYƏSİ</Text>
+              <Text style={styles.aiKicker}>{t('bookmarks.aiKicker')}</Text>
             </View>
             <Text style={styles.aiTitle}>Aysel müəllimənin sınaq imtahanına baxmaq istərdiniz?</Text>
-            <Text style={styles.aiSub}>Onun son baxdığınız dərsinə uyğun yeni testləri var.</Text>
+            <Text style={styles.aiSub}>{t('bookmarks.aiSub')}</Text>
             <TouchableOpacity style={styles.aiCta} activeOpacity={0.85}>
-              <Text style={styles.aiCtaText}>İndi bax</Text>
+              <Text style={styles.aiCtaText}>{t('bookmarks.aiCta')}</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>

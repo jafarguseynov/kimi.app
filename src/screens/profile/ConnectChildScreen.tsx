@@ -6,28 +6,29 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const BENEFITS = [
   {
     icon: 'trending-up' as const,
-    title: 'Tərəqqini izlə',
-    sub: 'İmtahan ballarını və dərs aktivliyini anında görün.',
+    titleKey: 'connectChild.benefit1Title',
+    subKey: 'connectChild.benefit1Sub',
     bg: Colors.primaryLight,
     color: Colors.primary,
   },
   {
     icon: 'school-outline' as const,
-    title: 'AI Analizlər',
-    sub: 'Övladınızın zəif və güclü tərəfləri haqqında süni intellekt rəyi.',
+    titleKey: 'connectChild.benefit2Title',
+    subKey: 'connectChild.benefit2Sub',
     bg: Colors.successLight + '40',
     color: Colors.tertiary,
   },
   {
     icon: 'bulb-outline' as const,
-    title: 'Xüsusi tövsiyələr',
-    sub: 'İnkişaf üçün uyğun müəllim və dərs təklifləri.',
+    titleKey: 'connectChild.benefit3Title',
+    subKey: 'connectChild.benefit3Sub',
     bg: Colors.warningLight,
     color: Colors.warning,
   },
@@ -35,6 +36,7 @@ const BENEFITS = [
 
 export default function ConnectChildScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -42,7 +44,7 @@ export default function ConnectChildScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hesabların Qoşulması</Text>
+        <Text style={styles.headerTitle}>{t('connectChild.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -68,9 +70,9 @@ export default function ConnectChildScreen() {
               <Ionicons name="link-outline" size={14} color={Colors.tertiary} />
             </View>
           </View>
-          <Text style={styles.heroTitle}>Övladınızın təhsilini bir yerdən idarə edin</Text>
+          <Text style={styles.heroTitle}>{t('connectChild.heroTitle')}</Text>
           <Text style={styles.heroSubtitle}>
-            Övladınızın hesabını öz profilinizə bağlayaraq onun tərəqqisini real vaxtda izləyə və AI tövsiyələrindən yararlana bilərsiniz.
+            {t('connectChild.heroSubtitle')}
           </Text>
         </View>
 
@@ -82,8 +84,8 @@ export default function ConnectChildScreen() {
                 <Ionicons name={b.icon} size={24} color={b.color} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.benefitTitle}>{b.title}</Text>
-                <Text style={styles.benefitSub}>{b.sub}</Text>
+                <Text style={styles.benefitTitle}>{t(b.titleKey)}</Text>
+                <Text style={styles.benefitSub}>{t(b.subKey)}</Text>
               </View>
             </View>
           ))}
@@ -93,12 +95,12 @@ export default function ConnectChildScreen() {
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.EnterChildCode)}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="link-outline" size={20} color="#fff" />
-            <Text style={styles.primaryBtnText}>Hesabı bağla</Text>
+            <Text style={styles.primaryBtnText}>{t('connectChild.connectBtn')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.textBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-          <Text style={styles.textBtnText}>Daha sonra</Text>
+          <Text style={styles.textBtnText}>{t('connectChild.later')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

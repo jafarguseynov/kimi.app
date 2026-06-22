@@ -20,6 +20,7 @@ import { useGenerateExam } from '../../hooks/useExams';
 import { useExamConfig, pickExamConfig } from '../../hooks/useExamConfig';
 import { useExamStore } from '../../store/exam.store';
 import ExamLoadingOverlay from '../../components/exam/ExamLoadingOverlay';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.NewExam>;
@@ -43,22 +44,23 @@ const TOPICS_BY_SUBJECT: Record<string, string[]> = {
   en: ['Grammar', 'Tenses', 'Reading', 'Listening', 'Writing'],
 };
 
-const DIFF_LABELS: Record<string, string> = { easy: 'Asan', medium: 'Orta', hard: 'Çətin' };
+const DIFF_TKEY: Record<string, string> = { easy: 'newExam.diffEasy', medium: 'newExam.diffMedium', hard: 'newExam.diffHard' };
 const FALLBACK_DIFFICULTIES: ('easy' | 'medium' | 'hard')[] = ['easy', 'medium', 'hard'];
 const FALLBACK_DURATIONS = [15, 30, 45, 60, 90];
 
 type ExamTypeKey = 'practice' | 'monthly' | 'national' | 'live';
-const EXAM_TYPES: { key: ExamTypeKey; label: string; color: string }[] = [
-  { key: 'practice', label: 'Sınaq', color: '#1196DA' },
-  { key: 'monthly',  label: 'Aylıq', color: '#B45309' },
-  { key: 'national', label: 'Milli', color: '#7C3AED' },
-  { key: 'live',     label: 'Canlı', color: '#DC2626' },
+const EXAM_TYPES: { key: ExamTypeKey; labelKey: string; color: string }[] = [
+  { key: 'practice', labelKey: 'newExam.typePractice', color: '#1196DA' },
+  { key: 'monthly',  labelKey: 'newExam.typeMonthly', color: '#B45309' },
+  { key: 'national', labelKey: 'newExam.typeNational', color: '#7C3AED' },
+  { key: 'live',     labelKey: 'newExam.typeLive', color: '#DC2626' },
 ];
 
 const THUMB_SIZE = 26;
 
 export default function NewExamScreen({ navigation, route }: Props) {
   const { mutate: doGenerate, isPending: isGenerating } = useGenerateExam();
+  const { t } = useTranslation();
   const setSubmissionType = useExamStore((s) => s.setSubmissionType);
   const initial = route.params ?? {};
   // 'mixed' difficulty from ExamSettings is treated as 'medium' on backend (no AI level for true mixed yet)
@@ -86,12 +88,12 @@ export default function NewExamScreen({ navigation, route }: Props) {
   );
   const GRADES = useMemo(() => (cfg?.grades?.length ? cfg.grades : FALLBACK_GRADES), [cfg]);
   const DIFFICULTIES = useMemo(
-    () => (cfg?.difficulties?.length ? cfg.difficulties : FALLBACK_DIFFICULTIES).map((k) => ({ key: k as 'easy' | 'medium' | 'hard', label: DIFF_LABELS[k] ?? k })),
-    [cfg],
+    () => (cfg?.difficulties?.length ? cfg.difficulties : FALLBACK_DIFFICULTIES).map((k) => ({ key: k as 'easy' | 'medium' | 'hard', label: DIFF_TKEY[k] ? t(DIFF_TKEY[k]) : k })),
+    [cfg, t],
   );
   const DURATIONS = cfg?.durationOptions?.length ? cfg.durationOptions : FALLBACK_DURATIONS;
   const VISIBLE_EXAM_TYPES = useMemo(
-    () => (cfg?.examTypes?.length ? EXAM_TYPES.filter((t) => cfg.examTypes.includes(t.key)) : EXAM_TYPES),
+    () => (cfg?.examTypes?.length ? EXAM_TYPES.filter((et) => cfg.examTypes.includes(et.key)) : EXAM_TYPES),
     [cfg],
   );
   // Sual sayı bütün imtahanlar üçün sabitdir — admin paneldəki "Defolt sual" dəyəri.
@@ -125,11 +127,11 @@ export default function NewExamScreen({ navigation, route }: Props) {
 
   const topicList = TOPICS_BY_SUBJECT[subject] ?? [];
 
-  const toggleTopic = (t: string) => {
+  const toggleTopic = (topic: string) => {
     setTopics((prev) => {
       const next = new Set(prev);
-      if (next.has(t)) next.delete(t);
-      else next.add(t);
+      if (next.has(topic)) next.delete(topic);
+      else next.add(topic);
       return next;
     });
   };
@@ -154,14 +156,14 @@ export default function NewExamScreen({ navigation, route }: Props) {
           navigation.navigate(Routes.ExamDetail, { examId: exam.id, title: exam.title });
         },
         onError: (err: any) => {
-          Alert.alert('Xəta', err?.response?.data?.message ?? 'İmtahan yaradıla bilmədi. Yenidən cəhd edin.');
+          Alert.alert(t('newExam.errorTitle'), err?.response?.data?.message ?? t('newExam.createFailed'));
         },
       },
     );
   };
 
-  const aiTopic = Array.from(topics)[0] ?? topicList[0] ?? 'mövzu';
-  const aiSubject = SUBJECTS.find((s) => s.key === subject)?.label ?? 'imtahan';
+  const aiTopic = Array.from(topics)[0] ?? topicList[0] ?? t('newExam.defaultTopic');
+  const aiSubject = SUBJECTS.find((s) => s.key === subject)?.label ?? t('newExam.defaultSubject');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -179,13 +181,13 @@ export default function NewExamScreen({ navigation, route }: Props) {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Yeni İmtahan</Text>
-          <Text style={styles.heroSub}>Biliklərini yoxlamaq üçün seçimləri tamamla.</Text>
+          <Text style={styles.heroTitle}>{t('newExam.title')}</Text>
+          <Text style={styles.heroSub}>{t('newExam.sub')}</Text>
         </View>
 
         {/* Grade */}
         <View style={styles.section}>
-          <Text style={styles.label}>Sinif seçin</Text>
+          <Text style={styles.label}>{t('newExam.selectGrade')}</Text>
           <TouchableOpacity
             style={styles.selectBox}
             activeOpacity={0.85}
@@ -218,7 +220,7 @@ export default function NewExamScreen({ navigation, route }: Props) {
 
         {/* Subject */}
         <View style={styles.section}>
-          <Text style={styles.label}>Fənn seçin</Text>
+          <Text style={styles.label}>{t('newExam.selectSubject')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.subjectsRow}>
             {SUBJECTS.map((s) => {
               const active = s.key === subject;
@@ -243,22 +245,22 @@ export default function NewExamScreen({ navigation, route }: Props) {
         {/* Topics */}
         <View style={styles.section}>
           <View style={styles.labelRow}>
-            <Text style={styles.label}>Mövzular</Text>
+            <Text style={styles.label}>{t('newExam.topics')}</Text>
             <TouchableOpacity onPress={selectAllTopics} hitSlop={8}>
-              <Text style={styles.linkText}>Hamısını seç</Text>
+              <Text style={styles.linkText}>{t('newExam.selectAll')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.topicsWrap}>
-            {topicList.map((t) => {
-              const active = topics.has(t);
+            {topicList.map((tp) => {
+              const active = topics.has(tp);
               return (
                 <TouchableOpacity
-                  key={t}
-                  onPress={() => toggleTopic(t)}
+                  key={tp}
+                  onPress={() => toggleTopic(tp)}
                   activeOpacity={0.85}
                   style={active ? styles.topicChipActive : styles.topicChip}
                 >
-                  <Text style={active ? styles.topicChipActiveText : styles.topicChipText}>{t}</Text>
+                  <Text style={active ? styles.topicChipActiveText : styles.topicChipText}>{tp}</Text>
                   {active && <Ionicons name="close" size={14} color={Colors.primary} />}
                 </TouchableOpacity>
               );
@@ -268,7 +270,7 @@ export default function NewExamScreen({ navigation, route }: Props) {
 
         {/* Difficulty */}
         <View style={styles.section}>
-          <Text style={styles.label}>Çətinlik dərəcəsi</Text>
+          <Text style={styles.label}>{t('newExam.difficulty')}</Text>
           <View style={styles.segWrap}>
             {DIFFICULTIES.map((d) => {
               const active = d.key === difficulty;
@@ -288,18 +290,18 @@ export default function NewExamScreen({ navigation, route }: Props) {
 
         {/* Exam type */}
         <View style={styles.section}>
-          <Text style={styles.label}>İmtahan növü</Text>
+          <Text style={styles.label}>{t('newExam.examType')}</Text>
           <View style={styles.segWrap}>
-            {VISIBLE_EXAM_TYPES.map((t) => {
-              const active = t.key === examType;
+            {VISIBLE_EXAM_TYPES.map((et) => {
+              const active = et.key === examType;
               return (
                 <TouchableOpacity
-                  key={t.key}
+                  key={et.key}
                   activeOpacity={0.85}
-                  onPress={() => setExamType(t.key)}
-                  style={[styles.segItem, active && { backgroundColor: t.color + '14', borderColor: t.color }]}
+                  onPress={() => setExamType(et.key)}
+                  style={[styles.segItem, active && { backgroundColor: et.color + '14', borderColor: et.color }]}
                 >
-                  <Text style={[styles.segText, active && { color: t.color, fontWeight: '700' }]}>{t.label}</Text>
+                  <Text style={[styles.segText, active && { color: et.color, fontWeight: '700' }]}>{t(et.labelKey)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -309,22 +311,22 @@ export default function NewExamScreen({ navigation, route }: Props) {
         {/* Question count — sabit standart */}
         <View style={styles.section}>
           <View style={styles.labelRow}>
-            <Text style={styles.label}>Sual sayı</Text>
+            <Text style={styles.label}>{t('newExam.questionCount')}</Text>
             <View style={styles.countBadge}>
               <Text style={styles.countBadgeText}>{questionCount}</Text>
             </View>
           </View>
           <Text style={styles.sliderLabelText}>
-            Bütün imtahanlar üçün standart say — {STANDARD_Q} sual.
+            {t('newExam.standardNote', { n: STANDARD_Q })}
           </Text>
         </View>
 
         {/* Duration */}
         <View style={styles.section}>
           <View style={styles.labelRow}>
-            <Text style={styles.label}>Müddət</Text>
+            <Text style={styles.label}>{t('newExam.duration')}</Text>
             <View style={styles.countBadge}>
-              <Text style={styles.countBadgeText}>{duration ? `${duration} dəq` : 'Avto'}</Text>
+              <Text style={styles.countBadgeText}>{duration ? t('newExam.durationMin', { n: duration }) : t('newExam.auto')}</Text>
             </View>
           </View>
           <View style={styles.segWrap}>
@@ -348,11 +350,11 @@ export default function NewExamScreen({ navigation, route }: Props) {
         <View style={styles.tipCard}>
           <View style={styles.tipHeader}>
             <Ionicons name="bulb" size={16} color={Colors.primary} />
-            <Text style={styles.tipTitle}>Kimi-nin məsləhəti</Text>
+            <Text style={styles.tipTitle}>{t('newExam.tipTitle')}</Text>
           </View>
           <Text style={styles.tipText}>
-            {aiSubject} imtahanına başlamazdan əvvəl{' '}
-            <Text style={styles.tipStrong}>"{aiTopic}"</Text> mövzusuna təkrar baxmağın faydalı ola bilər!
+            {t('newExam.tipPre', { subject: aiSubject })}
+            <Text style={styles.tipStrong}>"{aiTopic}"</Text>{t('newExam.tipPost')}
           </Text>
         </View>
 
@@ -365,12 +367,12 @@ export default function NewExamScreen({ navigation, route }: Props) {
             {isGenerating ? (
               <>
                 <ActivityIndicator size="small" color="#fff" />
-                <Text style={styles.ctaText}>Yaradılır...</Text>
+                <Text style={styles.ctaText}>{t('newExam.generating')}</Text>
               </>
             ) : (
               <>
                 <Ionicons name="rocket" size={20} color="#fff" />
-                <Text style={styles.ctaText}>İmtahanı başlat</Text>
+                <Text style={styles.ctaText}>{t('newExam.startExam')}</Text>
               </>
             )}
           </LinearGradient>

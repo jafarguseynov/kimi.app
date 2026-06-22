@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 type Tab = 'all' | 'edu' | 'exam' | 'tips';
 type Kind = 'featured' | 'card' | 'mini';
@@ -14,9 +15,9 @@ type Category = 'Təhsil' | 'Məsləhətlər' | 'İmtahan' | 'Xəbərdarlıq';
 interface Article {
   id: string;
   category: Category;
-  title: string;
-  excerpt: string;
-  dateLabel: string;
+  titleKey: string;
+  excerptKey: string;
+  dateLabelKey: string;
   views: number;
   kind: Kind;
   imageUrl?: string;
@@ -26,31 +27,25 @@ interface Article {
 const ARTICLES: Article[] = [
   {
     id: '1', category: 'Təhsil', tabKey: 'edu', kind: 'featured',
-    title: 'Dövlət İmtahan Mərkəzi yeni qaydaları elan etdi',
-    excerpt: 'Gələn tədris ili üçün qəbul imtahanlarında tətbiq olunacaq əsas dəyişikliklər və abituriyentlər üçün vacib məqamlar.',
-    dateLabel: '22 Oktyabr, 2024', views: 1200,
+    titleKey: 'newsScreen.a1Title', excerptKey: 'newsScreen.a1Excerpt', dateLabelKey: 'newsScreen.a1Date', views: 1200,
     imageUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=800&q=70',
   },
   {
     id: '2', category: 'Məsləhətlər', tabKey: 'tips', kind: 'card',
-    title: 'İmtahan həyəcanını necə dəf etməli?',
-    excerpt: 'Psixoloqların hazırladığı 5 praktiki addımla imtahan zamanı stresinizi minimuma endirin və fokuslanın.',
-    dateLabel: '20 Oktyabr, 2024', views: 856,
+    titleKey: 'newsScreen.a2Title', excerptKey: 'newsScreen.a2Excerpt', dateLabelKey: 'newsScreen.a2Date', views: 856,
     imageUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&q=70',
   },
   {
     id: '3', category: 'Xəbərdarlıq', tabKey: 'exam', kind: 'mini',
-    title: 'Magistratura üzrə qeydiyyat müddəti uzadıldı',
-    excerpt: 'Sənəd qəbulu üçün son tarix oktyabrın 30-na qədər dəyişdirildi. Gecikmədən qeydiyyatdan keçin.',
-    dateLabel: '19 Oktyabr', views: 432,
+    titleKey: 'newsScreen.a3Title', excerptKey: 'newsScreen.a3Excerpt', dateLabelKey: 'newsScreen.a3Date', views: 432,
   },
 ];
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'all', label: 'Hamısı' },
-  { id: 'edu', label: 'Təhsil' },
-  { id: 'exam', label: 'İmtahan' },
-  { id: 'tips', label: 'Məsləhətlər' },
+const TABS: { id: Tab; labelKey: string }[] = [
+  { id: 'all', labelKey: 'newsScreen.tabAll' },
+  { id: 'edu', labelKey: 'newsScreen.tabEdu' },
+  { id: 'exam', labelKey: 'newsScreen.tabExam' },
+  { id: 'tips', labelKey: 'newsScreen.tabTips' },
 ];
 
 const CAT_TONE: Record<Category, { bg: string; fg: string }> = {
@@ -58,6 +53,13 @@ const CAT_TONE: Record<Category, { bg: string; fg: string }> = {
   'Məsləhətlər':  { bg: Colors.tertiary,  fg: '#fff' },
   'İmtahan':      { bg: '#7C3AED',        fg: '#fff' },
   'Xəbərdarlıq':  { bg: Colors.primary + '33', fg: Colors.primary },
+};
+
+const CAT_TKEY: Record<Category, string> = {
+  'Təhsil':       'newsScreen.catEdu',
+  'Məsləhətlər':  'newsScreen.catTips',
+  'İmtahan':      'newsScreen.catExam',
+  'Xəbərdarlıq':  'newsScreen.catWarn',
 };
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -69,6 +71,7 @@ function formatViews(n: number) {
 
 export default function NewsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('all');
 
   const filtered = useMemo(() => {
@@ -86,7 +89,7 @@ export default function NewsScreen() {
           <View style={styles.brandIcon}>
             <Text style={{ fontSize: 18 }}>🤖</Text>
           </View>
-          <Text style={styles.headerTitle}>Xəbərlər və Yeniliklər</Text>
+          <Text style={styles.headerTitle}>{t('newsScreen.headerTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
@@ -101,31 +104,31 @@ export default function NewsScreen() {
             onPress={() => navigation.replace(Routes.LiveActivity)}
             style={pairTab.btn}
           >
-            <Text style={pairTab.text}>Fəaliyyət</Text>
+            <Text style={pairTab.text}>{t('newsScreen.tabActivity')}</Text>
           </TouchableOpacity>
           <View style={[pairTab.btn, pairTab.btnActive]}>
-            <Text style={[pairTab.text, pairTab.textActive]}>Xəbərlər</Text>
+            <Text style={[pairTab.text, pairTab.textActive]}>{t('newsScreen.tabNews')}</Text>
           </View>
         </View>
 
         {/* Hero welcome */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroKicker}>Xoş gəldiniz!</Text>
-          <Text style={styles.heroTitle}>Təhsil dünyasından ən son xəbərlər</Text>
+          <Text style={styles.heroKicker}>{t('newsScreen.heroKicker')}</Text>
+          <Text style={styles.heroTitle}>{t('newsScreen.heroTitle')}</Text>
         </View>
 
         {/* Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsInner}>
           <View style={styles.tabsWrap}>
-            {TABS.map((t) => {
-              const active = tab === t.id;
+            {TABS.map((tb) => {
+              const active = tab === tb.id;
               return (
                 <TouchableOpacity
-                  key={t.id} activeOpacity={0.85}
+                  key={tb.id} activeOpacity={0.85}
                   style={[styles.tab, active && styles.tabActive]}
-                  onPress={() => setTab(t.id)}
+                  onPress={() => setTab(tb.id)}
                 >
-                  <Text style={[styles.tabText, active && styles.tabTextActive]}>{t.label}</Text>
+                  <Text style={[styles.tabText, active && styles.tabTextActive]}>{t(tb.labelKey)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -136,7 +139,7 @@ export default function NewsScreen() {
         {filtered.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="newspaper-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>Bu kateqoriyada xəbər yoxdur</Text>
+            <Text style={styles.emptyTitle}>{t('newsScreen.empty')}</Text>
           </View>
         ) : (
           <View style={{ gap: 32 }}>
@@ -147,14 +150,14 @@ export default function NewsScreen() {
                   <View key={a.id} style={styles.miniCard}>
                     <View style={styles.miniTopRow}>
                       <View style={[styles.catChip, { backgroundColor: tone.bg }]}>
-                        <Text style={[styles.catChipText, { color: tone.fg }]}>{a.category}</Text>
+                        <Text style={[styles.catChipText, { color: tone.fg }]}>{t(CAT_TKEY[a.category])}</Text>
                       </View>
-                      <Text style={styles.miniDate}>{a.dateLabel}</Text>
+                      <Text style={styles.miniDate}>{t(a.dateLabelKey)}</Text>
                     </View>
-                    <Text style={styles.miniTitle}>{a.title}</Text>
-                    <Text style={styles.miniExcerpt}>{a.excerpt}</Text>
+                    <Text style={styles.miniTitle}>{t(a.titleKey)}</Text>
+                    <Text style={styles.miniExcerpt}>{t(a.excerptKey)}</Text>
                     <TouchableOpacity style={styles.linkRow} activeOpacity={0.7}>
-                      <Text style={styles.linkText}>Ətraflı məlumat</Text>
+                      <Text style={styles.linkText}>{t('newsScreen.readMore')}</Text>
                       <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
                     </TouchableOpacity>
                   </View>
@@ -168,7 +171,7 @@ export default function NewsScreen() {
                     <View style={styles.imageWrap}>
                       <Image source={{ uri: a.imageUrl }} style={styles.image} resizeMode="cover" />
                       <View style={[styles.catChipFloating, { backgroundColor: tone.bg + 'E6' }]}>
-                        <Text style={[styles.catChipText, { color: tone.fg }]}>{a.category}</Text>
+                        <Text style={[styles.catChipText, { color: tone.fg }]}>{t(CAT_TKEY[a.category])}</Text>
                       </View>
                     </View>
                   ) : null}
@@ -176,25 +179,25 @@ export default function NewsScreen() {
                     <View style={styles.metaRow}>
                       <View style={styles.metaItem}>
                         <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-                        <Text style={styles.metaText}>{a.dateLabel}</Text>
+                        <Text style={styles.metaText}>{t(a.dateLabelKey)}</Text>
                       </View>
                       <View style={styles.metaItem}>
                         <Ionicons name="eye-outline" size={14} color={Colors.textSecondary} />
                         <Text style={styles.metaText}>{formatViews(a.views)}</Text>
                       </View>
                     </View>
-                    <Text style={styles.cardTitle}>{a.title}</Text>
-                    <Text style={styles.cardExcerpt} numberOfLines={2}>{a.excerpt}</Text>
+                    <Text style={styles.cardTitle}>{t(a.titleKey)}</Text>
+                    <Text style={styles.cardExcerpt} numberOfLines={2}>{t(a.excerptKey)}</Text>
                     {isFeatured ? (
                       <TouchableOpacity activeOpacity={0.85}>
                         <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-                          <Text style={styles.primaryBtnText}>Oxu</Text>
+                          <Text style={styles.primaryBtnText}>{t('newsScreen.read')}</Text>
                           <Ionicons name="arrow-forward" size={18} color="#fff" />
                         </LinearGradient>
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity activeOpacity={0.85} style={styles.secondaryBtn}>
-                        <Text style={styles.secondaryBtnText}>Oxu</Text>
+                        <Text style={styles.secondaryBtnText}>{t('newsScreen.read')}</Text>
                       </TouchableOpacity>
                     )}
                   </View>

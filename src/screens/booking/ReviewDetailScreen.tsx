@@ -13,11 +13,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ReviewDetailScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<{
     params: {
       reviewerName: string;
@@ -30,8 +32,8 @@ export default function ReviewDetailScreen() {
   }, 'params'>>();
 
   const {
-    reviewerName = 'İstifadəçi',
-    reviewerSubtitle = 'Şagird',
+    reviewerName = t('booking.defaultUser'),
+    reviewerSubtitle = t('booking.student'),
     reviewDate = '—',
     rating = 5,
     reviewText = '',
@@ -53,13 +55,13 @@ export default function ReviewDetailScreen() {
           >
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Rəy Təfərrüatı</Text>
+          <Text style={styles.headerTitle}>{t('booking.reviewDetailHeader')}</Text>
         </View>
         <TouchableOpacity
           style={styles.headerBtn}
           activeOpacity={0.7}
           hitSlop={8}
-          onPress={() => Alert.alert('Paylaş', 'Paylaşma funksiyası tezliklə əlavə olunacaq')}
+          onPress={() => Alert.alert(t('booking.share'), t('booking.shareSoon'))}
         >
           <Ionicons name="share-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -137,19 +139,19 @@ export default function ReviewDetailScreen() {
               <Ionicons name="thumbs-up" size={20} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.helpfulTitle}>Faydalı rəy</Text>
-              <Text style={styles.helpfulSub}>Bu rəy 12 nəfər üçün faydalı oldu</Text>
+              <Text style={styles.helpfulTitle}>{t('booking.helpfulReview')}</Text>
+              <Text style={styles.helpfulSub}>{t('booking.helpfulCount', { count: 12 })}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.helpfulBtn} activeOpacity={0.7}>
-            <Text style={styles.helpfulBtnText}>Faydalıdır</Text>
+            <Text style={styles.helpfulBtnText}>{t('booking.helpful')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* AI verification note */}
         <View style={styles.verifyCard}>
           <Text style={styles.verifyText}>
-            "Kimi AI tərəfindən təsdiqlənmiş real tələbə rəyidir"
+            {t('booking.verifiedReview')}
           </Text>
         </View>
       </ScrollView>
@@ -159,7 +161,7 @@ export default function ReviewDetailScreen() {
         <TouchableOpacity
           style={{ flex: 1 }}
           activeOpacity={0.85}
-          onPress={() => Alert.alert('Əlaqə', 'Chat funksiyası tezliklə əlavə olunacaq')}
+          onPress={() => Alert.alert(t('booking.contactTitle'), t('booking.chatSoon'))}
         >
           <LinearGradient
             colors={GRADIENT}
@@ -167,7 +169,7 @@ export default function ReviewDetailScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.contactBtnText}>Müəllimlə Əlaqə</Text>
+            <Text style={styles.contactBtnText}>{t('booking.contactTeacher')}</Text>
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity style={styles.bookmarkBtn} activeOpacity={0.7}>

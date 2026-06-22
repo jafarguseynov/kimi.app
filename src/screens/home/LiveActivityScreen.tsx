@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -18,37 +19,36 @@ interface Activity {
   kind: ActivityKind;
   badgeColor: string;
   badgeIcon: keyof typeof Ionicons.glyphMap;
-  highlight: string;
+  highlightKey: string;
   highlightColor: string;
-  prefix?: string;
-  suffix: string;
-  meta: string;
+  suffixKey: string;
+  metaKey: string;
 }
 
 const ACTIVITIES: Activity[] = [
   {
     id: 'a1', name: 'Ali', initial: 'A', kind: 'exam',
     badgeColor: Colors.primary, badgeIcon: 'help-circle',
-    highlight: '95% nəticə', highlightColor: Colors.primary,
-    suffix: ' aldı', meta: 'İndi · İngilis dili sınağı',
+    highlightKey: 'liveActivity.a1Hi', highlightColor: Colors.primary,
+    suffixKey: 'liveActivity.a1Suf', metaKey: 'liveActivity.a1Meta',
   },
   {
     id: 'a2', name: 'Leyla', initial: 'L', kind: 'league',
     badgeColor: '#EAB308', badgeIcon: 'school',
-    highlight: 'Qızıl Liqaya', highlightColor: '#CA8A04',
-    suffix: ' yüksəldi', meta: '2 dəqiqə əvvəl · Həftəlik sıralama',
+    highlightKey: 'liveActivity.a2Hi', highlightColor: '#CA8A04',
+    suffixKey: 'liveActivity.a2Suf', metaKey: 'liveActivity.a2Meta',
   },
   {
     id: 'a3', name: 'Murad', initial: 'M', kind: 'streak',
     badgeColor: '#F97316', badgeIcon: 'flame',
-    highlight: '10 günlük streak', highlightColor: '#EA580C',
-    suffix: ' qazandı', meta: '5 dəqiqə əvvəl · Müntəzəm öyrənmə',
+    highlightKey: 'liveActivity.a3Hi', highlightColor: '#EA580C',
+    suffixKey: 'liveActivity.a3Suf', metaKey: 'liveActivity.a3Meta',
   },
   {
     id: 'a4', name: 'Günel', initial: 'G', kind: 'course',
     badgeColor: '#10B981', badgeIcon: 'sparkles',
-    highlight: 'Riyaziyyat', highlightColor: '#059669',
-    suffix: ' kursunu bitirdi', meta: '12 dəqiqə əvvəl · Sertifikat qazandı',
+    highlightKey: 'liveActivity.a4Hi', highlightColor: '#059669',
+    suffixKey: 'liveActivity.a4Suf', metaKey: 'liveActivity.a4Meta',
   },
 ];
 
@@ -77,6 +77,7 @@ const liveStyles = StyleSheet.create({
 
 export default function LiveActivityScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -86,7 +87,7 @@ export default function LiveActivityScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Ionicons name="star" size={18} color={Colors.primary} />
-          <Text style={styles.headerTitle}>Canlı Fəaliyyət</Text>
+          <Text style={styles.headerTitle}>{t('liveActivity.headerTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8} onPress={() => navigation.navigate(Routes.Notifications)}>
           <Ionicons name="notifications-outline" size={20} color={Colors.textSecondary} />
@@ -97,14 +98,14 @@ export default function LiveActivityScreen() {
         {/* Pair-tab switcher: Fəaliyyət / Xəbərlər */}
         <View style={pairTab.row}>
           <View style={[pairTab.btn, pairTab.btnActive]}>
-            <Text style={[pairTab.text, pairTab.textActive]}>Fəaliyyət</Text>
+            <Text style={[pairTab.text, pairTab.textActive]}>{t('liveActivity.tabActivity')}</Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => navigation.replace(Routes.News)}
             style={pairTab.btn}
           >
-            <Text style={pairTab.text}>Xəbərlər</Text>
+            <Text style={pairTab.text}>{t('liveActivity.tabNews')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -115,20 +116,18 @@ export default function LiveActivityScreen() {
           style={styles.hero}
         >
           <View style={styles.livePill}>
-            <Text style={styles.livePillText}>İNDİ CANLI</Text>
+            <Text style={styles.livePillText}>{t('liveActivity.liveNow')}</Text>
           </View>
-          <Text style={styles.heroTitle}>Cəmiyyətimiz parlayır!</Text>
-          <Text style={styles.heroSub}>
-            Bu gün 1,240 tələbə yeni nailiyyətlər qazandı. Sən də onlara qoşul!
-          </Text>
+          <Text style={styles.heroTitle}>{t('liveActivity.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('liveActivity.heroSub')}</Text>
         </LinearGradient>
 
         {/* Section header */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Son fəaliyyətlər</Text>
+          <Text style={styles.sectionTitle}>{t('liveActivity.recentTitle')}</Text>
           <View style={styles.activeRow}>
             <LivePulse />
-            <Text style={styles.activeText}>42 Aktiv İnsan</Text>
+            <Text style={styles.activeText}>{t('liveActivity.activePeople')}</Text>
           </View>
         </View>
 
@@ -147,10 +146,10 @@ export default function LiveActivityScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.cardLine}>
                   {a.name}{' '}
-                  <Text style={[styles.highlight, { color: a.highlightColor }]}>{a.highlight}</Text>
-                  {a.suffix}
+                  <Text style={[styles.highlight, { color: a.highlightColor }]}>{t(a.highlightKey)}</Text>
+                  {t(a.suffixKey)}
                 </Text>
-                <Text style={styles.meta}>{a.meta}</Text>
+                <Text style={styles.meta}>{t(a.metaKey)}</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={Colors.surfaceHigh} />
             </TouchableOpacity>
@@ -158,7 +157,7 @@ export default function LiveActivityScreen() {
         </View>
 
         <TouchableOpacity style={styles.loadMore} activeOpacity={0.85}>
-          <Text style={styles.loadMoreText}>Daha çox göstər</Text>
+          <Text style={styles.loadMoreText}>{t('liveActivity.loadMore')}</Text>
         </TouchableOpacity>
 
         {/* Bento stats */}
@@ -166,12 +165,12 @@ export default function LiveActivityScreen() {
           <View style={styles.bentoCard}>
             <Ionicons name="people" size={22} color={Colors.primary} style={{ marginBottom: 10 }} />
             <Text style={styles.bentoNum}>45.2K</Text>
-            <Text style={styles.bentoLabel}>Aktiv Tələbə</Text>
+            <Text style={styles.bentoLabel}>{t('liveActivity.activeStudents')}</Text>
           </View>
           <View style={styles.bentoCard}>
             <Ionicons name="checkmark-done-circle" size={22} color={Colors.tertiary} style={{ marginBottom: 10 }} />
             <Text style={styles.bentoNum}>128</Text>
-            <Text style={styles.bentoLabel}>Yeni Uğur</Text>
+            <Text style={styles.bentoLabel}>{t('liveActivity.newSuccess')}</Text>
           </View>
         </View>
 

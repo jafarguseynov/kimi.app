@@ -16,6 +16,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -35,6 +36,7 @@ const AUTO_DECLINE_SECONDS = 30;
 export default function DuelInviteScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t } = useTranslation();
   const p: Params = (route.params ?? {}) as Params;
 
   const challengerName = p.challengerName ?? 'Leyla Hüseynova';
@@ -64,17 +66,17 @@ export default function DuelInviteScreen() {
   }, [pulse]);
 
   useEffect(() => {
-    const t = setInterval(() => {
+    const timer = setInterval(() => {
       setTimeLeft((v) => {
         if (v <= 1) {
-          clearInterval(t);
+          clearInterval(timer);
           decline();
           return 0;
         }
         return v - 1;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -111,7 +113,7 @@ export default function DuelInviteScreen() {
       <View style={styles.topRow}>
         <View style={styles.liveTag}>
           <View style={styles.liveDot} />
-          <Text style={styles.liveTagText}>CANLI DƏVƏT</Text>
+          <Text style={styles.liveTagText}>{t('duel.liveInvite')}</Text>
         </View>
         <View style={styles.timerPill}>
           <Ionicons name="time" size={13} color={timeLeft < 10 ? Colors.error : Colors.textSecondary} />
@@ -140,12 +142,12 @@ export default function DuelInviteScreen() {
         </LinearGradient>
         <View style={styles.levelBadge}>
           <Ionicons name="flame" size={12} color="#fff" />
-          <Text style={styles.levelBadgeText}>LVL {challengerLevel}</Text>
+          <Text style={styles.levelBadgeText}>{t('duel.lvl')} {challengerLevel}</Text>
         </View>
       </View>
 
       <Text style={styles.title}>{challengerName}</Text>
-      <Text style={styles.subtitle}>səni 1v1 duelə dəvət edir</Text>
+      <Text style={styles.subtitle}>{t('duel.invitesYou')}</Text>
       <Text style={styles.school}>{challengerSchool}</Text>
 
       <View style={styles.statsRow}>
@@ -158,13 +160,13 @@ export default function DuelInviteScreen() {
         <View style={styles.statCell}>
           <Ionicons name="trophy" size={16} color={Colors.primary} />
           <Text style={styles.statValue}>{challengerWinRate}%</Text>
-          <Text style={styles.statLabel}>Qalibiyyət</Text>
+          <Text style={styles.statLabel}>{t('duel.winRateLabel')}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statCell}>
           <Ionicons name="medal" size={16} color="#16A34A" />
           <Text style={styles.statValue}>{Math.round(challengerXp / 200)}</Text>
-          <Text style={styles.statLabel}>Medal</Text>
+          <Text style={styles.statLabel}>{t('duel.medal')}</Text>
         </View>
       </View>
 
@@ -173,7 +175,7 @@ export default function DuelInviteScreen() {
           <View style={styles.matchIcon}>
             <Ionicons name="book" size={16} color={Colors.primary} />
           </View>
-          <Text style={styles.matchLabel}>Mövzu</Text>
+          <Text style={styles.matchLabel}>{t('duel.step2')}</Text>
           <Text style={styles.matchValue}>{subject}</Text>
         </View>
         <View style={styles.rowDivider} />
@@ -181,15 +183,15 @@ export default function DuelInviteScreen() {
           <View style={styles.matchIcon}>
             <Ionicons name="list" size={16} color={Colors.primary} />
           </View>
-          <Text style={styles.matchLabel}>Sual sayı</Text>
-          <Text style={styles.matchValue}>{questionCount} sual</Text>
+          <Text style={styles.matchLabel}>{t('duel.step3')}</Text>
+          <Text style={styles.matchValue}>{questionCount} {t('duel.qUnit')}</Text>
         </View>
         <View style={styles.rowDivider} />
         <View style={styles.matchRow}>
           <View style={[styles.matchIcon, { backgroundColor: '#FEF3C7' }]}>
             <Ionicons name="flash" size={16} color="#F59E0B" />
           </View>
-          <Text style={styles.matchLabel}>Mərc</Text>
+          <Text style={styles.matchLabel}>{t('duel.stakeLabel')}</Text>
           <Text style={styles.matchValue}>{stake} XP</Text>
         </View>
         <View style={styles.rowDivider} />
@@ -197,7 +199,7 @@ export default function DuelInviteScreen() {
           <View style={[styles.matchIcon, { backgroundColor: '#DCFCE7' }]}>
             <Ionicons name="trophy" size={16} color="#16A34A" />
           </View>
-          <Text style={styles.matchLabel}>Mükafat</Text>
+          <Text style={styles.matchLabel}>{t('duel.prizeLabel')}</Text>
           <Text style={[styles.matchValue, { color: '#15803D' }]}>{stake * 2} XP</Text>
         </View>
       </View>
@@ -205,12 +207,12 @@ export default function DuelInviteScreen() {
       <View style={styles.actions}>
         <TouchableOpacity activeOpacity={0.85} onPress={decline} style={styles.declineBtn}>
           <Ionicons name="close" size={20} color={Colors.error} />
-          <Text style={styles.declineText}>İmtina et</Text>
+          <Text style={styles.declineText}>{t('duel.decline')}</Text>
         </TouchableOpacity>
         <TouchableOpacity activeOpacity={0.9} onPress={accept} style={{ flex: 1.4 }}>
           <LinearGradient colors={GRADIENT} style={styles.acceptBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="flash" size={18} color="#fff" />
-            <Text style={styles.acceptText}>Qəbul et və başla</Text>
+            <Text style={styles.acceptText}>{t('duel.acceptStart')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

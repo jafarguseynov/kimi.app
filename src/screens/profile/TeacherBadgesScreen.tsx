@@ -4,11 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 interface Badge {
   id: string;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
   emoji: string;
   bg: string;
   locked?: boolean;
@@ -17,14 +18,15 @@ interface Badge {
 }
 
 const BADGES: Badge[] = [
-  { id: '1', title: 'Top müəllim',          desc: 'Ayın ən yaxşı müəllimi',           emoji: '🏆', bg: Colors.primary + '1A', highlight: true },
-  { id: '2', title: 'Sürətli cavab verən', desc: 'Sualları 5 dəqiqədən tez cavablayır', emoji: '⚡', bg: Colors.tertiaryContainer + '4D' },
-  { id: '3', title: 'Yüksək keyfiyyət',    desc: 'Tələbələrdən 5 ulduzlu rəylər',     emoji: '⭐', bg: '#FFF3E0' },
-  { id: '4', title: 'Dəqiq müəllim',       desc: 'Açmaq üçün 50 cavab ver',           emoji: '🎯', bg: Colors.surfaceLow, locked: true, lockHint: '🔒' },
+  { id: '1', titleKey: 'teacherBadges.badge1Title', descKey: 'teacherBadges.badge1Desc', emoji: '🏆', bg: Colors.primary + '1A', highlight: true },
+  { id: '2', titleKey: 'teacherBadges.badge2Title', descKey: 'teacherBadges.badge2Desc', emoji: '⚡', bg: Colors.tertiaryContainer + '4D' },
+  { id: '3', titleKey: 'teacherBadges.badge3Title', descKey: 'teacherBadges.badge3Desc', emoji: '⭐', bg: '#FFF3E0' },
+  { id: '4', titleKey: 'teacherBadges.badge4Title', descKey: 'teacherBadges.badge4Desc', emoji: '🎯', bg: Colors.surfaceLow, locked: true, lockHint: '🔒' },
 ];
 
 export default function TeacherBadgesScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -32,7 +34,7 @@ export default function TeacherBadgesScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ağıllı Təhsil</Text>
+        <Text style={styles.headerTitle}>{t('teacherBadges.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -42,8 +44,8 @@ export default function TeacherBadgesScreen() {
         {/* Hero */}
         <View style={styles.heroCard}>
           <View style={{ flex: 1, paddingRight: 12 }}>
-            <Text style={styles.heroTitle}>Nailiyyətlərinlə{'\n'}fəxr edirik!</Text>
-            <Text style={styles.heroSub}>Sizin aktivliyiniz və dəstəyiniz tələbələr üçün çox önəmlidir.</Text>
+            <Text style={styles.heroTitle}>{t('teacherBadges.heroTitle')}</Text>
+            <Text style={styles.heroSub}>{t('teacherBadges.heroSub')}</Text>
           </View>
           <View style={styles.heroEmojiWrap}>
             <Text style={styles.heroEmoji}>🤖</Text>
@@ -51,7 +53,7 @@ export default function TeacherBadgesScreen() {
         </View>
 
         {/* Grid */}
-        <Text style={styles.sectionTitle}>Sənin nailiyyətlərin</Text>
+        <Text style={styles.sectionTitle}>{t('teacherBadges.sectionTitle')}</Text>
         <View style={styles.grid}>
           {BADGES.map((b) => (
             <View key={b.id} style={[styles.card, b.locked && styles.cardLocked]}>
@@ -66,10 +68,10 @@ export default function TeacherBadgesScreen() {
                 )}
               </View>
               <Text style={[styles.cardTitle, b.highlight && { color: Colors.primary }, b.locked && { color: Colors.textSecondary }]} numberOfLines={1}>
-                {b.title}
+                {t(b.titleKey)}
               </Text>
               <Text style={[styles.cardDesc, b.locked && { color: Colors.textMuted }]} numberOfLines={2}>
-                {b.desc}
+                {t(b.descKey)}
               </Text>
             </View>
           ))}

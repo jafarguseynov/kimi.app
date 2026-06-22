@@ -21,19 +21,23 @@ import { getStudentBookings, getTeacherBookings, confirmBooking, cancelBooking, 
 import { getOrCreateChat } from '../../api/chat.api';
 import { getSubscriptionStatus } from '../../api/subscription.api';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-type TabType = 'Hamısı' | 'Aktiv' | 'Tarixçə';
-const TABS: TabType[] = ['Hamısı', 'Aktiv', 'Tarixçə'];
+const DATE_LOCALE: Record<string, string> = { az: 'az-AZ', ru: 'ru-RU', en: 'en-US' };
+
+type TabType = 'all' | 'active' | 'history';
+const TABS: TabType[] = ['all', 'active', 'history'];
+const TAB_LABEL_KEYS: Record<TabType, string> = { all: 'booking.tabAll', active: 'booking.tabActive', history: 'booking.tabHistory' };
 
 type StatusType = 'pending' | 'confirmed' | 'cancelled' | 'completed';
 
-const STATUS_CONFIG: Record<StatusType, { label: string; bg: string; text: string }> = {
-  pending:   { label: 'Gözləmədə',   bg: '#fffbeb', text: '#d97706' },
-  confirmed: { label: 'Qəbul edildi', bg: '#ecfdf5', text: '#059669' },
-  completed: { label: 'Tamamlandı',  bg: Colors.primaryLight, text: Colors.primary },
-  cancelled: { label: 'Ləğv edildi', bg: '#fff1f2', text: '#e11d48' },
+const STATUS_CONFIG: Record<StatusType, { labelKey: string; bg: string; text: string }> = {
+  pending:   { labelKey: 'booking.statusPending',   bg: '#fffbeb', text: '#d97706' },
+  confirmed: { labelKey: 'booking.statusConfirmed', bg: '#ecfdf5', text: '#059669' },
+  completed: { labelKey: 'booking.statusCompleted',  bg: Colors.primaryLight, text: Colors.primary },
+  cancelled: { labelKey: 'booking.statusCancelled', bg: '#fff1f2', text: '#e11d48' },
 };
 
 const AVATAR_BG: Record<StatusType, string> = {
@@ -43,9 +47,9 @@ const AVATAR_BG: Record<StatusType, string> = {
   cancelled: Colors.surfaceLow,
 };
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, lang: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' });
+  return d.toLocaleDateString(DATE_LOCALE[lang] ?? 'az-AZ', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function getInitials(name: string): string {
@@ -58,7 +62,8 @@ function getInitials(name: string): string {
 }
 
 export default function BookingHistoryScreen() {
-  const [activeTab, setActiveTab] = useState<TabType>('Hamısı');
+  const { t, language } = useTranslation();
+  const [activeTab, setActiveTab] = useState<TabType>('all');
   const [refreshing, setRefreshing] = useState(false);
   const { user } = useUserStore();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
@@ -89,15 +94,15 @@ export default function BookingHistoryScreen() {
       const msg = err?.response?.data?.message;
       if (msg === 'SUBSCRIPTION_REQUIRED') {
         Alert.alert(
-          'Abunəlik tələb olunur',
-          'Şagird sorğularını qəbul etmək üçün müəllim abunəliyi aktiv olmalıdır.',
+          t('booking.subscriptionRequired'),
+          t('booking.subscriptionRequiredMsg'),
           [
-            { text: 'İmtina', style: 'cancel' },
-            { text: 'Planlara bax', onPress: goToPlans },
+            { text: t('booking.decline'), style: 'cancel' },
+            { text: t('booking.viewPlans'), onPress: goToPlans },
           ],
         );
       } else {
-        Alert.alert('Xəta', msg ?? 'Sorğu qəbul edilə bilmədi.');
+        Alert.alert(t('booking.errorTitle'), msg ?? t('booking.requestAcceptFailed'));
       }
     },
   });
@@ -105,7 +110,7 @@ export default function BookingHistoryScreen() {
   const { mutate: doCancel, isPending: cancelling } = useMutation({
     mutationFn: cancelBooking,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings', 'teacher'] }),
-    onError: (err: any) => Alert.alert('Xəta', err?.response?.data?.message ?? 'Sorğu ləğv edilə bilmədi.'),
+    onError: (err: any) => Alert.alert(t('booking.errorTitle'), err?.response?.data?.message ?? t('booking.requestCancelFailed')),
   });
 
   const onRefresh = async () => {
@@ -115,8 +120,8 @@ export default function BookingHistoryScreen() {
   };
 
   const filtered = bookings.filter((b) => {
-    if (activeTab === 'Aktiv') return b.status === 'pending' || b.status === 'confirmed';
-    if (activeTab === 'Tarixçə') return b.status === 'completed' || b.status === 'cancelled';
+    if (activeTab === 'active') return b.status === 'pending' || b.status === 'confirmed';
+    if (activeTab === 'history') return b.status === 'completed' || b.status === 'cancelled';
     return true;
   });
 
@@ -126,7 +131,7 @@ export default function BookingHistoryScreen() {
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dərs Müraciətləri</Text>
+        <Text style={styles.headerTitle}>{t('booking.historyHeader')}</Text>
         <View style={[styles.headerBtn, styles.avatar]}>
           <Text style={styles.avatarText}>{getInitials(user?.name ?? 'KY')}</Text>
         </View>
@@ -138,14 +143,14 @@ export default function BookingHistoryScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} />}
       >
         <View style={styles.tabBar}>
-          {TABS.map((t) => (
+          {TABS.map((tab) => (
             <TouchableOpacity
-              key={t}
-              style={[styles.tabBtn, activeTab === t && styles.tabBtnActive]}
-              onPress={() => setActiveTab(t)}
+              key={tab}
+              style={[styles.tabBtn, activeTab === tab && styles.tabBtnActive]}
+              onPress={() => setActiveTab(tab)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.tabBtnText, activeTab === t && styles.tabBtnTextActive]}>{t}</Text>
+              <Text style={[styles.tabBtnText, activeTab === tab && styles.tabBtnTextActive]}>{t(TAB_LABEL_KEYS[tab])}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -156,8 +161,8 @@ export default function BookingHistoryScreen() {
               <Ionicons name="lock-closed" size={20} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.lockTitle}>Sorğulara cavab vermək üçün abunəlik lazımdır</Text>
-              <Text style={styles.lockSub}>Şagird müraciətlərini qəbul et və gəlir əldə et →</Text>
+              <Text style={styles.lockTitle}>{t('booking.lockTitle')}</Text>
+              <Text style={styles.lockSub}>{t('booking.lockSub')}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -169,15 +174,15 @@ export default function BookingHistoryScreen() {
         ) : filtered.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="calendar-outline" size={48} color={Colors.primaryFixed} />
-            <Text style={styles.emptyText}>Müraciət tapılmadı</Text>
+            <Text style={styles.emptyText}>{t('booking.noRequests')}</Text>
           </View>
         ) : (
           filtered.map((item: Booking) => {
             const status = item.status as StatusType;
             const cfg = STATUS_CONFIG[status];
             const personName = isTeacher
-              ? (item.student?.name ?? 'Şagird')
-              : (item.teacher?.name ?? 'Müəllim');
+              ? (item.student?.name ?? t('booking.defaultStudent'))
+              : (item.teacher?.name ?? t('booking.defaultTeacher'));
             const initials = getInitials(personName);
             const showInfo = status === 'pending' || status === 'confirmed';
 
@@ -194,26 +199,26 @@ export default function BookingHistoryScreen() {
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.teacherName}>{personName}</Text>
-                      <Text style={styles.subjectText}>{item.subject ?? 'Fənn göstərilməyib'}</Text>
+                      <Text style={styles.subjectText}>{item.subject ?? t('booking.noSubjectSpecified')}</Text>
                     </View>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: cfg.bg }]}>
-                    <Text style={[styles.statusBadgeText, { color: cfg.text }]}>{cfg.label}</Text>
+                    <Text style={[styles.statusBadgeText, { color: cfg.text }]}>{t(cfg.labelKey)}</Text>
                   </View>
                 </View>
 
                 {showInfo && (
                   <View style={styles.infoGrid}>
                     <View style={styles.infoItem}>
-                      <Text style={styles.infoLabel}>Tarix</Text>
+                      <Text style={styles.infoLabel}>{t('booking.dateLabel')}</Text>
                       <View style={styles.infoValueRow}>
                         <Ionicons name="calendar-outline" size={15} color={Colors.textMuted} />
-                        <Text style={styles.infoValue}>{formatDate(item.scheduledAt)}</Text>
+                        <Text style={styles.infoValue}>{formatDate(item.scheduledAt, language)}</Text>
                       </View>
                     </View>
                     <View style={styles.infoItem}>
-                      <Text style={styles.infoLabel}>Müddət</Text>
-                      <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.duration} dəq</Text>
+                      <Text style={styles.infoLabel}>{t('booking.duration')}</Text>
+                      <Text style={[styles.infoValue, { fontWeight: '700' }]}>{item.duration} {t('booking.minutes')}</Text>
                     </View>
                   </View>
                 )}
@@ -227,7 +232,7 @@ export default function BookingHistoryScreen() {
                       onPress={() => doCancel(item.id)}
                     >
                       <Ionicons name="close" size={18} color={Colors.textSecondary} />
-                      <Text style={styles.rejectBtnText}>İmtina</Text>
+                      <Text style={styles.rejectBtnText}>{t('booking.decline')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.acceptBtn, (confirming || cancelling) && styles.btnDisabled]}
@@ -236,7 +241,7 @@ export default function BookingHistoryScreen() {
                       onPress={() => doConfirm(item.id)}
                     >
                       <Ionicons name={subscribed ? 'checkmark' : 'lock-closed'} size={18} color="#fff" />
-                      <Text style={styles.acceptBtnText}>{confirming ? 'Qəbul edilir...' : 'Qəbul et'}</Text>
+                      <Text style={styles.acceptBtnText}>{confirming ? t('booking.accepting') : t('booking.accept')}</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -258,12 +263,12 @@ export default function BookingHistoryScreen() {
                           });
                         }
                       } catch (e: any) {
-                        Alert.alert('Xəta', e?.response?.data?.message || 'Söhbət açıla bilmədi');
+                        Alert.alert(t('booking.errorTitle'), e?.response?.data?.message || t('booking.chatOpenFailed'));
                       }
                     }}
                   >
                     <Ionicons name="chatbubble" size={18} color="#fff" />
-                    <Text style={styles.joinBtnText}>Mesajla</Text>
+                    <Text style={styles.joinBtnText}>{t('booking.messageVerb')}</Text>
                   </TouchableOpacity>
                 )}
 
@@ -271,7 +276,7 @@ export default function BookingHistoryScreen() {
                   <View style={styles.ratingRow}>
                     <View style={styles.ratingLeft}>
                       <Ionicons name="checkmark-circle" size={18} color={Colors.tertiary} />
-                      <Text style={styles.ratingText}>Tamamlandı</Text>
+                      <Text style={styles.ratingText}>{t('booking.completedLabel')}</Text>
                     </View>
                     {!isTeacher && (
                       <TouchableOpacity
@@ -283,14 +288,14 @@ export default function BookingHistoryScreen() {
                           teacherSubject: item.subject,
                         })}
                       >
-                        <Text style={[styles.ratingText, { color: Colors.primary, fontWeight: '700' }]}>Rəy yaz →</Text>
+                        <Text style={[styles.ratingText, { color: Colors.primary, fontWeight: '700' }]}>{t('booking.writeReviewArrow')}</Text>
                       </TouchableOpacity>
                     )}
                   </View>
                 )}
 
                 {status === 'cancelled' && (
-                  <Text style={styles.rejectReason}>Bu rezervasiya ləğv edildi.</Text>
+                  <Text style={styles.rejectReason}>{t('booking.cancelledNote')}</Text>
                 )}
               </View>
             );
@@ -302,9 +307,9 @@ export default function BookingHistoryScreen() {
             <Ionicons name="hardware-chip-outline" size={28} color="#fff" />
           </LinearGradient>
           <View style={styles.adviceBody}>
-            <Text style={styles.adviceTitle}>Kimi Məsləhəti</Text>
+            <Text style={styles.adviceTitle}>{t('booking.adviceTitle')}</Text>
             <Text style={styles.adviceText}>
-              Müraciətlərinizə cavab almaq üçün orta gözləmə müddəti 2 saatdır. Şəxsi bildirişləri yoxlamağı unutma!
+              {t('booking.adviceText')}
             </Text>
           </View>
         </View>

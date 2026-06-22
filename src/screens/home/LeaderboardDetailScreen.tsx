@@ -9,6 +9,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
+import { useTranslation } from '../../i18n';
 
 type Range = 'weekly' | 'monthly';
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -34,6 +35,7 @@ function Avatar({ initial, size, ringColor, ringWidth = 4 }: { initial: string; 
 
 export default function LeaderboardDetailScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [range, setRange] = useState<Range>('weekly');
   const user = useUserStore((s) => s.user);
 
@@ -58,7 +60,7 @@ export default function LeaderboardDetailScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Liderlər</Text>
+        <Text style={styles.headerTitle}>{t('leaderboardDetail.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -66,14 +68,14 @@ export default function LeaderboardDetailScreen() {
         {/* Pair-tab switcher: Hamı / Dostlar */}
         <View style={pairTab.row}>
           <View style={[pairTab.btn, pairTab.btnActive]}>
-            <Text style={[pairTab.text, pairTab.textActive]}>Hamı</Text>
+            <Text style={[pairTab.text, pairTab.textActive]}>{t('leaderboardDetail.tabAll')}</Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.85}
             onPress={() => navigation.replace(Routes.FriendsLeaderboard)}
             style={pairTab.btn}
           >
-            <Text style={pairTab.text}>Dostlar</Text>
+            <Text style={pairTab.text}>{t('leaderboardDetail.tabFriends')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -89,7 +91,7 @@ export default function LeaderboardDetailScreen() {
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     style={styles.segItemActive}
                   >
-                    <Text style={styles.segTextActive}>{r === 'weekly' ? 'Həftəlik' : 'Aylıq'}</Text>
+                    <Text style={styles.segTextActive}>{r === 'weekly' ? t('leaderboardDetail.weekly') : t('leaderboardDetail.monthly')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               );
@@ -97,7 +99,7 @@ export default function LeaderboardDetailScreen() {
             return (
               <TouchableOpacity key={r} style={styles.segItemWrap} activeOpacity={0.85} onPress={() => setRange(r)}>
                 <View style={styles.segItem}>
-                  <Text style={styles.segText}>{r === 'weekly' ? 'Həftəlik' : 'Aylıq'}</Text>
+                  <Text style={styles.segText}>{r === 'weekly' ? t('leaderboardDetail.weekly') : t('leaderboardDetail.monthly')}</Text>
                 </View>
               </TouchableOpacity>
             );
@@ -112,7 +114,7 @@ export default function LeaderboardDetailScreen() {
         >
           <View style={styles.heroTopRow}>
             <View>
-              <Text style={styles.heroKicker}>Sənin Reytinqin</Text>
+              <Text style={styles.heroKicker}>{t('leaderboardDetail.myRank')}</Text>
               <View style={styles.heroRankRow}>
                 <Text style={styles.heroRankNum}>#{myRank}</Text>
                 <Text style={styles.heroRankTotal}>/ {totalUsers.toLocaleString('az-AZ')}</Text>
@@ -129,11 +131,11 @@ export default function LeaderboardDetailScreen() {
               <Text style={styles.heroAvatarText}>{initial(user?.name ?? 'C')}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroNameLine}>{user?.name?.split(' ')[0] ?? 'Cəfər'}, Zirvəyə çox yaxınsan!</Text>
+              <Text style={styles.heroNameLine}>{t('leaderboardDetail.heroNameLine', { name: user?.name?.split(' ')[0] ?? t('leaderboardDetail.defaultName') })}</Text>
               <View style={styles.heroTrack}>
                 <View style={[styles.heroFill, { width: `${progressPct}%` as any }]} />
               </View>
-              <Text style={styles.heroHint}>Növbəti pillə üçün {nextNeeded} XP lazımdır</Text>
+              <Text style={styles.heroHint}>{t('leaderboardDetail.heroHint', { n: nextNeeded })}</Text>
             </View>
           </View>
         </LinearGradient>
@@ -198,7 +200,7 @@ export default function LeaderboardDetailScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rowName} numberOfLines={1}>{s.name}</Text>
-                    <Text style={styles.rowSub} numberOfLines={1}>{('school' in s ? s.school : `${s.examCount} imtahan · %${s.avgPercentage}`)}</Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>{('school' in s ? s.school : t('leaderboardDetail.examMeta', { count: s.examCount, pct: s.avgPercentage }))}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
                     <Text style={styles.rowXp}>{('totalScore' in s ? s.totalScore : s.xp).toLocaleString('az-AZ')}</Text>
@@ -209,7 +211,7 @@ export default function LeaderboardDetailScreen() {
             </View>
 
             <TouchableOpacity style={styles.moreBtn} activeOpacity={0.85}>
-              <Text style={styles.moreBtnText}>Daha çox gör</Text>
+              <Text style={styles.moreBtnText}>{t('leaderboardDetail.moreBtn')}</Text>
               <Ionicons name="chevron-down" size={16} color={Colors.primary} />
             </TouchableOpacity>
           </>

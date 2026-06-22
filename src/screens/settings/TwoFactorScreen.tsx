@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -15,13 +16,14 @@ type Method = 'sms' | 'email' | 'app';
 export default function TwoFactorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { user } = useUserStore();
+  const { t } = useTranslation();
   const [enabled, setEnabled] = useState(false);
   const [method, setMethod] = useState<Method>('sms');
 
   const handleToggle = (v: boolean) => {
     setEnabled(v);
     if (v) {
-      Alert.alert('İki-faktorlu təsdiq', 'Bu funksiya tezliklə real SMS/email göndərmə inteqrasiyası ilə tam aktiv olacaq.');
+      Alert.alert(t('twoFactor.alertTitle'), t('twoFactor.alertBody'));
     }
   };
 
@@ -31,25 +33,25 @@ export default function TwoFactorScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İki-faktorlu təsdiq</Text>
+        <Text style={styles.headerTitle}>{t('twoFactor.headerTitle')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
         <LinearGradient colors={GRADIENT} style={styles.heroCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <Ionicons name="shield-checkmark" size={36} color="#fff" />
-          <Text style={styles.heroTitle}>Hesabını qoru</Text>
+          <Text style={styles.heroTitle}>{t('twoFactor.heroTitle')}</Text>
           <Text style={styles.heroSub}>
-            İki-faktorlu təsdiq hesabınıza əlavə təhlükəsizlik təbəqəsi əlavə edir.
+            {t('twoFactor.heroSub')}
           </Text>
         </LinearGradient>
 
         <View style={styles.toggleCard}>
           <View style={styles.toggleRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleTitle}>2FA aktivdir</Text>
+              <Text style={styles.toggleTitle}>{t('twoFactor.toggleTitle')}</Text>
               <Text style={styles.toggleSub}>
-                {enabled ? 'Hesabınız mühafizə olunur' : 'Aktivləşdirin və hesabınızı qoruyun'}
+                {enabled ? t('twoFactor.toggleOn') : t('twoFactor.toggleOff')}
               </Text>
             </View>
             <Switch
@@ -63,10 +65,10 @@ export default function TwoFactorScreen() {
 
         {enabled && (
           <View style={styles.methodSection}>
-            <Text style={styles.sectionLabel}>Təsdiq üsulu</Text>
+            <Text style={styles.sectionLabel}>{t('twoFactor.methodLabel')}</Text>
             <View style={styles.card}>
               {(['sms', 'email', 'app'] as Method[]).map((m, i) => {
-                const labels = { sms: ['SMS', user?.phone ?? '+994'], email: ['Email', user?.email ?? '—'], app: ['Authenticator app', 'Google / Authy / 1Password'] };
+                const labels = { sms: [t('twoFactor.sms'), user?.phone ?? '+994'], email: [t('twoFactor.email'), user?.email ?? '—'], app: [t('twoFactor.app'), t('twoFactor.appSub')] };
                 const icons = { sms: 'chatbubble-outline', email: 'mail-outline', app: 'key-outline' } as const;
                 const active = method === m;
                 return (
@@ -96,7 +98,7 @@ export default function TwoFactorScreen() {
         )}
 
         <Text style={styles.note}>
-          Qeyd: 2FA-nın tam funksional işləməsi üçün SMS gateway və email servis inteqrasiyası tələb olunur. Demo olaraq seçimlər saxlanılır.
+          {t('twoFactor.note')}
         </Text>
       </ScrollView>
     </SafeAreaView>

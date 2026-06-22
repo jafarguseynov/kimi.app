@@ -8,11 +8,13 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { getExamReview, ExamReviewQuestion } from '../../api/certificate.api';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamReview>;
 type Filter = 'all' | 'wrong' | 'correct';
 
 export default function ExamReviewScreen({ route, navigation }: Props) {
+  const { t } = useTranslation();
   const { examId, filter: initialFilter } = route.params;
   const [filter, setFilter] = useState<Filter>(initialFilter ?? 'wrong');
 
@@ -39,7 +41,7 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle} numberOfLines={1}>Cavabların təhlili</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{t('examReview.title')}</Text>
           {!!data && <Text style={styles.headerSub} numberOfLines={1}>{data.examTitle}</Text>}
         </View>
       </View>
@@ -47,9 +49,9 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
       {/* Filter tabs */}
       <View style={styles.tabs}>
         {([
-          { id: 'wrong',   label: `${wrongCount} səhv`,   color: Colors.danger },
-          { id: 'correct', label: `${correctCount} düz`,  color: Colors.tertiary },
-          { id: 'all',     label: `Hamısı (${data?.total ?? 0})`, color: Colors.primary },
+          { id: 'wrong',   label: t('examReview.nWrong', { n: wrongCount }),   color: Colors.danger },
+          { id: 'correct', label: t('examReview.nCorrect', { n: correctCount }),  color: Colors.tertiary },
+          { id: 'all',     label: t('examReview.allCount', { n: data?.total ?? 0 }), color: Colors.primary },
         ] as { id: Filter; label: string; color: string }[]).map((t) => {
           const active = filter === t.id;
           return (
@@ -70,13 +72,13 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
       ) : error ? (
         <View style={styles.center}>
           <Ionicons name="cloud-offline-outline" size={42} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>Cavablar yüklənə bilmədi</Text>
+          <Text style={styles.emptyText}>{t('examReview.loadFailed')}</Text>
         </View>
       ) : questions.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="checkmark-circle-outline" size={42} color={Colors.tertiary} />
           <Text style={styles.emptyText}>
-            {filter === 'wrong' ? 'Səhv cavab yoxdur — əla iş!' : filter === 'correct' ? 'Düz cavab yoxdur' : 'Sual tapılmadı'}
+            {filter === 'wrong' ? t('examReview.noWrong') : filter === 'correct' ? t('examReview.noCorrect') : t('examReview.noQuestions')}
           </Text>
         </View>
       ) : (
@@ -92,6 +94,7 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
 }
 
 function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.qCard, q.isCorrect ? styles.qCardCorrect : styles.qCardWrong]}>
       <View style={styles.qHeader}>
@@ -102,7 +105,7 @@ function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
             color={q.isCorrect ? Colors.tertiary : Colors.danger}
           />
           <Text style={[styles.qBadgeText, { color: q.isCorrect ? Colors.tertiary : Colors.danger }]}>
-            Sual {index} · {q.isCorrect ? 'Düz' : 'Səhv'}
+            {t('examReview.questionN', { n: index })} · {q.isCorrect ? t('examReview.correct') : t('examReview.wrong')}
           </Text>
         </View>
       </View>
@@ -146,7 +149,7 @@ function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
       </View>
 
       {q.userOptionId == null && (
-        <Text style={styles.unansweredText}>Cavab verilməyib</Text>
+        <Text style={styles.unansweredText}>{t('examReview.unanswered')}</Text>
       )}
     </View>
   );

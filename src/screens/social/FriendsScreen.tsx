@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const ONLINE_COLOR = '#10B981';
@@ -39,6 +40,7 @@ function AvatarCircle({ initial, size }: { initial: string; size: number }) {
 }
 
 export default function FriendsScreen() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
 
   const filtered = FRIENDS.filter((f) =>
@@ -52,7 +54,7 @@ export default function FriendsScreen() {
         <View style={styles.headerAvatar}>
           <AvatarCircle initial="S" size={40} />
         </View>
-        <Text style={styles.headerTitle}>Dostlarım</Text>
+        <Text style={styles.headerTitle}>{t('social.myFriends')}</Text>
         <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -61,7 +63,7 @@ export default function FriendsScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
         {/* Section heading */}
         <View style={styles.sectionRow}>
-          <Text style={styles.sectionTitle}>Tələbə Yoldaşları</Text>
+          <Text style={styles.sectionTitle}>{t('social.studentMates')}</Text>
           <TouchableOpacity activeOpacity={0.75} hitSlop={8}>
             <Ionicons name="person-add-outline" size={22} color={Colors.primary} />
           </TouchableOpacity>
@@ -72,7 +74,7 @@ export default function FriendsScreen() {
           <Ionicons name="search-outline" size={18} color={Colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Dost axtar..."
+            placeholder={t('social.searchPlaceholder')}
             placeholderTextColor={Colors.textSecondary}
             value={search}
             onChangeText={setSearch}
@@ -103,7 +105,7 @@ export default function FriendsScreen() {
                     { color: friend.isOnline ? ONLINE_COLOR : Colors.textSecondary },
                   ]}
                 >
-                  {friend.isOnline ? 'Online' : 'Offline'}
+                  {friend.isOnline ? t('social.online') : t('social.offline')}
                 </Text>
               </View>
 
@@ -121,12 +123,12 @@ export default function FriendsScreen() {
                       end={{ x: 1, y: 0 }}
                     >
                       <Ionicons name="flash-outline" size={14} color="#fff" />
-                      <Text style={styles.challengeBtnText}>Challenge et</Text>
+                      <Text style={styles.challengeBtnText}>{t('social.challenge')}</Text>
                     </LinearGradient>
                   ) : (
                     <View style={[styles.challengeBtn, styles.challengeBtnOff]}>
                       <Ionicons name="flash-outline" size={14} color={Colors.textSecondary} />
-                      <Text style={styles.challengeBtnTextOff}>Challenge et</Text>
+                      <Text style={styles.challengeBtnTextOff}>{t('social.challenge')}</Text>
                     </View>
                   )}
                 </TouchableOpacity>

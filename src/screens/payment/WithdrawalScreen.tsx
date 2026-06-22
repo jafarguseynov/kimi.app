@@ -7,12 +7,14 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { getWallet, withdraw } from '../../api/payment.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const MIN_AMOUNT = 5;
 
 export default function WithdrawalScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [amount, setAmount] = useState('');
   const [card, setCard] = useState('');
   const [amountFocused, setAmountFocused] = useState(false);
@@ -27,15 +29,15 @@ export default function WithdrawalScreen() {
   const handleSubmit = async () => {
     const numAmount = parseFloat(amount);
     if (!amount || isNaN(numAmount)) {
-      Alert.alert('Xəta', 'Düzgün məbləğ daxil edin.');
+      Alert.alert(t('pay.errorTitle'), t('pay.errInvalidAmount'));
       return;
     }
     if (numAmount < MIN_AMOUNT) {
-      Alert.alert('Xəta', `Minimum çıxarış məbləği ${MIN_AMOUNT} AZN-dir.`);
+      Alert.alert(t('pay.errorTitle'), t('pay.errMinAmount', { n: MIN_AMOUNT }));
       return;
     }
     if (balance !== null && numAmount > balance) {
-      Alert.alert('Xəta', 'Balansınız kifayət deyil.');
+      Alert.alert(t('pay.errorTitle'), t('pay.errInsufficient'));
       return;
     }
     setSubmitting(true);
@@ -43,8 +45,8 @@ export default function WithdrawalScreen() {
       await withdraw(numAmount, card || undefined);
       navigation.navigate(Routes.WithdrawalSuccess);
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'Çıxarış zamanı xəta baş verdi.';
-      Alert.alert('Xəta', msg);
+      const msg = err?.response?.data?.message ?? t('pay.errWithdraw');
+      Alert.alert(t('pay.errorTitle'), msg);
     } finally {
       setSubmitting(false);
     }
@@ -56,7 +58,7 @@ export default function WithdrawalScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Qazancın çıxarılması</Text>
+        <Text style={styles.headerTitle}>{t('pay.withdrawHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -67,7 +69,7 @@ export default function WithdrawalScreen() {
       >
         {/* Balance hero */}
         <View style={styles.balanceSection}>
-          <Text style={styles.balanceLabel}>Cari balansınız</Text>
+          <Text style={styles.balanceLabel}>{t('pay.yourCurrentBalance')}</Text>
           <View style={styles.balanceRow}>
             {balance === null ? (
               <ActivityIndicator size="small" color={Colors.primary} />
@@ -78,14 +80,14 @@ export default function WithdrawalScreen() {
               </>
             )}
           </View>
-          <Text style={styles.balanceSub}>Qazancını asanlıqla çıxar və uğurunu qeyd et!</Text>
+          <Text style={styles.balanceSub}>{t('pay.withdrawSub')}</Text>
         </View>
 
         {/* Form card */}
         <View style={styles.formCard}>
           {/* Amount */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Məbləğ</Text>
+            <Text style={styles.fieldLabel}>{t('pay.amount')}</Text>
             <View style={[styles.inputBox, amountFocused && styles.inputBoxFocused]}>
               <TextInput
                 style={styles.textInput}
@@ -101,13 +103,13 @@ export default function WithdrawalScreen() {
             </View>
             <View style={styles.hintRow}>
               <Ionicons name="information-circle-outline" size={14} color={Colors.primary} />
-              <Text style={styles.hintText}>Minimum çıxarış məbləği: {MIN_AMOUNT}.00 AZN</Text>
+              <Text style={styles.hintText}>{t('pay.minWithdraw', { n: MIN_AMOUNT })}</Text>
             </View>
           </View>
 
           {/* Card number (reference) */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>Kart nömrəsi (isteğe bağlı)</Text>
+            <Text style={styles.fieldLabel}>{t('pay.cardOptional')}</Text>
             <View style={[styles.inputBox, cardFocused && styles.inputBoxFocused]}>
               <TextInput
                 style={styles.textInput}
@@ -130,14 +132,14 @@ export default function WithdrawalScreen() {
               {submitting ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.submitBtnText}>Çıxarışı təsdiqlə</Text>
+                <Text style={styles.submitBtnText}>{t('pay.confirmWithdraw')}</Text>
               )}
             </LinearGradient>
           </TouchableOpacity>
 
           <View style={styles.securityRow}>
             <Ionicons name="shield-checkmark-outline" size={14} color={Colors.tertiary} />
-            <Text style={styles.securityText}>256-bit təhlükəsiz ödəniş</Text>
+            <Text style={styles.securityText}>{t('pay.secure256')}</Text>
           </View>
         </View>
 
@@ -147,15 +149,15 @@ export default function WithdrawalScreen() {
             <View style={styles.infoIconWrap}>
               <Ionicons name="time-outline" size={22} color={Colors.primary} />
             </View>
-            <Text style={styles.infoCardLabel}>Emal müddəti</Text>
-            <Text style={styles.infoCardValue}>1-3 iş günü</Text>
+            <Text style={styles.infoCardLabel}>{t('pay.processingTime')}</Text>
+            <Text style={styles.infoCardValue}>{t('pay.businessDays')}</Text>
           </View>
           <View style={styles.infoCard}>
             <View style={styles.infoIconWrap}>
               <Ionicons name="wallet-outline" size={22} color={Colors.primary} />
             </View>
-            <Text style={styles.infoCardLabel}>Komissiya</Text>
-            <Text style={styles.infoCardValue}>0% komissiya</Text>
+            <Text style={styles.infoCardLabel}>{t('pay.commission')}</Text>
+            <Text style={styles.infoCardValue}>{t('pay.noCommission')}</Text>
           </View>
         </View>
       </ScrollView>

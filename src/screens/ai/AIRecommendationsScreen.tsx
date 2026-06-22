@@ -17,12 +17,14 @@ import { useExamList } from '../../hooks/useExams';
 import { useUserStore } from '../../store/user.store';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function AIRecommendationsScreen() {
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
+  const { t } = useTranslation();
 
   const { data: aiRec, isLoading: aiLoading } = useQuery({
     queryKey: ['aiRecommendations'],
@@ -32,7 +34,7 @@ export default function AIRecommendationsScreen() {
   const isLoading = aiLoading || examsLoading;
 
   const weak = aiRec?.weakTopics ?? [];
-  const weakSubjects = weak.map((t) => t.subject.toLowerCase());
+  const weakSubjects = weak.map((w) => w.subject.toLowerCase());
   const recommendedExam = exams.find((e) => weakSubjects.some((s) => e.subject.toLowerCase().includes(s))) ?? exams[0];
 
   const weakTopics = weak.length > 0
@@ -45,18 +47,18 @@ export default function AIRecommendationsScreen() {
     ? Math.max(5, Math.min(50, Math.round(100 - (weak[0]?.avg ?? 50))))
     : 15;
 
-  const userName = (user?.name ?? 'Şagird').split(' ')[0];
+  const userName = (user?.name ?? t('aiRecommendations.defaultName')).split(' ')[0];
 
   const aiTip = recommendedExam
-    ? `${userName}, ${weakTopics[0]?.toLowerCase()} mövzusunda çətinliyin var. Bu gün 15 dəqiqə işləsən, növbəti sınaqda nəticən 20% arta bilər!`
-    : `${userName}, sənin üçün tövsiyə hazırlayırıq. İlk imtahanını həll et!`;
+    ? t('aiRecommendations.tipDifficulty', { name: userName, topic: weakTopics[0]?.toLowerCase() ?? '' })
+    : t('aiRecommendations.tipFirst', { name: userName });
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <View style={{ width: 40 }} />
-          <Text style={styles.headerTitle}>AI Analiz</Text>
+          <Text style={styles.headerTitle}>{t('aiRecommendations.headerTitle')}</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
@@ -72,9 +74,9 @@ export default function AIRecommendationsScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Analiz</Text>
+        <Text style={styles.headerTitle}>{t('aiRecommendations.headerTitle')}</Text>
         <View style={styles.headerAvatar}>
-          <Text style={styles.headerAvatarText}>{(user?.name ?? 'K').charAt(0).toUpperCase()}</Text>
+          <Text style={styles.headerAvatarText}>{(user?.name ?? t('aiRecommendations.avatarFallback')).charAt(0).toUpperCase()}</Text>
         </View>
       </View>
 
@@ -87,11 +89,11 @@ export default function AIRecommendationsScreen() {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>Həftəlik Hesabat</Text>
+            <Text style={styles.heroBadgeText}>{t('aiRecommendations.heroBadge')}</Text>
           </View>
-          <Text style={styles.heroTitle}>Möhtəşəm irəliləyiş, {userName}!</Text>
+          <Text style={styles.heroTitle}>{t('aiRecommendations.heroTitle', { name: userName })}</Text>
           <Text style={styles.heroSub}>
-            Bu həftə aktivliyin {growthPercent}% artıb. Gəl zəif tərəflərini birlikdə gücləndirək.
+            {t('aiRecommendations.heroSub', { percent: growthPercent })}
           </Text>
         </LinearGradient>
 
@@ -99,12 +101,12 @@ export default function AIRecommendationsScreen() {
         <View style={styles.bentoRow}>
           <View style={styles.growthCard}>
             <View style={styles.growthTop}>
-              <Text style={styles.growthLabel}>İnkişaf göstəricisi</Text>
+              <Text style={styles.growthLabel}>{t('aiRecommendations.growthLabel')}</Text>
               <Ionicons name="trending-up" size={20} color={Colors.tertiary} />
             </View>
             <View style={styles.growthValueRow}>
               <Text style={styles.growthValue}>+{growthPercent}%</Text>
-              <Text style={styles.growthSub}>yüksəliş</Text>
+              <Text style={styles.growthSub}>{t('aiRecommendations.growthRise')}</Text>
             </View>
             <View style={styles.growthTrack}>
               <LinearGradient
@@ -114,18 +116,18 @@ export default function AIRecommendationsScreen() {
                 end={{ x: 1, y: 0 }}
               />
             </View>
-            <Text style={styles.growthCaption}>Keçən ayla müqayisədə</Text>
+            <Text style={styles.growthCaption}>{t('aiRecommendations.growthCaption')}</Text>
           </View>
 
           <View style={styles.weakCard}>
             <View style={styles.cardHeaderRow}>
               <Ionicons name="alert-circle-outline" size={20} color={Colors.danger} />
-              <Text style={styles.cardTitle}>Zəif mövzular</Text>
+              <Text style={styles.cardTitle}>{t('aiRecommendations.weakTitle')}</Text>
             </View>
             <View style={styles.chipRow}>
-              {weakTopics.map((t, i) => (
-                <View key={t} style={[styles.chip, i === 2 ? styles.chipMuted : styles.chipDanger]}>
-                  <Text style={[styles.chipText, i === 2 ? styles.chipTextMuted : styles.chipTextDanger]}>{t}</Text>
+              {weakTopics.map((topic, i) => (
+                <View key={topic} style={[styles.chip, i === 2 ? styles.chipMuted : styles.chipDanger]}>
+                  <Text style={[styles.chipText, i === 2 ? styles.chipTextMuted : styles.chipTextDanger]}>{topic}</Text>
                 </View>
               ))}
             </View>
@@ -136,12 +138,12 @@ export default function AIRecommendationsScreen() {
         <View style={styles.strongCard}>
           <View style={styles.cardHeaderRow}>
             <Ionicons name="checkmark-circle" size={20} color={Colors.tertiary} />
-            <Text style={styles.cardTitle}>Güclü mövzular</Text>
+            <Text style={styles.cardTitle}>{t('aiRecommendations.strongTitle')}</Text>
           </View>
           <View style={styles.chipRow}>
-            {strongTopics.map((t) => (
-              <View key={t} style={styles.chipSuccess}>
-                <Text style={styles.chipTextSuccess}>{t}</Text>
+            {strongTopics.map((topic) => (
+              <View key={topic} style={styles.chipSuccess}>
+                <Text style={styles.chipTextSuccess}>{topic}</Text>
               </View>
             ))}
           </View>
@@ -152,7 +154,7 @@ export default function AIRecommendationsScreen() {
             <Ionicons name="bulb" size={22} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.aiTipTitle}>AI Tövsiyəsi</Text>
+            <Text style={styles.aiTipTitle}>{t('aiRecommendations.aiTipTitle')}</Text>
             <Text style={styles.aiTipText}>"{aiTip}"</Text>
           </View>
         </View>
@@ -160,22 +162,22 @@ export default function AIRecommendationsScreen() {
         {/* Next step */}
         {recommendedExam && (
           <View style={{ gap: 12 }}>
-            <Text style={styles.sectionLabel}>Növbəti addım</Text>
+            <Text style={styles.sectionLabel}>{t('aiRecommendations.nextStep')}</Text>
             <View style={styles.nextStepCard}>
               <View style={{ flex: 1, gap: 8 }}>
                 <View style={styles.recRow}>
                   <View style={styles.recDot} />
-                  <Text style={styles.recText}>Tövsiyə olunur</Text>
+                  <Text style={styles.recText}>{t('aiRecommendations.recommended')}</Text>
                 </View>
                 <Text style={styles.nextStepTitle}>{recommendedExam.title}</Text>
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
                     <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{recommendedExam.duration} dəq</Text>
+                    <Text style={styles.metaText}>{recommendedExam.duration} {t('aiRecommendations.minutes')}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Ionicons name="help-circle-outline" size={14} color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{recommendedExam.questionCount ?? '?'} sual</Text>
+                    <Text style={styles.metaText}>{recommendedExam.questionCount ?? '?'} {t('aiRecommendations.questions')}</Text>
                   </View>
                 </View>
               </View>

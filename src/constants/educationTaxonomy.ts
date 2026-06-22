@@ -21,6 +21,23 @@ export const SCHOOL_GRADES: SubItem[] = [
   { key: '11', title: '11-ci sinif', desc: 'Buraxılış imtahanı', structureKey: 'middle.11-buraxilish', subjects: ['Azərbaycan dili', 'Ədəbiyyat', 'Cəbr', 'Həndəsə', 'İngilis dili', 'Azərbaycan tarixi', 'Ümumi tarix', 'Coğrafiya', 'Biologiya', 'Fizika', 'Kimya'] },
 ];
 
+// Rus bölməsi (rus sektoru) sinifləri — tədris dili rus.
+// Fərq: əsas dil "Rus dili"dir, "Azərbaycan dili" isə dövlət dili kimi keçilir.
+// Buraxılış-9 rəsmi fənləri: Rus dili, Riyaziyyat, Xarici dil, Azərbaycan dili (dövlət dili).
+export const RUSSIAN_SCHOOL_GRADES: SubItem[] = [
+  { key: '1',  title: '1-ci sinif',  desc: 'İbtidai',    subjects: ['Rus dili', 'Riyaziyyat', 'Həyat bilgisi', 'Azərbaycan dili'] },
+  { key: '2',  title: '2-ci sinif',  desc: 'İbtidai',    subjects: ['Rus dili', 'Riyaziyyat', 'Həyat bilgisi', 'Azərbaycan dili', 'İngilis dili'] },
+  { key: '3',  title: '3-cü sinif',  desc: 'İbtidai',    subjects: ['Rus dili', 'Riyaziyyat', 'Həyat bilgisi', 'Azərbaycan dili', 'İngilis dili'] },
+  { key: '4',  title: '4-cü sinif',  desc: 'İbtidai',    subjects: ['Rus dili', 'Riyaziyyat', 'Həyat bilgisi', 'Azərbaycan dili', 'İngilis dili', 'İnformatika'] },
+  { key: '5',  title: '5-ci sinif',  desc: 'Ümumi orta', subjects: ['Rus dili', 'Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Tarix', 'Coğrafiya', 'Biologiya', 'İnformatika'] },
+  { key: '6',  title: '6-cı sinif',  desc: 'Ümumi orta', subjects: ['Rus dili', 'Rus ədəbiyyatı', 'Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Tarix', 'Coğrafiya', 'Biologiya', 'Fizika', 'İnformatika'] },
+  { key: '7',  title: '7-ci sinif',  desc: 'Ümumi orta', subjects: ['Rus dili', 'Rus ədəbiyyatı', 'Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Tarix', 'Coğrafiya', 'Biologiya', 'Fizika', 'İnformatika'] },
+  { key: '8',  title: '8-ci sinif',  desc: 'Ümumi orta', subjects: ['Rus dili', 'Rus ədəbiyyatı', 'Cəbr', 'Həndəsə', 'Azərbaycan dili', 'İngilis dili', 'Tarix', 'Coğrafiya', 'Biologiya', 'Fizika', 'Kimya', 'İnformatika'] },
+  { key: '9',  title: '9-cu sinif',  desc: 'Yekun attestasiya', structureKey: 'middle.9-attestasiya', subjects: ['Rus dili', 'Riyaziyyat', 'İngilis dili', 'Azərbaycan dili', 'Rus ədəbiyyatı', 'Cəbr', 'Həndəsə', 'Tarix', 'Coğrafiya', 'Biologiya', 'Fizika', 'Kimya', 'İnformatika'] },
+  { key: '10', title: '10-cu sinif', desc: 'Tam orta',   subjects: ['Rus dili', 'Rus ədəbiyyatı', 'Cəbr', 'Həndəsə', 'Azərbaycan dili', 'İngilis dili', 'Azərbaycan tarixi', 'Ümumi tarix', 'Coğrafiya', 'Biologiya', 'Fizika', 'Kimya'] },
+  { key: '11', title: '11-ci sinif', desc: 'Buraxılış imtahanı', structureKey: 'middle.11-buraxilish', subjects: ['Rus dili', 'Rus ədəbiyyatı', 'Cəbr', 'Həndəsə', 'Azərbaycan dili', 'İngilis dili', 'Azərbaycan tarixi', 'Ümumi tarix', 'Coğrafiya', 'Biologiya', 'Fizika', 'Kimya'] },
+];
+
 // DİM 2026 rəsmi strukturuna uyğun — 7 alt-qrup
 export const ABITURIYENT_GROUPS: SubItem[] = [
   { key: 'I-RK',   title: 'I qrup (RK)',   desc: 'Riy · Fiz · Kimya — texniki',         emoji: '⚗️',  structureKey: 'abituriyent.I-RK',
@@ -135,9 +152,17 @@ export const PROFESSIONAL_SUBJECTS: SubItem[] = [
   { key: 'appraiser',     title: 'Qiymətləndirici',     desc: 'Qiymətləndirmə peşə sert.', emoji: '📏', structureKey: 'pro.appraiser' },
 ];
 
+// "Xarici dil" hər yerdə ümumi etiketdir — namizəd konkret dili özü seçir.
+export const FOREIGN_LANGUAGES = ['İngilis dili', 'Rus dili', 'Fransız dili', 'Alman dili'];
+export const isForeignLangSubject = (s?: string) => s === 'Xarici dil';
+
 export function getSubcategories(categoryKey: string): SubItem[] {
   switch (categoryKey) {
     case 'middle':        return SCHOOL_GRADES;
+    // Rus bölməsi — rus sektoru üçün eyni orta məktəb sinifləri + abituriyent qrupları.
+    // categoryKey 'russian' aşağı drill boyu daşınır, beləliklə imtahan siyahısı
+    // rus sektoru imtahanlarını süzür (backend categoryKey='russian' üzrə).
+    case 'russian':       return [...RUSSIAN_SCHOOL_GRADES, ...ABITURIYENT_GROUPS];
     case 'abituriyent':   return ABITURIYENT_GROUPS;
     case 'magistr':       return MAGISTR_SUBJECTS;
     case 'miq':           return MIQ_SUBJECTS;
@@ -152,6 +177,29 @@ export function getSubcategories(categoryKey: string): SubItem[] {
     case 'professional':  return PROFESSIONAL_SUBJECTS;
     default: return [];
   }
+}
+
+// Kateqoriya açarı → oxunaqlı başlıq (məs. 'abituriyent' → 'Abituriyent')
+export const CATEGORY_TITLES: Record<string, string> = {
+  middle: 'Orta Məktəb',
+  russian: 'Rus bölməsi',
+  abituriyent: 'Abituriyent',
+  magistr: 'Magistratura',
+  miq: 'MIQ',
+  rezidentura: 'Rezidentura',
+  doctorate: 'Doktorantura',
+  govservice: 'Dövlət qulluğu',
+  ability: 'Qabiliyyət',
+  college: 'Kollec',
+  international: 'Beynəlxalq',
+  professional: 'Peşəkar sertifikat',
+  preschool: 'Məktəbəqədər',
+  mock: 'Sınaqlar',
+};
+
+export function getCategoryTitle(categoryKey?: string): string | undefined {
+  if (!categoryKey) return undefined;
+  return CATEGORY_TITLES[categoryKey];
 }
 
 // Yuxarı səviyyə kateqoriyaların özünə də structure key qeydiyyatı —

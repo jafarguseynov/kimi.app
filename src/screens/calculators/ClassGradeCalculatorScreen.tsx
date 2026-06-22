@@ -16,8 +16,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+const GRADE_LABEL_KEYS: Record<number, string> = { 5: 'calc.gradeLabel5', 4: 'calc.gradeLabel4', 3: 'calc.gradeLabel3', 2: 'calc.gradeLabel2' };
 
 type Mode = 'semester' | 'annual';
 
@@ -37,13 +40,6 @@ function gradeOf(score: number): number {
   if (score >= 51) return 3;
   return 2;
 }
-
-const GRADE_LABEL: Record<number, string> = {
-  5: 'Əla',
-  4: 'Yaxşı',
-  3: 'Kafi',
-  2: 'Qeyri-kafi',
-};
 
 function gradeColor(g: number): string {
   if (g === 5) return Colors.tertiary;
@@ -77,6 +73,7 @@ function computeRow(mode: Mode, row: StudentRow): RowResult {
 
 export default function ClassGradeCalculatorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const idRef = useRef(4);
 
   const [mode, setMode] = useState<Mode>('semester');
@@ -132,24 +129,24 @@ export default function ClassGradeCalculatorScreen() {
 
   const modeLabels =
     mode === 'semester'
-      ? { v1: 'KSQ ortalaması', v2: 'BSQ', hint: 'BSQ boş qalsa, yalnız KSQ ortalaması götürülür.' }
-      : { v1: '1-ci yarımil', v2: '2-ci yarımil', hint: 'İllik bal iki yarımilin ortalamasıdır.' };
+      ? { v1: t('calc.ksqAvgLabel'), v2: t('calc.bsqLabel'), hint: t('calc.semHint') }
+      : { v1: t('calc.sem1Label'), v2: t('calc.sem2Label'), hint: t('calc.annHint') };
 
   const onShare = async () => {
     if (stats.total === 0) return;
-    const title = `${className.trim() || 'Sinif'} — ${mode === 'semester' ? 'Yarımillik' : 'İllik'} nəticələr`;
+    const title = `${className.trim() || t('calc.defaultClass')} — ${mode === 'semester' ? t('calc.semesterWord') : t('calc.annualWord')} ${t('calc.resultsWord')}`;
     const lines = students
       .map((s, i) => {
         const r = rowResults[i];
         if (r.final === null) return null;
-        const nm = s.name.trim() || `Şagird ${i + 1}`;
-        return `${nm}: ${(r.final as number).toFixed(1)} — ${r.grade} (${GRADE_LABEL[r.grade as number]})`;
+        const nm = s.name.trim() || t('calc.studentN', { n: i + 1 });
+        return `${nm}: ${(r.final as number).toFixed(1)} — ${r.grade} (${t(GRADE_LABEL_KEYS[r.grade as number])})`;
       })
       .filter(Boolean)
       .join('\n');
     const summary =
-      `\nOrtalama: ${stats.avg.toFixed(1)}\n` +
-      `Keyfiyyət: ${stats.quality}%   Müvəffəqiyyət: ${stats.success}%\n` +
+      `\n${t('calc.avgScore')}: ${stats.avg.toFixed(1)}\n` +
+      `${t('calc.qualityLabel')}: ${stats.quality}%   ${t('calc.successLabel')}: ${stats.success}%\n` +
       `5: ${stats.dist[5]}  4: ${stats.dist[4]}  3: ${stats.dist[3]}  2: ${stats.dist[2]}`;
     try {
       await Share.share({ message: `${title}\n\n${lines}\n${summary}\n\nKimi.az` });
@@ -165,7 +162,7 @@ export default function ClassGradeCalculatorScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sinif Qiymət Kalkulyatoru</Text>
+          <Text style={styles.headerTitle}>{t('calc.classHeader')}</Text>
           <Text style={styles.brand}>Kimi.az</Text>
         </View>
 
@@ -173,15 +170,15 @@ export default function ClassGradeCalculatorScreen() {
           {/* Hero */}
           <LinearGradient colors={GRADIENT} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.heroBlob} />
-            <Text style={styles.heroTitle}>Sinfin qiymətlərini bir yerdə hesabla</Text>
-            <Text style={styles.heroSub}>Şagirdləri əlavə et, yarımillik və ya illik balı, keyfiyyət və müvəffəqiyyət faizini anında gör.</Text>
+            <Text style={styles.heroTitle}>{t('calc.classHero')}</Text>
+            <Text style={styles.heroSub}>{t('calc.classHeroSub')}</Text>
           </LinearGradient>
 
           {/* Mode toggle */}
           <View style={styles.segmented}>
             {([
-              { key: 'semester', label: 'Yarımillik', icon: 'calendar-outline' as const },
-              { key: 'annual', label: 'İllik', icon: 'calendar-clear-outline' as const },
+              { key: 'semester', label: t('calc.modeSemester'), icon: 'calendar-outline' as const },
+              { key: 'annual', label: t('calc.modeAnnual'), icon: 'calendar-clear-outline' as const },
             ] as const).map((m) => {
               const active = mode === m.key;
               return (
@@ -204,12 +201,12 @@ export default function ClassGradeCalculatorScreen() {
               <Ionicons name="school-outline" size={20} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.classLabel}>Sinif adı (opsional)</Text>
+              <Text style={styles.classLabel}>{t('calc.classNameLabel')}</Text>
               <TextInput
                 style={styles.classInput}
                 value={className}
                 onChangeText={setClassName}
-                placeholder="Məs: 9-A sinfi"
+                placeholder={t('calc.classNamePlaceholder')}
                 placeholderTextColor={Colors.outlineVariant}
               />
             </View>
@@ -235,7 +232,7 @@ export default function ClassGradeCalculatorScreen() {
                       style={styles.nameInput}
                       value={s.name}
                       onChangeText={(v) => updateStudent(s.id, 'name', v)}
-                      placeholder={`Şagird ${i + 1}`}
+                      placeholder={t('calc.studentN', { n: i + 1 })}
                       placeholderTextColor={Colors.outlineVariant}
                     />
                     <TouchableOpacity
@@ -298,17 +295,17 @@ export default function ClassGradeCalculatorScreen() {
           {/* Add student */}
           <TouchableOpacity style={styles.addBtn} onPress={addStudent} activeOpacity={0.85}>
             <Ionicons name="add-circle-outline" size={20} color={Colors.primary} />
-            <Text style={styles.addBtnText}>Şagird əlavə et</Text>
+            <Text style={styles.addBtnText}>{t('calc.addStudent')}</Text>
           </TouchableOpacity>
 
           {/* Class summary */}
-          <Text style={styles.sectionTitle}>Sinif statistikası</Text>
+          <Text style={styles.sectionTitle}>{t('calc.classStats')}</Text>
           <View style={styles.summaryCard}>
             <View style={styles.summaryTop}>
               <View>
-                <Text style={styles.summaryLabel}>Orta bal</Text>
+                <Text style={styles.summaryLabel}>{t('calc.avgScore')}</Text>
                 <Text style={styles.summaryAvg}>{stats.total ? stats.avg.toFixed(1) : '—'}</Text>
-                <Text style={styles.summaryCount}>{stats.total} şagird hesablandı</Text>
+                <Text style={styles.summaryCount}>{t('calc.studentsCalc', { n: stats.total })}</Text>
               </View>
               <View style={styles.summaryIconBox}>
                 <Ionicons name="stats-chart" size={24} color={Colors.primary} />
@@ -318,14 +315,14 @@ export default function ClassGradeCalculatorScreen() {
             <View style={styles.pctRow}>
               <View style={styles.pctCell}>
                 <Text style={styles.pctValue}>{stats.total ? `${stats.success}%` : '—'}</Text>
-                <Text style={styles.pctLabel}>Müvəffəqiyyət</Text>
+                <Text style={styles.pctLabel}>{t('calc.successLabel')}</Text>
                 <View style={styles.pctTrack}>
                   <View style={[styles.pctFill, { width: `${Math.min(stats.success, 100)}%`, backgroundColor: Colors.primary }]} />
                 </View>
               </View>
               <View style={styles.pctCell}>
                 <Text style={[styles.pctValue, { color: Colors.tertiary }]}>{stats.total ? `${stats.quality}%` : '—'}</Text>
-                <Text style={styles.pctLabel}>Keyfiyyət</Text>
+                <Text style={styles.pctLabel}>{t('calc.qualityLabel')}</Text>
                 <View style={styles.pctTrack}>
                   <View style={[styles.pctFill, { width: `${Math.min(stats.quality, 100)}%`, backgroundColor: Colors.tertiary }]} />
                 </View>
@@ -354,17 +351,17 @@ export default function ClassGradeCalculatorScreen() {
               end={{ x: 1, y: 0 }}
             >
               <Ionicons name="share-outline" size={20} color={stats.total === 0 ? Colors.textSecondary : '#fff'} />
-              <Text style={[styles.shareBtnText, stats.total === 0 && { color: Colors.textSecondary }]}>Nəticələri paylaş</Text>
+              <Text style={[styles.shareBtnText, stats.total === 0 && { color: Colors.textSecondary }]}>{t('calc.shareResults')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
             <Ionicons name="refresh-outline" size={18} color={Colors.danger} />
-            <Text style={styles.resetBtnText}>Sıfırla</Text>
+            <Text style={styles.resetBtnText}>{t('calc.reset')}</Text>
           </TouchableOpacity>
 
           <View style={styles.footer}>
             <Ionicons name="shield-checkmark-outline" size={18} color={Colors.outlineVariant} />
-            <Text style={styles.footerText}>ARTİ qiymətləndirmə standartlarına uyğun</Text>
+            <Text style={styles.footerText}>{t('calc.footerStandard2')}</Text>
           </View>
         </ScrollView>
       </SafeAreaView>

@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -24,6 +25,7 @@ type Params = {
 };
 
 export default function CompetitionResultScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const p: Params = (route.params ?? {}) as Params;
@@ -32,8 +34,8 @@ export default function CompetitionResultScreen() {
   const opponentScore = p.opponentScore ?? 14;
   const xpEarned = p.xpEarned ?? 120;
   const medalsEarned = p.medalsEarned ?? 2;
-  const userName = p.userName ?? 'Sən';
-  const opponentName = p.opponentName ?? 'Rəqib';
+  const userName = p.userName ?? t('competitionResult.you');
+  const opponentName = p.opponentName ?? t('competitionResult.opponent');
   const mode = p.mode ?? 'bot';
   const userCorrect = p.userCorrect;
   const opponentCorrect = p.opponentCorrect;
@@ -47,7 +49,7 @@ export default function CompetitionResultScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yarışın Nəticəsi</Text>
+        <Text style={styles.headerTitle}>{t('competitionResult.title')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -74,14 +76,14 @@ export default function CompetitionResultScreen() {
             </LinearGradient>
           </View>
           <Text style={styles.heroTitle}>
-            {draw ? 'Bərabərə!' : won ? 'Sən qalib gəldin 🎉' : 'Bu dəfə uduzdun 💪'}
+            {draw ? t('competitionResult.draw') : won ? t('competitionResult.won') : t('competitionResult.lost')}
           </Text>
           <Text style={styles.heroSub}>
             {draw
-              ? 'Eyni xal — heç kim qalib deyil.'
+              ? t('competitionResult.drawSub')
               : won
-              ? `${opponentName}-i məğlub etdin!`
-              : `${opponentName} bu dəfə daha sürətli idi.`}
+              ? t('competitionResult.wonSub', { name: opponentName })
+              : t('competitionResult.lostSub', { name: opponentName })}
           </Text>
         </View>
 
@@ -95,7 +97,7 @@ export default function CompetitionResultScreen() {
                   size={11}
                   color="#fff"
                 />
-                <Text style={styles.resultBadgeText}>{won ? 'QALİB' : 'MƏĞLUB'}</Text>
+                <Text style={styles.resultBadgeText}>{won ? t('competitionResult.winner') : t('competitionResult.loser')}</Text>
               </View>
             )}
             <LinearGradient
@@ -108,9 +110,9 @@ export default function CompetitionResultScreen() {
             </LinearGradient>
             <Text style={styles.statLabel} numberOfLines={1}>{userName.toUpperCase()}</Text>
             <Text style={[styles.statValue, won && { color: Colors.primary }]}>{userScore}</Text>
-            <Text style={styles.statMeta}>xal</Text>
+            <Text style={styles.statMeta}>{t('competitionResult.points')}</Text>
             {userCorrect !== undefined && totalQuestions !== undefined && (
-              <Text style={styles.statSub}>{userCorrect}/{totalQuestions} doğru</Text>
+              <Text style={styles.statSub}>{t('competitionResult.correctOf', { correct: userCorrect, total: totalQuestions })}</Text>
             )}
           </View>
 
@@ -122,7 +124,7 @@ export default function CompetitionResultScreen() {
                   size={11}
                   color="#fff"
                 />
-                <Text style={styles.resultBadgeText}>{!won ? 'QALİB' : 'MƏĞLUB'}</Text>
+                <Text style={styles.resultBadgeText}>{!won ? t('competitionResult.winner') : t('competitionResult.loser')}</Text>
               </View>
             )}
             <View style={[styles.statAvatar, { backgroundColor: mode === 'live' ? '#FEF3C7' : Colors.surfaceContainer }]}>
@@ -134,9 +136,9 @@ export default function CompetitionResultScreen() {
             </View>
             <Text style={styles.statLabel} numberOfLines={1}>{opponentName.toUpperCase()}</Text>
             <Text style={[styles.statValue, !won && !draw && { color: Colors.primary }]}>{opponentScore}</Text>
-            <Text style={styles.statMeta}>xal</Text>
+            <Text style={styles.statMeta}>{t('competitionResult.points')}</Text>
             {opponentCorrect !== undefined && totalQuestions !== undefined && (
-              <Text style={styles.statSub}>{opponentCorrect}/{totalQuestions} doğru</Text>
+              <Text style={styles.statSub}>{t('competitionResult.correctOf', { correct: opponentCorrect, total: totalQuestions })}</Text>
             )}
           </View>
         </View>
@@ -145,23 +147,23 @@ export default function CompetitionResultScreen() {
         <View style={styles.rewardsCard}>
           <View style={styles.rewardsHeader}>
             <Ionicons name="medal-outline" size={18} color={Colors.primary} />
-            <Text style={styles.rewardsTitle}>Qazandığın mükafatlar</Text>
+            <Text style={styles.rewardsTitle}>{t('competitionResult.rewardsTitle')}</Text>
           </View>
           <View style={styles.rewardsBody}>
             <View style={styles.rewardItem}>
               <View style={[styles.rewardIcon, { backgroundColor: Colors.primaryLight }]}>
                 <Ionicons name="flash" size={28} color={Colors.primary} />
               </View>
-              <Text style={styles.rewardValue}>+{xpEarned} XP</Text>
-              <Text style={styles.rewardLabel}>Təcrübə balı</Text>
+              <Text style={styles.rewardValue}>{t('competitionResult.xpValue', { n: xpEarned })}</Text>
+              <Text style={styles.rewardLabel}>{t('competitionResult.xpLabel')}</Text>
             </View>
             <View style={styles.rewardDivider} />
             <View style={styles.rewardItem}>
               <View style={[styles.rewardIcon, { backgroundColor: '#FEF3C7' }]}>
                 <Ionicons name="ribbon" size={28} color="#F59E0B" />
               </View>
-              <Text style={styles.rewardValue}>+{medalsEarned} Medal</Text>
-              <Text style={styles.rewardLabel}>Uğur nişanı</Text>
+              <Text style={styles.rewardValue}>{t('competitionResult.medalsValue', { n: medalsEarned })}</Text>
+              <Text style={styles.rewardLabel}>{t('competitionResult.medalsLabel')}</Text>
             </View>
           </View>
         </View>
@@ -179,7 +181,7 @@ export default function CompetitionResultScreen() {
             end={{ x: 1, y: 0 }}
           >
             <Ionicons name="reload" size={18} color="#fff" />
-            <Text style={styles.primaryBtnText}>Yenidən oyna</Text>
+            <Text style={styles.primaryBtnText}>{t('competitionResult.playAgain')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -188,7 +190,7 @@ export default function CompetitionResultScreen() {
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Home' as never)}
         >
-          <Text style={styles.secondaryBtnText}>Ana səhifəyə qayıt</Text>
+          <Text style={styles.secondaryBtnText}>{t('competitionResult.backHome')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

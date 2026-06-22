@@ -7,12 +7,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.AccountDeactivated>;
 };
 
 export default function AccountDeactivatedScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.content}>
@@ -28,9 +30,9 @@ export default function AccountDeactivatedScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.textBlock}>
-          <Text style={styles.title}>Hesabınız deaktiv edildi</Text>
+          <Text style={styles.title}>{t('accountDeactivated.title')}</Text>
           <Text style={styles.subtitle}>
-            Fikirinizi dəyişdikdə istənilən vaxt geri qayıda bilərsiniz. Sizi yenidən görməyə şad olarıq.
+            {t('accountDeactivated.subtitle')}
           </Text>
         </View>
 
@@ -40,9 +42,9 @@ export default function AccountDeactivatedScreen({ navigation }: Props) {
             <Ionicons name="information-circle-outline" size={22} color={Colors.primary} />
           </View>
           <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>Məlumat üçün</Text>
+            <Text style={styles.infoTitle}>{t('accountDeactivated.infoTitle')}</Text>
             <Text style={styles.infoNote}>
-              Məlumatlarınız təhlükəsiz şəkildə saxlanılır və yenidən daxil olduqda bərpa ediləcəkdir.
+              {t('accountDeactivated.infoNote')}
             </Text>
           </View>
         </View>
@@ -60,7 +62,7 @@ export default function AccountDeactivatedScreen({ navigation }: Props) {
             style={styles.ctaBtn}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.ctaBtnText}>Giriş səhifəsinə qayıt</Text>
+            <Text style={styles.ctaBtnText}>{t('accountDeactivated.backToLogin')}</Text>
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity
@@ -68,7 +70,7 @@ export default function AccountDeactivatedScreen({ navigation }: Props) {
           activeOpacity={0.7}
           onPress={() => navigation.navigate(Routes.ProfileHome)}
         >
-          <Text style={styles.closeBtnText}>Bağla</Text>
+          <Text style={styles.closeBtnText}>{t('accountDeactivated.close')}</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>

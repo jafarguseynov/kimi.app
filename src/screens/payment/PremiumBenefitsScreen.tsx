@@ -13,57 +13,29 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Benefit = {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
 };
 
 const BENEFITS: Benefit[] = [
-  {
-    id: 'ai-exam',
-    icon: 'help-circle',
-    title: 'Limitsiz AI imtahan',
-    desc: 'Süni intellekt tərəfindən hazırlanan sonsuz sayda testlərdən yararlanın.',
-  },
-  {
-    id: 'ai-analysis',
-    icon: 'analytics',
-    title: 'AI analiz',
-    desc: 'Nəticələrinizin dərindən təhlili və zəif tərəflərinizin müəyyən edilməsi.',
-  },
-  {
-    id: 'requests',
-    icon: 'chatbubbles',
-    title: 'Sorğulara çıxış',
-    desc: 'Şagird və müəllim sorğularına limitsiz və sürətli çıxış imkanı.',
-  },
-  {
-    id: 'visibility',
-    icon: 'eye',
-    title: 'Daha çox görünürlük',
-    desc: 'Profilinizin reytinqlərdə və axtarışlarda daha yuxarıda olması.',
-  },
-  {
-    id: 'insights',
-    icon: 'stats-chart',
-    title: 'İnkişaf statistikası',
-    desc: 'Həftəlik və aylıq tərəqqinizi göstərən interaktiv qrafiklər.',
-  },
-  {
-    id: 'extras',
-    icon: 'extension-puzzle',
-    title: 'Əlavə testlər',
-    desc: 'Yalnız Premium istifadəçilər üçün nəzərdə tutulmuş eksklüziv materiallar.',
-  },
+  { id: 'ai-exam', icon: 'help-circle', titleKey: 'pay.benefitAiExamTitle', descKey: 'pay.benefitAiExamDesc' },
+  { id: 'ai-analysis', icon: 'analytics', titleKey: 'pay.benefitAiAnalysisTitle', descKey: 'pay.benefitAiAnalysisDesc' },
+  { id: 'requests', icon: 'chatbubbles', titleKey: 'pay.benefitRequestsTitle', descKey: 'pay.benefitRequestsDesc' },
+  { id: 'visibility', icon: 'eye', titleKey: 'pay.benefitVisibilityTitle', descKey: 'pay.benefitVisibilityDesc' },
+  { id: 'insights', icon: 'stats-chart', titleKey: 'pay.benefitInsightsTitle', descKey: 'pay.benefitInsightsDesc' },
+  { id: 'extras', icon: 'extension-puzzle', titleKey: 'pay.benefitExtrasTitle', descKey: 'pay.benefitExtrasDesc' },
 ];
 
 export default function PremiumBenefitsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -71,7 +43,7 @@ export default function PremiumBenefitsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Premium</Text>
+        <Text style={styles.headerTitle}>{t('pay.premiumHeader')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="settings-outline" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -80,8 +52,8 @@ export default function PremiumBenefitsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Premium Üstünlüklər</Text>
-          <Text style={styles.heroSub}>Premium ilə təhsilində fərq yarat!</Text>
+          <Text style={styles.heroTitle}>{t('pay.premiumBenefits')}</Text>
+          <Text style={styles.heroSub}>{t('pay.premiumBenefitsSub')}</Text>
         </View>
 
         {/* Benefit cards */}
@@ -92,8 +64,8 @@ export default function PremiumBenefitsScreen() {
                 <Ionicons name={b.icon} size={22} color={Colors.primary} />
               </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.benefitTitle}>{b.title}</Text>
-                <Text style={styles.benefitDesc}>{b.desc}</Text>
+                <Text style={styles.benefitTitle}>{t(b.titleKey)}</Text>
+                <Text style={styles.benefitDesc}>{t(b.descKey)}</Text>
               </View>
             </View>
           ))}
@@ -102,12 +74,12 @@ export default function PremiumBenefitsScreen() {
         {/* Pricing summary */}
         <View style={styles.pricingCard}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.pricingLabel}>Plan Seçimi</Text>
-            <Text style={styles.pricingPlan}>İllik abunəlik</Text>
+            <Text style={styles.pricingLabel}>{t('pay.planSelection')}</Text>
+            <Text style={styles.pricingPlan}>{t('pay.annualSub')}</Text>
           </View>
           <View style={{ alignItems: 'flex-end' }}>
             <Text style={styles.pricingPrice}>₼4.99</Text>
-            <Text style={styles.pricingUnit}>/ ay</Text>
+            <Text style={styles.pricingUnit}>{t('pay.perMonth')}</Text>
           </View>
         </View>
 
@@ -119,11 +91,11 @@ export default function PremiumBenefitsScreen() {
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.PaymentMethod)}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
             <Ionicons name="ribbon" size={20} color="#fff" />
-            <Text style={styles.ctaBtnText}>Premium-a keç</Text>
+            <Text style={styles.ctaBtnText}>{t('pay.goPremium')}</Text>
           </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.disclaimer}>
-          Abunəlik hər ay avtomatik yenilənir. İstənilən vaxt ləğv edilə bilər.
+          {t('pay.premiumDisclaimer')}
         </Text>
       </View>
     </SafeAreaView>

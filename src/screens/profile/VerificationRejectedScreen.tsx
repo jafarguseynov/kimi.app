@@ -6,17 +6,19 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const TIPS = [
-  { icon: 'eye-outline', text: 'Sənədin hər iki tərəfinin göründüyünə əmin olun' },
-  { icon: 'sunny-outline', text: 'Yaxşı işıqlandırılmış məkanda şəkil çəkin' },
-  { icon: 'document-outline', text: 'Fayl formatının PDF və ya JPG olduğuna diqqət edin' },
+  { icon: 'eye-outline', textKey: 'verificationRejected.tip1' },
+  { icon: 'sunny-outline', textKey: 'verificationRejected.tip2' },
+  { icon: 'document-outline', textKey: 'verificationRejected.tip3' },
 ];
 
 export default function VerificationRejectedScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -24,7 +26,7 @@ export default function VerificationRejectedScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Təsdiqləmə Statusu</Text>
+        <Text style={styles.headerTitle}>{t('verificationRejected.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -37,9 +39,9 @@ export default function VerificationRejectedScreen() {
               <Ionicons name="hardware-chip-outline" size={80} color={Colors.textMuted} />
             </LinearGradient>
           </View>
-          <Text style={styles.heroTitle}>Təsdiqləmə uğursuz oldu</Text>
+          <Text style={styles.heroTitle}>{t('verificationRejected.heroTitle')}</Text>
           <Text style={styles.heroSubtitle}>
-            Təəssüf ki, təqdim etdiyiniz sənədlərdə bəzi uyğunsuzluqlar aşkar edildi.
+            {t('verificationRejected.heroSubtitle')}
           </Text>
         </View>
 
@@ -49,23 +51,23 @@ export default function VerificationRejectedScreen() {
             <Ionicons name="alert-circle" size={24} color={Colors.danger} />
           </View>
           <View style={styles.reasonBody}>
-            <Text style={styles.reasonLabel}>İmtina səbəbi:</Text>
+            <Text style={styles.reasonLabel}>{t('verificationRejected.reasonLabel')}</Text>
             <Text style={styles.reasonText}>
-              Şəxsiyyət vəsiqəsinin şəkli bulanıqdır və məlumatlar aydın oxunmur. Zəhmət olmasa, daha aydın şəkil yükləyin.
+              {t('verificationRejected.reasonText')}
             </Text>
           </View>
         </View>
 
         {/* Tips */}
         <View style={styles.tipsCard}>
-          <Text style={styles.tipsTitle}>Məsləhətlər</Text>
+          <Text style={styles.tipsTitle}>{t('verificationRejected.tipsTitle')}</Text>
           <View style={styles.tipsList}>
             {TIPS.map((tip, idx) => (
               <View key={idx} style={styles.tipItem}>
                 <View style={styles.tipIconCircle}>
                   <Ionicons name={tip.icon as any} size={18} color={Colors.primary} />
                 </View>
-                <Text style={styles.tipText}>{tip.text}</Text>
+                <Text style={styles.tipText}>{t(tip.textKey)}</Text>
               </View>
             ))}
           </View>
@@ -74,12 +76,12 @@ export default function VerificationRejectedScreen() {
         {/* Action buttons */}
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.VerificationDocuments)}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryBtnText}>Sənədləri yenidən yüklə</Text>
+            <Text style={styles.primaryBtnText}>{t('verificationRejected.reupload')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.textBtn} activeOpacity={0.7}>
-          <Text style={styles.textBtnText}>Dəstək ilə əlaqə</Text>
+          <Text style={styles.textBtnText}>{t('verificationRejected.contactSupport')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

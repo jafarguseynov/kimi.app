@@ -18,15 +18,16 @@ import { Colors } from '../../constants/colors';
 import { useExamStore } from '../../store/exam.store';
 import { useSubmitExam } from '../../hooks/useExams';
 import { formatTime } from '../../utils/formatters';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.LiveExamSession> };
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-const LIVE_FEED = [
-  { id: '1', text: 'Sənan cavab verdi!', bold: 'Sənan', live: true },
-  { id: '2', text: 'Aytən qoşuldu', bold: 'Aytən', live: false },
-  { id: '3', text: 'Murad səhv etdi', bold: 'Murad', live: false },
+const LIVE_FEED: { id: string; name: string; actionKey: 'answered' | 'joined' | 'mistook'; live: boolean }[] = [
+  { id: '1', name: 'Sənan', actionKey: 'answered', live: true },
+  { id: '2', name: 'Aytən', actionKey: 'joined', live: false },
+  { id: '3', name: 'Murad', actionKey: 'mistook', live: false },
 ];
 
 const PODIUM: { rank: 1 | 2 | 3; name: string; xp: number; initials: string }[] = [
@@ -50,6 +51,7 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
     decrementTimer,
   } = useExamStore();
   const { mutate, isPending } = useSubmitExam();
+  const { t } = useTranslation();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const currentQuestion = questions[currentIndex];
@@ -59,7 +61,7 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
   const submit = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!examId) {
-      Alert.alert('Xəta', 'İmtahan sessiyası tapılmadı. Yenidən cəhd edin.');
+      Alert.alert(t('liveExams.errorTitle'), t('liveSess.sessionNotFound'));
       navigation.goBack();
       return;
     }
@@ -69,7 +71,7 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
       {
         onSuccess: () => navigation.replace(Routes.ExamResult),
         onError: (err: any) => {
-          Alert.alert('Xəta', err?.response?.data?.message ?? 'Nəticə saxlanıla bilmədi. Yenidən cəhd edin.');
+          Alert.alert(t('liveExams.errorTitle'), err?.response?.data?.message ?? t('liveSess.resultSaveFailed'));
         },
       },
     );
@@ -77,12 +79,12 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
 
   const handleClose = () => {
     Alert.alert(
-      'İmtahandan çıxmaq istəyirsiniz?',
-      'Tərəqqiniz saxlanılmayacaq.',
+      t('liveSess.exitTitle'),
+      t('liveSess.exitBody'),
       [
-        { text: 'Xeyr', style: 'cancel' },
+        { text: t('liveSess.no'), style: 'cancel' },
         {
-          text: 'Çıx',
+          text: t('liveSess.exit'),
           style: 'destructive',
           onPress: () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -106,9 +108,9 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
     return (
       <SafeAreaView style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]} edges={['top']}>
         <ActivityIndicator size="large" color={Colors.primary} />
-        <Text style={{ marginTop: 12, color: Colors.textSecondary, fontWeight: '600' }}>Suallar yüklənir...</Text>
+        <Text style={{ marginTop: 12, color: Colors.textSecondary, fontWeight: '600' }}>{t('liveSess.loadingQuestions')}</Text>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginTop: 24, paddingVertical: 10, paddingHorizontal: 20 }}>
-          <Text style={{ color: Colors.primary, fontWeight: '700' }}>Geri qayıt</Text>
+          <Text style={{ color: Colors.primary, fontWeight: '700' }}>{t('liveSess.goBack')}</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -124,11 +126,11 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.closeBtn} onPress={handleClose} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.topBarTitle}>Canlı İmtahan</Text>
+          <Text style={styles.topBarTitle}>{t('liveExams.detailHeader')}</Text>
         </View>
         <View style={styles.topBarRight}>
           <View style={styles.timerCol}>
-            <Text style={styles.timerLabel}>Qalan vaxt</Text>
+            <Text style={styles.timerLabel}>{t('liveExams.remaining')}</Text>
             <Text style={[styles.timerValue, timeRemaining < 60 && { color: Colors.danger }]}>
               {formatTime(timeRemaining)}
             </Text>
@@ -144,11 +146,11 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
         <View style={styles.progressSection}>
           <View style={styles.progressMeta}>
             <View>
-              <Text style={styles.progressSubject}>Riyaziyyat • Sual {currentIndex + 1}/{questions.length}</Text>
-              <Text style={styles.progressChapter}>Cəbr və Funksiyalar</Text>
+              <Text style={styles.progressSubject}>{t('liveSess.subject')} • {t('liveSess.questionN', { n: currentIndex + 1, total: questions.length })}</Text>
+              <Text style={styles.progressChapter}>{t('liveSess.chapter')}</Text>
             </View>
             <View style={styles.difficultyBadge}>
-              <Text style={styles.difficultyText}>ZORLUQ: ORTA</Text>
+              <Text style={styles.difficultyText}>{t('liveSess.difficulty')}</Text>
             </View>
           </View>
           <View style={styles.progressTrack}>
@@ -164,10 +166,10 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
         {/* Live Podium — top 3 */}
         <View style={styles.podiumSection}>
           <View style={styles.podiumHeader}>
-            <Text style={styles.podiumTitle}>Canlı Liderlər</Text>
+            <Text style={styles.podiumTitle}>{t('liveSess.liveLeaders')}</Text>
             <View style={styles.podiumLivePill}>
               <View style={styles.liveDot} />
-              <Text style={styles.podiumLiveText}>Canlı</Text>
+              <Text style={styles.podiumLiveText}>{t('liveSess.live')}</Text>
             </View>
           </View>
           <View style={styles.podiumRow}>
@@ -213,8 +215,8 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
             <View key={item.id} style={[styles.feedPill, i > 0 && { opacity: i === 1 ? 0.8 : 0.6 }]}>
               {item.live && <View style={styles.liveDot} />}
               <Text style={styles.feedText}>
-                <Text style={styles.feedBold}>{item.bold}</Text>
-                {item.text.replace(item.bold, '')}
+                <Text style={styles.feedBold}>{item.name}</Text>
+                {' ' + t(`liveSess.${item.actionKey}`)}
               </Text>
             </View>
           ))}
@@ -262,9 +264,9 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
             <Ionicons name="bulb-outline" size={20} color={Colors.tertiary} />
           </View>
           <View style={styles.hintBody}>
-            <Text style={styles.hintLabel}>Kimi-dən kömək</Text>
+            <Text style={styles.hintLabel}>{t('liveSess.kimiHelp')}</Text>
             <Text style={styles.hintText}>
-              Unutma ki, kvadrat tənliyin həm müsbət, həm də mənfi kökü ola bilər.
+              {t('liveSess.hintText')}
             </Text>
           </View>
           <View style={styles.hintBgIcon}>
@@ -284,8 +286,8 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
               <Text style={styles.rankNum}>42</Text>
             </LinearGradient>
             <View>
-              <Text style={styles.rankMeta}>Sizin yeriniz</Text>
-              <Text style={styles.rankText}>Liderlik cədvəlində 42-ci</Text>
+              <Text style={styles.rankMeta}>{t('liveSess.yourPlace')}</Text>
+              <Text style={styles.rankText}>{t('liveSess.placeText', { n: 42 })}</Text>
             </View>
           </View>
           <View style={styles.xpBadge}>
@@ -303,7 +305,7 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
           activeOpacity={currentIndex === 0 ? 1 : 0.8}
         >
           <Ionicons name="arrow-back-outline" size={16} color={currentIndex === 0 ? Colors.textMuted : Colors.textSecondary} />
-          <Text style={[styles.navBtnBackText, currentIndex === 0 && { color: Colors.textMuted }]}>Geri</Text>
+          <Text style={[styles.navBtnBackText, currentIndex === 0 && { color: Colors.textMuted }]}>{t('liveSess.back')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => isLast ? submit() : nextQuestion()} disabled={isPending} activeOpacity={0.85}>
@@ -314,7 +316,7 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.navBtnNextText}>
-              {isPending ? 'Yüklənir...' : isLast ? 'Bitir' : 'Növbəti'}
+              {isPending ? t('liveSess.loading') : isLast ? t('liveSess.finish') : t('liveSess.next')}
             </Text>
             {!isLast && <Ionicons name="arrow-forward-outline" size={16} color="#fff" />}
           </LinearGradient>

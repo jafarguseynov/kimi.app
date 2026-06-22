@@ -10,10 +10,12 @@ import { useLearningStore } from '../../store/learning.store';
 import { useLearningProgressStore } from '../../store/learningProgress.store';
 import FlashCard from '../../components/learning/FlashCard';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function FlashcardScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { cards, currentIndex, subject, nextCard, resetSession } = useLearningStore();
   const markRated = useLearningProgressStore((s) => s.markRated);
   const { mutate } = useMutation({ mutationFn: ({ id, q }: { id: string; q: number }) => recordProgress(id, q) });
@@ -55,7 +57,7 @@ export default function FlashcardScreen({ navigation }: Props) {
         >
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Fleşkartlar</Text>
+        <Text style={styles.headerTitle}>{t('learning.flashcardsTitle')}</Text>
         <TouchableOpacity style={styles.settingsBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="settings-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -64,8 +66,8 @@ export default function FlashcardScreen({ navigation }: Props) {
       {/* Progress */}
       <View style={styles.progressSection}>
         <View style={styles.progressLabelRow}>
-          <Text style={styles.progressLabel}>MƏŞQ DAVAM EDİR{subject ? ` · ${subject}` : ''}</Text>
-          <Text style={styles.progressCount}>{currentIndex + 1}/{cards.length} kart</Text>
+          <Text style={styles.progressLabel}>{t('learning.inProgress')}{subject ? ` · ${subject}` : ''}</Text>
+          <Text style={styles.progressCount}>{t('learning.cardCount', { cur: currentIndex + 1, total: cards.length })}</Text>
         </View>
         <View style={styles.progressBar}>
           <LinearGradient

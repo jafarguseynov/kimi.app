@@ -6,9 +6,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 interface MonthData {
-  label: string;
   ratio: number;
   highlight?: boolean;
 }
@@ -17,27 +17,29 @@ interface SubjectRow {
   name: string;
   icon: keyof typeof Ionicons.glyphMap;
   score: number;
-  status: string;
+  statusKey: string;
   statusColor: string;
 }
 
 const MONTHS: MonthData[] = [
-  { label: 'Sent', ratio: 0.40 },
-  { label: 'Okt', ratio: 0.60 },
-  { label: 'Noy', ratio: 0.85, highlight: true },
-  { label: 'Dek', ratio: 0.75 },
+  { ratio: 0.40 },
+  { ratio: 0.60 },
+  { ratio: 0.85, highlight: true },
+  { ratio: 0.75 },
 ];
 
 const SUBJECTS: SubjectRow[] = [
-  { name: 'Riyaziyyat', icon: 'calculator-outline', score: 42, status: 'Təkmilləşməyə ehtiyac var', statusColor: Colors.error },
-  { name: 'Azərbaycan dili', icon: 'book-outline', score: 94, status: 'Əla', statusColor: Colors.tertiary },
-  { name: 'İngilis dili', icon: 'language-outline', score: 78, status: 'Yaxşı', statusColor: Colors.primary },
+  { name: 'Riyaziyyat', icon: 'calculator-outline', score: 42, statusKey: 'childReport.statusNeedsWork', statusColor: Colors.error },
+  { name: 'Azərbaycan dili', icon: 'book-outline', score: 94, statusKey: 'childReport.statusExcellent', statusColor: Colors.tertiary },
+  { name: 'İngilis dili', icon: 'language-outline', score: 78, statusKey: 'childReport.statusGood', statusColor: Colors.primary },
 ];
 
 export default function ChildAcademicReportScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t } = useTranslation();
   const childName: string | undefined = route.params?.childName;
+  const monthLabels = t('childReport.months').split('|');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -45,7 +47,7 @@ export default function ChildAcademicReportScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Akademik Hesabat</Text>
+        <Text style={styles.headerTitle}>{t('childReport.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -57,18 +59,18 @@ export default function ChildAcademicReportScreen() {
           <View style={styles.heroTop}>
             <View style={{ flex: 1, paddingRight: 12 }}>
               <Text style={styles.heroTitle}>
-                {childName ? `${childName}'in ümumi tərəqqisi` : 'Övladınızın ümumi tərəqqisi'}
+                {childName ? t('childReport.heroTitleWithName', { name: childName }) : t('childReport.heroTitleNoName')}
               </Text>
-              <Text style={styles.heroSub}>Son 4 ayın göstəriciləri</Text>
+              <Text style={styles.heroSub}>{t('childReport.heroSub')}</Text>
             </View>
             <View style={styles.deltaPill}>
-              <Text style={styles.deltaText}>+12% Artım</Text>
+              <Text style={styles.deltaText}>{t('childReport.delta')}</Text>
             </View>
           </View>
 
           <View style={styles.chart}>
-            {MONTHS.map((m) => (
-              <View key={m.label} style={styles.chartCol}>
+            {MONTHS.map((m, mi) => (
+              <View key={mi} style={styles.chartCol}>
                 <View style={styles.chartBarTrack}>
                   {m.highlight ? (
                     <LinearGradient
@@ -80,7 +82,7 @@ export default function ChildAcademicReportScreen() {
                     <View style={[styles.chartBarFill, styles.chartBarMuted, { height: `${m.ratio * 100}%` as any }]} />
                   )}
                 </View>
-                <Text style={[styles.chartLabel, m.highlight && styles.chartLabelHighlight]}>{m.label}</Text>
+                <Text style={[styles.chartLabel, m.highlight && styles.chartLabelHighlight]}>{monthLabels[mi]}</Text>
               </View>
             ))}
           </View>
@@ -92,13 +94,13 @@ export default function ChildAcademicReportScreen() {
             <Ionicons name="warning" size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.warningTitle}>Övladınız zəifdir: Riyaziyyat</Text>
-            <Text style={styles.warningSub}>Son imtahan nəticəsi orta göstəricidən aşağıdır.</Text>
+            <Text style={styles.warningTitle}>{t('childReport.warningTitle')}</Text>
+            <Text style={styles.warningSub}>{t('childReport.warningSub')}</Text>
           </View>
         </View>
 
         {/* Subjects */}
-        <Text style={styles.sectionTitle}>Fənlər üzrə detallar</Text>
+        <Text style={styles.sectionTitle}>{t('childReport.sectionTitle')}</Text>
         <View style={styles.subjectList}>
           {SUBJECTS.map((s) => (
             <View key={s.name} style={styles.subjectCard}>
@@ -108,7 +110,7 @@ export default function ChildAcademicReportScreen() {
                 </View>
                 <View>
                   <Text style={styles.subjectName}>{s.name}</Text>
-                  <Text style={[styles.subjectStatus, { color: s.statusColor }]}>{s.status}</Text>
+                  <Text style={[styles.subjectStatus, { color: s.statusColor }]}>{t(s.statusKey)}</Text>
                 </View>
               </View>
               <Text style={styles.subjectScore}>{s.score}%</Text>
@@ -124,18 +126,17 @@ export default function ChildAcademicReportScreen() {
         >
           <View style={styles.aiTopRow}>
             <Ionicons name="flash" size={14} color="rgba(255,255,255,0.85)" />
-            <Text style={styles.aiKicker}>KİMİ ROBOT TÖVSİYƏSİ</Text>
+            <Text style={styles.aiKicker}>{t('childReport.aiKicker')}</Text>
           </View>
           <Text style={styles.aiText}>
-            "Riyaziyyatdan əlavə testlər tövsiyə olunur. Övladınız 'Kəsrlər' mövzusunda çətinlik çəkir,
-            birlikdə bu bölməni təkrar edə bilərsiniz."
+            {t('childReport.aiText')}
           </Text>
           <TouchableOpacity
             style={styles.aiCta}
             activeOpacity={0.85}
             onPress={() => navigation.navigate(Routes.ChildActivity, { childName })}
           >
-            <Text style={styles.aiCtaText}>Həftəlik fəaliyyətə bax</Text>
+            <Text style={styles.aiCtaText}>{t('childReport.aiCta')}</Text>
           </TouchableOpacity>
         </LinearGradient>
 

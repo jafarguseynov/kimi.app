@@ -13,6 +13,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -34,10 +35,11 @@ const MEDAL_COLORS: Record<number, { icon: string; iconColor: string; numColor: 
   3: { icon: 'bronze', iconColor: '#CD7F32', numColor: '#fff' },
 };
 
-const TABS = ['Top Məktəblər', 'Ən Aktiv', 'Yüksək Nəticə'];
+const TAB_KEYS = ['schoolRanking.tabTop', 'schoolRanking.tabActive', 'schoolRanking.tabHighScore'];
 
 export default function SchoolRankingScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(0);
   const [search, setSearch] = useState('');
 
@@ -53,7 +55,7 @@ export default function SchoolRankingScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="menu" size={24} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Məktəb Reytinqi</Text>
+          <Text style={styles.headerTitle}>{t('schoolRanking.headerTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
           <Ionicons name="search" size={22} color={Colors.primary} />
@@ -66,7 +68,7 @@ export default function SchoolRankingScreen() {
           <Ionicons name="search" size={20} color={Colors.outline} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Məktəb axtar..."
+            placeholder={t('schoolRanking.searchPlaceholder')}
             placeholderTextColor={Colors.outline}
             value={search}
             onChangeText={setSearch}
@@ -76,14 +78,14 @@ export default function SchoolRankingScreen() {
         {/* Tabs */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={styles.tabsRow}>
-            {TABS.map((t, i) => (
+            {TAB_KEYS.map((tabKey, i) => (
               <TouchableOpacity
-                key={t}
+                key={tabKey}
                 style={[styles.tab, activeTab === i && styles.tabActive]}
                 onPress={() => setActiveTab(i)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.tabText, activeTab === i && styles.tabTextActive]}>{t}</Text>
+                <Text style={[styles.tabText, activeTab === i && styles.tabTextActive]}>{t(tabKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -91,10 +93,8 @@ export default function SchoolRankingScreen() {
 
         {/* Motivation card */}
         <LinearGradient colors={GRADIENT} style={styles.banner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-          <Text style={styles.bannerTitle}>Məktəbin siyahıda yoxdur?</Text>
-          <Text style={styles.bannerSub}>
-            Daha çox tapşırıq həll edərək məktəbini zirvəyə yüksəlt!
-          </Text>
+          <Text style={styles.bannerTitle}>{t('schoolRanking.bannerTitle')}</Text>
+          <Text style={styles.bannerSub}>{t('schoolRanking.bannerSub')}</Text>
         </LinearGradient>
 
         {/* Ranking list */}
@@ -129,7 +129,7 @@ export default function SchoolRankingScreen() {
 
                 <View style={styles.scoreCol}>
                   <Text style={styles.scoreValue}>{school.score}</Text>
-                  <Text style={styles.scoreLabel}>Reytinq</Text>
+                  <Text style={styles.scoreLabel}>{t('schoolRanking.scoreLabel')}</Text>
                 </View>
               </View>
             );

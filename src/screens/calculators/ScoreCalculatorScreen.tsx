@@ -16,6 +16,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -29,6 +30,7 @@ type Result = {
 
 export default function ScoreCalculatorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [totalQ, setTotalQ] = useState('');
   const [correct, setCorrect] = useState('');
   const [wrong, setWrong] = useState('');
@@ -67,7 +69,7 @@ export default function ScoreCalculatorScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sual Sayına Görə Bal</Text>
+          <Text style={styles.headerTitle}>{t('calc.scoreHeader')}</Text>
           <View style={styles.headerBtn} />
         </View>
         <View style={styles.errorCenter}>
@@ -84,31 +86,31 @@ export default function ScoreCalculatorScreen() {
               <Ionicons name="warning-outline" size={20} color={Colors.secondary} />
             </View>
           </View>
-          <Text style={styles.errorTitle}>Hesablama zamanı xəta baş verdi</Text>
+          <Text style={styles.errorTitle}>{t('calc.errTitle')}</Text>
           <Text style={styles.errorSub}>
-            Daxil etdiyiniz məlumatları yoxlayın. Bəzi parametrlər sistem tərəfindən düzgün oxunmaya bilər.
+            {t('calc.errSub')}
           </Text>
           <TouchableOpacity onPress={() => setHasError(false)} style={{ width: '100%' }} activeOpacity={0.9}>
             <LinearGradient colors={GRADIENT} style={styles.errorPrimaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <Ionicons name="refresh-outline" size={22} color="#fff" />
-              <Text style={styles.errorPrimaryBtnText}>Yenidən hesabla</Text>
+              <Text style={styles.errorPrimaryBtnText}>{t('calc.recalc')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.errorSecBtn}
             activeOpacity={0.7}
-            onPress={() => Alert.alert('Dəstək', 'Dəstək xidməti tezliklə əlavə olunacaq.')}
+            onPress={() => Alert.alert(t('calc.support'), t('calc.supportSoon'))}
           >
-            <Text style={styles.errorSecBtnText}>Dəstək ilə əlaqə</Text>
+            <Text style={styles.errorSecBtnText}>{t('calc.contactSupport')}</Text>
           </TouchableOpacity>
           <View style={styles.errorHintCard}>
             <View style={styles.errorHintIconBox}>
               <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.errorHintLabel}>AI MƏSLƏHƏTİ</Text>
+              <Text style={styles.errorHintLabel}>{t('calc.aiTip')}</Text>
               <Text style={styles.errorHintText}>
-                Bütün xanaların dolduğundan və rəqəmlərin düzgün formatda yazıldığından əmin olun.
+                {t('calc.aiTipText')}
               </Text>
             </View>
           </View>
@@ -124,7 +126,7 @@ export default function ScoreCalculatorScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sual Sayına Görə Bal</Text>
+          <Text style={styles.headerTitle}>{t('calc.scoreHeader')}</Text>
           <View style={styles.headerBtn} />
         </View>
 
@@ -133,14 +135,14 @@ export default function ScoreCalculatorScreen() {
           <LinearGradient colors={GRADIENT} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.heroBlob} />
             <Ionicons name="help-circle-outline" size={36} color="rgba(255,255,255,0.9)" />
-            <Text style={styles.heroTitle}>Düz və səhv cavabların{'\n'}bal ekvivalentini müəyyən et.</Text>
+            <Text style={styles.heroTitle}>{t('calc.scoreHero')}</Text>
           </LinearGradient>
 
           {/* Inputs */}
           <View style={styles.inputGrid}>
             <View style={styles.inputRow}>
               <View style={styles.inputCard}>
-                <Text style={styles.inputLabel}>Ümumi sual sayı</Text>
+                <Text style={styles.inputLabel}>{t('calc.totalQ')}</Text>
                 <TextInput
                   style={styles.inputField}
                   value={totalQ}
@@ -152,7 +154,7 @@ export default function ScoreCalculatorScreen() {
                 />
               </View>
               <View style={styles.inputCard}>
-                <Text style={styles.inputLabel}>Maksimum bal</Text>
+                <Text style={styles.inputLabel}>{t('calc.maxScore')}</Text>
                 <TextInput
                   style={styles.inputField}
                   value={maxScore}
@@ -169,7 +171,7 @@ export default function ScoreCalculatorScreen() {
                 <View style={styles.inputCardBadge}>
                   <Ionicons name="checkmark" size={14} color={Colors.tertiary} />
                 </View>
-                <Text style={styles.inputLabel}>Düz cavab</Text>
+                <Text style={styles.inputLabel}>{t('calc.correct')}</Text>
                 <TextInput
                   style={[styles.inputField, { color: Colors.tertiary }]}
                   value={correct}
@@ -184,7 +186,7 @@ export default function ScoreCalculatorScreen() {
                 <View style={styles.inputCardBadgeRed}>
                   <Ionicons name="close" size={14} color={Colors.danger} />
                 </View>
-                <Text style={styles.inputLabel}>Səhv cavab</Text>
+                <Text style={styles.inputLabel}>{t('calc.wrong')}</Text>
                 <TextInput
                   style={[styles.inputField, { color: Colors.danger }]}
                   value={wrong}
@@ -201,29 +203,29 @@ export default function ScoreCalculatorScreen() {
           {/* Info */}
           <View style={styles.infoBanner}>
             <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
-            <Text style={styles.infoText}>Hər səhv cavab düz cavabın 25%-i qədər bal kəsilir.</Text>
+            <Text style={styles.infoText}>{t('calc.deductInfo')}</Text>
           </View>
 
           {/* Buttons */}
           <TouchableOpacity onPress={calculate} activeOpacity={0.9}>
             <LinearGradient colors={GRADIENT} style={styles.calcBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
               <Ionicons name="calculator-outline" size={22} color="#fff" />
-              <Text style={styles.calcBtnText}>Hesabla</Text>
+              <Text style={styles.calcBtnText}>{t('calc.calculate')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
             <Ionicons name="refresh-outline" size={20} color={Colors.danger} />
-            <Text style={styles.resetBtnText}>Sıfırla</Text>
+            <Text style={styles.resetBtnText}>{t('calc.reset')}</Text>
           </TouchableOpacity>
 
           {/* Result */}
           <View style={styles.resultSection}>
-            <Text style={styles.sectionTitle}>Nəticə</Text>
+            <Text style={styles.sectionTitle}>{t('calc.result')}</Text>
             <View style={styles.resultGrid}>
               <View style={styles.resultRowWide}>
                 <View>
-                  <Text style={styles.resultLabel}>Hər sualın dəyəri</Text>
-                  <Text style={styles.resultValue}>{result ? result.pointPerQ.toFixed(2) : '—'} bal</Text>
+                  <Text style={styles.resultLabel}>{t('calc.pointPerQ')}</Text>
+                  <Text style={styles.resultValue}>{result ? result.pointPerQ.toFixed(2) : '—'} {t('calc.balUnit')}</Text>
                 </View>
                 <View style={styles.resultIconBox}>
                   <Ionicons name="analytics-outline" size={22} color={Colors.primary} />
@@ -231,11 +233,11 @@ export default function ScoreCalculatorScreen() {
               </View>
               <View style={styles.twoCol}>
                 <View style={styles.miniCard}>
-                  <Text style={styles.miniLabel}>Qazanılan bal</Text>
+                  <Text style={styles.miniLabel}>{t('calc.earned')}</Text>
                   <Text style={[styles.miniValue, { color: Colors.tertiary }]}>{result ? result.earnedScore.toFixed(1) : '—'}</Text>
                 </View>
                 <View style={styles.miniCard}>
-                  <Text style={styles.miniLabel}>Kəsilən bal</Text>
+                  <Text style={styles.miniLabel}>{t('calc.deducted')}</Text>
                   <Text style={[styles.miniValue, { color: Colors.danger }]}>
                     {result ? (result.deduction > 0 ? `-${result.deduction.toFixed(1)}` : '0') : '—'}
                   </Text>
@@ -244,7 +246,7 @@ export default function ScoreCalculatorScreen() {
               <LinearGradient colors={GRADIENT} style={styles.finalCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <View style={styles.finalBlob} />
                 <View>
-                  <Text style={styles.finalLabel}>Yekun bal</Text>
+                  <Text style={styles.finalLabel}>{t('calc.finalScore')}</Text>
                   <Text style={styles.finalScore}>{result ? result.final.toFixed(1) : '—'}</Text>
                 </View>
                 <View style={styles.percentBox}>

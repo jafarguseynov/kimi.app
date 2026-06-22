@@ -6,12 +6,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.LogoutConfirm>;
 };
 
 export default function LogoutConfirmScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <View style={styles.backdrop}>
       <View style={styles.card}>
@@ -21,9 +23,9 @@ export default function LogoutConfirmScreen({ navigation }: Props) {
         </View>
 
         <View style={styles.textBlock}>
-          <Text style={styles.title}>Hesabdan çıxmaq istəyirsiniz?</Text>
+          <Text style={styles.title}>{t('logoutConfirm.title')}</Text>
           <Text style={styles.subtitle}>
-            İstədiyiniz zaman yenidən daxil ola bilərsiniz. Sizi yenidən gözləyəcəyik.
+            {t('logoutConfirm.subtitle')}
           </Text>
         </View>
 
@@ -38,11 +40,11 @@ export default function LogoutConfirmScreen({ navigation }: Props) {
               style={styles.logoutBtn}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.logoutBtnText}>Hesabdan çıx</Text>
+              <Text style={styles.logoutBtnText}>{t('logoutConfirm.logout')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-            <Text style={styles.cancelBtnText}>Ləğv et</Text>
+            <Text style={styles.cancelBtnText}>{t('logoutConfirm.cancel')}</Text>
           </TouchableOpacity>
         </View>
       </View>

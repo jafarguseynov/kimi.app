@@ -10,12 +10,13 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { getExamResults, getCertificates } from '../../api/certificate.api';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Tier = {
   key: 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
-  name: string;
+  nameKey: string;
   min: number;
   max: number;
   icon: keyof typeof Ionicons.glyphMap;
@@ -24,11 +25,11 @@ type Tier = {
 };
 
 const TIERS: Tier[] = [
-  { key: 'bronze',   name: 'Bürünc',  min: 0,    max: 500,        icon: 'medal',    iconBg: '#FFEDD5', iconColor: '#C2410C' },
-  { key: 'silver',   name: 'Gümüş',   min: 500,  max: 1000,       icon: 'medal',    iconBg: '#E2E8F0', iconColor: '#475569' },
-  { key: 'gold',     name: 'Qızıl',   min: 1000, max: 2000,       icon: 'trophy',   iconBg: '#FEF3C7', iconColor: '#D97706' },
-  { key: 'platinum', name: 'Platin',  min: 2000, max: 5000,       icon: 'diamond',  iconBg: '#E0E7FF', iconColor: '#6366F1' },
-  { key: 'diamond',  name: 'Almaz',   min: 5000, max: Infinity,   icon: 'sparkles', iconBg: '#CFFAFE', iconColor: '#0891B2' },
+  { key: 'bronze',   nameKey: 'league.tierBronze',   min: 0,    max: 500,        icon: 'medal',    iconBg: '#FFEDD5', iconColor: '#C2410C' },
+  { key: 'silver',   nameKey: 'league.tierSilver',   min: 500,  max: 1000,       icon: 'medal',    iconBg: '#E2E8F0', iconColor: '#475569' },
+  { key: 'gold',     nameKey: 'league.tierGold',     min: 1000, max: 2000,       icon: 'trophy',   iconBg: '#FEF3C7', iconColor: '#D97706' },
+  { key: 'platinum', nameKey: 'league.tierPlatinum', min: 2000, max: 5000,       icon: 'diamond',  iconBg: '#E0E7FF', iconColor: '#6366F1' },
+  { key: 'diamond',  nameKey: 'league.tierDiamond',  min: 5000, max: Infinity,   icon: 'sparkles', iconBg: '#CFFAFE', iconColor: '#0891B2' },
 ];
 
 function tierFor(xp: number): Tier {
@@ -40,6 +41,7 @@ function tierFor(xp: number): Tier {
 
 export default function LeagueScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
 
   const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
@@ -75,7 +77,7 @@ export default function LeagueScreen() {
           </TouchableOpacity>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Ionicons name="trophy" size={20} color={Colors.primary} />
-            <Text style={styles.headerTitle}>Liqa Təsnifatı</Text>
+            <Text style={styles.headerTitle}>{t('league.headerTitle')}</Text>
           </View>
         </View>
         <View style={styles.avatarSmall}>
@@ -91,14 +93,14 @@ export default function LeagueScreen() {
             <Ionicons name={current.icon} size={68} color="#FCD34D" />
           </View>
           <View style={{ alignItems: 'center', marginTop: 12 }}>
-            <Text style={styles.heroKicker}>SƏNİN CARİ LİQAN</Text>
-            <Text style={styles.heroTier}>{current.name} Liqa</Text>
+            <Text style={styles.heroKicker}>{t('league.heroKicker')}</Text>
+            <Text style={styles.heroTier}>{t('league.heroTier', { name: t(current.nameKey) })}</Text>
           </View>
           <View style={{ width: '100%', gap: 10, marginTop: 24 }}>
             <View style={styles.heroXpRow}>
               <Text style={styles.heroXpValue}>{totalXp.toLocaleString()} XP</Text>
               {next && (
-                <Text style={styles.heroXpNext}>{next.name}: {next.min.toLocaleString()} XP</Text>
+                <Text style={styles.heroXpNext}>{t('league.nextLeagueXp', { name: t(next.nameKey), xp: next.min.toLocaleString() })}</Text>
               )}
             </View>
             <View style={styles.heroTrack}>
@@ -107,8 +109,8 @@ export default function LeagueScreen() {
             <View style={styles.heroHintPill}>
               <Text style={styles.heroHintText}>
                 {next
-                  ? `Növbəti liqaya ${xpToNext.toLocaleString()} XP qaldı`
-                  : 'Ən yüksək liqaya çatdın!'}
+                  ? t('league.hintToNext', { xp: xpToNext.toLocaleString() })
+                  : t('league.hintMax')}
               </Text>
             </View>
           </View>
@@ -118,45 +120,45 @@ export default function LeagueScreen() {
         <View style={styles.statsRow}>
           <View style={[styles.statCard, { borderBottomColor: Colors.primaryFixed + '33' }]}>
             <Ionicons name="star" size={22} color={Colors.primary} />
-            <Text style={styles.statLabel}>ÜMUMİ XP</Text>
+            <Text style={styles.statLabel}>{t('league.statTotalXp')}</Text>
             <Text style={styles.statValue}>{totalXp.toLocaleString()}</Text>
           </View>
           <View style={[styles.statCard, { borderBottomColor: Colors.tertiary + '33' }]}>
             <Ionicons name="podium" size={22} color={Colors.tertiary} />
-            <Text style={styles.statLabel}>ÜMUMİ BAL</Text>
+            <Text style={styles.statLabel}>{t('league.statTotalScore')}</Text>
             <Text style={styles.statValue}>{totalScore}</Text>
           </View>
         </View>
 
         {/* Tier progression */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Liqa Səviyyələri</Text>
-          {TIERS.map((t) => {
-            const passed = totalXp >= t.max;
-            const active = t.key === current.key;
-            const locked = totalXp < t.min;
+          <Text style={styles.sectionTitle}>{t('league.sectionTitle')}</Text>
+          {TIERS.map((tier) => {
+            const passed = totalXp >= tier.max;
+            const active = tier.key === current.key;
+            const locked = totalXp < tier.min;
             return (
               <View
-                key={t.key}
+                key={tier.key}
                 style={[
                   styles.tierRow,
                   active && styles.tierRowActive,
                   locked && styles.tierRowLocked,
                 ]}
               >
-                <View style={[styles.tierIconCircle, { backgroundColor: t.iconBg }]}>
-                  <Ionicons name={t.icon} size={22} color={t.iconColor} />
+                <View style={[styles.tierIconCircle, { backgroundColor: tier.iconBg }]}>
+                  <Ionicons name={tier.icon} size={22} color={tier.iconColor} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.tierName, active && { color: Colors.primary }]}>{t.name}</Text>
+                  <Text style={[styles.tierName, active && { color: Colors.primary }]}>{t(tier.nameKey)}</Text>
                   <Text style={[styles.tierRange, active && { color: Colors.primary }]}>
-                    {t.min.toLocaleString()} - {t.max === Infinity ? '∞' : t.max.toLocaleString()} XP
-                    {active && ' • İndi buradasan'}
+                    {t('league.tierRange', { min: tier.min.toLocaleString(), max: tier.max === Infinity ? '∞' : tier.max.toLocaleString() })}
+                    {active && ` • ${t('league.nowHere')}`}
                   </Text>
                 </View>
                 {active ? (
                   <View style={styles.activeBadge}>
-                    <Text style={styles.activeBadgeText}>AKTİV</Text>
+                    <Text style={styles.activeBadgeText}>{t('league.activeBadge')}</Text>
                   </View>
                 ) : passed ? (
                   <Ionicons name="checkmark-circle" size={22} color={Colors.tertiary} />
@@ -172,7 +174,7 @@ export default function LeagueScreen() {
         <TouchableOpacity activeOpacity={0.9} onPress={goToExams} style={{ marginTop: 4 }}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
             <Ionicons name="flash" size={22} color="#fff" />
-            <Text style={styles.ctaText}>Xal qazanmağa davam et</Text>
+            <Text style={styles.ctaText}>{t('league.ctaText')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 

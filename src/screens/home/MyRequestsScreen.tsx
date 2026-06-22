@@ -18,6 +18,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { HomeStackParamList } from '../../navigation/types';
 import { listMyRequests, type MyLessonRequest } from '../../api/lessonRequest.api';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.MyRequests>;
@@ -25,18 +26,19 @@ type Props = {
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: (k: string, v?: any) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'İndi';
-  if (m < 60) return `${m} dəq əvvəl`;
+  if (m < 1) return t('myRequests.timeNow');
+  if (m < 60) return t('myRequests.timeMin', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} saat əvvəl`;
+  if (h < 24) return t('myRequests.timeHour', { n: h });
   const d = Math.floor(h / 24);
-  return `${d} gün əvvəl`;
+  return t('myRequests.timeDay', { n: d });
 }
 
 export default function MyRequestsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'active' | 'completed'>('active');
 
   const { data: requests = [], isLoading, refetch, isRefetching } = useQuery({
@@ -69,9 +71,9 @@ export default function MyRequestsScreen({ navigation }: Props) {
   };
 
   const handleEdit = () =>
-    Alert.alert('Tezliklə', 'Sorğunu redaktə etmə funksiyası tezliklə əlavə olunacaq.');
+    Alert.alert(t('myRequests.comingSoon'), t('myRequests.editSoon'));
   const handleDelete = () =>
-    Alert.alert('Tezliklə', 'Sorğunu silmə funksiyası tezliklə əlavə olunacaq.');
+    Alert.alert(t('myRequests.comingSoon'), t('myRequests.deleteSoon'));
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -81,7 +83,7 @@ export default function MyRequestsScreen({ navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Dərs İstəkləri</Text>
+          <Text style={styles.headerTitle}>{t('myRequests.headerTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
@@ -96,13 +98,13 @@ export default function MyRequestsScreen({ navigation }: Props) {
         {/* Hero + Create */}
         <View style={styles.heroRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.heroKicker}>MƏNİM PANELİM</Text>
-            <Text style={styles.heroTitle}>İstəklərim</Text>
+            <Text style={styles.heroKicker}>{t('myRequests.heroKicker')}</Text>
+            <Text style={styles.heroTitle}>{t('myRequests.heroTitle')}</Text>
           </View>
           <TouchableOpacity activeOpacity={0.9} onPress={openCreate}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroCta}>
               <Ionicons name="add-circle" size={20} color="#fff" />
-              <Text style={styles.heroCtaText}>Yeni İstək</Text>
+              <Text style={styles.heroCtaText}>{t('myRequests.newRequest')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -115,7 +117,7 @@ export default function MyRequestsScreen({ navigation }: Props) {
             activeOpacity={0.85}
           >
             <Text style={[styles.segText, tab === 'active' && styles.segTextActive]}>
-              Aktiv {active.length > 0 ? `(${active.length})` : ''}
+              {t('myRequests.tabActive')} {active.length > 0 ? `(${active.length})` : ''}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -124,7 +126,7 @@ export default function MyRequestsScreen({ navigation }: Props) {
             activeOpacity={0.85}
           >
             <Text style={[styles.segText, tab === 'completed' && styles.segTextActive]}>
-              Tamamlanmış {completed.length > 0 ? `(${completed.length})` : ''}
+              {t('myRequests.tabCompleted')} {completed.length > 0 ? `(${completed.length})` : ''}
             </Text>
           </TouchableOpacity>
         </View>
@@ -137,18 +139,18 @@ export default function MyRequestsScreen({ navigation }: Props) {
           <View style={styles.emptyBox}>
             <Ionicons name="document-text-outline" size={48} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>
-              {tab === 'active' ? 'Aktiv sorğu yoxdur' : 'Tamamlanmış sorğu yoxdur'}
+              {tab === 'active' ? t('myRequests.emptyActiveTitle') : t('myRequests.emptyCompletedTitle')}
             </Text>
             <Text style={styles.emptySub}>
               {tab === 'active'
-                ? 'Yeni dərs sorğusu yarat və müəllimlərin marağını cəlb et.'
-                : 'Tamamladığın sorğular burada görünəcək.'}
+                ? t('myRequests.emptyActiveSub')
+                : t('myRequests.emptyCompletedSub')}
             </Text>
             {tab === 'active' && (
               <TouchableOpacity activeOpacity={0.9} onPress={openCreate} style={{ marginTop: 8 }}>
                 <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.emptyCta}>
                   <Ionicons name="add" size={18} color="#fff" />
-                  <Text style={styles.emptyCtaText}>İlk Sorğunu Yarat</Text>
+                  <Text style={styles.emptyCtaText}>{t('myRequests.createFirst')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}
@@ -165,7 +167,7 @@ export default function MyRequestsScreen({ navigation }: Props) {
                   <View style={[styles.statusPill, tab === 'active' ? styles.statusOpen : styles.statusClosed]}>
                     <View style={[styles.statusDot, tab === 'active' ? { backgroundColor: '#10b981' } : { backgroundColor: Colors.textMuted }]} />
                     <Text style={[styles.statusPillText, tab === 'active' ? { color: '#047857' } : { color: Colors.textSecondary }]}>
-                      {tab === 'active' ? 'AÇIQ' : 'BAĞLI'}
+                      {tab === 'active' ? t('myRequests.statusOpen') : t('myRequests.statusClosed')}
                     </Text>
                   </View>
                 </View>
@@ -181,12 +183,12 @@ export default function MyRequestsScreen({ navigation }: Props) {
                 <View style={styles.chipsRow}>
                   <View style={styles.chipMuted}>
                     <Ionicons name="time-outline" size={13} color={Colors.textSecondary} />
-                    <Text style={styles.chipMutedText}>{timeAgo(r.createdAt)}</Text>
+                    <Text style={styles.chipMutedText}>{timeAgo(r.createdAt, t)}</Text>
                   </View>
                   <View style={styles.chipPrimary}>
                     <Ionicons name="people" size={13} color={Colors.primary} />
                     <Text style={styles.chipPrimaryText}>
-                      {r.interestedCount} müəllim maraqlandı
+                      {t('myRequests.interested', { n: r.interestedCount })}
                     </Text>
                   </View>
                 </View>
@@ -202,7 +204,7 @@ export default function MyRequestsScreen({ navigation }: Props) {
                     </TouchableOpacity>
                   </View>
                   <TouchableOpacity onPress={() => openInterested(r)} activeOpacity={0.7} style={styles.footerLink}>
-                    <Text style={styles.footerLinkText}>MÜƏLLİMLƏRƏ BAX</Text>
+                    <Text style={styles.footerLinkText}>{t('myRequests.viewTeachers')}</Text>
                     <Ionicons name="arrow-forward" size={14} color={Colors.primary} />
                   </TouchableOpacity>
                 </View>
@@ -220,15 +222,15 @@ export default function MyRequestsScreen({ navigation }: Props) {
                 </View>
                 <View style={{ flex: 1, gap: 8 }}>
                   <View style={styles.aiPill}>
-                    <Text style={styles.aiPillText}>AI MƏSLƏHƏTİ</Text>
+                    <Text style={styles.aiPillText}>{t('myRequests.aiAdvice')}</Text>
                   </View>
-                  <Text style={styles.aiTitle}>Daha çox müəllim cəlb etmək istəyirsən?</Text>
+                  <Text style={styles.aiTitle}>{t('myRequests.aiTitle')}</Text>
                   <Text style={styles.aiText}>
-                    Profilini tamamlamaq və sorğuna büdcə qeyd etmək müəllimlərin marağını{' '}
-                    <Text style={styles.aiTextStrong}>45% artıra bilər.</Text>
+                    {t('myRequests.aiTextPre')}
+                    <Text style={styles.aiTextStrong}>{t('myRequests.aiTextStrong')}</Text>
                   </Text>
                   <TouchableOpacity activeOpacity={0.9} onPress={openCreate} style={styles.aiBtn}>
-                    <Text style={styles.aiBtnText}>Yeni sorğuda tətbiq et</Text>
+                    <Text style={styles.aiBtnText}>{t('myRequests.aiBtn')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

@@ -6,11 +6,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function WithdrawalSuccessScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -18,7 +20,7 @@ export default function WithdrawalSuccessScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Çıxarış Uğurlu</Text>
+        <Text style={styles.headerTitle}>{t('pay.withdrawSuccessHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -31,11 +33,11 @@ export default function WithdrawalSuccessScreen() {
               <Ionicons name="checkmark" size={40} color={Colors.surfaceLowest} />
             </View>
           </View>
-          <Text style={styles.successTitle}>Sorğunuz qəbul edildi</Text>
+          <Text style={styles.successTitle}>{t('pay.requestAccepted')}</Text>
           <Text style={styles.successSubtitle}>
-            Qazancın çıxarılması müraciətiniz uğurla qeydiyyata alındı. Vəsait{' '}
-            <Text style={styles.highlightText}>1-3 iş günü</Text>
-            {' '}ərzində kartınıza köçürüləcək.
+            {t('pay.requestAcceptedPre')}
+            <Text style={styles.highlightText}>{t('pay.businessDaysInline')}</Text>
+            {t('pay.requestAcceptedPost')}
           </Text>
         </View>
 
@@ -44,12 +46,12 @@ export default function WithdrawalSuccessScreen() {
           <View style={styles.cardAccent} />
           <View style={styles.summaryTop}>
             <View>
-              <Text style={styles.summaryAmountLabel}>Məbləğ</Text>
+              <Text style={styles.summaryAmountLabel}>{t('pay.amount')}</Text>
               <Text style={styles.summaryAmount}>45.50 AZN</Text>
             </View>
             <View style={styles.statusBadge}>
               <Ionicons name="checkmark-circle-outline" size={14} color={Colors.textMuted} />
-              <Text style={styles.statusBadgeText}>İşlənir</Text>
+              <Text style={styles.statusBadgeText}>{t('pay.processing')}</Text>
             </View>
           </View>
 
@@ -58,7 +60,7 @@ export default function WithdrawalSuccessScreen() {
               <View style={styles.detailIconWrap}>
                 <Ionicons name="card-outline" size={16} color={Colors.primary} />
               </View>
-              <Text style={styles.detailRowLabel}>Kart məlumatı</Text>
+              <Text style={styles.detailRowLabel}>{t('pay.cardInfo')}</Text>
             </View>
             <Text style={styles.detailRowValue}>**** 1234</Text>
           </View>
@@ -68,7 +70,7 @@ export default function WithdrawalSuccessScreen() {
               <View style={styles.detailIconWrap}>
                 <Ionicons name="repeat-outline" size={16} color={Colors.primary} />
               </View>
-              <Text style={styles.detailRowLabel}>Tarix</Text>
+              <Text style={styles.detailRowLabel}>{t('pay.date')}</Text>
             </View>
             <Text style={styles.detailRowValue}>24 May, 2024</Text>
           </View>
@@ -77,7 +79,7 @@ export default function WithdrawalSuccessScreen() {
         {/* Actions */}
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('HomeMain' as never)}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryBtnText}>Ana səhifəyə qayıt</Text>
+            <Text style={styles.primaryBtnText}>{t('pay.backHome')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
@@ -87,7 +89,7 @@ export default function WithdrawalSuccessScreen() {
           activeOpacity={0.8}
           onPress={() => navigation.navigate(Routes.PayoutHistory)}
         >
-          <Text style={styles.secondaryBtnText}>Çıxarış tarixçəsi</Text>
+          <Text style={styles.secondaryBtnText}>{t('pay.withdrawalHistory')}</Text>
         </TouchableOpacity>
 
         {/* Kimi insight */}
@@ -96,9 +98,9 @@ export default function WithdrawalSuccessScreen() {
             <Ionicons name="bulb-outline" size={22} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.insightLabel}>Kimi Məsləhəti</Text>
+            <Text style={styles.insightLabel}>{t('pay.kimiTipLabel')}</Text>
             <Text style={styles.insightText}>
-              Yeni dərsləri tamamlayaraq balansınızı daha da artıra bilərsiniz!
+              {t('pay.withdrawTipText')}
             </Text>
           </View>
         </View>

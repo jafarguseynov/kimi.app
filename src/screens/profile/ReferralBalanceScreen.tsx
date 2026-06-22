@@ -17,8 +17,10 @@ import { useQuery } from '@tanstack/react-query';
 import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+const DATE_LOCALE: Record<string, string> = { az: 'az-Latn-AZ', ru: 'ru-RU', en: 'en-US' };
 
 interface ReferralData {
   code: string;
@@ -35,10 +37,10 @@ interface ReferralFriend {
   joinedAt: string;
 }
 
-function formatDate(iso: string) {
+function formatDate(iso: string, lang: string) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('az-Latn-AZ', { day: '2-digit', month: 'long' });
+  return d.toLocaleDateString(DATE_LOCALE[lang] ?? 'az-Latn-AZ', { day: '2-digit', month: 'long' });
 }
 
 function initials(name: string) {
@@ -50,6 +52,7 @@ function initials(name: string) {
 
 export default function ReferralBalanceScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t, language } = useTranslation();
 
   const { data, isLoading } = useQuery<ReferralData>({
     queryKey: ['referral'],
@@ -81,7 +84,7 @@ export default function ReferralBalanceScreen() {
   const handleShare = async () => {
     if (!link && !code) return;
     await Share.share({
-      message: link ? `Kimi.az tətbiqini yüklə! ${link}` : `Mənim referal kodum: ${code}`,
+      message: link ? t('referralBalance.shareLinkMessage', { link }) : t('referralBalance.shareCodeMessage', { code }),
       url: link || undefined,
     });
   };
@@ -92,7 +95,7 @@ export default function ReferralBalanceScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Referal Balansı</Text>
+        <Text style={styles.headerTitle}>{t('referralBalance.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -109,7 +112,7 @@ export default function ReferralBalanceScreen() {
           >
             <View style={styles.heroOrb} pointerEvents="none" />
             <View style={styles.heroContent}>
-              <Text style={styles.heroLabel}>Mövcud Balans</Text>
+              <Text style={styles.heroLabel}>{t('referralBalance.availableBalance')}</Text>
               <View style={styles.heroAmountRow}>
                 <Text style={styles.heroAmount}>{availableBalance.toFixed(2)}</Text>
                 <Text style={styles.heroCurrency}>AZN</Text>
@@ -119,7 +122,7 @@ export default function ReferralBalanceScreen() {
                 activeOpacity={0.85}
                 onPress={() => navigation.navigate(Routes.Withdrawal)}
               >
-                <Text style={styles.withdrawBtnText}>Vəsaiti çıxar</Text>
+                <Text style={styles.withdrawBtnText}>{t('referralBalance.withdraw')}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -131,7 +134,7 @@ export default function ReferralBalanceScreen() {
                 <Ionicons name="ribbon" size={20} color={Colors.tertiary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bentoLabel}>Toplam Qazanc</Text>
+                <Text style={styles.bentoLabel}>{t('referralBalance.totalEarned')}</Text>
                 <Text style={styles.bentoValue}>{totalEarned.toFixed(2)} AZN</Text>
               </View>
             </View>
@@ -140,8 +143,8 @@ export default function ReferralBalanceScreen() {
                 <Ionicons name="people" size={20} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bentoLabel}>Dəvət Olunanlar</Text>
-                <Text style={styles.bentoValue}>{invitedCount} Nəfər</Text>
+                <Text style={styles.bentoLabel}>{t('referralBalance.invited')}</Text>
+                <Text style={styles.bentoValue}>{t('referralBalance.invitedCount', { count: invitedCount })}</Text>
               </View>
             </View>
           </View>
@@ -155,10 +158,10 @@ export default function ReferralBalanceScreen() {
               <View style={styles.tipBadge} />
             </View>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.tipTitle}>Kimi-dən məsləhət</Text>
+              <Text style={styles.tipTitle}>{t('referralBalance.tipTitle')}</Text>
               <Text style={styles.tipText}>
-                Referal linkini sosial şəbəkələrdə paylaşaraq hər yeni qeydiyyatdan{' '}
-                <Text style={styles.tipBold}>5.00 AZN</Text> bonus qazana bilərsən!
+                {t('referralBalance.tipPre')}
+                <Text style={styles.tipBold}>{t('referralBalance.tipBold')}</Text>{t('referralBalance.tipPost')}
               </Text>
             </View>
           </View>
@@ -166,10 +169,10 @@ export default function ReferralBalanceScreen() {
           {/* Earnings history */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Qazanc Tarixçəsi</Text>
+              <Text style={styles.sectionTitle}>{t('referralBalance.historyTitle')}</Text>
               {sortedFriends.length > 5 && (
                 <TouchableOpacity hitSlop={8} onPress={() => navigation.navigate(Routes.Referral)}>
-                  <Text style={styles.sectionLink}>Hamısına bax</Text>
+                  <Text style={styles.sectionLink}>{t('referralBalance.seeAll')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -177,8 +180,8 @@ export default function ReferralBalanceScreen() {
             {recentFriends.length === 0 ? (
               <View style={styles.empty}>
                 <Ionicons name="people-outline" size={36} color={Colors.outlineVariant} />
-                <Text style={styles.emptyText}>Hələ qazanc tarixçən yoxdur.</Text>
-                <Text style={styles.emptySub}>Linkini paylaş — dostların qeydiyyatdan keçəndə burada görəcəksən.</Text>
+                <Text style={styles.emptyText}>{t('referralBalance.emptyText')}</Text>
+                <Text style={styles.emptySub}>{t('referralBalance.emptySub')}</Text>
               </View>
             ) : (
               <View style={{ gap: 10 }}>
@@ -193,7 +196,7 @@ export default function ReferralBalanceScreen() {
                         <View style={styles.txStatusRow}>
                           <View style={[styles.txDot, { backgroundColor: f.rewardPaid ? Colors.tertiary : '#F59E0B' }]} />
                           <Text style={styles.txStatus}>
-                            {f.rewardPaid ? 'Uğurlu' : 'Gözləmədə'} • {formatDate(f.joinedAt)}
+                            {f.rewardPaid ? t('referralBalance.statusSuccess') : t('referralBalance.statusPending')} • {formatDate(f.joinedAt, language)}
                           </Text>
                         </View>
                       </View>
@@ -209,7 +212,7 @@ export default function ReferralBalanceScreen() {
 
           {/* Referral code share */}
           <View style={styles.shareCard}>
-            <Text style={styles.shareTitle}>Sənin Referal Kodun</Text>
+            <Text style={styles.shareTitle}>{t('referralBalance.codeTitle')}</Text>
             <View style={styles.codeRow}>
               <Text style={styles.codeText}>{code || '—'}</Text>
               <TouchableOpacity hitSlop={8} onPress={handleShare} activeOpacity={0.7}>

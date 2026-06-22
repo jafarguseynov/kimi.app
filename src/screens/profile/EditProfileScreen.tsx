@@ -13,11 +13,15 @@ import { RouteProp } from '@react-navigation/native';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { getMe, updateUser } from '../../api/user.api';
+import { getSpecializations } from '../../api/specialization.api';
 import { uploadImageOrFallback } from '../../api/media.api';
 import { useUserStore } from '../../store/user.store';
 import LocationSchoolPicker from '../../components/common/LocationSchoolPicker';
+import LocationPicker from '../../components/common/LocationPicker';
+import SubjectMultiPicker from '../../components/common/SubjectMultiPicker';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.EditProfile>;
@@ -27,29 +31,35 @@ type Props = {
 type LessonFormat = 'online' | 'home' | 'course';
 type Goal = 'university' | 'school' | 'general';
 
-const TEACHER_SUBJECTS = ['Riyaziyyat', 'Fizika', 'Kimya', 'Azərbaycan dili', 'İngilis dili'];
-const STUDENT_INTERESTS = ['Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Fizika', 'Kimya'];
-const GOALS: { id: Goal; label: string }[] = [
-  { id: 'university', label: 'Ali məktəbə qəbul hazırlığı' },
-  { id: 'school', label: 'Məktəb dərslərində uğur' },
-  { id: 'general', label: 'Ümumi bilik və inkişaf' },
+// Admin paneldəki ixtisas siyahısı yüklənmədikdə istifadə olunan ehtiyat siyahı.
+const FALLBACK_SUBJECTS = ['Riyaziyyat', 'Fizika', 'Kimya', 'Azərbaycan dili', 'İngilis dili'];
+const GOALS: { id: Goal; labelKey: string }[] = [
+  { id: 'university', labelKey: 'editProfile.goalUniversity' },
+  { id: 'school', labelKey: 'editProfile.goalSchool' },
+  { id: 'general', labelKey: 'editProfile.goalGeneral' },
 ];
-const DAYS = [
-  { label: 'B.E', fill: 0.5 }, { label: 'Ç.A', fill: 0.75 },
-  { label: 'Ç', fill: 1.0 }, { label: 'C.A', fill: 0.25 },
-  { label: 'C', fill: 0 }, { label: 'Ş', fill: 0.5 }, { label: 'B', fill: 0 },
-];
-const GRADES = ['9-cu', '10-cu', '11-ci'];
-const FORMATS: { key: LessonFormat; label: string }[] = [
-  { key: 'online', label: 'Online' },
-  { key: 'home', label: 'Evdə' },
-  { key: 'course', label: 'Kursda' },
+const DAY_FILLS = [0.5, 0.75, 1.0, 0.25, 0, 0.5, 0];
+const GRADES = ['1-ci', '2-ci', '3-cü', '4-cü', '5-ci', '6-cı', '7-ci', '8-ci', '9-cu', '10-cu', '11-ci'];
+const FORMATS: { key: LessonFormat; labelKey: string }[] = [
+  { key: 'online', labelKey: 'editProfile.formatOnline' },
+  { key: 'home', labelKey: 'editProfile.formatHome' },
+  { key: 'course', labelKey: 'editProfile.formatCourse' },
 ];
 
 export default function EditProfileScreen({ navigation, route }: Props) {
   const { user, setUser } = useUserStore();
+  const { t } = useTranslation();
   const role = route.params?.role ?? (user?.role === 'teacher' ? 'teacher' : user?.role === 'parent' ? 'parent' : 'student');
   const userAny = user as any;
+
+  // Admin paneldən idarə olunan fən/ixtisas siyahısı.
+  const { data: specs = [] } = useQuery({
+    queryKey: ['specializations'],
+    queryFn: getSpecializations,
+    staleTime: 1000 * 60 * 30,
+  });
+  const subjectOptions = specs.length ? specs.map((s) => s.name) : FALLBACK_SUBJECTS;
+
   const [avatarUri, setAvatarUri] = useState<string | undefined>(userAny?.avatarUrl);
   // Yeni seçilmiş lokal şəkil yaddaşa basılanda yüklənməlidir.
   const [avatarDirty, setAvatarDirty] = useState(false);
@@ -59,7 +69,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       ? await ImagePicker.requestCameraPermissionsAsync()
       : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('İcazə yoxdur', fromCamera ? 'Kamera icazəsi verilməyib' : 'Qalereya icazəsi verilməyib');
+      Alert.alert(t('editProfile.permTitle'), fromCamera ? t('editProfile.permCamera') : t('editProfile.permGallery'));
       return;
     }
     const result = fromCamera
@@ -75,12 +85,12 @@ export default function EditProfileScreen({ navigation, route }: Props) {
 
   const onChangePhoto = () => {
     Alert.alert(
-      'Şəkil seç',
-      'Şəkli haradan seçmək istəyirsən?',
+      t('editProfile.photoTitle'),
+      t('editProfile.photoBody'),
       [
-        { text: 'Kamera', onPress: () => pickImage(true) },
-        { text: 'Qalereya', onPress: () => pickImage(false) },
-        { text: 'Ləğv et', style: 'cancel' },
+        { text: t('editProfile.camera'), onPress: () => pickImage(true) },
+        { text: t('editProfile.gallery'), onPress: () => pickImage(false) },
+        { text: t('editProfile.cancel'), style: 'cancel' },
       ],
       { cancelable: true }
     );
@@ -94,7 +104,8 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   // teacher
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>(userAny?.subjects ?? []);
   const [price, setPrice] = useState(userAny?.hourlyRate?.toString() ?? '');
-  const [lessonFormat, setLessonFormat] = useState<LessonFormat>('online');
+  const [lessonFormats, setLessonFormats] = useState<LessonFormat[]>(userAny?.lessonFormats?.length ? userAny.lessonFormats : ['online']);
+  const [areas, setAreas] = useState<string[]>(userAny?.areaNames?.length ? userAny.areaNames : (userAny?.areaName ? [userAny.areaName] : []));
   const [bio, setBio] = useState(userAny?.bio ?? '');
   // teacher trust
   const [headline, setHeadline] = useState(userAny?.headline ?? '');
@@ -102,16 +113,18 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const [introVideoUrl, setIntroVideoUrl] = useState(userAny?.introVideoUrl ?? '');
   const [offersFreeDemo, setOffersFreeDemo] = useState(!!userAny?.offersFreeDemo);
 
-  // student
-  const [city, setCity] = useState('Bakı');
+  // şəhər/ərazi — həm şagird, həm müəllim üçün
+  const [city, setCity] = useState(userAny?.city ?? userAny?.areaName ?? '');
   const [school, setSchool] = useState(userAny?.school ?? '');
   const [grade, setGrade] = useState(userAny?.grade ?? '9-cu');
   const [interests, setInterests] = useState<string[]>(userAny?.interests ?? []);
   const [goal, setGoal] = useState<Goal>((userAny?.goal as Goal) ?? 'university');
 
-  // parent
+  // əlaqə (bütün rollar)
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+  const [birthDate, setBirthDate] = useState(userAny?.birthDate ?? '');
+  // parent
   const [notifExams, setNotifExams] = useState(true);
   const [notifLessons, setNotifLessons] = useState(true);
   const [notifUpdates, setNotifUpdates] = useState(false);
@@ -124,7 +137,12 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       setPhone(me.phone ?? '');
       setEmail(me.email ?? '');
       const meAny = me as any;
+      if (meAny.birthDate) setBirthDate(meAny.birthDate);
       if (meAny.avatarUrl) setAvatarUri(meAny.avatarUrl);
+      if (meAny.city) setCity(meAny.city);
+      if (meAny.areaNames?.length) setAreas(meAny.areaNames);
+      else if (meAny.areaName) setAreas([meAny.areaName]);
+      if (meAny.lessonFormats?.length) setLessonFormats(meAny.lessonFormats);
       if (meAny.school) setSchool(meAny.school);
       if (meAny.grade) setGrade(meAny.grade);
       if (meAny.goal) setGoal(meAny.goal);
@@ -147,6 +165,13 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         data.avatarUrl = await uploadImageOrFallback(avatarUri);
       }
 
+      // Əlaqə məlumatları (müəllim + şagird üçün)
+      if (role !== 'parent') {
+        if (phone) data.phone = phone;
+        if (email) data.email = email;
+        data.birthDate = birthDate;
+      }
+
       if (role === 'teacher') {
         data.bio = bio;
         data.subjects = selectedSubjects;
@@ -155,8 +180,12 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         data.experienceYears = experienceYears ? parseInt(experienceYears, 10) : 0;
         data.introVideoUrl = introVideoUrl;
         data.offersFreeDemo = offersFreeDemo;
+        data.lessonFormats = lessonFormats;
+        data.areaNames = areas;
+        if (areas[0]) data.areaName = areas[0];
       } else if (role === 'student') {
         // Əvvəllər bu sahələr heç vaxt göndərilmirdi — ona görə "yaddaşda qalmırdı".
+        if (city) data.city = city;
         data.school = school;
         data.grade = grade;
         data.goal = goal;
@@ -166,14 +195,22 @@ export default function EditProfileScreen({ navigation, route }: Props) {
     onSuccess: (updated) => {
       // Store-u serverdən qayıdan dəyərlərlə yenilə ki, geri qayıdanda dolu görünsün.
       if (updated) setUser({ ...(user as any), ...(updated as any) });
-      Alert.alert('Yadda saxlandı', 'Profil məlumatları yeniləndi.');
+      Alert.alert(t('editProfile.savedTitle'), t('editProfile.savedBody'));
       navigation.goBack();
     },
-    onError: () => Alert.alert('Xəta', 'Saxlanılmadı. Yenidən cəhd edin.'),
+    onError: () => Alert.alert(t('editProfile.errorTitle'), t('editProfile.errorBody')),
   });
 
   const toggleSubject = (s: string) =>
     setSelectedSubjects((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+
+  const toggleFormat = (f: LessonFormat) =>
+    setLessonFormats((prev) => prev.includes(f) ? prev.filter((x) => x !== f) : [...prev, f]);
+
+  const addArea = (name: string) =>
+    setAreas((prev) => (prev.includes(name) ? prev : [...prev, name]));
+  const removeArea = (name: string) =>
+    setAreas((prev) => prev.filter((x) => x !== name));
 
   const toggleInterest = (s: string) =>
     setInterests((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
@@ -189,11 +226,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
               <Ionicons name="arrow-back" size={22} color={Colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Profili Redaktə Et</Text>
+            <Text style={styles.headerTitle}>{t('editProfile.headerTitle')}</Text>
           </View>
           {role !== 'parent' ? (
             <TouchableOpacity onPress={handleSave} activeOpacity={0.7} hitSlop={8}>
-              <Text style={styles.saveTopBtn}>Yadda saxla</Text>
+              <Text style={styles.saveTopBtn}>{t('editProfile.save')}</Text>
             </TouchableOpacity>
           ) : <View style={{ width: 80 }} />}
         </View>
@@ -223,7 +260,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             </View>
             <TouchableOpacity activeOpacity={0.7} onPress={onChangePhoto}>
-              <Text style={styles.changePhotoText}>Şəkli dəyiş</Text>
+              <Text style={styles.changePhotoText}>{t('editProfile.changePhoto')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -232,8 +269,10 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               firstName={firstName} setFirstName={setFirstName}
               lastName={lastName} setLastName={setLastName}
               selectedSubjects={selectedSubjects} toggleSubject={toggleSubject}
+              subjectOptions={subjectOptions}
+              areas={areas} addArea={addArea} removeArea={removeArea}
               price={price} setPrice={setPrice}
-              lessonFormat={lessonFormat} setLessonFormat={setLessonFormat}
+              lessonFormats={lessonFormats} toggleFormat={toggleFormat}
               bio={bio} setBio={setBio}
               headline={headline} setHeadline={setHeadline}
               experienceYears={experienceYears} setExperienceYears={setExperienceYears}
@@ -260,7 +299,17 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               school={school} setSchool={setSchool}
               grade={grade} setGrade={setGrade}
               interests={interests} toggleInterest={toggleInterest}
+              interestOptions={subjectOptions}
               goal={goal} setGoal={setGoal}
+            />
+          )}
+
+          {/* Əlaqə məlumatları — müəllim və şagird üçün */}
+          {role !== 'parent' && (
+            <ContactFields
+              phone={phone} setPhone={setPhone}
+              email={email} setEmail={setEmail}
+              birthDate={birthDate} setBirthDate={setBirthDate}
             />
           )}
 
@@ -270,11 +319,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               <TouchableOpacity style={{ width: '100%' }} activeOpacity={0.85} onPress={handleSave} disabled={isSaving}>
                 <LinearGradient colors={[Colors.gradientStart, Colors.gradientEnd]} style={styles.saveBtn}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                  {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Yadda saxla</Text>}
+                  {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{t('editProfile.save')}</Text>}
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-                <Text style={styles.cancelBtnText}>Ləğv et</Text>
+                <Text style={styles.cancelBtnText}>{t('editProfile.cancel')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -287,58 +336,55 @@ export default function EditProfileScreen({ navigation, route }: Props) {
 // ─── Teacher Form ────────────────────────────────────────────────────────────
 function TeacherForm({
   firstName, setFirstName, lastName, setLastName,
-  selectedSubjects, toggleSubject, price, setPrice,
-  lessonFormat, setLessonFormat, bio, setBio,
+  selectedSubjects, toggleSubject, subjectOptions, areas, addArea, removeArea, price, setPrice,
+  lessonFormats, toggleFormat, bio, setBio,
   headline, setHeadline, experienceYears, setExperienceYears,
   introVideoUrl, setIntroVideoUrl, offersFreeDemo, setOffersFreeDemo,
 }: {
   firstName: string; setFirstName: (v: string) => void;
   lastName: string; setLastName: (v: string) => void;
   selectedSubjects: string[]; toggleSubject: (s: string) => void;
+  subjectOptions: string[];
+  areas: string[]; addArea: (s: string) => void; removeArea: (s: string) => void;
   price: string; setPrice: (v: string) => void;
-  lessonFormat: LessonFormat; setLessonFormat: (v: LessonFormat) => void;
+  lessonFormats: LessonFormat[]; toggleFormat: (v: LessonFormat) => void;
   bio: string; setBio: (v: string) => void;
   headline: string; setHeadline: (v: string) => void;
   experienceYears: string; setExperienceYears: (v: string) => void;
   introVideoUrl: string; setIntroVideoUrl: (v: string) => void;
   offersFreeDemo: boolean; setOffersFreeDemo: (v: boolean) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.formSection}>
       {/* Name */}
       <View style={styles.nameRow}>
         <View style={styles.nameField}>
-          <Text style={styles.fieldLabel}>Ad</Text>
-          <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} placeholder="Adınız" placeholderTextColor={Colors.textMuted} />
+          <Text style={styles.fieldLabel}>{t('editProfile.firstName')}</Text>
+          <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} placeholder={t('editProfile.firstNamePlaceholder')} placeholderTextColor={Colors.textMuted} />
         </View>
         <View style={styles.nameField}>
-          <Text style={styles.fieldLabel}>Soyad</Text>
-          <TextInput style={styles.input} value={lastName} onChangeText={setLastName} placeholder="Soyadınız" placeholderTextColor={Colors.textMuted} />
+          <Text style={styles.fieldLabel}>{t('editProfile.lastName')}</Text>
+          <TextInput style={styles.input} value={lastName} onChangeText={setLastName} placeholder={t('editProfile.lastNamePlaceholder')} placeholderTextColor={Colors.textMuted} />
         </View>
       </View>
 
       {/* Subjects */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.fieldLabel}>Tədris etdiyiniz fənlər</Text>
-        <View style={styles.chipsWrap}>
-          {TEACHER_SUBJECTS.map((s) => {
-            const active = selectedSubjects.includes(s);
-            return (
-              <TouchableOpacity key={s} style={[styles.chip, active && styles.chipActive]} activeOpacity={0.8} onPress={() => toggleSubject(s)}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
-              </TouchableOpacity>
-            );
-          })}
-          <TouchableOpacity style={styles.chipAdd} activeOpacity={0.7}>
-            <Ionicons name="add" size={20} color={Colors.textMuted} />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.fieldLabel}>{t('editProfile.teachingSubjects')}</Text>
+        <SubjectMultiPicker
+          options={subjectOptions}
+          selected={selectedSubjects}
+          onToggle={toggleSubject}
+          placeholder={t('editProfile.pickSubject')}
+          title={t('editProfile.teachingSubjects')}
+        />
       </View>
 
       {/* Bento: experience + price + city */}
       <View style={styles.bentoGrid}>
         <View style={[styles.bentoCard, styles.bentoHalf]}>
-          <Text style={styles.bentoLabel}>Təcrübə (il)</Text>
+          <Text style={styles.bentoLabel}>{t('editProfile.experience')}</Text>
           <View style={styles.bentoRow}>
             <TextInput
               style={styles.bentoInput}
@@ -349,48 +395,62 @@ function TeacherForm({
               placeholderTextColor={Colors.textMuted}
               maxLength={2}
             />
-            <Text style={styles.bentoUnit}>İl</Text>
+            <Text style={styles.bentoUnit}>{t('editProfile.yearUnit')}</Text>
           </View>
         </View>
         <View style={[styles.bentoCard, styles.bentoHalf]}>
-          <Text style={styles.bentoLabel}>Dərs qiyməti</Text>
+          <Text style={styles.bentoLabel}>{t('editProfile.lessonPrice')}</Text>
           <View style={styles.bentoRow}>
             <TextInput style={styles.bentoInput} value={price} onChangeText={setPrice} keyboardType="numeric" />
             <Text style={styles.bentoUnit}>AZN</Text>
           </View>
         </View>
-        <TouchableOpacity style={[styles.bentoCard, styles.bentoFull]} activeOpacity={0.8}>
-          <Text style={styles.bentoLabel}>Şəhər</Text>
-          <View style={styles.bentoRow}>
-            <View style={styles.bentoRowInner}>
-              <Ionicons name="location-outline" size={18} color={Colors.primary} />
-              <Text style={styles.bentoValue}>Bakı, Azərbaycan</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-          </View>
-        </TouchableOpacity>
       </View>
 
-      {/* Lesson format */}
+      {/* Dərs keçdiyi ərazilər (bir neçə) */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.fieldLabel}>Dərs formatı</Text>
-        <View style={styles.segmented}>
-          {FORMATS.map((f) => (
-            <TouchableOpacity key={f.key}
-              style={[styles.segBtn, lessonFormat === f.key && styles.segBtnActive]}
-              activeOpacity={0.8} onPress={() => setLessonFormat(f.key)}>
-              <Text style={[styles.segText, lessonFormat === f.key && styles.segTextActive]}>{f.label}</Text>
-            </TouchableOpacity>
-          ))}
+        <Text style={styles.fieldLabel}>{t('editProfile.teachingAreas')}</Text>
+        {areas.length > 0 && (
+          <View style={[styles.chipsWrap, { marginBottom: 8 }]}>
+            {areas.map((a) => (
+              <TouchableOpacity key={a} style={styles.areaChip} activeOpacity={0.7} onPress={() => removeArea(a)}>
+                <Ionicons name="location" size={13} color={Colors.primary} />
+                <Text style={styles.areaChipText} numberOfLines={1}>{a}</Text>
+                <Ionicons name="close" size={14} color={Colors.primary} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+        <LocationPicker
+          placeholder={t('editProfile.addArea')}
+          onSelect={({ path, name }) => addArea(path || name)}
+        />
+      </View>
+
+      {/* Lesson format — bir neçə seçilə bilər */}
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabel}>{t('editProfile.lessonFormat')}</Text>
+        <View style={styles.formatWrap}>
+          {FORMATS.map((f) => {
+            const active = lessonFormats.includes(f.key);
+            return (
+              <TouchableOpacity key={f.key}
+                style={[styles.formatBtn, active && styles.formatBtnActive]}
+                activeOpacity={0.8} onPress={() => toggleFormat(f.key)}>
+                {active && <Ionicons name="checkmark-circle" size={16} color="#fff" />}
+                <Text style={[styles.segText, active && styles.segTextActive]}>{t(f.labelKey)}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
       {/* Headline */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.fieldLabel}>Qısa təqdimat (şüar)</Text>
+        <Text style={styles.fieldLabel}>{t('editProfile.headline')}</Text>
         <TextInput
           style={styles.input} value={headline} onChangeText={setHeadline}
-          placeholder="Məs: 10 ildir abituriyentləri ali məktəbə hazırlayıram"
+          placeholder={t('editProfile.headlinePlaceholder')}
           placeholderTextColor={Colors.textMuted}
           maxLength={90}
         />
@@ -398,18 +458,18 @@ function TeacherForm({
 
       {/* Bio */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.fieldLabel}>Haqqımda</Text>
+        <Text style={styles.fieldLabel}>{t('editProfile.about')}</Text>
         <TextInput
           style={styles.textarea} value={bio} onChangeText={setBio}
           multiline textAlignVertical="top" numberOfLines={4}
-          placeholder="Özünüz haqqında qısa məlumat yazın..."
+          placeholder={t('editProfile.aboutPlaceholder')}
           placeholderTextColor={Colors.textMuted}
         />
       </View>
 
       {/* Intro video */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.fieldLabel}>Təqdimat videosu (YouTube linki)</Text>
+        <Text style={styles.fieldLabel}>{t('editProfile.introVideo')}</Text>
         <View style={styles.inputIconWrap}>
           <Ionicons name="logo-youtube" size={18} color="#e11d48" style={styles.inputIcon} />
           <TextInput
@@ -424,8 +484,8 @@ function TeacherForm({
       {/* Free demo lesson */}
       <View style={styles.demoRow}>
         <View style={{ flex: 1, marginRight: 12 }}>
-          <Text style={styles.fieldLabel}>Pulsuz demo dərs</Text>
-          <Text style={styles.demoSub}>Yeni şagirdlərə 1 pulsuz tanışlıq dərsi təklif et — daha çox sorğu gətirir.</Text>
+          <Text style={styles.fieldLabel}>{t('editProfile.freeDemo')}</Text>
+          <Text style={styles.demoSub}>{t('editProfile.freeDemoSub')}</Text>
         </View>
         <Switch
           value={offersFreeDemo} onValueChange={setOffersFreeDemo}
@@ -437,17 +497,17 @@ function TeacherForm({
       {/* Availability */}
       <View style={styles.fieldBlock}>
         <View style={styles.availHeader}>
-          <Text style={styles.fieldLabel}>Mövcud saatlar</Text>
+          <Text style={styles.fieldLabel}>{t('editProfile.availableHours')}</Text>
           <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.calendarLink}>Təqvimi aç</Text>
+            <Text style={styles.calendarLink}>{t('editProfile.openCalendar')}</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.availCard}>
-          {DAYS.map((d) => (
-            <View key={d.label} style={styles.dayCol}>
-              <Text style={styles.dayLabel}>{d.label}</Text>
+          {t('editProfile.days').split('|').map((dayLabel, di) => (
+            <View key={di} style={styles.dayCol}>
+              <Text style={styles.dayLabel}>{dayLabel}</Text>
               <View style={styles.barTrack}>
-                <View style={[styles.barFill, { height: `${d.fill * 100}%` as any }]} />
+                <View style={[styles.barFill, { height: `${DAY_FILLS[di] * 100}%` as any }]} />
               </View>
             </View>
           ))}
@@ -461,7 +521,7 @@ function TeacherForm({
 function StudentForm({
   firstName, setFirstName, lastName, setLastName,
   city, setCity, school, setSchool,
-  grade, setGrade, interests, toggleInterest, goal, setGoal,
+  grade, setGrade, interests, toggleInterest, interestOptions, goal, setGoal,
 }: {
   firstName: string; setFirstName: (v: string) => void;
   lastName: string; setLastName: (v: string) => void;
@@ -469,8 +529,10 @@ function StudentForm({
   school: string; setSchool: (v: string) => void;
   grade: string; setGrade: (v: string) => void;
   interests: string[]; toggleInterest: (s: string) => void;
+  interestOptions: string[];
   goal: Goal; setGoal: (v: Goal) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.formSection}>
       {/* White card */}
@@ -478,36 +540,30 @@ function StudentForm({
         {/* Name */}
         <View style={styles.nameRow}>
           <View style={styles.nameField}>
-            <Text style={styles.fieldLabelSm}>Ad</Text>
-            <TextInput style={styles.inputCard} value={firstName} onChangeText={setFirstName} placeholder="Adınız" placeholderTextColor={Colors.textMuted} />
+            <Text style={styles.fieldLabelSm}>{t('editProfile.firstName')}</Text>
+            <TextInput style={styles.inputCard} value={firstName} onChangeText={setFirstName} placeholder={t('editProfile.firstNamePlaceholder')} placeholderTextColor={Colors.textMuted} />
           </View>
           <View style={styles.nameField}>
-            <Text style={styles.fieldLabelSm}>Soyad</Text>
-            <TextInput style={styles.inputCard} value={lastName} onChangeText={setLastName} placeholder="Soyadınız" placeholderTextColor={Colors.textMuted} />
+            <Text style={styles.fieldLabelSm}>{t('editProfile.lastName')}</Text>
+            <TextInput style={styles.inputCard} value={lastName} onChangeText={setLastName} placeholder={t('editProfile.lastNamePlaceholder')} placeholderTextColor={Colors.textMuted} />
           </View>
         </View>
 
         {/* City */}
         <View style={styles.fieldBlockCard}>
-          <Text style={styles.fieldLabelSm}>Şəhər</Text>
-          <TouchableOpacity style={styles.inputCard} activeOpacity={0.8}
-            onPress={() => Alert.alert('Şəhər', 'Şəhər seçimi')}>
-            <View style={styles.selectRow}>
-              <Text style={styles.inputText}>{city}</Text>
-              <Ionicons name="chevron-expand" size={18} color={Colors.textMuted} />
-            </View>
-          </TouchableOpacity>
+          <Text style={styles.fieldLabelSm}>{t('editProfile.cityArea')}</Text>
+          <LocationPicker value={city} onSelect={({ path, name }) => setCity(path || name)} />
         </View>
 
         {/* School — ərazi → məktəb kaskad seçimi */}
         <View style={styles.fieldBlockCard}>
-          <Text style={styles.fieldLabelSm}>Məktəb</Text>
+          <Text style={styles.fieldLabelSm}>{t('editProfile.school')}</Text>
           <LocationSchoolPicker value={school} onSelect={({ path }) => setSchool(path)} />
         </View>
 
         {/* Grade */}
         <View style={styles.fieldBlockCard}>
-          <Text style={styles.fieldLabelSm}>Sinif</Text>
+          <Text style={styles.fieldLabelSm}>{t('editProfile.grade')}</Text>
           <View style={styles.gradeBar}>
             {GRADES.map((g) => (
               <TouchableOpacity key={g}
@@ -522,31 +578,19 @@ function StudentForm({
 
       {/* Interests */}
       <View style={styles.fieldBlock}>
-        <View style={styles.interestHeader}>
-          <Text style={styles.sectionTitle}>Maraqlandığın fənlər</Text>
-          <TouchableOpacity style={styles.addAllBtn} activeOpacity={0.7}>
-            <Ionicons name="add" size={14} color={Colors.primary} />
-            <Text style={styles.addAllText}>Hamısı</Text>
-          </TouchableOpacity>
-        </View>
-        <View style={styles.chipsWrap}>
-          {STUDENT_INTERESTS.map((s) => {
-            const active = interests.includes(s);
-            return (
-              <TouchableOpacity key={s}
-                style={[styles.chip, active ? styles.chipActive : styles.chipBorder]}
-                activeOpacity={0.8} onPress={() => toggleInterest(s)}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{s}</Text>
-                {active && <Ionicons name="checkmark" size={13} color="#fff" />}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
+        <Text style={styles.sectionTitle}>{t('editProfile.interests')}</Text>
+        <SubjectMultiPicker
+          options={interestOptions}
+          selected={interests}
+          onToggle={toggleInterest}
+          placeholder={t('editProfile.pickSubject')}
+          title={t('editProfile.interests')}
+        />
       </View>
 
       {/* Goals */}
       <View style={styles.fieldBlock}>
-        <Text style={styles.sectionTitle}>Məqsədin</Text>
+        <Text style={styles.sectionTitle}>{t('editProfile.goal')}</Text>
         <View style={styles.goalsCard}>
           {GOALS.map((g) => {
             const selected = goal === g.id;
@@ -557,7 +601,7 @@ function StudentForm({
                 <View style={[styles.radioOuter, selected && styles.radioOuterActive]}>
                   {selected && <View style={styles.radioDot} />}
                 </View>
-                <Text style={[styles.goalLabel, selected && styles.goalLabelActive]}>{g.label}</Text>
+                <Text style={[styles.goalLabel, selected && styles.goalLabelActive]}>{t(g.labelKey)}</Text>
               </TouchableOpacity>
             );
           })}
@@ -569,8 +613,8 @@ function StudentForm({
 
 // ─── Parent Form ──────────────────────────────────────────────────────────────
 const PARENT_CHILDREN = [
-  { id: '1', name: 'Cəfər Yusifov', grade: '7-ci sinif şagirdi', bgColor: Colors.primary + '1A', iconColor: Colors.primary },
-  { id: '2', name: 'Aysel Məmmədova', grade: '4-cü sinif şagirdi', bgColor: Colors.tertiaryContainer + '60', iconColor: Colors.tertiary },
+  { id: '1', name: 'Cəfər Yusifov', gradeKey: 'editProfile.child1Grade', bgColor: Colors.primary + '1A', iconColor: Colors.primary },
+  { id: '2', name: 'Aysel Məmmədova', gradeKey: 'editProfile.child2Grade', bgColor: Colors.tertiaryContainer + '60', iconColor: Colors.tertiary },
 ];
 
 function ParentForm({
@@ -591,23 +635,24 @@ function ParentForm({
   onSave: () => void;
   onCancel: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.formSection}>
       {/* Personal info card */}
       <View style={styles.parentCard}>
-        <Text style={styles.parentCardTitle}>ŞƏXSİ MƏLUMATLAR</Text>
+        <Text style={styles.parentCardTitle}>{t('editProfile.personalInfo')}</Text>
         <View style={styles.nameRow}>
           <View style={styles.nameField}>
-            <Text style={styles.fieldLabelSm}>Ad</Text>
-            <TextInput style={styles.inputCard} value={firstName} onChangeText={setFirstName} placeholder="Adınız" placeholderTextColor={Colors.textMuted} />
+            <Text style={styles.fieldLabelSm}>{t('editProfile.firstName')}</Text>
+            <TextInput style={styles.inputCard} value={firstName} onChangeText={setFirstName} placeholder={t('editProfile.firstNamePlaceholder')} placeholderTextColor={Colors.textMuted} />
           </View>
           <View style={styles.nameField}>
-            <Text style={styles.fieldLabelSm}>Soyad</Text>
-            <TextInput style={styles.inputCard} value={lastName} onChangeText={setLastName} placeholder="Soyadınız" placeholderTextColor={Colors.textMuted} />
+            <Text style={styles.fieldLabelSm}>{t('editProfile.lastName')}</Text>
+            <TextInput style={styles.inputCard} value={lastName} onChangeText={setLastName} placeholder={t('editProfile.lastNamePlaceholder')} placeholderTextColor={Colors.textMuted} />
           </View>
         </View>
         <View style={styles.fieldBlockCard}>
-          <Text style={styles.fieldLabelSm}>Telefon nömrəsi</Text>
+          <Text style={styles.fieldLabelSm}>{t('editProfile.phoneNumber')}</Text>
           <View style={styles.inputIconWrap}>
             <TextInput
               style={styles.inputCardRight}
@@ -621,7 +666,7 @@ function ParentForm({
           </View>
         </View>
         <View style={styles.fieldBlockCard}>
-          <Text style={styles.fieldLabelSm}>Email ünvanı</Text>
+          <Text style={styles.fieldLabelSm}>{t('editProfile.emailAddress')}</Text>
           <View style={styles.inputIconWrap}>
             <TextInput
               style={styles.inputCardRight}
@@ -640,10 +685,10 @@ function ParentForm({
       {/* Connected students card */}
       <View style={styles.parentCard}>
         <View style={styles.parentCardHeader}>
-          <Text style={styles.parentCardTitle}>ƏLAQƏLİ ŞAGİRDLƏR</Text>
+          <Text style={styles.parentCardTitle}>{t('editProfile.connectedStudents')}</Text>
           <TouchableOpacity style={styles.addChildBtn} activeOpacity={0.7}>
             <Ionicons name="add-circle" size={18} color={Colors.primary} />
-            <Text style={styles.addChildText}>ŞAGİRD ƏLAVƏ ET</Text>
+            <Text style={styles.addChildText}>{t('editProfile.addStudent')}</Text>
           </TouchableOpacity>
         </View>
         {PARENT_CHILDREN.map((child) => (
@@ -653,7 +698,7 @@ function ParentForm({
             </View>
             <View style={styles.childTextBlock}>
               <Text style={styles.childName}>{child.name}</Text>
-              <Text style={styles.childGrade}>{child.grade}</Text>
+              <Text style={styles.childGrade}>{t(child.gradeKey)}</Text>
             </View>
             <TouchableOpacity style={styles.childDeleteBtn} activeOpacity={0.7}>
               <Ionicons name="trash-outline" size={20} color={Colors.textLight} />
@@ -664,11 +709,11 @@ function ParentForm({
 
       {/* Notification settings card */}
       <View style={styles.parentCard}>
-        <Text style={styles.parentCardTitle}>BİLDİRİŞ SEÇİMLƏRİ</Text>
+        <Text style={styles.parentCardTitle}>{t('editProfile.notifPrefs')}</Text>
         <View style={styles.notifRow}>
           <View style={styles.notifTextBlock}>
-            <Text style={styles.notifLabel}>İmtahan nəticələri</Text>
-            <Text style={styles.notifSub}>Nəticələr çıxdıqda dərhal xəbər ver</Text>
+            <Text style={styles.notifLabel}>{t('editProfile.notifExam')}</Text>
+            <Text style={styles.notifSub}>{t('editProfile.notifExamSub')}</Text>
           </View>
           <Switch
             value={notifExams} onValueChange={setNotifExams}
@@ -678,8 +723,8 @@ function ParentForm({
         </View>
         <View style={[styles.notifRow, styles.notifRowBorder]}>
           <View style={styles.notifTextBlock}>
-            <Text style={styles.notifLabel}>Dərs xatırlatmaları</Text>
-            <Text style={styles.notifSub}>Dərsdən 1 saat əvvəl bildiriş göndər</Text>
+            <Text style={styles.notifLabel}>{t('editProfile.notifLesson')}</Text>
+            <Text style={styles.notifSub}>{t('editProfile.notifLessonSub')}</Text>
           </View>
           <Switch
             value={notifLessons} onValueChange={setNotifLessons}
@@ -689,8 +734,8 @@ function ParentForm({
         </View>
         <View style={[styles.notifRow, styles.notifRowBorder]}>
           <View style={styles.notifTextBlock}>
-            <Text style={styles.notifLabel}>Sistem yenilikləri</Text>
-            <Text style={styles.notifSub}>Yeni funksiyalar haqqında məlumat al</Text>
+            <Text style={styles.notifLabel}>{t('editProfile.notifSystem')}</Text>
+            <Text style={styles.notifSub}>{t('editProfile.notifSystemSub')}</Text>
           </View>
           <Switch
             value={notifUpdates} onValueChange={setNotifUpdates}
@@ -703,7 +748,7 @@ function ParentForm({
       {/* Actions — side by side */}
       <View style={styles.actionsRow}>
         <TouchableOpacity style={styles.cancelBtnRow} activeOpacity={0.7} onPress={onCancel}>
-          <Text style={styles.cancelBtnText}>Ləğv et</Text>
+          <Text style={styles.cancelBtnText}>{t('editProfile.cancel')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.saveBtnRowWrap} activeOpacity={0.85} onPress={onSave}>
           <LinearGradient
@@ -711,7 +756,7 @@ function ParentForm({
             style={styles.saveBtnRow}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.saveBtnText}>Yadda saxla</Text>
+            <Text style={styles.saveBtnText}>{t('editProfile.save')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -719,8 +764,87 @@ function ParentForm({
   );
 }
 
+// ─── Contact Fields (müəllim + şagird) ────────────────────────────────────────
+function ContactFields({
+  phone, setPhone, email, setEmail, birthDate, setBirthDate,
+}: {
+  phone: string; setPhone: (v: string) => void;
+  email: string; setEmail: (v: string) => void;
+  birthDate: string; setBirthDate: (v: string) => void;
+}) {
+  const { t } = useTranslation();
+  // Doğum tarixini GG.AA.İİİİ formatında avtomatik nöqtələ.
+  const onBirth = (raw: string) => {
+    const d = raw.replace(/\D/g, '').slice(0, 8);
+    let out = d.slice(0, 2);
+    if (d.length > 2) out += '.' + d.slice(2, 4);
+    if (d.length > 4) out += '.' + d.slice(4, 8);
+    setBirthDate(out);
+  };
+  return (
+    <View style={styles.formSection}>
+      <Text style={styles.fieldLabel}>{t('editProfile.contactInfo')}</Text>
+
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabelSm}>{t('editProfile.birthDate')}</Text>
+        <View style={styles.contactInputRow}>
+          <Ionicons name="calendar-outline" size={18} color={Colors.primary} />
+          <TextInput
+            style={styles.contactInput}
+            value={birthDate}
+            onChangeText={onBirth}
+            placeholder={t('editProfile.birthPlaceholder')}
+            placeholderTextColor={Colors.textMuted}
+            keyboardType="number-pad"
+            maxLength={10}
+          />
+        </View>
+      </View>
+
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabelSm}>{t('editProfile.phone')}</Text>
+        <View style={styles.contactInputRow}>
+          <Ionicons name="call-outline" size={18} color={Colors.primary} />
+          <TextInput
+            style={styles.contactInput}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="+994XXXXXXXXX"
+            placeholderTextColor={Colors.textMuted}
+            keyboardType="phone-pad"
+            autoCapitalize="none"
+          />
+        </View>
+      </View>
+
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabelSm}>{t('editProfile.emailField')}</Text>
+        <View style={styles.contactInputRow}>
+          <Ionicons name="mail-outline" size={18} color={Colors.primary} />
+          <TextInput
+            style={styles.contactInput}
+            value={email}
+            onChangeText={setEmail}
+            placeholder="ad@mail.com"
+            placeholderTextColor={Colors.textMuted}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  contactInputRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.surfaceSecondary, borderRadius: 14,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  contactInput: { flex: 1, fontSize: 15, color: Colors.textPrimary, padding: 0 },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -827,7 +951,24 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
   },
   segText: { fontSize: 13, fontWeight: '500', color: Colors.textMuted },
-  segTextActive: { fontWeight: '700', color: Colors.primary },
+  segTextActive: { fontWeight: '700', color: '#fff' },
+
+  // Çoxseçimli format düymələri
+  formatWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  formatBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingVertical: 10, paddingHorizontal: 16, borderRadius: 999,
+    backgroundColor: Colors.surfaceLowest, borderWidth: 1, borderColor: Colors.border,
+  },
+  formatBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+
+  // Ərazi çipləri (silinə bilən)
+  areaChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.primaryLight, borderRadius: 999,
+    paddingVertical: 7, paddingHorizontal: 12, maxWidth: '100%',
+  },
+  areaChipText: { fontSize: 13, fontWeight: '600', color: Colors.primary, flexShrink: 1 },
 
   // Bio
   textarea: {
@@ -888,18 +1029,18 @@ const styles = StyleSheet.create({
 
   // Grade
   gradeBar: {
-    flexDirection: 'row', gap: 4,
-    backgroundColor: Colors.surfaceLow, borderRadius: 16, padding: 4,
+    flexDirection: 'row', flexWrap: 'wrap', gap: 8,
   },
   gradeBtn: {
-    flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center',
+    minWidth: 52, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center',
+    backgroundColor: Colors.surfaceLowest, borderWidth: 1, borderColor: Colors.border,
   },
   gradeBtnActive: {
-    backgroundColor: Colors.surfaceLowest,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2,
+    backgroundColor: Colors.primary, borderColor: Colors.primary,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.18, shadowRadius: 8, elevation: 3,
   },
-  gradeText: { fontSize: 13, fontWeight: '500', color: Colors.textMuted },
-  gradeTextActive: { fontWeight: '700', color: Colors.primary },
+  gradeText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+  gradeTextActive: { fontWeight: '800', color: '#fff' },
 
   // Interests
   sectionTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },

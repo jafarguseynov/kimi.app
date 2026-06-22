@@ -6,11 +6,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function BookingRejectedScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -18,7 +20,7 @@ export default function BookingRejectedScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dərs Müraciəti</Text>
+        <Text style={styles.headerTitle}>{t('booking.rejectedHeader')}</Text>
         <Text style={styles.headerBrand}>Kimi.az</Text>
       </View>
 
@@ -30,16 +32,16 @@ export default function BookingRejectedScreen() {
             <Ionicons name="hardware-chip-outline" size={120} color={Colors.primary + '80'} />
             <View style={styles.regretPill}>
               <Ionicons name="alert-circle" size={16} color={Colors.error} />
-              <Text style={styles.regretPillText}>Təəssüf edirik</Text>
+              <Text style={styles.regretPillText}>{t('booking.sorry')}</Text>
             </View>
           </View>
         </View>
 
         {/* Title */}
         <View style={styles.titleSection}>
-          <Text style={styles.title}>Müraciət rədd edildi</Text>
+          <Text style={styles.title}>{t('booking.rejectedTitle')}</Text>
           <Text style={styles.subtitle}>
-            Təəssüf ki, müəllim hazırda bu dərsi keçə bilmir. Amma narahat olma, sənin üçün yüzlərlə başqa mükəmməl müəllimimiz var!
+            {t('booking.rejectedSub')}
           </Text>
         </View>
 
@@ -52,8 +54,8 @@ export default function BookingRejectedScreen() {
           >
             <View>
               <Ionicons name="search" size={22} color={Colors.primary} />
-              <Text style={styles.bentoTitle}>Top Müəllimlər</Text>
-              <Text style={styles.bentoSub}>Reytinqi 4.9+ olanlar</Text>
+              <Text style={styles.bentoTitle}>{t('booking.topTeachers')}</Text>
+              <Text style={styles.bentoSub}>{t('booking.topTeachersSub')}</Text>
             </View>
             <View style={styles.avatarStack}>
               <View style={[styles.avatarDot, { backgroundColor: '#fde68a', zIndex: 4 }]} />
@@ -68,11 +70,11 @@ export default function BookingRejectedScreen() {
           <View style={styles.bentoCard}>
             <View>
               <Ionicons name="sparkles" size={22} color={Colors.tertiary} />
-              <Text style={styles.bentoTitle}>Sürətli Seçim</Text>
-              <Text style={styles.bentoSub}>Sənə uyğun ən yaxşı alternativ</Text>
+              <Text style={styles.bentoTitle}>{t('booking.quickPick')}</Text>
+              <Text style={styles.bentoSub}>{t('booking.quickPickSub')}</Text>
             </View>
             <View style={styles.aiChip}>
-              <Text style={styles.aiChipText}>AI Tövsiyəsi</Text>
+              <Text style={styles.aiChipText}>{t('booking.aiSuggestion')}</Text>
             </View>
           </View>
         </View>
@@ -84,7 +86,7 @@ export default function BookingRejectedScreen() {
             onPress={() => navigation.navigate(Routes.TeacherList)}
           >
             <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.primaryBtnText}>Başqa müəllimlərə bax</Text>
+              <Text style={styles.primaryBtnText}>{t('booking.seeOtherTeachers')}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -93,7 +95,7 @@ export default function BookingRejectedScreen() {
             onPress={() => navigation.navigate('HomeMain' as never)}
             activeOpacity={0.85}
           >
-            <Text style={styles.secondaryBtnText}>Ana səhifəyə qayıt</Text>
+            <Text style={styles.secondaryBtnText}>{t('booking.backHome')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

@@ -6,11 +6,13 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 export default function ReviewSuccessScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<{ params: { teacherId: string; teacherName: string } }, 'params'>>();
-  const { teacherId = '', teacherName = 'Müəllim' } = route.params ?? {};
+  const { teacherId = '', teacherName = t('booking.defaultTeacher') } = route.params ?? {};
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -18,7 +20,7 @@ export default function ReviewSuccessScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Təşəkkür edirik</Text>
+        <Text style={styles.headerTitle}>{t('booking.thankYou')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -27,9 +29,9 @@ export default function ReviewSuccessScreen() {
           <Ionicons name="checkmark-circle" size={64} color={Colors.primary} />
         </View>
 
-        <Text style={styles.title}>Rəyiniz uğurla göndərildi</Text>
+        <Text style={styles.title}>{t('booking.reviewSentTitle')}</Text>
         <Text style={styles.subtitle}>
-          Müəllimi qiymətləndirdiyiniz üçün təşəkkür edirik. Sizin rəyiniz digər şagirdlərə seçim etməkdə kömək edəcək.
+          {t('booking.reviewSentSub')}
         </Text>
 
         <View style={styles.actions}>
@@ -38,7 +40,7 @@ export default function ReviewSuccessScreen() {
             activeOpacity={0.85}
             onPress={() => navigation.pop(2)}
           >
-            <Text style={styles.primaryBtnText}>Profilə qayıt</Text>
+            <Text style={styles.primaryBtnText}>{t('booking.backToProfile')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </TouchableOpacity>
 
@@ -47,7 +49,7 @@ export default function ReviewSuccessScreen() {
             activeOpacity={0.7}
             onPress={() => navigation.navigate(Routes.AllReviews, { teacherId, teacherName })}
           >
-            <Text style={styles.secondaryBtnText}>Digər rəylərə bax</Text>
+            <Text style={styles.secondaryBtnText}>{t('booking.seeOtherReviews')}</Text>
           </TouchableOpacity>
         </View>
       </View>

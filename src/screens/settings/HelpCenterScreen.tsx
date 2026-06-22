@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const SUPPORT_EMAIL = 'support@kimi.az';
 
@@ -17,8 +18,8 @@ interface FaqItem {
   icon: FaqIcon;
   iconBg: string;
   iconColor: string;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
 }
 
 const FAQS: FaqItem[] = [
@@ -26,27 +27,28 @@ const FAQS: FaqItem[] = [
     icon: 'wallet-outline',
     iconBg: Colors.primaryLight + '1A',
     iconColor: Colors.primary,
-    title: 'Abunəliyi necə ləğv etmək olar?',
-    desc: 'Profil ayarlarından bir toxunuşla abunəliyinizi dayandıra bilərsiniz.',
+    titleKey: 'helpCenter.faq1Title',
+    descKey: 'helpCenter.faq1Desc',
   },
   {
     icon: 'school-outline',
     iconBg: Colors.tertiaryContainer + '33',
     iconColor: Colors.tertiary,
-    title: 'Müəllim seçimi necə edilir?',
-    desc: 'Süni intellekt alqoritmimiz sizə ən uyğun müəllimi tapmağa kömək edəcək.',
+    titleKey: 'helpCenter.faq2Title',
+    descKey: 'helpCenter.faq2Desc',
   },
   {
     icon: 'checkmark-circle-outline',
     iconBg: Colors.secondaryContainer,
     iconColor: Colors.secondary,
-    title: 'Sertifikatları haradan yükləyə bilərəm?',
-    desc: 'Kursu tamamladıqdan sonra "Nailiyyətlər" bölməsindən PDF formatında yükləyin.',
+    titleKey: 'helpCenter.faq3Title',
+    descKey: 'helpCenter.faq3Desc',
   },
 ];
 
 export default function HelpCenterScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -63,7 +65,7 @@ export default function HelpCenterScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yardım Mərkəzi</Text>
+        <Text style={styles.headerTitle}>{t('helpCenter.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -72,9 +74,9 @@ export default function HelpCenterScreen() {
         <View style={styles.hero}>
           <View style={styles.heroContent}>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>DƏSTƏK</Text>
+              <Text style={styles.heroBadgeText}>{t('helpCenter.heroBadge')}</Text>
             </View>
-            <Text style={styles.heroTitle}>Necə kömək edə bilərik?</Text>
+            <Text style={styles.heroTitle}>{t('helpCenter.heroTitle')}</Text>
           </View>
           <View style={styles.heroIconBox}>
             <Ionicons name="help-circle-outline" size={48} color={Colors.primary} />
@@ -86,7 +88,7 @@ export default function HelpCenterScreen() {
           <Ionicons name="search-outline" size={20} color={Colors.outline} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Sualınızı bura yazın..."
+            placeholder={t('helpCenter.searchPlaceholder')}
             placeholderTextColor={Colors.outlineVariant}
             value={search}
             onChangeText={setSearch}
@@ -98,9 +100,9 @@ export default function HelpCenterScreen() {
         {/* FAQ */}
         <View style={styles.faqSection}>
           <View style={styles.faqHeader}>
-            <Text style={styles.faqHeaderTitle}>Tez-tez verilən suallar</Text>
+            <Text style={styles.faqHeaderTitle}>{t('helpCenter.faqTitle')}</Text>
             <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.faqSeeAll}>Hamısı</Text>
+              <Text style={styles.faqSeeAll}>{t('helpCenter.faqSeeAll')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.faqList}>
@@ -110,8 +112,8 @@ export default function HelpCenterScreen() {
                   <Ionicons name={faq.icon} size={20} color={faq.iconColor} />
                 </View>
                 <View style={styles.faqContent}>
-                  <Text style={styles.faqTitle}>{faq.title}</Text>
-                  <Text style={styles.faqDesc}>{faq.desc}</Text>
+                  <Text style={styles.faqTitle}>{t(faq.titleKey)}</Text>
+                  <Text style={styles.faqDesc}>{t(faq.descKey)}</Text>
                 </View>
               </TouchableOpacity>
             ))}
@@ -120,21 +122,21 @@ export default function HelpCenterScreen() {
 
         {/* Support grid */}
         <View style={styles.supportSection}>
-          <Text style={styles.supportSectionTitle}>Dəstək ilə əlaqə</Text>
+          <Text style={styles.supportSectionTitle}>{t('helpCenter.contactTitle')}</Text>
           <View style={styles.supportGrid}>
             <TouchableOpacity style={styles.supportCard} activeOpacity={0.85} onPress={openChat}>
               <View style={styles.supportIconCircle}>
                 <Ionicons name="chatbubbles" size={22} color={Colors.primary} />
               </View>
-              <Text style={styles.supportCardTitle}>Canlı Çat</Text>
-              <Text style={styles.supportCardSub}>2 dəqiqəyə cavab</Text>
+              <Text style={styles.supportCardTitle}>{t('helpCenter.liveChat')}</Text>
+              <Text style={styles.supportCardSub}>{t('helpCenter.liveChatSub')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.supportCard} activeOpacity={0.85} onPress={openEmail}>
               <View style={styles.supportIconCircle}>
                 <Ionicons name="mail" size={22} color={Colors.primary} />
               </View>
-              <Text style={styles.supportCardTitle}>Email</Text>
-              <Text style={styles.supportCardSub}>24 saat ərzində</Text>
+              <Text style={styles.supportCardTitle}>{t('helpCenter.email')}</Text>
+              <Text style={styles.supportCardSub}>{t('helpCenter.emailSub')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -146,10 +148,10 @@ export default function HelpCenterScreen() {
             <View style={styles.ctaBugIcon}>
               <Ionicons name="bug-outline" size={48} color="rgba(255,255,255,0.2)" />
             </View>
-            <Text style={styles.ctaTitle}>Problem bildir</Text>
-            <Text style={styles.ctaSub}>Texniki çətinliklə qarşılaşırsınız? Bizə bildirin, dərhal həll edək.</Text>
+            <Text style={styles.ctaTitle}>{t('helpCenter.reportTitle')}</Text>
+            <Text style={styles.ctaSub}>{t('helpCenter.reportSub')}</Text>
             <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85} onPress={openReport}>
-              <Text style={styles.ctaBtnText}>Hesabat göndər</Text>
+              <Text style={styles.ctaBtnText}>{t('helpCenter.reportBtn')}</Text>
             </TouchableOpacity>
           </LinearGradient>
         </View>

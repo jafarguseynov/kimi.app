@@ -9,23 +9,25 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { UserRole } from '../../types/auth.types';
 import { useUpdateUser } from '../../hooks/useUser';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.RoleSelect> };
 
 type RoleOption = {
   role: UserRole;
   icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  desc: string;
+  titleKey: string;
+  descKey: string;
 };
 
 const ROLES: RoleOption[] = [
-  { role: 'student', icon: 'school', title: 'Şagird', desc: 'İmtahan ver, AI ilə öyrən və müəllim tap.' },
-  { role: 'teacher', icon: 'person', title: 'Müəllim', desc: 'Profil yarat, şagird tap və sorğulara qoşul.' },
-  { role: 'parent', icon: 'people', title: 'Valideyn', desc: 'Övladının inkişafını izlə və müəllim tap.' },
+  { role: 'student', icon: 'school', titleKey: 'roleSelect.studentTitle', descKey: 'roleSelect.studentDesc' },
+  { role: 'teacher', icon: 'person', titleKey: 'roleSelect.teacherTitle', descKey: 'roleSelect.teacherDesc' },
+  { role: 'parent', icon: 'people', titleKey: 'roleSelect.parentTitle', descKey: 'roleSelect.parentDesc' },
 ];
 
 export default function RoleSelectScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<UserRole | null>('student');
   const { mutate, isPending } = useUpdateUser();
 
@@ -52,8 +54,8 @@ export default function RoleSelectScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>Kimi.az-da necə davam etmək istəyirsən?</Text>
-          <Text style={styles.heroSub}>Öz rolunu seç və sənə uyğun təcrübə ilə davam et.</Text>
+          <Text style={styles.heroTitle}>{t('roleSelect.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('roleSelect.heroSub')}</Text>
         </View>
 
         {/* Role cards */}
@@ -75,8 +77,8 @@ export default function RoleSelectScreen({ navigation }: Props) {
                   />
                 </View>
                 <View style={styles.cardText}>
-                  <Text style={[styles.cardTitle, active && styles.cardTitleActive]}>{r.title}</Text>
-                  <Text style={styles.cardDesc}>{r.desc}</Text>
+                  <Text style={[styles.cardTitle, active && styles.cardTitleActive]}>{t(r.titleKey)}</Text>
+                  <Text style={styles.cardDesc}>{t(r.descKey)}</Text>
                 </View>
                 {active && (
                   <View style={styles.checkBadge}>
@@ -103,11 +105,11 @@ export default function RoleSelectScreen({ navigation }: Props) {
               end={{ x: 1, y: 0 }}
             >
               <Text style={styles.continueBtnText}>
-                {isPending ? 'Yüklənir...' : 'Davam et'}
+                {isPending ? t('roleSelect.loading') : t('roleSelect.continue')}
               </Text>
             </LinearGradient>
           </TouchableOpacity>
-          <Text style={styles.footerNote}>Qərarınızı sonra ayarlardan dəyişə bilərsiniz.</Text>
+          <Text style={styles.footerNote}>{t('roleSelect.footerNote')}</Text>
         </View>
       </ScrollView>
 

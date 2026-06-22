@@ -9,6 +9,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.LiveLeaderboard> };
 
@@ -62,6 +63,7 @@ export default function LiveLeaderboardScreen({ navigation }: Props) {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const user = useUserStore((s) => s.user);
+  const { t } = useTranslation();
 
   const fetchData = async () => {
     try {
@@ -103,12 +105,12 @@ export default function LiveLeaderboardScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Canlı İmtahan</Text>
+          <Text style={styles.headerTitle}>{t('liveExams.detailHeader')}</Text>
         </View>
         <View style={styles.headerRight}>
           <View style={styles.livePill}>
             <View style={styles.liveDot} />
-            <Text style={styles.liveText}>CANLI</Text>
+            <Text style={styles.liveText}>{t('liveExams.liveBadge')}</Text>
           </View>
           <TouchableOpacity style={styles.helpBtn} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="help-circle-outline" size={20} color={Colors.textSecondary} />
@@ -124,8 +126,8 @@ export default function LiveLeaderboardScreen({ navigation }: Props) {
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Hero */}
           <View style={styles.hero}>
-            <Text style={styles.heroTitle}>Liderlər Lövhəsi</Text>
-            <Text style={styles.heroSub}>Zirvəyə doğru addımla! Hazırda imtahanın ən güclüləri arasındasan.</Text>
+            <Text style={styles.heroTitle}>{t('liveLb.leaderboardTitle')}</Text>
+            <Text style={styles.heroSub}>{t('liveLb.heroSub')}</Text>
           </View>
 
           {/* Podium */}
@@ -179,7 +181,7 @@ export default function LiveLeaderboardScreen({ navigation }: Props) {
                 <Avatar initial={initialOf(p.name)} size={40} />
                 <View style={styles.listInfo}>
                   <Text style={styles.listName} numberOfLines={1}>{p.name}</Text>
-                  <Text style={styles.listUnit}>{p.score} XAL</Text>
+                  <Text style={styles.listUnit}>{p.score} {t('liveLb.xpUnit')}</Text>
                 </View>
                 {p.trend > 0 && (
                   <View style={styles.trendUp}>
@@ -220,12 +222,12 @@ export default function LiveLeaderboardScreen({ navigation }: Props) {
                     <Avatar initial={initialOf(me.name)} size={44} />
                   </View>
                   <View style={styles.youBadge}>
-                    <Text style={styles.youBadgeText}>SƏN</Text>
+                    <Text style={styles.youBadgeText}>{t('liveLb.you')}</Text>
                   </View>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.meName}>{me.name}</Text>
-                  <Text style={styles.meUnit}>{me.score} XAL</Text>
+                  <Text style={styles.meUnit}>{me.score} {t('liveLb.xpUnit')}</Text>
                 </View>
                 <View style={styles.meTrend}>
                   <Ionicons name="trending-up" size={14} color="#fff" />
@@ -240,7 +242,7 @@ export default function LiveLeaderboardScreen({ navigation }: Props) {
             <View style={styles.summaryChip}>
               <Ionicons name="people" size={18} color={Colors.primary} />
               <Text style={styles.summaryText}>
-                Cəmi <Text style={styles.summaryBold}>{entries.length.toLocaleString('az-AZ')}</Text> iştirakçı
+                {t('liveLb.summaryPre')}<Text style={styles.summaryBold}>{entries.length.toLocaleString('az-AZ')}</Text>{t('liveLb.summaryPost')}
               </Text>
             </View>
           </View>
@@ -248,8 +250,8 @@ export default function LiveLeaderboardScreen({ navigation }: Props) {
           {participants.length === 0 && (
             <View style={styles.emptyBlock}>
               <Ionicons name="podium-outline" size={48} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>Hələ iştirakçı yoxdur</Text>
-              <Text style={styles.emptySub}>Yeni imtahan başlayanda canlı sıralama burada görünəcək.</Text>
+              <Text style={styles.emptyTitle}>{t('liveLb.emptyTitle')}</Text>
+              <Text style={styles.emptySub}>{t('liveLb.emptySub')}</Text>
             </View>
           )}
 

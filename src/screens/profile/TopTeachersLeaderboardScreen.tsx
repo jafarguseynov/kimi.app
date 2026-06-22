@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 type Period = 'week' | 'month';
@@ -28,6 +29,7 @@ const ROWS: Row[] = [
 
 export default function TopTeachersLeaderboardScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [period, setPeriod] = useState<Period>('week');
 
   return (
@@ -36,7 +38,7 @@ export default function TopTeachersLeaderboardScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>TOP müəllimlər</Text>
+        <Text style={styles.headerTitle}>{t('topTeachers.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -51,7 +53,7 @@ export default function TopTeachersLeaderboardScreen() {
                 activeOpacity={0.85} onPress={() => setPeriod(p)}
               >
                 <Text style={[styles.segText, active && styles.segTextActive]}>
-                  {p === 'week' ? 'Bu həftə' : 'Bu ay'}
+                  {p === 'week' ? t('topTeachers.week') : t('topTeachers.month')}
                 </Text>
               </TouchableOpacity>
             );
@@ -60,28 +62,28 @@ export default function TopTeachersLeaderboardScreen() {
 
         {/* Podium */}
         <View style={styles.podium}>
-          {TOP3.map((t, idx) => {
+          {TOP3.map((top, idx) => {
             const winner = idx === 1;
             return (
-              <View key={t.name} style={[styles.podiumItem, { marginTop: t.offset }]}>
+              <View key={top.name} style={[styles.podiumItem, { marginTop: top.offset }]}>
                 <View style={{ position: 'relative', marginBottom: 8 }}>
                   {winner && <View style={styles.winnerHalo} />}
                   <Image
-                    source={{ uri: AVATAR(t.name) }}
+                    source={{ uri: AVATAR(top.name) }}
                     style={[
                       styles.avatar,
-                      { width: t.size, height: t.size, borderRadius: t.size / 2 },
+                      { width: top.size, height: top.size, borderRadius: top.size / 2 },
                       winner ? styles.avatarWinner : styles.avatarRegular,
                     ]}
                   />
                   <View style={[styles.medalBubble, winner && styles.medalBubbleWinner]}>
-                    <Text style={{ fontSize: winner ? 18 : 16 }}>{t.medal}</Text>
+                    <Text style={{ fontSize: winner ? 18 : 16 }}>{top.medal}</Text>
                   </View>
                 </View>
                 <Text style={[styles.podiumName, winner && { fontSize: 16, fontWeight: '800' }]} numberOfLines={1}>
-                  {t.name}
+                  {top.name}
                 </Text>
-                <Text style={[styles.podiumXp, winner && { fontWeight: '800', fontSize: 15 }]}>{t.xp} XP</Text>
+                <Text style={[styles.podiumXp, winner && { fontWeight: '800', fontSize: 15 }]}>{top.xp} XP</Text>
               </View>
             );
           })}
@@ -99,7 +101,7 @@ export default function TopTeachersLeaderboardScreen() {
               />
               <View style={{ flex: 1 }}>
                 <Text style={[styles.rowName, r.me && { color: Colors.primary, fontWeight: '700' }]} numberOfLines={1}>{r.name}</Text>
-                <Text style={styles.rowMeta}>{r.answers} cavab</Text>
+                <Text style={styles.rowMeta}>{t('topTeachers.answersCount', { count: r.answers })}</Text>
               </View>
               <Text style={styles.rowXp}>{r.xp} XP</Text>
             </View>

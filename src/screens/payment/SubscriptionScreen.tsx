@@ -7,11 +7,13 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function SubscriptionScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [autoRenew, setAutoRenew] = useState(true);
 
   return (
@@ -20,7 +22,7 @@ export default function SubscriptionScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Abunəlik</Text>
+        <Text style={styles.headerTitle}>{t('pay.subHeader')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
           <Ionicons name="help-circle-outline" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -33,9 +35,9 @@ export default function SubscriptionScreen() {
           <View style={styles.planBlob2} />
           <View style={styles.planCardTop}>
             <View>
-              <Text style={styles.planCardLabel}>Hazırkı abunəlik</Text>
-              <Text style={styles.planCardTitle}>Premium Plan</Text>
-              <Text style={styles.planCardDuration}>12 aylıq paket</Text>
+              <Text style={styles.planCardLabel}>{t('pay.currentSub')}</Text>
+              <Text style={styles.planCardTitle}>{t('pay.premiumPlan')}</Text>
+              <Text style={styles.planCardDuration}>{t('pay.package12mo')}</Text>
             </View>
             <View style={styles.planBadgeBox}>
               <Ionicons name="ribbon" size={22} color="#fff" />
@@ -45,23 +47,23 @@ export default function SubscriptionScreen() {
             <View style={styles.planCheckCircle}>
               <Ionicons name="checkmark" size={12} color="#fff" />
             </View>
-            <Text style={styles.planActiveText}>Aktiv vəziyyətdədir</Text>
+            <Text style={styles.planActiveText}>{t('pay.subActive')}</Text>
           </View>
         </LinearGradient>
 
         {/* Details grid */}
         <View style={styles.detailsGrid}>
           <View style={[styles.detailCard, styles.detailHalf]}>
-            <Text style={styles.detailLabel}>Başlama tarixi</Text>
+            <Text style={styles.detailLabel}>{t('pay.startDate')}</Text>
             <Text style={styles.detailValue}>15.01.2024</Text>
           </View>
           <View style={[styles.detailCard, styles.detailHalf]}>
-            <Text style={styles.detailLabel}>Bitmə tarixi</Text>
+            <Text style={styles.detailLabel}>{t('pay.endDate')}</Text>
             <Text style={styles.detailValue}>15.01.2025</Text>
           </View>
           <View style={[styles.detailCard, styles.detailFull]}>
             <View>
-              <Text style={styles.detailLabel}>Ödəniş üsulu</Text>
+              <Text style={styles.detailLabel}>{t('pay.paymentMethod')}</Text>
               <View style={styles.payMethodRow}>
                 <Ionicons name="card-outline" size={16} color={Colors.textPrimary} />
                 <Text style={styles.detailValue}>•••• 4242</Text>
@@ -69,7 +71,7 @@ export default function SubscriptionScreen() {
             </View>
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark-circle" size={14} color={Colors.tertiary} />
-              <Text style={styles.verifiedText}>Təsdiqlənib</Text>
+              <Text style={styles.verifiedText}>{t('pay.verified')}</Text>
             </View>
           </View>
         </View>
@@ -81,8 +83,8 @@ export default function SubscriptionScreen() {
               <Ionicons name="refresh-outline" size={22} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.autoRenewTitle}>Avtomatik yenilənmə</Text>
-              <Text style={styles.autoRenewSub}>Hər il avtomatik uzadılır</Text>
+              <Text style={styles.autoRenewTitle}>{t('pay.autoRenew')}</Text>
+              <Text style={styles.autoRenewSub}>{t('pay.autoRenewSub')}</Text>
             </View>
           </View>
           <Switch
@@ -96,13 +98,13 @@ export default function SubscriptionScreen() {
         {/* Actions */}
         <TouchableOpacity onPress={() => navigation.navigate(Routes.SubscriptionRenew)} activeOpacity={0.9}>
           <LinearGradient colors={GRADIENT} style={styles.changePlanBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.changePlanBtnText}>Abunəliyi yenilə</Text>
+            <Text style={styles.changePlanBtnText}>{t('pay.renewSubBtn')}</Text>
             <Ionicons name="refresh" size={22} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.8} onPress={() => navigation.navigate(Routes.SubscriptionCancel)}>
-          <Text style={styles.cancelBtnText}>Abunəliyi ləğv et</Text>
+          <Text style={styles.cancelBtnText}>{t('pay.cancelSubBtn')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

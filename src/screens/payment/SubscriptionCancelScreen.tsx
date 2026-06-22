@@ -6,28 +6,30 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-const LOSING: { icon: IconName; text: string }[] = [
-  { icon: 'sparkles',     text: 'Süni intellektli şəxsi köməkçi' },
-  { icon: 'infinite',     text: 'Limitsiz sınaq imtahanları' },
-  { icon: 'analytics',    text: 'Dərinlikli tərəqqi analizi' },
+const LOSING: { icon: IconName; key: string }[] = [
+  { icon: 'sparkles',     key: 'pay.losingAi' },
+  { icon: 'infinite',     key: 'pay.losingExams' },
+  { icon: 'analytics',    key: 'pay.losingAnalytics' },
 ];
 
 export default function SubscriptionCancelScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
 
   const confirmCancel = () => {
     Alert.alert(
-      'Abunəliyi dayandır',
-      'Abunəliyiniz cari ödəniş dövrünün sonuna qədər aktiv qalacaq. Davam edək?',
+      t('pay.cancelAlertTitle'),
+      t('pay.cancelAlertMsg'),
       [
-        { text: 'Ləğv et', style: 'cancel' },
+        { text: t('pay.cancel'), style: 'cancel' },
         {
-          text: 'Dayandır',
+          text: t('pay.stop'),
           style: 'destructive',
           onPress: () => {
             // TODO: call /subscription/cancel endpoint
@@ -44,7 +46,7 @@ export default function SubscriptionCancelScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Abunəlik Ayarları</Text>
+        <Text style={styles.headerTitle}>{t('pay.subSettings')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -56,28 +58,27 @@ export default function SubscriptionCancelScreen() {
             <Ionicons name="sad" size={84} color={Colors.primary} />
           </View>
           <View style={styles.questionBadge}>
-            <Text style={styles.questionBadgeText}>Dayandırılır?</Text>
+            <Text style={styles.questionBadgeText}>{t('pay.cancelQuestion')}</Text>
           </View>
         </View>
 
         {/* Title + sub */}
         <View style={styles.textBlock}>
-          <Text style={styles.title}>Abunəliyi dayandırmaq istəyirsiniz?</Text>
+          <Text style={styles.title}>{t('pay.cancelTitle')}</Text>
           <Text style={styles.sub}>
-            Abunəliyi dayandırdığınız təqdirdə bütün premium imkanlara{' '}
-            <Text style={styles.subBold}>(AI analiz, limitsiz imtahanlar)</Text>{' '}
-            çıxışınız bağlanacaq.
+            {t('pay.cancelSubPre')}
+            <Text style={styles.subBold}>{t('pay.cancelSubBold')}</Text>{t('pay.cancelSubPost')}
           </Text>
         </View>
 
         {/* Losing card */}
         <View style={styles.losingCard}>
-          <Text style={styles.losingTitle}>İtirəcəyiniz imtiyazlar:</Text>
+          <Text style={styles.losingTitle}>{t('pay.losingTitle')}</Text>
           <View style={{ gap: 10 }}>
             {LOSING.map((l) => (
-              <View key={l.text} style={styles.losingRow}>
+              <View key={l.key} style={styles.losingRow}>
                 <Ionicons name={l.icon} size={20} color={Colors.primary} />
-                <Text style={styles.losingText}>{l.text}</Text>
+                <Text style={styles.losingText}>{t(l.key)}</Text>
               </View>
             ))}
           </View>
@@ -87,16 +88,16 @@ export default function SubscriptionCancelScreen() {
         <View style={{ gap: 12, marginTop: 8 }}>
           <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.goBack()}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Geri qayıt</Text>
+              <Text style={styles.primaryBtnText}>{t('pay.goBack')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.dangerBtn} activeOpacity={0.85} onPress={confirmCancel}>
-            <Text style={styles.dangerBtnText}>Abunəliyi dayandır</Text>
+            <Text style={styles.dangerBtnText}>{t('pay.cancelAlertTitle')}</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.disclaimer}>
-          Abunəliyinizi dayandırsanız belə, cari ödəniş dövrünün sonuna qədər premium imkanlardan yararlana bilərsiniz.
+          {t('pay.cancelDisclaimer')}
         </Text>
       </ScrollView>
     </SafeAreaView>

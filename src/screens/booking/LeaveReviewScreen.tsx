@@ -20,35 +20,32 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useMutation } from '@tanstack/react-query';
 import { submitReview } from '../../api/booking.api';
+import { useTranslation } from '../../i18n';
 
-const TAGS = [
-  'İzahı aydındır',
-  'Punktualdır',
-  'Səbrlidir',
-  'Ünsiyyəti yaxşıdır',
-  'Mövzunu yaxşı izah edir',
-  'Tövsiyə edirəm',
-];
-
-const RATING_LABELS: Record<number, string> = {
-  1: 'Pis',
-  2: 'Orta',
-  3: 'Yaxşı',
-  4: 'Çox yaxşı',
-  5: 'Əla',
+// Etiket açarları (dəyişməz identifikator) → tərcümə render zamanı
+const TAG_KEYS = ['tagClear', 'tagPunctual', 'tagPatient', 'tagCommunication', 'tagExplains', 'tagRecommend'] as const;
+const RATING_LABEL_KEYS: Record<number, string> = {
+  1: 'booking.ratingBad',
+  2: 'booking.ratingMid',
+  3: 'booking.ratingGood',
+  4: 'booking.ratingVeryGood',
+  5: 'booking.ratingExcellent',
 };
 
 const AVATAR_GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function LeaveReviewScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<{ params: { teacherId?: string; teacherName?: string; teacherSubject?: string; bookingId?: string } }, 'params'>>();
-  const { teacherName = 'Müəllim', teacherSubject = 'Müəllim', teacherId = '', bookingId = '' } = route.params ?? {};
+  const { teacherName = t('booking.defaultTeacher'), teacherSubject = t('booking.defaultTeacher'), teacherId = '', bookingId = '' } = route.params ?? {};
+
+  const TAGS = TAG_KEYS.map((k) => t(`booking.${k}`));
 
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [selectedTags, setSelectedTags] = useState<Set<string>>(
-    new Set(['Punktualdır', 'Ünsiyyəti yaxşıdır'])
+    new Set([t('booking.tagPunctual'), t('booking.tagCommunication')])
   );
 
   const { mutate, isPending } = useMutation({
@@ -60,7 +57,7 @@ export default function LeaveReviewScreen() {
     onSuccess: () => navigation.navigate(Routes.ReviewSuccess, { teacherId, teacherName }),
     onError: (err: any) => {
       const reason = err?.response?.data?.message;
-      Alert.alert('Xəta', reason ? `${reason}` : 'Rəy göndərilmədi. Yenidən cəhd edin.');
+      Alert.alert(t('booking.errorTitle'), reason ? `${reason}` : t('booking.reviewFailed'));
     },
   });
 
@@ -82,7 +79,7 @@ export default function LeaveReviewScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="close" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Rəy Bildirin</Text>
+          <Text style={styles.headerTitle}>{t('booking.leaveReviewHeader')}</Text>
           <View style={styles.headerBtn} />
         </View>
 
@@ -112,7 +109,7 @@ export default function LeaveReviewScreen() {
 
           {/* Stars */}
           <View style={styles.ratingSection}>
-            <Text style={styles.ratingTitle}>Müəllimi qiymətləndir</Text>
+            <Text style={styles.ratingTitle}>{t('booking.rateTeacher')}</Text>
             <View style={styles.starsRow}>
               {[1, 2, 3, 4, 5].map(i => (
                 <TouchableOpacity key={i} onPress={() => setRating(i)} hitSlop={8} activeOpacity={0.7}>
@@ -121,17 +118,17 @@ export default function LeaveReviewScreen() {
               ))}
             </View>
             <View style={styles.ratingLabel}>
-              <Text style={styles.ratingLabelText}>{rating} ulduz: {RATING_LABELS[rating]}</Text>
+              <Text style={styles.ratingLabelText}>{t('booking.ratingStars', { rating, label: t(RATING_LABEL_KEYS[rating]) })}</Text>
             </View>
           </View>
 
           {/* Comment */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Təəssüratlarınız</Text>
+            <Text style={styles.sectionTitle}>{t('booking.impressions')}</Text>
             <View style={styles.textAreaCard}>
               <TextInput
                 style={styles.textArea}
-                placeholder="Bu müəllim haqqında rəyinizi yazın..."
+                placeholder={t('booking.reviewPlaceholder')}
                 placeholderTextColor={Colors.textMuted}
                 value={comment}
                 onChangeText={setComment}
@@ -144,7 +141,7 @@ export default function LeaveReviewScreen() {
 
           {/* Tags */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Müəllimi xarakterizə edən cəhətlər</Text>
+            <Text style={styles.sectionTitle}>{t('booking.teacherTraits')}</Text>
             <View style={styles.tagsWrap}>
               {TAGS.map(tag => {
                 const isSelected = selectedTags.has(tag);
@@ -183,7 +180,7 @@ export default function LeaveReviewScreen() {
               activeOpacity={0.85}
               onPress={() => {
                 if (!bookingId) {
-                  Alert.alert('Məlumat', 'Rəy yazmaq üçün tamamlanmış rezervasiya lazımdır.');
+                  Alert.alert(t('booking.needBooking'), t('booking.needBookingMsg'));
                   return;
                 }
                 mutate();
@@ -199,12 +196,12 @@ export default function LeaveReviewScreen() {
                 {isPending ? (
                   <ActivityIndicator size="small" color="#fff" />
                 ) : (
-                  <Text style={styles.submitBtnText}>Rəyi göndər</Text>
+                  <Text style={styles.submitBtnText}>{t('booking.sendReview')}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
-              <Text style={styles.cancelBtnText}>Ləğv et</Text>
+              <Text style={styles.cancelBtnText}>{t('booking.cancel')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

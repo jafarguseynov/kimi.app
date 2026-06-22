@@ -24,6 +24,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useFavoriteTeachersStore } from '../../store/favoritesTeachers.store';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
+import { useTranslation } from '../../i18n';
 
 interface Teacher {
   id: string;
@@ -98,6 +99,9 @@ const SkeletonCard = () => (
 
 export default function TeacherListScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
+  const chipLabel = (item: string) =>
+    item === 'Hamısı' ? t('teacherList.all') : item === 'Sevimlilərim' ? t('teacherList.favorites') : item;
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounced(search, 350);
   const [activeFilter, setActiveFilter] = useState('Hamısı');
@@ -194,21 +198,21 @@ export default function TeacherListScreen() {
 
   const activeFilterChips: { label: string; onClear: () => void }[] = [];
   if (sortBy !== 'rating') {
-    const sortMap = { priceAsc: 'Qiymət ↑', priceDesc: 'Qiymət ↓', reviews: 'Rəylər' } as const;
+    const sortMap = { priceAsc: t('teacherList.chipPriceAsc'), priceDesc: t('teacherList.chipPriceDesc'), reviews: t('teacherList.chipReviews') } as const;
     activeFilterChips.push({ label: sortMap[sortBy], onClear: () => setSortBy('rating') });
   }
-  if (formatFilter !== 'all') activeFilterChips.push({ label: formatFilter === 'online' ? 'Onlayn' : 'Əyani', onClear: () => setFormatFilter('all') });
+  if (formatFilter !== 'all') activeFilterChips.push({ label: formatFilter === 'online' ? t('teacherList.onlineOpt') : t('teacherList.inPersonOpt'), onClear: () => setFormatFilter('all') });
   if (minRating > 0) activeFilterChips.push({ label: `${minRating}+ ★`, onClear: () => setMinRating(0) });
   if (cityFilter.trim()) activeFilterChips.push({ label: cityFilter.trim(), onClear: () => setCityFilter('') });
-  if (genderFilter !== 'all') activeFilterChips.push({ label: genderFilter === 'male' ? 'Kişi' : 'Qadın', onClear: () => setGenderFilter('all') });
-  if (ageRange) activeFilterChips.push({ label: `${ageRange} yaş`, onClear: () => setAgeRange(null) });
+  if (genderFilter !== 'all') activeFilterChips.push({ label: genderFilter === 'male' ? t('teacherList.male') : t('teacherList.female'), onClear: () => setGenderFilter('all') });
+  if (ageRange) activeFilterChips.push({ label: t('teacherList.chipAge', { range: ageRange }), onClear: () => setAgeRange(null) });
 
   const renderCard = ({ item, index }: { item: Teacher; index: number }) => {
     const gradient = AVATAR_GRADIENTS[index % AVATAR_GRADIENTS.length];
     const initial = item.name?.[0]?.toUpperCase() ?? '?';
     const subjectLabel = item.subjects?.length
       ? item.subjects.slice(0, 2).join(' • ')
-      : 'Ümumi mütəxəssis';
+      : t('teacherList.generalSpecialist');
     const price = typeof item.hourlyRate === 'number' && item.hourlyRate > 0 ? item.hourlyRate : 15;
     const ratingText = typeof item.rating === 'number' && item.rating > 0 ? item.rating.toFixed(1) : '—';
     const reviewCount = item.reviewCount ?? (45 + ((index * 13) % 180));
@@ -249,18 +253,18 @@ export default function TeacherListScreen() {
 
           {showOnline && (
             <View style={[styles.statusBadge, styles.statusOnline]}>
-              <Text style={styles.statusBadgeText}>ONLAYN</Text>
+              <Text style={styles.statusBadgeText}>{t('teacherList.online')}</Text>
             </View>
           )}
           {showInPerson && (
             <View style={[styles.statusBadge, styles.statusInPerson]}>
-              <Text style={styles.statusBadgeText}>ƏYANİ</Text>
+              <Text style={styles.statusBadgeText}>{t('teacherList.inPerson')}</Text>
             </View>
           )}
           {item.isFeatured && (
             <View style={styles.featuredBadge}>
               <Ionicons name="rocket" size={10} color="#fff" />
-              <Text style={styles.featuredBadgeText}>İRƏLİ</Text>
+              <Text style={styles.featuredBadgeText}>{t('teacherList.featured')}</Text>
             </View>
           )}
         </View>
@@ -289,9 +293,9 @@ export default function TeacherListScreen() {
         </View>
 
         <View style={styles.priceFooter}>
-          <Text style={styles.priceLabel}>Başlayan qiymət</Text>
+          <Text style={styles.priceLabel}>{t('teacherList.startingPrice')}</Text>
           <Text style={styles.priceValue}>
-            {price} AZN<Text style={styles.priceUnit}> /saat</Text>
+            {price} AZN<Text style={styles.priceUnit}>{t('teacherList.perHour')}</Text>
           </Text>
         </View>
       </TouchableOpacity>
@@ -301,7 +305,7 @@ export default function TeacherListScreen() {
   const RecentRow = recentList.length > 0 ? (
     <View style={styles.recentWrap}>
       <View style={styles.recentHeader}>
-        <Text style={styles.recentTitle}>Son baxdıqlarım</Text>
+        <Text style={styles.recentTitle}>{t('teacherList.recentlyViewed')}</Text>
         <Ionicons name="time-outline" size={14} color={Colors.textMuted} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentRow}>
@@ -335,8 +339,8 @@ export default function TeacherListScreen() {
       {RecentRow}
       <View style={styles.premiumCta}>
         <View style={styles.premiumCtaContent}>
-          <Text style={styles.premiumCtaTitle}>Mükəmməl müəllimi tapmaqda çətinlik çəkirsiniz?</Text>
-          <Text style={styles.premiumCtaSub}>AI köməkçimiz sizin üçün ən uyğun mütəxəssisi saniyələr ərzində müəyyən edəcək.</Text>
+          <Text style={styles.premiumCtaTitle}>{t('teacherList.ctaTitle')}</Text>
+          <Text style={styles.premiumCtaSub}>{t('teacherList.ctaSub')}</Text>
           <TouchableOpacity
             style={styles.premiumCtaBtn}
             activeOpacity={0.85}
@@ -345,7 +349,7 @@ export default function TeacherListScreen() {
               if (parent?.navigate) parent.navigate(Routes.AIMentor);
             }}
           >
-            <Text style={styles.premiumCtaBtnText}>AI-DAN SORUŞ</Text>
+            <Text style={styles.premiumCtaBtnText}>{t('teacherList.askAi')}</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.premiumCtaIconBox}>
@@ -363,8 +367,8 @@ export default function TeacherListScreen() {
           <View style={styles.requestIconBoxPrimary}>
             <Ionicons name="add-circle-outline" size={24} color={Colors.primary} />
           </View>
-          <Text style={styles.requestCardTitle}>Dərs Sorğusu Yarat</Text>
-          <Text style={styles.requestCardSub}>Müəllimlər səninlə əlaqə qursun</Text>
+          <Text style={styles.requestCardTitle}>{t('teacherList.createRequest')}</Text>
+          <Text style={styles.requestCardSub}>{t('teacherList.createRequestSub')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.requestCard}
@@ -374,8 +378,8 @@ export default function TeacherListScreen() {
           <View style={styles.requestIconBoxSecondary}>
             <Ionicons name="list-outline" size={24} color={Colors.tertiary} />
           </View>
-          <Text style={styles.requestCardTitle}>Sorğularım</Text>
-          <Text style={styles.requestCardSub}>Göndərilən sorğuları izlə</Text>
+          <Text style={styles.requestCardTitle}>{t('teacherList.myRequests')}</Text>
+          <Text style={styles.requestCardSub}>{t('teacherList.myRequestsSub')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -385,10 +389,18 @@ export default function TeacherListScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate(Routes.Home))}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={20} color={Colors.primary} />
           </View>
-          <Text style={styles.headerTitle}>Müəllim Tap</Text>
+          <Text style={styles.headerTitle}>{t('teacherList.title')}</Text>
         </View>
         <TouchableOpacity
           style={styles.filterIconBtn}
@@ -410,7 +422,7 @@ export default function TeacherListScreen() {
           <Ionicons name="search-outline" size={20} color={Colors.textMuted} style={{ marginLeft: 16 }} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Müəllim axtar..."
+            placeholder={t('teacherList.searchPlaceholder')}
             placeholderTextColor={Colors.textMuted}
             value={search}
             onChangeText={setSearch}
@@ -449,7 +461,7 @@ export default function TeacherListScreen() {
                     {isFavChip && (
                       <Ionicons name="heart" size={13} color="#fff" style={{ marginRight: 4 }} />
                     )}
-                    <Text style={styles.chipTextActive}>{item}{isFavChip && favCount > 0 ? ` (${favCount})` : ''}</Text>
+                    <Text style={styles.chipTextActive}>{chipLabel(item)}{isFavChip && favCount > 0 ? ` (${favCount})` : ''}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               );
@@ -462,7 +474,7 @@ export default function TeacherListScreen() {
                 activeOpacity={0.7}
               >
                 {isFavChip && <Ionicons name="heart-outline" size={13} color={Colors.textPrimary} style={{ marginRight: 4 }} />}
-                <Text style={styles.chipText}>{item}{isFavChip && favCount > 0 ? ` (${favCount})` : ''}</Text>
+                <Text style={styles.chipText}>{chipLabel(item)}{isFavChip && favCount > 0 ? ` (${favCount})` : ''}</Text>
               </TouchableOpacity>
             );
           })}
@@ -482,7 +494,7 @@ export default function TeacherListScreen() {
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={styles.activeClearAll} activeOpacity={0.7} onPress={resetFilters}>
-            <Text style={styles.activeClearAllText}>Hamısını təmizlə</Text>
+            <Text style={styles.activeClearAllText}>{t('teacherList.clearAll')}</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -516,7 +528,7 @@ export default function TeacherListScreen() {
                 <View style={styles.emptyCard}>
                   <View style={styles.emptyBadge}>
                     <Ionicons name="search-outline" size={22} color={Colors.primary} />
-                    <Text style={styles.emptyBadgeText}>Tapılmadı</Text>
+                    <Text style={styles.emptyBadgeText}>{t('teacherList.notFoundBadge')}</Text>
                   </View>
                   <LinearGradient
                     colors={[Colors.gradientStart, Colors.gradientEnd]}
@@ -531,12 +543,12 @@ export default function TeacherListScreen() {
                 <Text style={styles.emptyStarR}>✦</Text>
               </View>
               <Text style={styles.emptyTitle}>
-                {activeFilter === 'Sevimlilərim' ? 'Hələ sevimlin yoxdur' : 'Müəllim tapılmadı'}
+                {activeFilter === 'Sevimlilərim' ? t('teacherList.emptyFavTitle') : t('teacherList.emptyTitle')}
               </Text>
               <Text style={styles.emptySub}>
                 {activeFilter === 'Sevimlilərim'
-                  ? 'Müəllim kartındakı ürək ikonuna basaraq sevimlilərə əlavə et.'
-                  : 'Axtarış meyarlarınıza uyğun müəllim tapılmadı. Zəhmət olmasa filtrləri dəyişin.'}
+                  ? t('teacherList.emptyFavSub')
+                  : t('teacherList.emptySub')}
               </Text>
               {activeFilter !== 'Sevimlilərim' && (
                 <TouchableOpacity
@@ -551,7 +563,7 @@ export default function TeacherListScreen() {
                     end={{ x: 1, y: 0 }}
                   >
                     <Ionicons name="funnel-outline" size={18} color="#fff" />
-                    <Text style={styles.emptyClearText}>Filtrləri təmizlə</Text>
+                    <Text style={styles.emptyClearText}>{t('teacherList.clearFilters')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
@@ -561,7 +573,7 @@ export default function TeacherListScreen() {
                 onPress={() => activeFilter === 'Sevimlilərim' ? setActiveFilter('Hamısı') : navigation.goBack()}
               >
                 <Text style={styles.emptyBackText}>
-                  {activeFilter === 'Sevimlilərim' ? 'Bütün müəllimlərə bax' : 'Geri qayıt'}
+                  {activeFilter === 'Sevimlilərim' ? t('teacherList.viewAllTeachers') : t('teacherList.goBack')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -580,19 +592,19 @@ export default function TeacherListScreen() {
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.sheetHandle} />
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Filtr və sıralama</Text>
+              <Text style={styles.sheetTitle}>{t('teacherList.filterTitle')}</Text>
               <TouchableOpacity onPress={resetFilters} hitSlop={8}>
-                <Text style={styles.sheetReset}>Sıfırla</Text>
+                <Text style={styles.sheetReset}>{t('teacherList.reset')}</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.sheetSection}>Sıralama</Text>
+              <Text style={styles.sheetSection}>{t('teacherList.sorting')}</Text>
               {([
-                { key: 'rating', label: 'Reytinqə görə', icon: 'star-outline' },
-                { key: 'priceAsc', label: 'Qiymət (artan)', icon: 'trending-up-outline' },
-                { key: 'priceDesc', label: 'Qiymət (azalan)', icon: 'trending-down-outline' },
-                { key: 'reviews', label: 'Rəylər sayı', icon: 'chatbubbles-outline' },
+                { key: 'rating', label: t('teacherList.sortRating'), icon: 'star-outline' },
+                { key: 'priceAsc', label: t('teacherList.sortPriceAsc'), icon: 'trending-up-outline' },
+                { key: 'priceDesc', label: t('teacherList.sortPriceDesc'), icon: 'trending-down-outline' },
+                { key: 'reviews', label: t('teacherList.sortReviews'), icon: 'chatbubbles-outline' },
               ] as const).map((opt) => {
                 const active = sortBy === opt.key;
                 return (
@@ -609,12 +621,12 @@ export default function TeacherListScreen() {
                 );
               })}
 
-              <Text style={styles.sheetSection}>Dərs növü</Text>
+              <Text style={styles.sheetSection}>{t('teacherList.lessonType')}</Text>
               <View style={styles.pillRow}>
                 {([
-                  { key: 'all', label: 'Hamısı' },
-                  { key: 'online', label: 'Onlayn' },
-                  { key: 'in-person', label: 'Əyani' },
+                  { key: 'all', label: t('teacherList.all') },
+                  { key: 'online', label: t('teacherList.onlineOpt') },
+                  { key: 'in-person', label: t('teacherList.inPersonOpt') },
                 ] as const).map((opt) => {
                   const active = formatFilter === opt.key;
                   return (
@@ -630,10 +642,10 @@ export default function TeacherListScreen() {
                 })}
               </View>
 
-              <Text style={styles.sheetSection}>Minimum reytinq</Text>
+              <Text style={styles.sheetSection}>{t('teacherList.minRatingLabel')}</Text>
               <View style={styles.pillRow}>
                 {([
-                  { key: 0, label: 'Hamısı' },
+                  { key: 0, label: t('teacherList.all') },
                   { key: 4, label: '4.0+' },
                   { key: 4.5, label: '4.5+' },
                   { key: 4.8, label: '4.8+' },
@@ -653,12 +665,12 @@ export default function TeacherListScreen() {
                 })}
               </View>
 
-              <Text style={styles.sheetSection}>Şəhər</Text>
+              <Text style={styles.sheetSection}>{t('teacherList.cityLabel')}</Text>
               <View style={styles.cityInputWrap}>
                 <Ionicons name="location-outline" size={18} color={Colors.textMuted} />
                 <TextInput
                   style={styles.cityInput}
-                  placeholder="Şəhər adını yazın (məs. Bakı)"
+                  placeholder={t('teacherList.cityPlaceholder')}
                   placeholderTextColor={Colors.textMuted}
                   value={cityFilter}
                   onChangeText={setCityFilter}
@@ -686,12 +698,12 @@ export default function TeacherListScreen() {
                 </View>
               )}
 
-              <Text style={styles.sheetSection}>Cinsiyyət</Text>
+              <Text style={styles.sheetSection}>{t('teacherList.gender')}</Text>
               <View style={styles.pillRow}>
                 {([
-                  { key: 'all', label: 'Hamısı', icon: 'people-outline' },
-                  { key: 'male', label: 'Kişi', icon: 'man-outline' },
-                  { key: 'female', label: 'Qadın', icon: 'woman-outline' },
+                  { key: 'all', label: t('teacherList.all'), icon: 'people-outline' },
+                  { key: 'male', label: t('teacherList.male'), icon: 'man-outline' },
+                  { key: 'female', label: t('teacherList.female'), icon: 'woman-outline' },
                 ] as const).map((opt) => {
                   const active = genderFilter === opt.key;
                   return (
@@ -708,14 +720,14 @@ export default function TeacherListScreen() {
                 })}
               </View>
 
-              <Text style={styles.sheetSection}>Yaş aralığı</Text>
+              <Text style={styles.sheetSection}>{t('teacherList.ageRangeLabel')}</Text>
               <View style={styles.pillRow}>
                 <TouchableOpacity
                   style={[styles.pill, !ageRange && styles.pillActive]}
                   onPress={() => setAgeRange(null)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.pillText, !ageRange && styles.pillTextActive]}>Hamısı</Text>
+                  <Text style={[styles.pillText, !ageRange && styles.pillTextActive]}>{t('teacherList.all')}</Text>
                 </TouchableOpacity>
                 {AGE_RANGES.map((r) => {
                   const active = ageRange === r.key;
@@ -743,7 +755,7 @@ export default function TeacherListScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 <Text style={styles.sheetApplyText}>
-                  {teachers.length} nəticəni göstər
+                  {t('teacherList.showResults', { count: teachers.length })}
                 </Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -767,7 +779,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerBackBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   avatarCircle: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: Colors.surfaceContainer,

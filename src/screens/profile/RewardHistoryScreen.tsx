@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -37,6 +38,7 @@ const HISTORY: RewardEntry[] = [
 
 export default function RewardHistoryScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -44,34 +46,34 @@ export default function RewardHistoryScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mükafat Tarixçəsi</Text>
+        <Text style={styles.headerTitle}>{t('rewardHistory.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero */}
         <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
-          <Text style={styles.heroLabel}>ÜMUMİ MÜKAFATLARIN</Text>
+          <Text style={styles.heroLabel}>{t('rewardHistory.heroLabel')}</Text>
 
           <View style={styles.heroBlock}>
             <View style={styles.heroRow}>
-              <Text style={styles.heroValue}>{TOTAL_XP.toLocaleString('az-AZ')}<Text style={styles.heroUnit}> XP</Text></Text>
+              <Text style={styles.heroValue}>{TOTAL_XP.toLocaleString('az-AZ')}<Text style={styles.heroUnit}>{t('rewardHistory.unitXp')}</Text></Text>
               <View style={styles.levelBadge}>
                 <Ionicons name="medal" size={14} color="#fff" />
-                <Text style={styles.levelText}>Səviyyə {LEVEL}</Text>
+                <Text style={styles.levelText}>{t('rewardHistory.level', { n: LEVEL })}</Text>
               </View>
             </View>
             <View style={styles.heroDivider} />
             <View style={styles.heroRow}>
-              <Text style={styles.heroValue}>{PREMIUM_DAYS}<Text style={styles.heroUnit}> gün</Text></Text>
-              <Text style={styles.heroSub}>Premium status</Text>
+              <Text style={styles.heroValue}>{PREMIUM_DAYS}<Text style={styles.heroUnit}>{t('rewardHistory.unitDays')}</Text></Text>
+              <Text style={styles.heroSub}>{t('rewardHistory.premiumStatus')}</Text>
             </View>
           </View>
         </LinearGradient>
 
         {/* List header */}
         <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Son Əməliyyatlar</Text>
+          <Text style={styles.listTitle}>{t('rewardHistory.listTitle')}</Text>
           <Ionicons name="filter" size={20} color={Colors.outline} />
         </View>
 
@@ -98,10 +100,10 @@ export default function RewardHistoryScreen() {
 
         {/* Empty state helper */}
         <View style={styles.helper}>
-          <Text style={styles.helperText}>Daha çox tapşırıq tamamla və mükafatlar qazan!</Text>
+          <Text style={styles.helperText}>{t('rewardHistory.helperText')}</Text>
           <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.DailyMissions)}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.helperBtn}>
-              <Text style={styles.helperBtnText}>TAPŞIRIQLARA GET</Text>
+              <Text style={styles.helperBtnText}>{t('rewardHistory.helperBtn')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>

@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
 import { useSpinWheelStore } from '../../store/spinWheel.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -15,39 +16,41 @@ type ShopItem = {
   icon: keyof typeof import('@expo/vector-icons/Ionicons').default.glyphMap;
   iconColor: string;
   bg: string;
-  title: string;
-  description: string;
+  titleKey: string;
+  descKey: string;
   price: number;
-  tag?: string;
+  tagKey?: string;
 };
 
 const ITEMS: ShopItem[] = [
-  { id: 's1', icon: 'snow', iconColor: '#0EA5E9', bg: '#E0F2FE', title: 'Streak qoruyucusu', description: '1 günlük streak müdafiəsi', price: 100 },
-  { id: 's2', icon: 'add-circle', iconColor: '#16A34A', bg: '#DCFCE7', title: '+1 Fırlatma', description: 'Bu gün üçün əlavə şans', price: 50, tag: 'Populyar' },
-  { id: 's3', icon: 'happy', iconColor: '#A855F7', bg: '#F3E8FF', title: 'Avatar dəsti', description: '3 fərqli avatar', price: 150 },
-  { id: 's4', icon: 'sparkles', iconColor: '#F59E0B', bg: '#FEF9C3', title: 'Premium 24 saat', description: 'Bütün xüsusiyyətlər', price: 300, tag: 'Ən yaxşı' },
-  { id: 's5', icon: 'rocket', iconColor: '#DC2626', bg: '#FEE2E2', title: 'XP Booster (1 saat)', description: '2x XP qazan', price: 120 },
-  { id: 's6', icon: 'pricetag', iconColor: '#EC4899', bg: '#FCE7F3', title: 'Stiker paketi', description: '12 yeni stiker', price: 80 },
+  { id: 's1', icon: 'snow', iconColor: '#0EA5E9', bg: '#E0F2FE', titleKey: 'coinShop.s1Title', descKey: 'coinShop.s1Desc', price: 100 },
+  { id: 's2', icon: 'add-circle', iconColor: '#16A34A', bg: '#DCFCE7', titleKey: 'coinShop.s2Title', descKey: 'coinShop.s2Desc', price: 50, tagKey: 'coinShop.tagPopular' },
+  { id: 's3', icon: 'happy', iconColor: '#A855F7', bg: '#F3E8FF', titleKey: 'coinShop.s3Title', descKey: 'coinShop.s3Desc', price: 150 },
+  { id: 's4', icon: 'sparkles', iconColor: '#F59E0B', bg: '#FEF9C3', titleKey: 'coinShop.s4Title', descKey: 'coinShop.s4Desc', price: 300, tagKey: 'coinShop.tagBest' },
+  { id: 's5', icon: 'rocket', iconColor: '#DC2626', bg: '#FEE2E2', titleKey: 'coinShop.s5Title', descKey: 'coinShop.s5Desc', price: 120 },
+  { id: 's6', icon: 'pricetag', iconColor: '#EC4899', bg: '#FCE7F3', titleKey: 'coinShop.s6Title', descKey: 'coinShop.s6Desc', price: 80 },
 ];
 
 export default function CoinShopScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const { coins, spendCoins, grantExtraSpin } = useSpinWheelStore();
   const [owned, setOwned] = useState<Set<string>>(new Set());
 
   const buy = (item: ShopItem) => {
     if (owned.has(item.id)) return;
+    const itemTitle = t(item.titleKey);
     if (coins < item.price) {
-      Alert.alert('Sikkə çatmır', `Bu məhsul üçün ${item.price - coins} sikkə əskikdir. Çarxı fırladaraq daha çox qazana bilərsən.`);
+      Alert.alert(t('coinShop.notEnoughTitle'), t('coinShop.notEnoughBody', { n: item.price - coins }));
       return;
     }
     Alert.alert(
-      'Alışı təsdiqlə',
-      `"${item.title}" üçün ${item.price} sikkə xərclənəcək. Davam edək?`,
+      t('coinShop.confirmTitle'),
+      t('coinShop.confirmBody', { title: itemTitle, price: item.price }),
       [
-        { text: 'Ləğv et', style: 'cancel' },
+        { text: t('coinShop.cancel'), style: 'cancel' },
         {
-          text: 'Bəli, al',
+          text: t('coinShop.yesBuy'),
           onPress: () => {
             const ok = spendCoins(item.price);
             if (!ok) return;
@@ -61,7 +64,7 @@ export default function CoinShopScreen() {
                 return next;
               });
             }
-            Alert.alert('Alındı 🎉', `"${item.title}" hesabına əlavə olundu.`);
+            Alert.alert(t('coinShop.purchasedTitle'), t('coinShop.purchasedBody', { title: itemTitle }));
           },
         },
       ],
@@ -74,7 +77,7 @@ export default function CoinShopScreen() {
         <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.goBack()} hitSlop={8} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sikkə dükanı</Text>
+        <Text style={styles.headerTitle}>{t('coinShop.header')}</Text>
         <View style={styles.coinPill}>
           <Ionicons name="cash" size={14} color="#CA8A04" />
           <Text style={styles.coinPillText}>{coins}</Text>
@@ -85,8 +88,8 @@ export default function CoinShopScreen() {
         <LinearGradient colors={GRADIENT} style={styles.banner} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <Ionicons name="cash" size={26} color="#fff" />
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.bannerTitle}>Sikkə ilə bonusları aç</Text>
-            <Text style={styles.bannerSub}>Çarxda qazandığın sikkələri buraya xərclə</Text>
+            <Text style={styles.bannerTitle}>{t('coinShop.bannerTitle')}</Text>
+            <Text style={styles.bannerSub}>{t('coinShop.bannerSub')}</Text>
           </View>
         </LinearGradient>
 
@@ -100,14 +103,14 @@ export default function CoinShopScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.titleRow}>
-                  <Text style={styles.itemTitle}>{item.title}</Text>
-                  {item.tag && (
+                  <Text style={styles.itemTitle}>{t(item.titleKey)}</Text>
+                  {item.tagKey && (
                     <View style={styles.tagBadge}>
-                      <Text style={styles.tagBadgeText}>{item.tag}</Text>
+                      <Text style={styles.tagBadgeText}>{t(item.tagKey)}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.itemDesc}>{item.description}</Text>
+                <Text style={styles.itemDesc}>{t(item.descKey)}</Text>
                 <View style={styles.priceRow}>
                   <Ionicons name="cash" size={14} color="#CA8A04" />
                   <Text style={styles.priceText}>{item.price}</Text>
@@ -126,10 +129,10 @@ export default function CoinShopScreen() {
                 {isOwned ? (
                   <>
                     <Ionicons name="checkmark" size={14} color={Colors.primary} />
-                    <Text style={styles.buyBtnOwnedText}>Sahibsən</Text>
+                    <Text style={styles.buyBtnOwnedText}>{t('coinShop.owned')}</Text>
                   </>
                 ) : (
-                  <Text style={[styles.buyBtnText, !canAfford && { color: Colors.textSecondary }]}>Al</Text>
+                  <Text style={[styles.buyBtnText, !canAfford && { color: Colors.textSecondary }]}>{t('coinShop.buy')}</Text>
                 )}
               </TouchableOpacity>
             </View>

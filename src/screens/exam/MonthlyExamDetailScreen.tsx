@@ -8,6 +8,7 @@ import { RouteProp } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.MonthlyExamDetail>;
@@ -15,38 +16,21 @@ type Props = {
 };
 
 const RULES = [
-  {
-    icon: 'shield-checkmark-outline' as const,
-    color: Colors.primary,
-    bg: Colors.primaryLight,
-    title: 'Dürüstlük prinsipi',
-    body: 'İmtahan zamanı kənar vəsaitlərdən istifadə etmək qadağandır. Nəticələriniz süni intellekt tərəfindən analiz olunacaq.',
-  },
-  {
-    icon: 'wifi-outline' as const,
-    color: Colors.secondary,
-    bg: Colors.secondaryLight + '55',
-    title: 'Stabil bağlantı',
-    body: 'İmtahan müddətində internet bağlantınızın stabil olduğundan əmin olun. Texniki kəsinti zamanı vaxt dayandırılmır.',
-  },
-  {
-    icon: 'analytics-outline' as const,
-    color: Colors.tertiary,
-    bg: Colors.tertiaryContainer + '40',
-    title: 'Avtomatik Analiz',
-    body: 'İmtahan bitdikdən dərhal sonra zəif və güclü tərəfləriniz barədə fərdi hesabat alacaqsınız.',
-  },
+  { icon: 'shield-checkmark-outline' as const, color: Colors.primary, bg: Colors.primaryLight, titleKey: 'monthlyExam.rule1Title', bodyKey: 'monthlyExam.rule1Body' },
+  { icon: 'wifi-outline' as const, color: Colors.secondary, bg: Colors.secondaryLight + '55', titleKey: 'monthlyExam.rule2Title', bodyKey: 'monthlyExam.rule2Body' },
+  { icon: 'analytics-outline' as const, color: Colors.tertiary, bg: Colors.tertiaryContainer + '40', titleKey: 'monthlyExam.rule3Title', bodyKey: 'monthlyExam.rule3Body' },
 ];
 
 const STATS = [
-  { icon: 'calendar-outline' as const, label: 'Tarix', value: '15 Dekabr' },
-  { icon: 'time-outline' as const, label: 'Saat', value: '10:00' },
-  { icon: 'help-circle-outline' as const, label: 'Sual sayı', value: '50 Sual' },
-  { icon: 'timer-outline' as const, label: 'Müddət', value: '90 dəqiqə' },
+  { icon: 'calendar-outline' as const, labelKey: 'monthlyExam.statDate', valueKey: 'monthlyExam.statDateVal' },
+  { icon: 'time-outline' as const, labelKey: 'monthlyExam.statTime', valueKey: 'monthlyExam.statTimeVal' },
+  { icon: 'help-circle-outline' as const, labelKey: 'monthlyExam.statQuestions', valueKey: 'monthlyExam.statQuestionsVal' },
+  { icon: 'timer-outline' as const, labelKey: 'monthlyExam.statDuration', valueKey: 'monthlyExam.statDurationVal' },
 ];
 
 export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
-  const { title = 'Aylıq İmtahan', examId } = route.params;
+  const { t } = useTranslation();
+  const { title = t('monthlyExam.title'), examId } = route.params;
 
   const handleJoin = () => {
     navigation.navigate(Routes.LiveExamWaiting, { examId, title });
@@ -58,7 +42,7 @@ export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Aylıq İmtahan</Text>
+        <Text style={styles.headerTitle}>{t('monthlyExam.title')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -76,16 +60,16 @@ export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
           <View style={styles.heroGlow2} />
           <View style={styles.heroBadge}>
             <Ionicons name="star" size={12} color="#fff" />
-            <Text style={styles.heroBadgeText}>Sınaq İmtahanı</Text>
+            <Text style={styles.heroBadgeText}>{t('monthlyExam.badge')}</Text>
           </View>
-          <Text style={styles.heroTitle}>Dekabr Ayı üzrə Ümumi Sınaq</Text>
+          <Text style={styles.heroTitle}>{t('monthlyExam.heroTitle')}</Text>
           <View style={styles.statsGrid}>
             {STATS.map((s) => (
-              <View key={s.label} style={styles.statBox}>
-                <Text style={styles.statBoxLabel}>{s.label}</Text>
+              <View key={s.labelKey} style={styles.statBox}>
+                <Text style={styles.statBoxLabel}>{t(s.labelKey)}</Text>
                 <View style={styles.statBoxRow}>
                   <Ionicons name={s.icon} size={18} color={Colors.primaryFixed} />
-                  <Text style={styles.statBoxValue}>{s.value}</Text>
+                  <Text style={styles.statBoxValue}>{t(s.valueKey)}</Text>
                 </View>
               </View>
             ))}
@@ -96,17 +80,17 @@ export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
         <View style={styles.rulesSection}>
           <View style={styles.rulesTitleRow}>
             <View style={styles.rulesAccent} />
-            <Text style={styles.rulesTitle}>İmtahan Qaydaları</Text>
+            <Text style={styles.rulesTitle}>{t('monthlyExam.rulesTitle')}</Text>
           </View>
           <View style={styles.rulesCard}>
             {RULES.map((r, i) => (
-              <View key={r.title} style={[styles.ruleRow, i < RULES.length - 1 && styles.ruleRowBorder]}>
+              <View key={r.titleKey} style={[styles.ruleRow, i < RULES.length - 1 && styles.ruleRowBorder]}>
                 <View style={[styles.ruleIcon, { backgroundColor: r.bg }]}>
                   <Ionicons name={r.icon} size={22} color={r.color} />
                 </View>
                 <View style={styles.ruleBody}>
-                  <Text style={styles.ruleTitle}>{r.title}</Text>
-                  <Text style={styles.ruleText}>{r.body}</Text>
+                  <Text style={styles.ruleTitle}>{t(r.titleKey)}</Text>
+                  <Text style={styles.ruleText}>{t(r.bodyKey)}</Text>
                 </View>
               </View>
             ))}
@@ -118,9 +102,9 @@ export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
           <View style={styles.warningIcon}>
             <Ionicons name="information-circle-outline" size={24} color={Colors.warning} />
           </View>
-          <Text style={styles.warningTitle}>Vacib Qeyd</Text>
+          <Text style={styles.warningTitle}>{t('monthlyExam.warningTitle')}</Text>
           <Text style={styles.warningText}>
-            İmtahanı başladıqdan sonra pəncərəni bağlamayın. Əks halda imtahan başa çatmış hesab olunacaq və yenidən giriş mümkün olmayacaq.
+            {t('monthlyExam.warningText')}
           </Text>
         </View>
 
@@ -136,11 +120,11 @@ export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.joinBtnText}>İmtahanda iştirak et</Text>
+            <Text style={styles.joinBtnText}>{t('monthlyExam.join')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
-        <Text style={styles.bottomFooter}>Kimi.az tərəfindən təmin edilir</Text>
+        <Text style={styles.bottomFooter}>{t('monthlyExam.providedBy')}</Text>
       </View>
     </SafeAreaView>
   );

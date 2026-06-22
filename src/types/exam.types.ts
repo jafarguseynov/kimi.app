@@ -17,6 +17,7 @@ export interface Question {
   text: string;
   options: QuestionOption[];
   order: number;
+  section?: string; // çoxfənnli sınaqda sualın fənni (blok başlığı)
 }
 
 export interface ExamSession {

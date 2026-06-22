@@ -18,6 +18,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { getOrCreateChat } from '../../api/chat.api';
 import { listMyRequests } from '../../api/lessonRequest.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -60,6 +61,7 @@ const SUBJECT_BADGE: Record<SubjectType, { bg: string; color: string }> = {
 
 export default function InterestedTeachersScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<{
     params: { requestId?: string; requestTitle?: string }
   }, 'params'>>();
@@ -78,20 +80,20 @@ export default function InterestedTeachersScreen() {
 
   const teachers: Teacher[] = useMemo(() => {
     if (!activeRequest) return [];
-    const subject = activeRequest.subject ?? 'Ümumi';
+    const subject = activeRequest.subject ?? t('marketplace.generalSubject');
     const subjectType = subjectTypeFromText(subject);
-    return activeRequest.interestedTeachers.map((t, i) => ({
-      id: t.id,
-      name: t.name,
+    return activeRequest.interestedTeachers.map((tch, i) => ({
+      id: tch.id,
+      name: tch.name,
       rating: 4.8,
       reviewCount: 0,
       subject,
       subjectType,
-      bio: 'Bu müəllim sorğunuzla maraqlanıb. Tələbinizə uyğun olub-olmadığını söhbətdə dəqiqləşdirə bilərsiniz.',
+      bio: t('marketplace.teacherBio'),
       gradientColors: CARD_GRADIENTS[i % CARD_GRADIENTS.length],
       highlight: i === 0,
     }));
-  }, [activeRequest]);
+  }, [activeRequest, t]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -106,7 +108,7 @@ export default function InterestedTeachersScreen() {
           >
             <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Maraqlanan Müəllimlər</Text>
+          <Text style={styles.headerTitle}>{t('marketplace.interestedHeader')}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
@@ -133,7 +135,7 @@ export default function InterestedTeachersScreen() {
             <View style={styles.mascotDot} />
           </View>
           <View style={styles.mascotBubble}>
-            <Text style={styles.mascotText}>Bu müəllimlər sənə kömək edə bilər!</Text>
+            <Text style={styles.mascotText}>{t('marketplace.mascotHelp')}</Text>
           </View>
         </View>
 
@@ -168,7 +170,7 @@ export default function InterestedTeachersScreen() {
                       <View style={styles.ratingRow}>
                         <Ionicons name="star" size={13} color={Colors.primary} />
                         <Text style={styles.ratingText}>
-                          {teacher.rating.toFixed(1)} ({teacher.reviewCount} rəy)
+                          {t('marketplace.teacherRating', { rating: teacher.rating.toFixed(1), count: teacher.reviewCount })}
                         </Text>
                       </View>
                     </View>
@@ -186,7 +188,7 @@ export default function InterestedTeachersScreen() {
                   <TouchableOpacity
                     style={{ flex: 1 }}
                     activeOpacity={0.85}
-                    onPress={() => Alert.alert('Müəllim seçildi', `${teacher.name} ilə dərs təyin edildi`)}
+                    onPress={() => Alert.alert(t('marketplace.teacherSelected'), t('marketplace.teacherSelectedMsg', { name: teacher.name }))}
                   >
                     <LinearGradient
                       colors={GRADIENT}
@@ -194,7 +196,7 @@ export default function InterestedTeachersScreen() {
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 0 }}
                     >
-                      <Text style={styles.selectBtnText}>Seç</Text>
+                      <Text style={styles.selectBtnText}>{t('marketplace.select')}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -213,11 +215,11 @@ export default function InterestedTeachersScreen() {
                           navigation.navigate(Routes.ChatRoom as any, { chatId: chat.id, name: teacher.name });
                         }
                       } catch (e: any) {
-                        Alert.alert('Xəta', e?.response?.data?.message || 'Söhbət açıla bilmədi');
+                        Alert.alert(t('booking.errorTitle'), e?.response?.data?.message || t('booking.chatOpenFailed'));
                       }
                     }}
                   >
-                    <Text style={styles.msgBtnText}>Mesaj yaz</Text>
+                    <Text style={styles.msgBtnText}>{t('marketplace.writeMessage')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -246,11 +248,11 @@ export default function InterestedTeachersScreen() {
               </View>
             </View>
             <View style={styles.emptyChip}>
-              <Text style={styles.emptyChipText}>Sorğu yoxdur</Text>
+              <Text style={styles.emptyChipText}>{t('marketplace.noRequestChip')}</Text>
             </View>
-            <Text style={styles.emptyTitle}>Hələ sorğu yoxdur</Text>
+            <Text style={styles.emptyTitle}>{t('marketplace.noRequestTitle')}</Text>
             <Text style={styles.emptySub}>
-              Görünür, hələ heç bir dərs sorğusu göndərməmisiniz.
+              {t('marketplace.noRequestSub')}
             </Text>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -264,11 +266,11 @@ export default function InterestedTeachersScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 <Ionicons name="search-outline" size={20} color="#fff" />
-                <Text style={styles.emptyCtaText}>Müəllim tap</Text>
+                <Text style={styles.emptyCtaText}>{t('marketplace.findTeacher')}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.emptyHowBtn} activeOpacity={0.7}>
-              <Text style={styles.emptyHowText}>Necə işləyir?</Text>
+              <Text style={styles.emptyHowText}>{t('marketplace.howItWorks')}</Text>
             </TouchableOpacity>
           </View>
         </View>

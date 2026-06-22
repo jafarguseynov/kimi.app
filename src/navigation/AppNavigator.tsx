@@ -5,6 +5,7 @@ import { AppTabParamList } from './types';
 import { Routes } from '../constants/routes';
 import { Colors } from '../constants/colors';
 import { hapticLight } from '../utils/haptics';
+import { useTranslation } from '../i18n';
 import HomeNavigator from './HomeNavigator';
 import AIMentorScreen from '../screens/ai/AIMentorScreen';
 import ProfileNavigator from './ProfileNavigator';
@@ -27,6 +28,7 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 };
 
 export default function AppNavigator() {
+  const { t } = useTranslation();
   return (
     <Tab.Navigator
       screenListeners={{ tabPress: () => hapticLight() }}
@@ -48,11 +50,11 @@ export default function AppNavigator() {
         },
       })}
     >
-      <Tab.Screen name={Routes.Home} component={HomeNavigator} options={{ tabBarLabel: 'Ana Səhifə' }} />
+      <Tab.Screen name={Routes.Home} component={HomeNavigator} options={{ tabBarLabel: t('nav.home') }} />
       <Tab.Screen
         name="Exams"
         component={ExamNavigator}
-        options={{ tabBarLabel: 'İmtahanlar' }}
+        options={{ tabBarLabel: t('nav.exams') }}
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
@@ -60,12 +62,12 @@ export default function AppNavigator() {
           },
         })}
       />
-      <Tab.Screen name={Routes.AIMentor} component={AIMentorScreen} options={{ tabBarLabel: 'AI' }} />
-      <Tab.Screen name="Booking" component={BookingNavigator} options={{ tabBarLabel: 'Müəllimlər' }} />
+      <Tab.Screen name={Routes.AIMentor} component={AIMentorScreen} options={{ tabBarLabel: t('nav.ai') }} />
+      <Tab.Screen name="Booking" component={BookingNavigator} options={{ tabBarLabel: t('nav.teachers') }} />
       <Tab.Screen
         name={Routes.Profile}
         component={ProfileNavigator}
-        options={{ tabBarLabel: 'Profil' }}
+        options={{ tabBarLabel: t('nav.profile') }}
         listeners={({ navigation }) => ({
           // Profil tabına basanda həmişə kökə (ProfileHome) qayıt — başqa ekranda
           // (məs. kalkulyatorda) "yapışıb qalmasın".

@@ -7,11 +7,13 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function PaymentSuccessScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
 
   const goHome = () => {
     const parent = navigation.getParent() as any;
@@ -28,7 +30,7 @@ export default function PaymentSuccessScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ödəniş Təsdiqi</Text>
+        <Text style={styles.headerTitle}>{t('pay.successHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -43,26 +45,26 @@ export default function PaymentSuccessScreen() {
 
         {/* Title + sub */}
         <View style={styles.textBlock}>
-          <Text style={styles.title}>Ödəniş uğurla tamamlandı</Text>
+          <Text style={styles.title}>{t('pay.paymentSuccess')}</Text>
           <Text style={styles.sub}>
-            Təbriklər! Premium abunəliyiniz aktiv edildi. İndi bütün imkanlardan yararlana bilərsiniz.
+            {t('pay.paymentSuccessSub')}
           </Text>
         </View>
 
         {/* Summary card */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Plan</Text>
+            <Text style={styles.summaryLabel}>{t('pay.plan')}</Text>
             <View style={styles.planBadge}>
               <Text style={styles.planBadgeText}>PREMIUM</Text>
             </View>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Status</Text>
+            <Text style={styles.summaryLabel}>{t('pay.status')}</Text>
             <View style={styles.statusRow}>
               <View style={styles.statusDot} />
-              <Text style={styles.statusText}>Aktivdir</Text>
+              <Text style={styles.statusText}>{t('pay.active')}</Text>
             </View>
           </View>
         </View>
@@ -71,13 +73,13 @@ export default function PaymentSuccessScreen() {
         <View style={styles.actions}>
           <TouchableOpacity activeOpacity={0.9} onPress={goHome}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Ana səhifəyə qayıt</Text>
+              <Text style={styles.primaryBtnText}>{t('pay.backHome')}</Text>
               <Ionicons name="arrow-forward" size={18} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85} onPress={goSubscription}>
             <Ionicons name="receipt-outline" size={18} color={Colors.textPrimary} />
-            <Text style={styles.secondaryBtnText}>Abunəliyimə bax</Text>
+            <Text style={styles.secondaryBtnText}>{t('pay.viewSub')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

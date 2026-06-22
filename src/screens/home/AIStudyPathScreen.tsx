@@ -23,6 +23,7 @@ import { useStudyPlanStore } from '../../store/studyPlan.store';
 import { useSpinStreakStore } from '../../store/spinStreak.store';
 import { useSpinWheelStore } from '../../store/spinWheel.store';
 import { getTopicStats } from '../../api/topicStats.api';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.AIStudyPath>;
@@ -35,25 +36,16 @@ type PlanCard = {
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
   iconColor: string;
-  title: string;
-  sub: string;
+  titleKey: string;
+  subKey: string;
   action: PlanAction;
 };
 
 const PLAN_CARDS: PlanCard[] = [
-  { id: 't1', icon: 'calculator-outline', iconBg: Colors.primaryLight, iconColor: Colors.primary, title: 'Riyaziyyat testi', sub: '15 sual • 25 dəq', action: 'math-test' },
-  { id: 't2', icon: 'language-outline',   iconBg: '#f0fdf4',           iconColor: '#16a34a',     title: 'İngilis dili testi', sub: '10 sual • 15 dəq', action: 'eng-test' },
-  { id: 't3', icon: 'school-outline',     iconBg: '#fffbeb',           iconColor: '#d97706',     title: 'Kəsrlər mövzusu',    sub: 'Mövzu izahı',       action: 'topic-fraction' },
-  { id: 't4', icon: 'refresh-outline',    iconBg: '#fff1f2',           iconColor: '#e11d48',     title: 'Təkrar etməli',      sub: '3 mövzu',           action: 'review-cards' },
-];
-
-const AI_TIPS = [
-  'Triqonometriya düsturlarını səhər saatlarında təkrar etmək yaddaşı 30% artırır.',
-  'Kimyəvi reaksiyalar üçün qısa video dərslərimizə baxmağı unutma.',
-  'Hər 25 dəqiqə oxudan sonra 5 dəq fasilə (Pomodoro) konsentrasiyanı 40% qaldırır.',
-  'Yatmazdan əvvəl 10 dəq fleşkart təkrarı uzunmüddətli yaddaşı möhkəmləndirir.',
-  'Zəif mövzuya həftədə 3 dəfə qısa sessiya — uzun bir gün məşqdən daha effektivdir.',
-  'Səhvlərini "səhvlər jurnalı"na yaz — eyni səhvi 70% az təkrar edəcəksən.',
+  { id: 't1', icon: 'calculator-outline', iconBg: Colors.primaryLight, iconColor: Colors.primary, titleKey: 'aiStudyPath.card1Title', subKey: 'aiStudyPath.card1Sub', action: 'math-test' },
+  { id: 't2', icon: 'language-outline',   iconBg: '#f0fdf4',           iconColor: '#16a34a',     titleKey: 'aiStudyPath.card2Title', subKey: 'aiStudyPath.card2Sub', action: 'eng-test' },
+  { id: 't3', icon: 'school-outline',     iconBg: '#fffbeb',           iconColor: '#d97706',     titleKey: 'aiStudyPath.card3Title', subKey: 'aiStudyPath.card3Sub', action: 'topic-fraction' },
+  { id: 't4', icon: 'refresh-outline',    iconBg: '#fff1f2',           iconColor: '#e11d48',     titleKey: 'aiStudyPath.card4Title', subKey: 'aiStudyPath.card4Sub', action: 'review-cards' },
 ];
 
 type NextExam = {
@@ -70,20 +62,20 @@ const NEXT_EXAMS: NextExam[] = [
   { id: '3', icon: 'book-outline',          title: 'Ümumi sınaq #10',      daysFromNow: 10, hour: '10:00' },
 ];
 
-const MONTH_NAMES_AZ = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn', 'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek'];
-const WEEKDAY_AZ = ['B', 'Be', 'Ça', 'Ç', 'Ca', 'C', 'Ş'];
+type TFn = (k: string, v?: any) => string;
 
-const formatRelativeDate = (daysFromNow: number) => {
+const formatRelativeDate = (daysFromNow: number, t: TFn) => {
+  const months = t('aiStudyPath.monthNames').split('|');
   const d = new Date();
   d.setDate(d.getDate() + daysFromNow);
-  const dayStr = `${d.getDate()} ${MONTH_NAMES_AZ[d.getMonth()]}`;
-  if (daysFromNow === 0) return `Bu gün · ${dayStr}`;
-  if (daysFromNow === 1) return `Sabah · ${dayStr}`;
-  if (daysFromNow < 7) return `${daysFromNow} gün sonra · ${dayStr}`;
+  const dayStr = `${d.getDate()} ${months[d.getMonth()]}`;
+  if (daysFromNow === 0) return t('aiStudyPath.relToday', { date: dayStr });
+  if (daysFromNow === 1) return t('aiStudyPath.relTomorrow', { date: dayStr });
+  if (daysFromNow < 7) return t('aiStudyPath.relDays', { n: daysFromNow, date: dayStr });
   return dayStr;
 };
 
-const buildIcsForExam = (e: NextExam) => {
+const buildIcsForExam = (e: NextExam, t: TFn) => {
   const d = new Date();
   d.setDate(d.getDate() + e.daysFromNow);
   const [hh, mm] = e.hour.split(':').map((n) => parseInt(n, 10));
@@ -99,13 +91,14 @@ const buildIcsForExam = (e: NextExam) => {
     `DTSTART:${fmt(d)}`,
     `DTEND:${fmt(end)}`,
     `SUMMARY:${e.title}`,
-    'DESCRIPTION:Kimi.az sınaq imtahanı',
+    `DESCRIPTION:${t('aiStudyPath.icsDesc')}`,
     'END:VEVENT',
     'END:VCALENDAR',
   ].join('\n');
 };
 
 export default function AIStudyPathScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const initials = (user?.name ?? 'İ')
     .split(' ')
@@ -136,8 +129,9 @@ export default function AIStudyPathScreen({ navigation }: Props) {
   const strongTopics = topicStats?.strong ?? [];
 
   const visibleTips = useMemo(() => {
-    return [AI_TIPS[tipIndex % AI_TIPS.length], AI_TIPS[(tipIndex + 1) % AI_TIPS.length]];
-  }, [tipIndex]);
+    const tips = t('aiStudyPath.tips').split('|');
+    return [tips[tipIndex % tips.length], tips[(tipIndex + 1) % tips.length]];
+  }, [tipIndex, t]);
 
   const done = completedCount();
   const total = PLAN_CARDS.length;
@@ -151,9 +145,9 @@ export default function AIStudyPathScreen({ navigation }: Props) {
     addStars(50);
     grantExtraSpin();
     Alert.alert(
-      '🎉 Bütün planı bitirdin!',
-      'Bonus mükafatın:\n• +50 XP\n• +1 fırlatma şansı (çarx)',
-      [{ text: 'Möhtəşəm!' }],
+      t('aiStudyPath.completionTitle'),
+      t('aiStudyPath.completionBody'),
+      [{ text: t('aiStudyPath.awesome') }],
     );
   };
 
@@ -198,25 +192,25 @@ export default function AIStudyPathScreen({ navigation }: Props) {
   const onWeakTopicPress = (topic: string) => {
     Alert.alert(
       topic,
-      `${topic} mövzusunda son nəticən orta səviyyədən aşağıdır. Necə davam etmək istəyirsən?`,
+      t('aiStudyPath.weakAlertBody', { topic }),
       [
-        { text: 'Ləğv et', style: 'cancel' },
+        { text: t('aiStudyPath.cancel'), style: 'cancel' },
         {
-          text: 'AI mini-dərs',
+          text: t('aiStudyPath.aiMiniLesson'),
           onPress: () => (navigation.getParent() as any)?.navigate('Marketplace', {
             screen: Routes.AISolution,
-            params: { question: `${topic} mövzusunu sadə dildə izah et və 3 nümunə göstər` },
+            params: { question: t('aiStudyPath.aiMiniLessonQ', { topic }) },
           }),
         },
         {
-          text: 'Sürətli test',
+          text: t('aiStudyPath.quickTest'),
           onPress: () => (navigation.getParent() as any)?.navigate('Exams', {
             screen: Routes.NewExam,
             params: { questionCount: 10, duration: 15, difficulty: 'hard', questionType: 'test', examType: 'practice' },
           }),
         },
         {
-          text: 'Fleşkart sessiyası',
+          text: t('aiStudyPath.flashcardSession'),
           onPress: () => (navigation.getParent() as any)?.navigate('Learn', { screen: Routes.LearningHome }),
         },
       ],
@@ -225,19 +219,19 @@ export default function AIStudyPathScreen({ navigation }: Props) {
 
   const onStrongTopicPress = (topic: string) => {
     Alert.alert(
-      `${topic} — güclü mövzun 💪`,
-      `Bu mövzuda 80%+ uğur göstərirsən. Səviyyəni daha da qaldırmaq üçün çətin imtahan və ya 1v1 yarış sınaya bilərsən.`,
+      t('aiStudyPath.strongAlertTitle', { topic }),
+      t('aiStudyPath.strongAlertBody'),
       [
-        { text: 'Bağla', style: 'cancel' },
+        { text: t('aiStudyPath.close'), style: 'cancel' },
         {
-          text: 'Çətin sınaq',
+          text: t('aiStudyPath.hardTest'),
           onPress: () => (navigation.getParent() as any)?.navigate('Exams', {
             screen: Routes.NewExam,
             params: { questionCount: 20, duration: 30, difficulty: 'hard', questionType: 'test', examType: 'practice' },
           }),
         },
         {
-          text: '1v1 yarış',
+          text: t('aiStudyPath.duel'),
           onPress: () => (navigation.getParent() as any)?.navigate('Exams', { screen: Routes.DuelMode }),
         },
       ],
@@ -247,15 +241,15 @@ export default function AIStudyPathScreen({ navigation }: Props) {
   const onExamPress = (exam: NextExam) => {
     Alert.alert(
       exam.title,
-      `${formatRelativeDate(exam.daysFromNow)} saat ${exam.hour}\n\nQeydiyyatdan keçərək sınağa hazırlaş.`,
+      t('aiStudyPath.examAlertBody', { rel: formatRelativeDate(exam.daysFromNow, t), hour: exam.hour }),
       [
-        { text: 'Bağla', style: 'cancel' },
+        { text: t('aiStudyPath.close'), style: 'cancel' },
         {
-          text: 'Kalendara əlavə et',
+          text: t('aiStudyPath.addToCalendar'),
           onPress: () => addExamToCalendar(exam),
         },
         {
-          text: 'İmtahanları aç',
+          text: t('aiStudyPath.openExams'),
           onPress: () => (navigation.getParent() as any)?.navigate('Exams' as never),
         },
       ],
@@ -269,7 +263,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
       if (supported) {
         Linking.openURL('calshow://');
         await Share.share({
-          message: `${exam.title}\n${formatRelativeDate(exam.daysFromNow)} saat ${exam.hour}\nKimi.az sınaq imtahanı`,
+          message: t('aiStudyPath.shareExam', { title: exam.title, rel: formatRelativeDate(exam.daysFromNow, t), hour: exam.hour }),
         });
         return;
       }
@@ -277,7 +271,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
     // Fallback: share ICS-format event details
     Share.share({
       title: exam.title,
-      message: `📅 ${exam.title}\n${formatRelativeDate(exam.daysFromNow)} saat ${exam.hour}\n\nKalendara əlavə et:\n${buildIcsForExam(exam)}`,
+      message: t('aiStudyPath.shareExamFallback', { title: exam.title, rel: formatRelativeDate(exam.daysFromNow, t), hour: exam.hour, ics: buildIcsForExam(exam, t) }),
     }).catch(() => {});
   };
 
@@ -293,7 +287,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
         >
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bugünkü plan</Text>
+        <Text style={styles.headerTitle}>{t('aiStudyPath.headerTitle')}</Text>
         <TouchableOpacity
           style={styles.iconBtn}
           activeOpacity={0.7}
@@ -322,8 +316,8 @@ export default function AIStudyPathScreen({ navigation }: Props) {
               <Ionicons name="flame" size={18} color="#fff" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.streakBannerTitle}>{streak} gün ardıcıl plan!</Text>
-              <Text style={styles.streakBannerSub}>Bu seriyanı qırma — sabah da davam et</Text>
+              <Text style={styles.streakBannerTitle}>{t('aiStudyPath.streakBanner', { n: streak })}</Text>
+              <Text style={styles.streakBannerSub}>{t('aiStudyPath.streakBannerSub')}</Text>
             </View>
           </View>
         )}
@@ -336,13 +330,13 @@ export default function AIStudyPathScreen({ navigation }: Props) {
           style={styles.insightCard}
         >
           <View style={styles.insightBadge}>
-            <Text style={styles.insightBadgeText}>KİMİ ROBOT INSIGHT</Text>
+            <Text style={styles.insightBadgeText}>{t('aiStudyPath.insightBadge')}</Text>
           </View>
           <Text style={styles.insightTitle}>
-            Bugün riyaziyyata fokuslanmağın tam vaxtıdır!
+            {t('aiStudyPath.insightTitle')}
           </Text>
           <Text style={styles.insightSub}>
-            Günün ilk yarısında beynin mürəkkəb hesablamalar üçün daha hazırdır.
+            {t('aiStudyPath.insightSub')}
           </Text>
           <TouchableOpacity
             style={styles.insightCta}
@@ -350,7 +344,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
             onPress={() => runPlanAction('math-test')}
           >
             <Ionicons name="flash" size={14} color={Colors.primary} />
-            <Text style={styles.insightCtaText}>Planı başlat</Text>
+            <Text style={styles.insightCtaText}>{t('aiStudyPath.startPlan')}</Text>
           </TouchableOpacity>
           <View style={styles.insightGlow} />
           <View style={styles.insightIconBg}>
@@ -368,7 +362,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
               onPress={() => setView(v)}
             >
               <Text style={[styles.toggleText, view === v && styles.toggleTextActive]}>
-                {v === 'today' ? 'Bugün' : 'Bu həftə'}
+                {v === 'today' ? t('aiStudyPath.toggleToday') : t('aiStudyPath.toggleWeek')}
               </Text>
             </TouchableOpacity>
           ))}
@@ -379,7 +373,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
             {/* Daily progress */}
             <View style={styles.progressCard}>
               <View style={styles.progressTopRow}>
-                <Text style={styles.progressTitle}>Günlük progress</Text>
+                <Text style={styles.progressTitle}>{t('aiStudyPath.dailyProgress')}</Text>
                 <Text style={[styles.progressValue, done === total && { color: '#16A34A' }]}>
                   {done}/{total}
                 </Text>
@@ -394,13 +388,13 @@ export default function AIStudyPathScreen({ navigation }: Props) {
               </View>
               <Text style={styles.progressHint}>
                 {done === total
-                  ? '✅ Tam tamamlandı — bonus alındı!'
-                  : `Tamamla → +50 XP + 1 spin şansı (qalan ${total - done})`}
+                  ? t('aiStudyPath.progressDone')
+                  : t('aiStudyPath.progressLeft', { n: total - done })}
               </Text>
             </View>
 
             {/* Daily Plan Grid */}
-            <Text style={styles.sectionTitle}>Sənin üçün hazırlananlar</Text>
+            <Text style={styles.sectionTitle}>{t('aiStudyPath.preparedForYou')}</Text>
             <View style={styles.planGrid}>
               {PLAN_CARDS.map((card) => {
                 const complete = isComplete(card.id);
@@ -415,9 +409,9 @@ export default function AIStudyPathScreen({ navigation }: Props) {
                       <Ionicons name={card.icon} size={22} color={card.iconColor} />
                     </View>
                     <Text style={[styles.planCardTitle, complete && { textDecorationLine: 'line-through', color: Colors.textSecondary }]}>
-                      {card.title}
+                      {t(card.titleKey)}
                     </Text>
-                    <Text style={styles.planCardSub}>{card.sub}</Text>
+                    <Text style={styles.planCardSub}>{t(card.subKey)}</Text>
                     <TouchableOpacity
                       style={[styles.checkBtn, complete && styles.checkBtnDone]}
                       activeOpacity={0.7}
@@ -438,7 +432,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
         ) : (
           /* Week view */
           <View style={styles.weekCard}>
-            <Text style={styles.weekTitle}>Son 7 gün üzrə tamamlanma</Text>
+            <Text style={styles.weekTitle}>{t('aiStudyPath.weekTitle')}</Text>
             <View style={styles.weekRow}>
               {weekCounts.map((d, idx) => {
                 const dateObj = new Date(d.dateKey);
@@ -456,7 +450,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
                       />
                     </View>
                     <Text style={[styles.weekDayLabel, isToday && { color: Colors.primary, fontWeight: '900' }]}>
-                      {WEEKDAY_AZ[dateObj.getDay()]}
+                      {t('aiStudyPath.weekdays').split('|')[dateObj.getDay()]}
                     </Text>
                     <Text style={styles.weekDayDate}>{dateObj.getDate()}</Text>
                   </View>
@@ -465,33 +459,33 @@ export default function AIStudyPathScreen({ navigation }: Props) {
             </View>
             <View style={styles.weekStats}>
               <Text style={styles.weekStat}>
-                Toplam: <Text style={{ fontWeight: '900', color: Colors.primary }}>{weekCounts.reduce((a, b) => a + b.count, 0)}</Text> tapşırıq
+                {t('aiStudyPath.weekTotalLabel')} <Text style={{ fontWeight: '900', color: Colors.primary }}>{weekCounts.reduce((a, b) => a + b.count, 0)}</Text> {t('aiStudyPath.taskUnit')}
               </Text>
               <Text style={styles.weekStat}>
-                Tam günlər: <Text style={{ fontWeight: '900', color: '#16A34A' }}>{weekCounts.filter((d) => d.count === total).length}</Text>
+                {t('aiStudyPath.weekFullDays')} <Text style={{ fontWeight: '900', color: '#16A34A' }}>{weekCounts.filter((d) => d.count === total).length}</Text>
               </Text>
             </View>
           </View>
         )}
 
         {/* Performance Analysis */}
-        <Text style={styles.sectionTitle}>Performans analizi</Text>
+        <Text style={styles.sectionTitle}>{t('aiStudyPath.perfTitle')}</Text>
         <View style={styles.perfCard}>
           <View style={styles.perfSection}>
             <View style={styles.perfLabelRow}>
               <View style={[styles.perfDot, { backgroundColor: '#e11d48' }]} />
-              <Text style={styles.perfLabel}>ZƏİF MÖVZULAR</Text>
-              <Text style={styles.perfHint}>Toxun → seçim</Text>
+              <Text style={styles.perfLabel}>{t('aiStudyPath.weakLabel')}</Text>
+              <Text style={styles.perfHint}>{t('aiStudyPath.weakHint')}</Text>
             </View>
             <View style={styles.chipRow}>
-              {weakTopics.map((t) => (
+              {weakTopics.map((topic) => (
                 <TouchableOpacity
-                  key={t}
+                  key={topic}
                   style={styles.chipWeak}
                   activeOpacity={0.85}
-                  onPress={() => onWeakTopicPress(t)}
+                  onPress={() => onWeakTopicPress(topic)}
                 >
-                  <Text style={styles.chipWeakText}>{t}</Text>
+                  <Text style={styles.chipWeakText}>{topic}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -499,18 +493,18 @@ export default function AIStudyPathScreen({ navigation }: Props) {
           <View style={[styles.perfSection, styles.perfSectionTop]}>
             <View style={styles.perfLabelRow}>
               <View style={[styles.perfDot, { backgroundColor: '#16a34a' }]} />
-              <Text style={styles.perfLabel}>GÜCLÜ MÖVZULAR</Text>
-              <Text style={styles.perfHint}>Səviyyəni qaldır</Text>
+              <Text style={styles.perfLabel}>{t('aiStudyPath.strongLabel')}</Text>
+              <Text style={styles.perfHint}>{t('aiStudyPath.strongHint')}</Text>
             </View>
             <View style={styles.chipRow}>
-              {strongTopics.map((t) => (
+              {strongTopics.map((topic) => (
                 <TouchableOpacity
-                  key={t}
+                  key={topic}
                   style={styles.chipStrong}
                   activeOpacity={0.85}
-                  onPress={() => onStrongTopicPress(t)}
+                  onPress={() => onStrongTopicPress(topic)}
                 >
-                  <Text style={styles.chipStrongText}>{t}</Text>
+                  <Text style={styles.chipStrongText}>{topic}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -523,7 +517,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
             <View style={styles.aiRecIconBox}>
               <Ionicons name="sparkles" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.aiRecTitle}>AI tövsiyələri</Text>
+            <Text style={styles.aiRecTitle}>{t('aiStudyPath.aiRecTitle')}</Text>
             <TouchableOpacity
               style={styles.refreshBtn}
               activeOpacity={0.7}
@@ -531,7 +525,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
               hitSlop={6}
             >
               <Ionicons name="refresh" size={14} color={Colors.primary} />
-              <Text style={styles.refreshBtnText}>Yeni</Text>
+              <Text style={styles.refreshBtnText}>{t('aiStudyPath.newTip')}</Text>
             </TouchableOpacity>
           </View>
           {visibleTips.map((tip, i) => (
@@ -545,7 +539,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
         </View>
 
         {/* Next Tests */}
-        <Text style={[styles.sectionTitle, { marginBottom: 14 }]}>Növbəti sınaqlar</Text>
+        <Text style={[styles.sectionTitle, { marginBottom: 14 }]}>{t('aiStudyPath.nextTests')}</Text>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -563,14 +557,14 @@ export default function AIStudyPathScreen({ navigation }: Props) {
                 <Ionicons name={exam.icon} size={36} color={Colors.primary} />
                 {exam.daysFromNow <= 2 && (
                   <View style={styles.examSoonBadge}>
-                    <Text style={styles.examSoonText}>TEZLİKLƏ</Text>
+                    <Text style={styles.examSoonText}>{t('aiStudyPath.soon')}</Text>
                   </View>
                 )}
               </View>
               <Text style={styles.examTitle}>{exam.title}</Text>
               <View style={styles.examDateRow}>
                 <Ionicons name="calendar-outline" size={12} color={Colors.textMuted} />
-                <Text style={styles.examDate}>{formatRelativeDate(exam.daysFromNow)} • {exam.hour}</Text>
+                <Text style={styles.examDate}>{formatRelativeDate(exam.daysFromNow, t)} • {exam.hour}</Text>
               </View>
               <TouchableOpacity
                 style={styles.examCalBtn}
@@ -578,7 +572,7 @@ export default function AIStudyPathScreen({ navigation }: Props) {
                 onPress={() => addExamToCalendar(exam)}
               >
                 <Ionicons name="calendar" size={12} color={Colors.primary} />
-                <Text style={styles.examCalText}>Kalendara</Text>
+                <Text style={styles.examCalText}>{t('aiStudyPath.calendar')}</Text>
               </TouchableOpacity>
             </TouchableOpacity>
           ))}

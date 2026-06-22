@@ -10,38 +10,39 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.DeactivateReason>;
 };
 
-type Reason = { id: string; label: string; icon: React.ComponentProps<typeof Ionicons>['name']; iconColor: string; iconBg: string };
+type Reason = { id: string; labelKey: string; icon: React.ComponentProps<typeof Ionicons>['name']; iconColor: string; iconBg: string };
 
 const REASONS: Reason[] = [
   {
     id: 'temp',
-    label: 'Müvəqqəti istifadə etmirəm',
+    labelKey: 'deactivateReason.reasonTemp',
     icon: 'time-outline',
     iconColor: Colors.primary,
     iconBg: Colors.primaryFixed + '33',
   },
   {
     id: 'other_platform',
-    label: 'Başqa platformadan istifadə edirəm',
+    labelKey: 'deactivateReason.reasonOtherPlatform',
     icon: 'swap-horizontal-outline',
     iconColor: Colors.secondary,
     iconBg: Colors.secondaryContainer + '4D',
   },
   {
     id: 'notif',
-    label: 'Çox bildiriş gəlir',
+    labelKey: 'deactivateReason.reasonNotif',
     icon: 'notifications-off-outline',
     iconColor: Colors.tertiary,
     iconBg: Colors.tertiaryContainer + '4D',
   },
   {
     id: 'other',
-    label: 'Digər səbəb',
+    labelKey: 'deactivateReason.reasonOther',
     icon: 'ellipsis-horizontal',
     iconColor: Colors.textSecondary,
     iconBg: Colors.surfaceHigh,
@@ -49,6 +50,7 @@ const REASONS: Reason[] = [
 ];
 
 export default function DeactivateReasonScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState('temp');
   const [notes, setNotes] = useState('');
 
@@ -59,14 +61,14 @@ export default function DeactivateReasonScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Hesabın İdarə Edilməsi</Text>
+          <Text style={styles.headerTitle}>{t('deactivateReason.headerTitle')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           <View style={styles.titleBlock}>
-            <Text style={styles.pageTitle}>Niyə ayrılırsınız?</Text>
-            <Text style={styles.pageSub}>Təcrübəmizi təkmilləşdirmək üçün səbəbinizi bildirin.</Text>
+            <Text style={styles.pageTitle}>{t('deactivateReason.pageTitle')}</Text>
+            <Text style={styles.pageSub}>{t('deactivateReason.pageSub')}</Text>
           </View>
 
           <View style={styles.grid}>
@@ -85,18 +87,18 @@ export default function DeactivateReasonScreen({ navigation }: Props) {
                 <View style={[styles.reasonIconBox, { backgroundColor: r.iconBg }]}>
                   <Ionicons name={r.icon} size={24} color={r.iconColor} />
                 </View>
-                <Text style={styles.reasonLabel}>{r.label}</Text>
+                <Text style={styles.reasonLabel}>{t(r.labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <View style={styles.notesBlock}>
-            <Text style={styles.notesLabel}>Əlavə qeydlər (isteğe bağlı)</Text>
+            <Text style={styles.notesLabel}>{t('deactivateReason.notesLabel')}</Text>
             <TextInput
               style={styles.notesInput}
               value={notes}
               onChangeText={setNotes}
-              placeholder="Daha ətraflı məlumat verə bilərsiniz..."
+              placeholder={t('deactivateReason.notesPlaceholder')}
               placeholderTextColor={Colors.textMuted}
               multiline
               numberOfLines={4}
@@ -114,7 +116,7 @@ export default function DeactivateReasonScreen({ navigation }: Props) {
               style={styles.ctaBtn}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.ctaBtnText}>Davam et</Text>
+              <Text style={styles.ctaBtnText}>{t('deactivateReason.continue')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>

@@ -17,6 +17,7 @@ import { Colors } from '../../constants/colors';
 import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
 import { useUserStore } from '../../store/user.store';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 type Scope = 'students' | 'schools' | 'friends' | 'me';
@@ -27,11 +28,11 @@ const TOP_SCHOOLS = [
   { name: '160 saylı tam orta', city: 'Bakı, Azərbaycan', rank: 3, icon: 'school-outline' as const, bg: '#FEF3C7', tint: '#D97706' },
 ];
 
-const TAB_OPTIONS: { key: Scope; label: string }[] = [
-  { key: 'students', label: 'Top Şagirdlər' },
-  { key: 'schools', label: 'Top Məktəblər' },
-  { key: 'friends', label: 'Dostlarım' },
-  { key: 'me', label: 'Mənim yerim' },
+const TAB_OPTIONS: { key: Scope; labelKey: string }[] = [
+  { key: 'students', labelKey: 'leaderboard.tabStudents' },
+  { key: 'schools', labelKey: 'leaderboard.tabSchools' },
+  { key: 'friends', labelKey: 'leaderboard.tabFriends' },
+  { key: 'me', labelKey: 'leaderboard.tabMe' },
 ];
 
 function Avatar({ initial, size, gradient = false, border, borderColor }: { initial: string; size: number; gradient?: boolean; border?: number; borderColor?: string }) {
@@ -71,6 +72,7 @@ function Avatar({ initial, size, gradient = false, border, borderColor }: { init
 
 export default function LeaderboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [scope, setScope] = useState<Scope>('students');
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,21 +134,21 @@ export default function LeaderboardScreen() {
       >
         {/* Headline */}
         <View>
-          <Text style={styles.pageTitle}>Milli İmtahan Reytinqi</Text>
-          <Text style={styles.pageSub}>Bütün ölkə üzrə şagirdlərin nailiyyətləri</Text>
+          <Text style={styles.pageTitle}>{t('leaderboard.pageTitle')}</Text>
+          <Text style={styles.pageSub}>{t('leaderboard.pageSub')}</Text>
         </View>
 
         {/* Segmented tabs (scrollable) */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsListInner}>
           <View style={styles.tabsWrap}>
-            {TAB_OPTIONS.map(({ key, label }) => (
+            {TAB_OPTIONS.map(({ key, labelKey }) => (
               <TouchableOpacity
                 key={key}
                 style={[styles.tab, scope === key && styles.tabActive]}
                 onPress={() => setScope(key)}
                 activeOpacity={0.75}
               >
-                <Text style={[styles.tabText, scope === key && styles.tabTextActive]}>{label}</Text>
+                <Text style={[styles.tabText, scope === key && styles.tabTextActive]}>{t(labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -158,7 +160,7 @@ export default function LeaderboardScreen() {
           </View>
         ) : scope === 'schools' ? (
           <View style={{ gap: 12 }}>
-            <Text style={styles.sectionTitle}>Top Məktəblər</Text>
+            <Text style={styles.sectionTitle}>{t('leaderboard.topSchools')}</Text>
             {TOP_SCHOOLS.map((s) => (
               <TouchableOpacity
                 key={s.name}
@@ -181,8 +183,8 @@ export default function LeaderboardScreen() {
         ) : scope === 'friends' ? (
           <View style={styles.placeholder}>
             <Ionicons name="people-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.placeholderTitle}>Dostların reytinqi</Text>
-            <Text style={styles.placeholderSub}>Dost əlavə et və onlarla yarışda öz yerini gör.</Text>
+            <Text style={styles.placeholderTitle}>{t('leaderboard.friendsTitle')}</Text>
+            <Text style={styles.placeholderSub}>{t('leaderboard.friendsSub')}</Text>
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => navigation.navigate(Routes.Friends)}
@@ -190,7 +192,7 @@ export default function LeaderboardScreen() {
             >
               <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.placeholderCta}>
                 <Ionicons name="person-add-outline" size={18} color="#fff" />
-                <Text style={styles.placeholderCtaText}>Dostları gör</Text>
+                <Text style={styles.placeholderCtaText}>{t('leaderboard.seeFriends')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -206,8 +208,8 @@ export default function LeaderboardScreen() {
                 <View style={styles.myCardGlow} />
                 <View style={styles.myCardTop}>
                   <View>
-                    <Text style={styles.myCardLabel}>Sənin Yerin</Text>
-                    <Text style={styles.myCardRank}>{me.rank}-cü</Text>
+                    <Text style={styles.myCardLabel}>{t('leaderboard.myPlace')}</Text>
+                    <Text style={styles.myCardRank}>{t('leaderboard.rankOrdinal', { n: me.rank })}</Text>
                   </View>
                   <View style={styles.myCardIconWrap}>
                     <Ionicons name="trending-up" size={22} color="#fff" />
@@ -215,8 +217,8 @@ export default function LeaderboardScreen() {
                 </View>
                 <View style={{ gap: 8 }}>
                   <View style={styles.myCardRowBetween}>
-                    <Text style={styles.myCardHint}>Növbəti hədəf: {nextTarget}-cü yer</Text>
-                    <Text style={styles.myCardHint}>+{targetGain} xal</Text>
+                    <Text style={styles.myCardHint}>{t('leaderboard.nextTarget', { n: nextTarget ?? 0 })}</Text>
+                    <Text style={styles.myCardHint}>{t('leaderboard.pointsGain', { n: targetGain })}</Text>
                   </View>
                   <View style={styles.myCardTrack}>
                     <View style={[styles.myCardFill, { width: `${Math.round(progressToTarget * 100)}%` as any }]} />
@@ -226,8 +228,8 @@ export default function LeaderboardScreen() {
             ) : (
               <View style={styles.placeholder}>
                 <Ionicons name="rocket-outline" size={42} color={Colors.textMuted} />
-                <Text style={styles.placeholderTitle}>Hələ yerinin yoxdur</Text>
-                <Text style={styles.placeholderSub}>İmtahan ver və ümumi reytinqə daxil ol.</Text>
+                <Text style={styles.placeholderTitle}>{t('leaderboard.noPlaceTitle')}</Text>
+                <Text style={styles.placeholderSub}>{t('leaderboard.noPlaceSub')}</Text>
               </View>
             )}
           </View>
@@ -245,7 +247,7 @@ export default function LeaderboardScreen() {
                     </View>
                   </View>
                   <Text style={styles.podiumName} numberOfLines={1}>{top3[1].name.split(' ')[0]}</Text>
-                  <Text style={[styles.podiumScore, { color: Colors.primary }]}>{top3[1].totalScore} p.</Text>
+                  <Text style={[styles.podiumScore, { color: Colors.primary }]}>{t('leaderboard.pointsAbbr', { n: top3[1].totalScore })}</Text>
                 </View>
 
                 {/* Rank 1 (raised, crown) */}
@@ -260,7 +262,7 @@ export default function LeaderboardScreen() {
                     </View>
                   </View>
                   <Text style={[styles.podiumName, styles.podiumNameFirst]} numberOfLines={1}>{top3[0].name.split(' ')[0]}</Text>
-                  <Text style={[styles.podiumScore, styles.podiumScoreFirst]}>{top3[0].totalScore} p.</Text>
+                  <Text style={[styles.podiumScore, styles.podiumScoreFirst]}>{t('leaderboard.pointsAbbr', { n: top3[0].totalScore })}</Text>
                 </View>
 
                 {/* Rank 3 */}
@@ -272,7 +274,7 @@ export default function LeaderboardScreen() {
                     </View>
                   </View>
                   <Text style={styles.podiumName} numberOfLines={1}>{top3[2].name.split(' ')[0]}</Text>
-                  <Text style={[styles.podiumScore, { color: Colors.primary }]}>{top3[2].totalScore} p.</Text>
+                  <Text style={[styles.podiumScore, { color: Colors.primary }]}>{t('leaderboard.pointsAbbr', { n: top3[2].totalScore })}</Text>
                 </View>
               </View>
             )}
@@ -288,8 +290,8 @@ export default function LeaderboardScreen() {
                 <View style={styles.myCardGlow} />
                 <View style={styles.myCardTop}>
                   <View>
-                    <Text style={styles.myCardLabel}>Sənin Yerin</Text>
-                    <Text style={styles.myCardRank}>{me.rank}-cü</Text>
+                    <Text style={styles.myCardLabel}>{t('leaderboard.myPlace')}</Text>
+                    <Text style={styles.myCardRank}>{t('leaderboard.rankOrdinal', { n: me.rank })}</Text>
                   </View>
                   <View style={styles.myCardIconWrap}>
                     <Ionicons name="trending-up" size={22} color="#fff" />
@@ -297,8 +299,8 @@ export default function LeaderboardScreen() {
                 </View>
                 <View style={{ gap: 8 }}>
                   <View style={styles.myCardRowBetween}>
-                    <Text style={styles.myCardHint}>Növbəti hədəf: {nextTarget}-cü yer</Text>
-                    <Text style={styles.myCardHint}>+{targetGain} xal</Text>
+                    <Text style={styles.myCardHint}>{t('leaderboard.nextTarget', { n: nextTarget ?? 0 })}</Text>
+                    <Text style={styles.myCardHint}>{t('leaderboard.pointsGain', { n: targetGain })}</Text>
                   </View>
                   <View style={styles.myCardTrack}>
                     <View style={[styles.myCardFill, { width: `${Math.round(progressToTarget * 100)}%` as any }]} />
@@ -310,9 +312,9 @@ export default function LeaderboardScreen() {
             {/* Top students list */}
             <View>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Top Şagirdlər</Text>
+                <Text style={styles.sectionTitle}>{t('leaderboard.topStudents')}</Text>
                 <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
-                  <Text style={styles.sectionMore}>Hamısı</Text>
+                  <Text style={styles.sectionMore}>{t('leaderboard.all')}</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.studentList}>
@@ -322,12 +324,12 @@ export default function LeaderboardScreen() {
                       <Text style={styles.studentRank}>{s.rank}</Text>
                       <Avatar initial={initial(s.name)} size={40} />
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.studentName} numberOfLines={1}>{s.userId === user?.id ? 'Sən' : s.name}</Text>
-                        <Text style={styles.studentSub} numberOfLines={1}>{s.examCount} imtahan · %{s.avgPercentage}</Text>
+                        <Text style={styles.studentName} numberOfLines={1}>{s.userId === user?.id ? t('leaderboard.you') : s.name}</Text>
+                        <Text style={styles.studentSub} numberOfLines={1}>{t('leaderboard.examMeta', { count: s.examCount, pct: s.avgPercentage })}</Text>
                       </View>
                       <View style={styles.scoreCol}>
                         <Text style={styles.studentScore}>{s.totalScore}</Text>
-                        <Text style={styles.studentUnit}>xal</Text>
+                        <Text style={styles.studentUnit}>{t('leaderboard.scoreUnit')}</Text>
                       </View>
                     </View>
                     {i === 2 && (
@@ -338,14 +340,14 @@ export default function LeaderboardScreen() {
                         style={styles.seasonCard}
                       >
                         <View style={{ flex: 1, gap: 8 }}>
-                          <Text style={styles.seasonKicker}>MÖVSÜMÜN ULDUZU</Text>
-                          <Text style={styles.seasonTitle}>Zirvəyə gedən yol davam edir!</Text>
+                          <Text style={styles.seasonKicker}>{t('leaderboard.seasonKicker')}</Text>
+                          <Text style={styles.seasonTitle}>{t('leaderboard.seasonTitle')}</Text>
                           <TouchableOpacity
                             activeOpacity={0.9}
                             onPress={() => navigation.navigate(Routes.SpinWheel)}
                             style={styles.seasonBtn}
                           >
-                            <Text style={styles.seasonBtnText}>Davam et</Text>
+                            <Text style={styles.seasonBtnText}>{t('leaderboard.seasonBtn')}</Text>
                           </TouchableOpacity>
                         </View>
                         <View style={styles.seasonIconWrap} pointerEvents="none">
@@ -356,7 +358,7 @@ export default function LeaderboardScreen() {
                   </React.Fragment>
                 ))}
                 {list.length === 0 && top3.length === 0 && (
-                  <Text style={styles.empty}>Hələ heç kim imtahan verməyib.</Text>
+                  <Text style={styles.empty}>{t('leaderboard.emptyNoone')}</Text>
                 )}
               </View>
             </View>

@@ -7,32 +7,34 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type RenewOption = {
   id: '3mo' | '6mo' | '1yr';
-  title: string;
+  titleKey: string;
   price: number;
-  features: string[];
-  saveBadge?: string;
+  featuresKey: string;
+  saveBadgeKey?: string;
   popular?: boolean;
 };
 
 const OPTIONS: RenewOption[] = [
-  { id: '3mo', title: '3 Aylıq', price: 75,  features: ['Limitsiz AI', 'Premium Analiz'] },
-  { id: '6mo', title: '6 Aylıq', price: 99,  features: ['Limitsiz AI', 'Premium Analiz', 'Eksklüziv Testlər'], popular: true },
-  { id: '1yr', title: '1 İllik', price: 145, features: ['Bütün üstünlüklər daxildir'], saveBadge: '-40% Qənaət' },
+  { id: '3mo', titleKey: 'pay.opt3mo', price: 75,  featuresKey: 'pay.renewFeat3mo' },
+  { id: '6mo', titleKey: 'pay.opt6mo', price: 99,  featuresKey: 'pay.renewFeat6mo', popular: true },
+  { id: '1yr', titleKey: 'pay.opt1yr', price: 145, featuresKey: 'pay.renewFeat1yr', saveBadgeKey: 'pay.save40' },
 ];
 
 export default function SubscriptionRenewScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<RenewOption['id']>('6mo');
 
   const onRenew = () => {
     const plan = OPTIONS.find((o) => o.id === selected);
     if (!plan) return;
-    navigation.navigate(Routes.PaymentMethod, { planId: plan.id, planName: plan.title, amount: plan.price });
+    navigation.navigate(Routes.PaymentMethod, { planId: plan.id, planName: t(plan.titleKey), amount: plan.price });
   };
 
   return (
@@ -41,7 +43,7 @@ export default function SubscriptionRenewScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Abunəliyi Yenilə</Text>
+        <Text style={styles.headerTitle}>{t('pay.renewHeader')}</Text>
         <View style={styles.walletBtn}>
           <Ionicons name="wallet" size={20} color={Colors.primary} />
         </View>
@@ -57,7 +59,7 @@ export default function SubscriptionRenewScreen() {
             </LinearGradient>
           </View>
           <View style={styles.bubble}>
-            <Text style={styles.bubbleText}>Biliyinə sərmayə qoymaq ən yaxşı seçimdir!</Text>
+            <Text style={styles.bubbleText}>{t('pay.renewMascot')}</Text>
           </View>
         </View>
 
@@ -66,25 +68,25 @@ export default function SubscriptionRenewScreen() {
           <View style={styles.currentOrb} pointerEvents="none" />
           <View style={styles.currentTop}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.currentLabel}>Hazırkı Paket</Text>
+              <Text style={styles.currentLabel}>{t('pay.currentPackage')}</Text>
               <Text style={styles.currentName}>PREMIUM</Text>
             </View>
             <View style={styles.activeChip}>
-              <Text style={styles.activeChipText}>AKTİV</Text>
+              <Text style={styles.activeChipText}>{t('pay.activeUpper')}</Text>
             </View>
           </View>
           <View style={styles.currentDateRow}>
             <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
             <Text style={styles.currentDateText}>
-              Bitmə tarixi: <Text style={styles.currentDateBold}>15.01.2024</Text>
+              {t('pay.expiryPre')}<Text style={styles.currentDateBold}>15.01.2024</Text>
             </Text>
           </View>
         </View>
 
         {/* Options header */}
         <View style={{ gap: 4 }}>
-          <Text style={styles.sectionTitle}>Paketini Seç</Text>
-          <Text style={styles.sectionSub}>Sənə ən uyğun olan planı seçərək öyrənməyə davam et.</Text>
+          <Text style={styles.sectionTitle}>{t('pay.choosePackage')}</Text>
+          <Text style={styles.sectionSub}>{t('pay.chooseSub')}</Text>
         </View>
 
         {/* Options */}
@@ -104,7 +106,7 @@ export default function SubscriptionRenewScreen() {
               >
                 {opt.popular && (
                   <View style={styles.popularRibbon}>
-                    <Text style={styles.popularRibbonText}>Ən Populyar</Text>
+                    <Text style={styles.popularRibbonText}>{t('pay.mostPopular')}</Text>
                   </View>
                 )}
                 <View style={styles.optionTop}>
@@ -112,17 +114,17 @@ export default function SubscriptionRenewScreen() {
                     <View style={[styles.radioOuter, isSel && styles.radioOuterSel]}>
                       {isSel && <View style={styles.radioInner} />}
                     </View>
-                    <Text style={styles.optionTitle}>{opt.title}</Text>
-                    {opt.saveBadge && (
+                    <Text style={styles.optionTitle}>{t(opt.titleKey)}</Text>
+                    {opt.saveBadgeKey && (
                       <View style={styles.saveBadge}>
-                        <Text style={styles.saveBadgeText}>{opt.saveBadge}</Text>
+                        <Text style={styles.saveBadgeText}>{t(opt.saveBadgeKey)}</Text>
                       </View>
                     )}
                   </View>
                   <Text style={styles.optionPrice}>{opt.price} AZN</Text>
                 </View>
                 <View style={styles.optionFeatures}>
-                  {opt.features.map((f) => (
+                  {t(opt.featuresKey).split('|').map((f) => (
                     <View key={f} style={styles.optionFeatureRow}>
                       <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
                       <Text style={styles.optionFeatureText}>{f}</Text>
@@ -140,7 +142,7 @@ export default function SubscriptionRenewScreen() {
       <View style={styles.bottomBar}>
         <TouchableOpacity activeOpacity={0.9} onPress={onRenew}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
-            <Text style={styles.ctaBtnText}>İndi Yenilə</Text>
+            <Text style={styles.ctaBtnText}>{t('pay.renewNow')}</Text>
             <Ionicons name="arrow-forward" size={18} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

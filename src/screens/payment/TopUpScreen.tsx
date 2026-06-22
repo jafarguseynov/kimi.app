@@ -14,6 +14,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { topUp } from '../../api/payment.api';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const TOPUP_AMOUNT = 5;
@@ -21,6 +22,7 @@ const TOPUP_AMOUNT = 5;
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function TopUpScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const qc = useQueryClient();
 
   const { mutate, isPending } = useMutation({
@@ -28,11 +30,11 @@ export default function TopUpScreen({ navigation }: Props) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['wallet'] });
       qc.invalidateQueries({ queryKey: ['transactions'] });
-      Alert.alert('Uğurlu', `${TOPUP_AMOUNT} AZN balansınıza əlavə edildi`, [
-        { text: 'Tamam', onPress: () => navigation.goBack() },
+      Alert.alert(t('pay.successTitle'), t('pay.topupAdded', { amount: TOPUP_AMOUNT }), [
+        { text: t('pay.ok'), onPress: () => navigation.goBack() },
       ]);
     },
-    onError: () => Alert.alert('Xəta', 'Ödəniş uğursuz oldu'),
+    onError: () => Alert.alert(t('pay.errorTitle'), t('pay.topupFailed')),
   });
 
   return (
@@ -70,9 +72,9 @@ export default function TopUpScreen({ navigation }: Props) {
               <Ionicons name="alert-circle-outline" size={26} color="#F97316" />
             </View>
 
-            <Text style={styles.modalTitle}>Balansın azdır, davam etmək üçün artır</Text>
+            <Text style={styles.modalTitle}>{t('pay.lowBalanceTitle')}</Text>
             <Text style={styles.modalSub}>
-              Dərslərinizə fasilə vermədən davam etmək üçün balansınızı indi yeniləyin.
+              {t('pay.lowBalanceSub')}
             </Text>
 
             {/* Primary button */}
@@ -88,7 +90,7 @@ export default function TopUpScreen({ navigation }: Props) {
                 ) : (
                   <>
                     <Ionicons name="add-circle" size={22} color="#fff" />
-                    <Text style={styles.primaryBtnText}>+{TOPUP_AMOUNT} AZN əlavə et</Text>
+                    <Text style={styles.primaryBtnText}>{t('pay.addAmount', { amount: TOPUP_AMOUNT })}</Text>
                   </>
                 )}
               </LinearGradient>
@@ -100,13 +102,13 @@ export default function TopUpScreen({ navigation }: Props) {
               onPress={() => navigation.goBack()}
               activeOpacity={0.7}
             >
-              <Text style={styles.secondaryBtnText}>Daha sonra</Text>
+              <Text style={styles.secondaryBtnText}>{t('pay.later')}</Text>
             </TouchableOpacity>
 
             {/* Trust indicator */}
             <View style={styles.trustRow}>
               <Ionicons name="shield-checkmark-outline" size={16} color={Colors.textMuted} />
-              <Text style={styles.trustText}>TƏHLÜKƏSİZ ÖDƏNİŞ</Text>
+              <Text style={styles.trustText}>{t('pay.securePaymentUpper')}</Text>
             </View>
           </View>
         </View>

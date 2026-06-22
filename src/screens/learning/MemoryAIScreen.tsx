@@ -5,17 +5,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function MemoryAIScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate(Routes.Home))}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
           <Ionicons name="bulb-outline" size={24} color={Colors.primary} />
-          <Text style={styles.headerTitle}>Memory AI</Text>
+          <Text style={styles.headerTitle}>{t('learning.memoryAiTitle')}</Text>
         </View>
         <View style={styles.avatarCircle}>
           <Ionicons name="person" size={20} color={Colors.primary} />
@@ -35,8 +46,8 @@ export default function MemoryAIScreen({ navigation }: Props) {
               <Ionicons name="hardware-chip-outline" size={64} color="#fff" />
             </LinearGradient>
           </View>
-          <Text style={styles.heroLabel}>KİMİ ROBOT ANALİZİ</Text>
-          <Text style={styles.heroTitle}>Öyrənmə Strategiyanız</Text>
+          <Text style={styles.heroLabel}>{t('learning.robotAnalysis')}</Text>
+          <Text style={styles.heroTitle}>{t('learning.learningStrategy')}</Text>
         </View>
 
         {/* Main Analysis Card */}
@@ -44,8 +55,8 @@ export default function MemoryAIScreen({ navigation }: Props) {
           <View style={styles.analysisCardAura} />
           <View style={styles.analysisCardTop}>
             <View>
-              <Text style={styles.analysisCardTitle}>Yaddaş Analizi</Text>
-              <Text style={styles.analysisCardSub}>Bu mövzunu unutmaq üzrəsən</Text>
+              <Text style={styles.analysisCardTitle}>{t('learning.memoryAnalysis')}</Text>
+              <Text style={styles.analysisCardSub}>{t('learning.aboutToForget')}</Text>
             </View>
             <Ionicons name="warning" size={36} color={Colors.errorContainer} />
           </View>
@@ -58,12 +69,12 @@ export default function MemoryAIScreen({ navigation }: Props) {
                   <Ionicons name="calculator-outline" size={24} color={Colors.primary} />
                 </View>
                 <View>
-                  <Text style={styles.subjectMeta}>Mövzu</Text>
+                  <Text style={styles.subjectMeta}>{t('learning.topicLabel')}</Text>
                   <Text style={styles.subjectName}>Riyaziyyat: Kəsrlər</Text>
                 </View>
               </View>
               <View style={styles.subjectRight}>
-                <Text style={styles.retentionMeta}>Yadda saxlanma</Text>
+                <Text style={styles.retentionMeta}>{t('learning.retention')}</Text>
                 <Text style={styles.retentionValue}>20%</Text>
               </View>
             </View>
@@ -80,28 +91,28 @@ export default function MemoryAIScreen({ navigation }: Props) {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
               <Ionicons name="refresh" size={22} color="#fff" />
-              <Text style={styles.ctaBtnText}>Təkrar et</Text>
+              <Text style={styles.ctaBtnText}>{t('learning.review')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
         {/* Benefits */}
         <View style={styles.benefitsSection}>
-          <Text style={styles.benefitsTitle}>Niyə təkrar etməliyəm?</Text>
+          <Text style={styles.benefitsTitle}>{t('learning.whyReview')}</Text>
           <View style={styles.benefitsGrid}>
             <View style={styles.benefitCard}>
               <View style={[styles.benefitIcon, { backgroundColor: Colors.primary + '1A' }]}>
                 <Ionicons name="flash-outline" size={22} color={Colors.primary} />
               </View>
-              <Text style={styles.benefitCardTitle}>Effektiv öyrənmə</Text>
-              <Text style={styles.benefitCardSub}>Aralıqlı təkrar metodu ilə məlumatı uzunmüddətli yaddaşa köçürürsən.</Text>
+              <Text style={styles.benefitCardTitle}>{t('learning.benefit1Title')}</Text>
+              <Text style={styles.benefitCardSub}>{t('learning.benefit1Sub')}</Text>
             </View>
             <View style={styles.benefitCard}>
               <View style={[styles.benefitIcon, { backgroundColor: Colors.tertiary + '1A' }]}>
                 <Ionicons name="trending-up-outline" size={22} color={Colors.tertiary} />
               </View>
-              <Text style={styles.benefitCardTitle}>Zaman qənaəti</Text>
-              <Text style={styles.benefitCardSub}>Yalnız unutmaq üzrə olduğun mövzuları təkrar edərək vaxtına qənaət et.</Text>
+              <Text style={styles.benefitCardTitle}>{t('learning.benefit2Title')}</Text>
+              <Text style={styles.benefitCardSub}>{t('learning.benefit2Sub')}</Text>
             </View>
           </View>
         </View>
@@ -120,7 +131,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24, height: 56,
     backgroundColor: 'rgba(255,255,255,0.7)',
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerBackBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginLeft: -8 },
   headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
   avatarCircle: {
     width: 40, height: 40, borderRadius: 20,

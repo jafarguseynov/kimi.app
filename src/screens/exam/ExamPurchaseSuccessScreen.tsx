@@ -7,12 +7,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamPurchaseSuccess>;
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ExamPurchaseSuccessScreen({ route, navigation }: Props) {
-  const { examId, title = 'İmtahan', subject = 'Magistratura', questions = 50, successRate = 85 } = route.params;
+  const { t } = useTranslation();
+  const { examId, title = t('examPurchase.defaultExam'), subject = t('examPurchase.defaultSubject'), questions = 50, successRate = 85 } = route.params;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -20,7 +22,7 @@ export default function ExamPurchaseSuccessScreen({ route, navigation }: Props) 
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.popToTop()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Təhsil</Text>
+        <Text style={styles.headerTitle}>{t('examPurchase.eduHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -32,8 +34,8 @@ export default function ExamPurchaseSuccessScreen({ route, navigation }: Props) 
               <Ionicons name="checkmark" size={42} color="#fff" />
             </View>
           </View>
-          <Text style={styles.heroTitle}>Uğurla alındı 🎉</Text>
-          <Text style={styles.heroSub}>İmtahana indi başlaya bilərsən</Text>
+          <Text style={styles.heroTitle}>{t('examPurchase.purchasedTitle')}</Text>
+          <Text style={styles.heroSub}>{t('examPurchase.purchasedSub')}</Text>
         </View>
 
         {/* Summary card */}
@@ -43,7 +45,7 @@ export default function ExamPurchaseSuccessScreen({ route, navigation }: Props) 
             <View style={{ flex: 1 }}>
               <View style={styles.verifiedPill}>
                 <Ionicons name="checkmark-circle" size={12} color={Colors.tertiary} />
-                <Text style={styles.verifiedText}>Alındı</Text>
+                <Text style={styles.verifiedText}>{t('examPurchase.purchased')}</Text>
               </View>
               <Text style={styles.summaryTitle}>{title}</Text>
             </View>
@@ -54,12 +56,12 @@ export default function ExamPurchaseSuccessScreen({ route, navigation }: Props) 
 
           <View style={styles.summaryGrid}>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.gridLabel}>Kateqoriya</Text>
+              <Text style={styles.gridLabel}>{t('examPurchase.category')}</Text>
               <Text style={styles.gridValue}>{subject}</Text>
             </View>
             <View style={{ flex: 1, gap: 4 }}>
-              <Text style={styles.gridLabel}>Sual sayı</Text>
-              <Text style={styles.gridValue}>{questions} Sual</Text>
+              <Text style={styles.gridLabel}>{t('examPurchase.questionCount')}</Text>
+              <Text style={styles.gridValue}>{t('examPurchase.questionsUnit', { n: questions })}</Text>
             </View>
           </View>
         </View>
@@ -70,8 +72,8 @@ export default function ExamPurchaseSuccessScreen({ route, navigation }: Props) 
             <Text style={{ fontSize: 22 }}>🤖</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.tipKicker}>Kimi Köməkçi</Text>
-            <Text style={styles.tipText}>"Bu imtahan üzrə uğur göstəricisi {successRate}% təşkil edir. Uğurlar!"</Text>
+            <Text style={styles.tipKicker}>{t('examPurchase.kimiHelper')}</Text>
+            <Text style={styles.tipText}>{t('examPurchase.successTip', { rate: successRate })}</Text>
           </View>
         </View>
 
@@ -79,11 +81,11 @@ export default function ExamPurchaseSuccessScreen({ route, navigation }: Props) 
         <View style={{ gap: 16 }}>
           <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.replace(Routes.ExamInfo, { examId, title })}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Başla</Text>
+              <Text style={styles.primaryBtnText}>{t('examPurchase.start')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.85} style={styles.secondaryBtn} onPress={() => navigation.popToTop()}>
-            <Text style={styles.secondaryBtnText}>İmtahanlara bax</Text>
+            <Text style={styles.secondaryBtnText}>{t('examPurchase.viewExams')}</Text>
           </TouchableOpacity>
         </View>
 

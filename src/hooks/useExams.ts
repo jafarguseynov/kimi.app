@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getExams, getExamsForUser, startExam, submitExam, generateExam, ExamFilters } from '../api/exam.api';
+import { getExams, getExamsForUser, startExam, submitExam, generateExam, serveMock, ExamFilters } from '../api/exam.api';
 import { getExamCollections, startCollectionTest, submitCollectionTest } from '../api/examCollection.api';
 import { useExamStore } from '../store/exam.store';
 
@@ -30,6 +30,9 @@ export const useGenerateExam = () => {
     },
   });
 };
+
+export const useServeMock = () =>
+  useMutation({ mutationFn: serveMock });
 
 export const useStartExam = () => {
   const { setSession } = useExamStore();

@@ -13,8 +13,7 @@ import { useUserStore } from '../../store/user.store';
 import { getTeacherSlots, TeacherSlot } from '../../api/booking.api';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
-
-const DAY_NAMES = ['Bazar ertəsi', 'Çərşənbə ax.', 'Çərşənbə', 'Cümə ax.', 'Cümə', 'Şənbə', 'Bazar'];
+import { useTranslation } from '../../i18n';
 
 const TIME_OPTIONS = [
   '08:00', '09:00', '10:00', '11:00', '12:00', '13:00',
@@ -29,6 +28,8 @@ interface SlotDraft {
 
 export default function TeacherScheduleScreen() {
   const user = useUserStore((s) => s.user);
+  const { t } = useTranslation();
+  const DAY_NAMES = t('teacherSchedule.days').split('|');
   const queryClient = useQueryClient();
 
   const { data: currentSlots = [], isLoading } = useQuery<TeacherSlot[]>({
@@ -75,15 +76,15 @@ export default function TeacherScheduleScreen() {
       api.post('/booking/schedule', { slots: [...currentSlots.filter((s) => s.dayOfWeek !== selectedDay), ...dayDrafts] }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teacherSlots'] });
-      Alert.alert('Saxlanıldı', 'Cədvəliniz yeniləndi');
+      Alert.alert(t('teacherSchedule.savedTitle'), t('teacherSchedule.savedBody'));
       setDrafts((prev) => prev.filter((d) => d.dayOfWeek !== selectedDay));
     },
-    onError: () => Alert.alert('Xəta', 'Saxlanılmadı'),
+    onError: () => Alert.alert(t('teacherSchedule.errorTitle'), t('teacherSchedule.errorBody')),
   });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
-      <Text style={styles.title}>Cədvəlim</Text>
+      <Text style={styles.title}>{t('teacherSchedule.title')}</Text>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.dayBar}>
         {DAY_NAMES.map((name, i) => (
@@ -105,7 +106,7 @@ export default function TeacherScheduleScreen() {
         <>
           {dayExisting.length > 0 && (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>Mövcud vaxtlar</Text>
+              <Text style={styles.sectionLabel}>{t('teacherSchedule.existingSlots')}</Text>
               {dayExisting.map((s) => (
                 <View key={s.id} style={styles.existingSlot}>
                   <Text style={styles.slotTime}>{s.startTime} – {s.endTime}</Text>
@@ -115,44 +116,44 @@ export default function TeacherScheduleScreen() {
           )}
 
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Yeni vaxtlar ({selectedDay === undefined ? '' : DAY_NAMES[selectedDay]})</Text>
+            <Text style={styles.sectionLabel}>{t('teacherSchedule.newSlots', { day: DAY_NAMES[selectedDay] ?? '' })}</Text>
             {dayDrafts.map((draft, i) => (
               <View key={i} style={styles.draftRow}>
                 <View style={styles.timeSelect}>
-                  <Text style={styles.timeLabel}>Başlanğıc</Text>
+                  <Text style={styles.timeLabel}>{t('teacherSchedule.start')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {TIME_OPTIONS.slice(0, -1).map((t) => (
+                    {TIME_OPTIONS.slice(0, -1).map((time) => (
                       <TouchableOpacity
-                        key={t}
-                        style={[styles.timeChip, draft.startTime === t && styles.timeChipActive]}
-                        onPress={() => updateSlot(i, 'startTime', t)}
+                        key={time}
+                        style={[styles.timeChip, draft.startTime === time && styles.timeChipActive]}
+                        onPress={() => updateSlot(i, 'startTime', time)}
                       >
-                        <Text style={[styles.timeChipText, draft.startTime === t && styles.timeChipTextActive]}>{t}</Text>
+                        <Text style={[styles.timeChipText, draft.startTime === time && styles.timeChipTextActive]}>{time}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </View>
                 <View style={styles.timeSelect}>
-                  <Text style={styles.timeLabel}>Bitmə</Text>
+                  <Text style={styles.timeLabel}>{t('teacherSchedule.end')}</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                    {TIME_OPTIONS.slice(1).map((t) => (
+                    {TIME_OPTIONS.slice(1).map((time) => (
                       <TouchableOpacity
-                        key={t}
-                        style={[styles.timeChip, draft.endTime === t && styles.timeChipActive]}
-                        onPress={() => updateSlot(i, 'endTime', t)}
+                        key={time}
+                        style={[styles.timeChip, draft.endTime === time && styles.timeChipActive]}
+                        onPress={() => updateSlot(i, 'endTime', time)}
                       >
-                        <Text style={[styles.timeChipText, draft.endTime === t && styles.timeChipTextActive]}>{t}</Text>
+                        <Text style={[styles.timeChipText, draft.endTime === time && styles.timeChipTextActive]}>{time}</Text>
                       </TouchableOpacity>
                     ))}
                   </ScrollView>
                 </View>
                 <TouchableOpacity onPress={() => removeSlot(i)} style={styles.removeBtn}>
-                  <Text style={styles.removeText}>Sil</Text>
+                  <Text style={styles.removeText}>{t('teacherSchedule.remove')}</Text>
                 </TouchableOpacity>
               </View>
             ))}
             <TouchableOpacity style={styles.addBtn} onPress={addSlot}>
-              <Text style={styles.addText}>+ Vaxt əlavə et</Text>
+              <Text style={styles.addText}>{t('teacherSchedule.addSlot')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -165,7 +166,7 @@ export default function TeacherScheduleScreen() {
               {isPending ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.saveBtnText}>Saxla</Text>
+                <Text style={styles.saveBtnText}>{t('teacherSchedule.save')}</Text>
               )}
             </TouchableOpacity>
           )}

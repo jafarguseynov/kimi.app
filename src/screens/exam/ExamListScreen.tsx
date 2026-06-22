@@ -14,6 +14,7 @@ import { getExamResults, ExamResultRow } from '../../api/certificate.api';
 import { getTopicStats } from '../../api/topicStats.api';
 import { useExamStore } from '../../store/exam.store';
 import { useExamGoalStore } from '../../store/examGoal.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const INACTIVITY_DAYS = 3;
@@ -176,6 +177,7 @@ const daysSinceLastExam = (results: ExamResultRow[]) => {
 };
 
 export default function ExamListScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const rootNav = useNavigation<any>();
   const { data: exams = [], refetch: refetchExams } = useExamList();
   const { data: bankCollections = [] } = useExamCollections();
@@ -190,20 +192,8 @@ export default function ExamListScreen({ navigation }: Props) {
   const setDailyGoal = useExamGoalStore((s) => s.setDailyGoal);
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
-  const [activeSubject, setActiveSubject] = useState<string>('Hamısı');
   const [goalModalOpen, setGoalModalOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
-
-  const totalQuestions = useMemo(
-    () => exams.reduce((sum, e) => sum + (e.questionCount ?? 0), 0),
-    [exams],
-  );
-  const questionLabel = totalQuestions > 0 ? `${totalQuestions}+ sual` : 'Yeni';
-
-  const avgDuration = useMemo(() => {
-    if (exams.length === 0) return 12;
-    return Math.round(exams.reduce((s, e) => s + (e.duration ?? 12), 0) / exams.length);
-  }, [exams]);
 
   const todayCount = useMemo(() => {
     const today = dateKey(startOfDay(new Date()));
@@ -237,12 +227,7 @@ export default function ExamListScreen({ navigation }: Props) {
     return exams.find((e) => e.subject.toLowerCase().includes(needle) || e.title.toLowerCase().includes(needle));
   }, [exams, recommendedSubject]);
 
-  // Demo: comparison with friends average — 4.2 exams/week.
-  // Display absolute delta in exams (clearer than unbounded %).
-  const friendsWeeklyAvg = 4.2;
   const myWeeklyCount = weekBars.reduce((s, b) => s + b.count, 0);
-  const weeklyDelta = Math.round(myWeeklyCount - friendsWeeklyAvg);
-  const isAhead = weeklyDelta >= 0;
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -258,12 +243,12 @@ export default function ExamListScreen({ navigation }: Props) {
   };
   const openLive = () => {
     if (!hasLiveNow) {
-      Alert.alert('Canlı İmtahan', 'Hazırda aktiv canlı sessiya yoxdur. Növbəti sessiya tezliklə başlayacaq.');
+      Alert.alert(t('examList.alertLiveTitle'), t('examList.alertNoLive'));
       return;
     }
     const first = exams[0];
     if (!first?.id) {
-      Alert.alert('Canlı İmtahan', 'Hələ heç bir imtahan yoxdur. Yuxarıdakı + düyməsi ilə yeni imtahan yarat.');
+      Alert.alert(t('examList.alertLiveTitle'), t('examList.alertNoExam'));
       return;
     }
     setSubmissionType('live');
@@ -272,7 +257,7 @@ export default function ExamListScreen({ navigation }: Props) {
   const openMonthly = () => {
     const first = exams[0];
     if (!first?.id) {
-      Alert.alert('Aylıq İmtahan', 'Hələ heç bir imtahan yoxdur. Yuxarıdakı + düyməsi ilə yeni imtahan yarat.');
+      Alert.alert(t('examList.alertMonthlyTitle'), t('examList.alertNoExam'));
       return;
     }
     setSubmissionType('monthly');
@@ -280,11 +265,11 @@ export default function ExamListScreen({ navigation }: Props) {
   };
   const openNational = () =>
     Alert.alert(
-      'Milli İmtahan — Premium',
-      'Ölkə üzrə reytinq yarışında iştirak üçün Premium abunəlik tələb olunur. Premiumu indi açmaq istəyirsən?',
+      t('examList.alertNationalTitle'),
+      t('examList.alertNationalMsg'),
       [
-        { text: 'Sonra', style: 'cancel' },
-        { text: 'Premiumu aç', onPress: () => rootNav.navigate('Profile', { screen: Routes.Settings }) },
+        { text: t('examList.later'), style: 'cancel' },
+        { text: t('examList.openPremium'), onPress: () => rootNav.navigate('Profile', { screen: Routes.Settings }) },
       ],
     );
   const openHistory = () => navigation.navigate(Routes.ExamHistory);
@@ -302,16 +287,12 @@ export default function ExamListScreen({ navigation }: Props) {
       openBrowse();
     }
   };
-  const onChipPress = (key: string) => {
-    setActiveSubject(key);
-    openBrowse(key);
-  };
   const shareProgress = async () => {
-    const top = stats.count > 0 ? `🏆 Ən yaxşı: ${stats.best}% · Ortalama: ${stats.avg}%` : '';
-    const week = `📊 Bu həftə ${myWeeklyCount} imtahan tamamladım`;
-    const streakLine = streak > 0 ? `🔥 ${streak} gün streak` : '';
+    const top = stats.count > 0 ? t('examList.shareTop', { best: stats.best, avg: stats.avg }) : '';
+    const week = t('examList.shareWeek', { n: myWeeklyCount });
+    const streakLine = streak > 0 ? t('examList.shareStreak', { n: streak }) : '';
     const message = [
-      'Kimi.az ilə öyrənirəm!',
+      t('examList.shareLearning'),
       week,
       top,
       streakLine,
@@ -342,7 +323,7 @@ export default function ExamListScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.headerAvatar} onPress={openProfile} hitSlop={6} activeOpacity={0.85}>
             <Ionicons name="person" size={18} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>İmtahanlar</Text>
+          <Text style={styles.headerTitle}>{t('examList.title')}</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
           {streak > 0 && (
@@ -375,8 +356,8 @@ export default function ExamListScreen({ navigation }: Props) {
                 <Ionicons name="play" size={20} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.resumeTitle}>Yarımçıq imtahan var</Text>
-                <Text style={styles.resumeSub}>{sessionQuestionsLen} sual gözləyir — davam et</Text>
+                <Text style={styles.resumeTitle}>{t('examList.resumeTitle')}</Text>
+                <Text style={styles.resumeSub}>{t('examList.resumeSub', { n: sessionQuestionsLen })}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color="#fff" />
             </LinearGradient>
@@ -390,45 +371,57 @@ export default function ExamListScreen({ navigation }: Props) {
               <Ionicons name="time-outline" size={20} color="#9A3412" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.inactiveTitle}>{idleDays} gündür ara verdin</Text>
-              <Text style={styles.inactiveSub}>Qısa sınaqla qayıt — ritmini itirmə!</Text>
+              <Text style={styles.inactiveTitle}>{t('examList.idleTitle', { n: idleDays })}</Text>
+              <Text style={styles.inactiveSub}>{t('examList.idleSub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color="#9A3412" />
           </TouchableOpacity>
         )}
 
-        {/* Kateqoriyalar — təhsil səviyyəsinə görə */}
+        {/* Kateqoriyalar — təhsil səviyyəsinə görə (vurğulanmış) */}
         <View style={catStyles.section}>
           <View style={catStyles.sectionHeader}>
-            <Text style={moreStyles.sectionTitle}>Kateqoriyalar</Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate(Routes.ExamCategories)} hitSlop={8}>
-              <Text style={catStyles.seeAll}>Hamısı →</Text>
+            <View style={catStyles.titleWrap}>
+              <View style={catStyles.accentBar} />
+              <View>
+                <Text style={catStyles.title}>{t('examList.catTitle')}</Text>
+                <Text style={catStyles.sectionSub}>{t('examList.catSub')}</Text>
+              </View>
+            </View>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate(Routes.ExamCategories)} hitSlop={8} style={catStyles.seeAllBtn}>
+              <Text style={catStyles.seeAll}>{t('examList.all')}</Text>
+              <Ionicons name="arrow-forward" size={12} color={Colors.primary} />
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={catStyles.row}>
             {([
-              { key: 'middle',      title: 'Orta Məktəb',  emoji: '📘', bg: '#EFF6FF', route: 'school' as const },
-              { key: 'abituriyent', title: 'Abituriyent',  emoji: '🎓', bg: '#FFFBEB', route: 'category' as const },
-              { key: 'magistr',     title: 'Magistratura', emoji: '📚', bg: '#F5F3FF', route: 'category' as const },
-              { key: 'miq',         title: 'MIQ',          emoji: '👨‍🏫', bg: '#ECFDF5', route: 'category' as const },
-              { key: 'preschool',   title: 'Məktəbəqədər', emoji: '🧒', bg: '#FFF7ED', route: 'category' as const },
-              { key: 'mock',        title: 'Sınaqlar',     emoji: '📊', bg: '#FCE7F3', route: 'category' as const },
-            ]).map((c) => (
+              { key: 'mock',        emoji: '📊',     bg: '#FCE7F3', accent: '#EC4899' },
+              { key: 'middle',      emoji: '📘',     bg: '#EFF6FF', accent: '#3B82F6' },
+              { key: 'russian',     emoji: '🇷🇺',     bg: '#EEF2FF', accent: '#6366F1' },
+              { key: 'abituriyent', emoji: '🎓',     bg: '#FFFBEB', accent: '#F59E0B' },
+              { key: 'magistr',     emoji: '📚',     bg: '#F5F3FF', accent: '#8B5CF6' },
+              { key: 'miq',         emoji: '👨‍🏫', bg: '#ECFDF5', accent: '#10B981' },
+              { key: 'preschool',   emoji: '🧒',     bg: '#FFF7ED', accent: '#F97316' },
+            ]).map((c) => {
+              const title = t(`examCat.${c.key}.title`);
+              return (
               <TouchableOpacity
                 key={c.key}
                 activeOpacity={0.85}
-                onPress={() => {
-                  if (c.route === 'school') navigation.navigate(Routes.SchoolExams);
-                  else navigation.navigate(Routes.CategoryExams, { categoryKey: c.key, categoryTitle: c.title });
-                }}
-                style={catStyles.card}
+                onPress={() => navigation.navigate(Routes.CategorySubcategories, { categoryKey: c.key, categoryTitle: title })}
+                style={[catStyles.card, { borderBottomColor: c.accent }]}
               >
                 <View style={[catStyles.iconBox, { backgroundColor: c.bg }]}>
-                  <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
+                  <Text style={{ fontSize: 28 }}>{c.emoji}</Text>
                 </View>
-                <Text style={catStyles.cardTitle} numberOfLines={1}>{c.title}</Text>
+                <Text style={catStyles.cardTitle} numberOfLines={1}>{title}</Text>
+                <View style={catStyles.cardCta}>
+                  <Text style={[catStyles.cardCtaText, { color: c.accent }]}>{t('examList.view')}</Text>
+                  <Ionicons name="arrow-forward" size={11} color={c.accent} />
+                </View>
               </TouchableOpacity>
-            ))}
+              );
+            })}
           </ScrollView>
         </View>
 
@@ -436,9 +429,9 @@ export default function ExamListScreen({ navigation }: Props) {
         {bankCollections.length > 0 && (
           <View style={catStyles.section}>
             <View style={catStyles.sectionHeader}>
-              <Text style={moreStyles.sectionTitle}>İmtahan Bankları</Text>
+              <Text style={moreStyles.sectionTitle}>{t('examList.banks')}</Text>
               <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.navigate(Routes.ExamCollections)} hitSlop={8}>
-                <Text style={catStyles.seeAll}>Hamısı →</Text>
+                <Text style={catStyles.seeAll}>{t('examList.allArrow')}</Text>
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={catStyles.row}>
@@ -453,7 +446,7 @@ export default function ExamListScreen({ navigation }: Props) {
                     <Ionicons name={c.locked ? 'lock-closed' : 'library'} size={20} color={Colors.primary} />
                   </View>
                   <Text style={catStyles.cardTitle} numberOfLines={1}>{c.title}</Text>
-                  <Text style={catStyles.cardSub} numberOfLines={1}>{c.questionCount} sual</Text>
+                  <Text style={catStyles.cardSub} numberOfLines={1}>{t('examList.questions', { n: c.questionCount })}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -465,26 +458,14 @@ export default function ExamListScreen({ navigation }: Props) {
           <TouchableOpacity activeOpacity={0.7} onPress={() => setGoalModalOpen(true)} style={styles.welcomePill}>
             <Ionicons name={goalReached ? 'checkmark-circle' : 'flash'} size={14} color={Colors.primary} />
             <Text style={styles.welcomePillText}>
-              {goalReached ? `Hədəf tamam! (${todayCount}/${dailyGoal})` : `${todayCount}/${dailyGoal} Sınaq`}
+              {goalReached ? t('examList.goalDone', { a: todayCount, b: dailyGoal }) : t('examList.goalProgress', { a: todayCount, b: dailyGoal })}
             </Text>
             <Ionicons name="chevron-down" size={11} color={Colors.primary} />
           </TouchableOpacity>
-          {myWeeklyCount > 0 && Math.abs(weeklyDelta) >= 1 && (
-            <View style={[styles.welcomePill, isAhead ? styles.aheadPill : styles.behindPill]}>
-              <Ionicons
-                name={isAhead ? 'trending-up' : 'trending-down'}
-                size={12}
-                color={isAhead ? '#16A34A' : '#DC2626'}
-              />
-              <Text style={[styles.welcomePillText, { color: isAhead ? '#16A34A' : '#DC2626' }]}>
-                Dostlardan {Math.abs(weeklyDelta)} imtahan {isAhead ? 'qabaqda' : 'arxada'}
-              </Text>
-            </View>
-          )}
           {lastResult && (
             <View style={styles.welcomePill}>
               <Ionicons name="checkmark-done" size={12} color={Colors.textSecondary} />
-              <Text style={styles.welcomePillText}>Son: {lastResult.percentage}%</Text>
+              <Text style={styles.welcomePillText}>{t('examList.last', { p: lastResult.percentage })}</Text>
             </View>
           )}
         </View>
@@ -496,55 +477,15 @@ export default function ExamListScreen({ navigation }: Props) {
               <Ionicons name="sparkles" size={18} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.aiRecLabel}>AI TÖVSİYƏ</Text>
-              <Text style={styles.aiRecTitle}>{recommendedSubject} üzrə sınaq</Text>
-              <Text style={styles.aiRecSub}>Bu mövzu üzrə zəif nəticələrin var — gücləndirək</Text>
+              <Text style={styles.aiRecLabel}>{t('examList.aiRecLabel')}</Text>
+              <Text style={styles.aiRecTitle}>{t('examList.aiRecTitle', { subject: recommendedSubject })}</Text>
+              <Text style={styles.aiRecSub}>{t('examList.aiRecSub')}</Text>
             </View>
             <View style={styles.aiRecArrow}>
               <Ionicons name="arrow-forward" size={16} color="#fff" />
             </View>
           </TouchableOpacity>
         )}
-
-        {/* Məşq et — əsas giriş nöqtəsi + daxili fənn & hədəf seçimləri */}
-        <View style={[intentStyles.bigCard, styles.cardSurface]}>
-          <View style={intentStyles.titleRow}>
-            <Text style={styles.bentoTitle}>Məşq et</Text>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              <View style={styles.metaChip}>
-                <Ionicons name="time-outline" size={10} color={Colors.textSecondary} />
-                <Text style={styles.metaChipText}>~{avgDuration} dəq</Text>
-              </View>
-              <View style={styles.metaChip}>
-                <Text style={styles.metaChipText}>{questionLabel}</Text>
-              </View>
-            </View>
-          </View>
-
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow} style={styles.chipsScroll}>
-            {SUBJECT_CHIPS.map((chip) => {
-              const active = chip.key === activeSubject;
-              return (
-                <TouchableOpacity
-                  key={chip.key}
-                  activeOpacity={0.85}
-                  onPress={() => onChipPress(chip.key)}
-                  style={[styles.subjectChip, active && styles.subjectChipActive]}
-                >
-                  <Ionicons name={chip.icon} size={14} color={active ? '#fff' : chip.color} />
-                  <Text style={[styles.subjectChipText, active && { color: '#fff' }]}>{chip.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          <TouchableOpacity activeOpacity={0.9} onPress={() => openBrowse(activeSubject)}>
-            <LinearGradient colors={GRADIENT} style={styles.primaryCta} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.primaryCtaText}>Sınağa Başla</Text>
-              <Ionicons name="arrow-forward" size={16} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
 
         {/* İkinci niyyət sırası: Rəsmi imtahan + Yarış */}
         <View style={styles.row}>
@@ -553,21 +494,21 @@ export default function ExamListScreen({ navigation }: Props) {
               <View style={styles.iconChipSecondary}>
                 <Ionicons name="calendar" size={20} color={Colors.secondary} />
               </View>
-              <Text style={intentStyles.medTitle}>Rəsmi imtahan</Text>
-              <Text style={intentStyles.medSub}>Cədvəlli, rəsmi nəticəli</Text>
+              <Text style={intentStyles.medTitle}>{t('examList.official')}</Text>
+              <Text style={intentStyles.medSub}>{t('examList.officialSub')}</Text>
             </View>
             <TouchableOpacity activeOpacity={0.85} onPress={openMonthly} style={intentStyles.actionRow}>
               <View style={{ flex: 1 }}>
-                <Text style={intentStyles.actionTitle}>Aylıq sessiya</Text>
-                <Text style={intentStyles.actionSub}>Növbəti: {nextMonthlyLabel}</Text>
+                <Text style={intentStyles.actionTitle}>{t('examList.monthlySession')}</Text>
+                <Text style={intentStyles.actionSub}>{t('examList.next', { label: nextMonthlyLabel })}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.85} onPress={openNational} style={intentStyles.actionRow}>
               <View style={{ flex: 1 }}>
-                <Text style={intentStyles.actionTitle}>Milli Reyting</Text>
+                <Text style={intentStyles.actionTitle}>{t('examList.nationalRating')}</Text>
                 <View style={styles.premiumPill}>
-                  <Text style={styles.premiumPillText}>PREMIUM</Text>
+                  <Text style={styles.premiumPillText}>{t('examList.premium')}</Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
@@ -579,16 +520,16 @@ export default function ExamListScreen({ navigation }: Props) {
               <View style={[styles.iconChipPrimary, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="flash" size={20} color="#DC2626" />
               </View>
-              <Text style={intentStyles.medTitle}>Yarış</Text>
-              <Text style={intentStyles.medSub}>Real-vaxt rəqabət</Text>
+              <Text style={intentStyles.medTitle}>{t('examList.race')}</Text>
+              <Text style={intentStyles.medSub}>{t('examList.raceSub')}</Text>
             </View>
             <TouchableOpacity activeOpacity={0.85} onPress={openLive} style={intentStyles.actionRow}>
               <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Text style={intentStyles.actionTitle}>Canlı İmtahan</Text>
+                <Text style={intentStyles.actionTitle}>{t('examList.liveExam')}</Text>
                 {hasLiveNow && (
                   <View style={intentStyles.liveBadgeMini}>
                     <View style={styles.liveDot} />
-                    <Text style={styles.liveBadgeText}>LIVE</Text>
+                    <Text style={styles.liveBadgeText}>{t('examList.live')}</Text>
                   </View>
                 )}
               </View>
@@ -596,15 +537,15 @@ export default function ExamListScreen({ navigation }: Props) {
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate(Routes.DuelMode)} style={intentStyles.actionRow}>
               <View style={{ flex: 1 }}>
-                <Text style={intentStyles.actionTitle}>1v1 Duel</Text>
-                <Text style={intentStyles.actionSub}>Bot və ya canlı rəqib</Text>
+                <Text style={intentStyles.actionTitle}>{t('examList.duel')}</Text>
+                <Text style={intentStyles.actionSub}>{t('examList.duelSub')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
             </TouchableOpacity>
             <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate(Routes.DuelHistory)} style={intentStyles.actionRow}>
               <View style={{ flex: 1 }}>
-                <Text style={intentStyles.actionTitle}>Tarixçə</Text>
-                <Text style={intentStyles.actionSub}>Keçmiş yarışlar</Text>
+                <Text style={intentStyles.actionTitle}>{t('examList.history')}</Text>
+                <Text style={intentStyles.actionSub}>{t('examList.historySub')}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
             </TouchableOpacity>
@@ -613,15 +554,15 @@ export default function ExamListScreen({ navigation }: Props) {
 
         {/* Mənim — şəxsi imtahan tarixi */}
         <View style={moreStyles.section}>
-          <Text style={moreStyles.sectionTitle}>Mənim</Text>
+          <Text style={moreStyles.sectionTitle}>{t('examList.mine')}</Text>
           <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MyExams)} style={[styles.bentoLine, styles.cardSurface]}>
             <View style={styles.lineLeft}>
               <View style={[styles.iconChipSoft, { backgroundColor: Colors.primaryLight }]}>
                 <Ionicons name="bookmarks" size={20} color={Colors.primary} />
               </View>
               <View>
-                <Text style={styles.lineTitle}>İmtahanlarım</Text>
-                <Text style={styles.lineSub}>Aktiv paketlər</Text>
+                <Text style={styles.lineTitle}>{t('examList.myExams')}</Text>
+                <Text style={styles.lineSub}>{t('examList.activePacks')}</Text>
               </View>
             </View>
             <View style={styles.lineAction}>
@@ -636,8 +577,8 @@ export default function ExamListScreen({ navigation }: Props) {
                   <Ionicons name="analytics" size={20} color="#0284C7" />
                 </View>
                 <View>
-                  <Text style={styles.lineTitle}>Nəticələr</Text>
-                  <Text style={styles.lineSub}>{results.length > 0 ? `${results.length} imtahan` : 'Bütün imtahanlar'}</Text>
+                  <Text style={styles.lineTitle}>{t('examList.results')}</Text>
+                  <Text style={styles.lineSub}>{results.length > 0 ? t('examList.resultsCount', { n: results.length }) : t('examList.allExams')}</Text>
                 </View>
               </View>
               <View style={styles.lineAction}>
@@ -651,8 +592,8 @@ export default function ExamListScreen({ navigation }: Props) {
                   <Ionicons name="ribbon" size={20} color={Colors.tertiary} />
                 </View>
                 <View>
-                  <Text style={styles.lineTitle}>Sertifikatlar</Text>
-                  <Text style={styles.lineSub}>Uğur sənədlərin</Text>
+                  <Text style={styles.lineTitle}>{t('examList.certificates')}</Text>
+                  <Text style={styles.lineSub}>{t('examList.certsSub')}</Text>
                 </View>
               </View>
               <View style={styles.lineAction}>
@@ -668,9 +609,9 @@ export default function ExamListScreen({ navigation }: Props) {
           onPress={() => setStatsOpen((p) => !p)}
           style={accStyles.header}
         >
-          <Text style={accStyles.title}>📊 Statistika</Text>
+          <Text style={accStyles.title}>{t('examList.statsAcc')}</Text>
           <View style={accStyles.headerRight}>
-            <Text style={accStyles.headerHint}>{statsOpen ? 'Bağla' : 'Aç'}</Text>
+            <Text style={accStyles.headerHint}>{statsOpen ? t('examList.closeShort') : t('examList.open')}</Text>
             <Ionicons name={statsOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textSecondary} />
           </View>
         </TouchableOpacity>
@@ -685,8 +626,8 @@ export default function ExamListScreen({ navigation }: Props) {
                 <Ionicons name="podium" size={20} color="#DC2626" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.lineTitle} numberOfLines={1}>Canlı Liderlər</Text>
-                <Text style={styles.lineSub} numberOfLines={1}>Real vaxt sıralama</Text>
+                <Text style={styles.lineTitle} numberOfLines={1}>{t('examList.liveLeaders')}</Text>
+                <Text style={styles.lineSub} numberOfLines={1}>{t('examList.liveLeadersSub')}</Text>
               </View>
             </View>
             <View style={styles.lineAction}>
@@ -698,10 +639,10 @@ export default function ExamListScreen({ navigation }: Props) {
         {/* Weekly progress + stats */}
         <View style={[styles.cardSurface, styles.weeklyCard]}>
           <View style={styles.weeklyHeader}>
-            <Text style={styles.weeklyTitle}>Həftəlik tərəqqi</Text>
+            <Text style={styles.weeklyTitle}>{t('examList.weeklyProgress')}</Text>
             <TouchableOpacity onPress={shareProgress} hitSlop={8} style={styles.shareBtn} activeOpacity={0.7}>
               <Ionicons name="share-social-outline" size={16} color={Colors.primary} />
-              <Text style={styles.shareBtnText}>Paylaş</Text>
+              <Text style={styles.shareBtnText}>{t('examList.share')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -709,17 +650,17 @@ export default function ExamListScreen({ navigation }: Props) {
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{stats.best}%</Text>
-                <Text style={styles.statLabel}>Ən yaxşı</Text>
+                <Text style={styles.statLabel}>{t('examList.best')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{stats.avg}%</Text>
-                <Text style={styles.statLabel}>Ortalama</Text>
+                <Text style={styles.statLabel}>{t('examList.average')}</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statBox}>
                 <Text style={styles.statValue}>{stats.count}</Text>
-                <Text style={styles.statLabel}>Cəmi</Text>
+                <Text style={styles.statLabel}>{t('examList.total')}</Text>
               </View>
             </View>
           )}
@@ -730,15 +671,15 @@ export default function ExamListScreen({ navigation }: Props) {
                 <Ionicons name="time" size={16} color="#0284C7" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bestHourLabel}>Ən məhsuldar saatların</Text>
-                <Text style={styles.bestHourValue}>{bestHour.range} · {bestHour.count} imtahan</Text>
+                <Text style={styles.bestHourLabel}>{t('examList.bestHour')}</Text>
+                <Text style={styles.bestHourValue}>{t('examList.bestHourValue', { range: bestHour.range, n: bestHour.count })}</Text>
               </View>
             </View>
           )}
 
           {difficultyMix && (
             <View style={styles.diffBox}>
-              <Text style={styles.diffTitle}>Çətinlik paylanması</Text>
+              <Text style={styles.diffTitle}>{t('examList.diffMix')}</Text>
               <View style={styles.diffBar}>
                 {difficultyMix.easy.pct > 0 && (
                   <View style={[styles.diffSeg, { flex: difficultyMix.easy.pct, backgroundColor: DIFFICULTY_META.easy.color }]} />
@@ -753,15 +694,15 @@ export default function ExamListScreen({ navigation }: Props) {
               <View style={styles.diffLegend}>
                 <View style={styles.diffLegendItem}>
                   <View style={[styles.diffDot, { backgroundColor: DIFFICULTY_META.easy.color }]} />
-                  <Text style={styles.diffLegendText}>{DIFFICULTY_META.easy.label} {difficultyMix.easy.pct}%</Text>
+                  <Text style={styles.diffLegendText}>{t('examList.diff.easy')} {difficultyMix.easy.pct}%</Text>
                 </View>
                 <View style={styles.diffLegendItem}>
                   <View style={[styles.diffDot, { backgroundColor: DIFFICULTY_META.medium.color }]} />
-                  <Text style={styles.diffLegendText}>{DIFFICULTY_META.medium.label} {difficultyMix.medium.pct}%</Text>
+                  <Text style={styles.diffLegendText}>{t('examList.diff.medium')} {difficultyMix.medium.pct}%</Text>
                 </View>
                 <View style={styles.diffLegendItem}>
                   <View style={[styles.diffDot, { backgroundColor: DIFFICULTY_META.hard.color }]} />
-                  <Text style={styles.diffLegendText}>{DIFFICULTY_META.hard.label} {difficultyMix.hard.pct}%</Text>
+                  <Text style={styles.diffLegendText}>{t('examList.diff.hard')} {difficultyMix.hard.pct}%</Text>
                 </View>
               </View>
             </View>
@@ -802,11 +743,9 @@ export default function ExamListScreen({ navigation }: Props) {
             })}
           </View>
           <View style={styles.weeklyFooter}>
-            <Text style={styles.weeklyFooterText}>
-              Bu gün <Text style={{ color: Colors.primary, fontWeight: '800' }}>{todayCount}</Text> imtahan tamamlanıb
-            </Text>
+            <Text style={styles.weeklyFooterText}>{t('examList.todayDone', { n: todayCount })}</Text>
             <TouchableOpacity onPress={openHistory}>
-              <Text style={styles.weeklyMore}>Daha çox</Text>
+              <Text style={styles.weeklyMore}>{t('examList.more')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -814,8 +753,8 @@ export default function ExamListScreen({ navigation }: Props) {
         {/* 30-day Heatmap */}
         <View style={[styles.cardSurface, styles.heatmapCard]}>
           <View style={styles.weeklyHeader}>
-            <Text style={styles.weeklyTitle}>30 günlük fəaliyyət</Text>
-            <Text style={styles.weeklySubtitle}>Davamlılıq xəritəsi</Text>
+            <Text style={styles.weeklyTitle}>{t('examList.activity30')}</Text>
+            <Text style={styles.weeklySubtitle}>{t('examList.consistency')}</Text>
           </View>
           <View style={styles.heatmapGrid}>
             {heatmap.map((cell) => (
@@ -830,12 +769,12 @@ export default function ExamListScreen({ navigation }: Props) {
             ))}
           </View>
           <View style={styles.heatmapLegend}>
-            <Text style={styles.heatmapLegendText}>Az</Text>
+            <Text style={styles.heatmapLegendText}>{t('examList.less')}</Text>
             <View style={[styles.heatLegendCell, { backgroundColor: Colors.surfaceLow }]} />
             <View style={[styles.heatLegendCell, { backgroundColor: Colors.primaryLight }]} />
             <View style={[styles.heatLegendCell, { backgroundColor: Colors.primary + '88' }]} />
             <View style={[styles.heatLegendCell, { backgroundColor: Colors.primary }]} />
-            <Text style={styles.heatmapLegendText}>Çox</Text>
+            <Text style={styles.heatmapLegendText}>{t('examList.much')}</Text>
           </View>
         </View>
         </>
@@ -844,7 +783,7 @@ export default function ExamListScreen({ navigation }: Props) {
         {/* Feedback link */}
         <TouchableOpacity onPress={openReport} activeOpacity={0.7} style={styles.feedbackRow}>
           <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.textSecondary} />
-          <Text style={styles.feedbackText}>Geri bildirim göndər</Text>
+          <Text style={styles.feedbackText}>{t('examList.sendFeedback')}</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -852,8 +791,8 @@ export default function ExamListScreen({ navigation }: Props) {
       <Modal visible={goalModalOpen} transparent animationType="fade" onRequestClose={() => setGoalModalOpen(false)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setGoalModalOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Gündəlik hədəfini seç</Text>
-            <Text style={styles.modalSub}>Hər gün neçə sınaq tamamlamaq istəyirsən?</Text>
+            <Text style={styles.modalTitle}>{t('examList.goalModalTitle')}</Text>
+            <Text style={styles.modalSub}>{t('examList.goalModalSub')}</Text>
             <View style={styles.goalOptionsRow}>
               {GOAL_OPTIONS.map((n) => {
                 const active = n === dailyGoal;
@@ -870,7 +809,7 @@ export default function ExamListScreen({ navigation }: Props) {
               })}
             </View>
             <TouchableOpacity onPress={() => setGoalModalOpen(false)} style={styles.modalClose} activeOpacity={0.7}>
-              <Text style={styles.modalCloseText}>Bağla</Text>
+              <Text style={styles.modalCloseText}>{t('examList.close')}</Text>
             </TouchableOpacity>
           </Pressable>
         </Pressable>
@@ -1283,20 +1222,33 @@ const accStyles = StyleSheet.create({
 });
 
 const catStyles = StyleSheet.create({
-  section: { gap: 12 },
+  section: { gap: 14 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  seeAll: { fontSize: 12, fontWeight: '700', color: Colors.primary },
-  row: { gap: 10, paddingRight: 12 },
+  titleWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  accentBar: { width: 4, height: 34, borderRadius: 2, backgroundColor: Colors.primary },
+  title: { fontSize: 21, fontWeight: '900', color: Colors.textPrimary, letterSpacing: -0.4 },
+  sectionSub: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, marginTop: 1 },
+  seeAllBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999,
+    backgroundColor: Colors.primaryLight,
+  },
+  seeAll: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+  row: { gap: 12, paddingRight: 12, paddingVertical: 4 },
   card: {
-    width: 110, padding: 12, borderRadius: 16, gap: 8,
+    width: 128, padding: 14, borderRadius: 18, gap: 10,
     backgroundColor: Colors.surfaceLowest,
     borderWidth: 1, borderColor: Colors.borderLight,
+    borderBottomWidth: 3,
     alignItems: 'flex-start',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.07, shadowRadius: 14, elevation: 3,
   },
   iconBox: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 52, height: 52, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
   },
-  cardTitle: { fontSize: 12, fontWeight: '800', color: Colors.textPrimary },
+  cardTitle: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary },
   cardSub: { fontSize: 10, fontWeight: '600', color: Colors.textSecondary, marginTop: 2 },
+  cardCta: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  cardCtaText: { fontSize: 11, fontWeight: '800' },
 });

@@ -9,6 +9,7 @@ import api from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 interface Analytics {
   totalBookings: number;
@@ -24,6 +25,7 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 export default function TeacherDashboardScreen() {
   const navigation = useNavigation<any>();
   const { user } = useUserStore();
+  const { t } = useTranslation();
 
   const { data: analytics, isLoading } = useQuery<Analytics>({
     queryKey: ['teacherAnalytics'],
@@ -44,7 +46,7 @@ export default function TeacherDashboardScreen() {
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={20} color={Colors.primary} />
           </View>
-          <Text style={styles.headerTitle}>Müəllim Paneli</Text>
+          <Text style={styles.headerTitle}>{t('teacherDashboard.headerTitle')}</Text>
         </View>
         <TouchableOpacity
           style={styles.headerBtn}
@@ -58,8 +60,8 @@ export default function TeacherDashboardScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.titleBlock}>
-          <Text style={styles.bigTitle}>Balansım</Text>
-          <Text style={styles.bigSub}>Gəlirlərinizi və statistikalarınızı izləyin</Text>
+          <Text style={styles.bigTitle}>{t('teacherDashboard.bigTitle')}</Text>
+          <Text style={styles.bigSub}>{t('teacherDashboard.bigSub')}</Text>
         </View>
 
         {/* Premium balance card */}
@@ -70,7 +72,7 @@ export default function TeacherDashboardScreen() {
           end={{ x: 1, y: 1 }}
         >
           <View style={styles.balanceAura} pointerEvents="none" />
-          <Text style={styles.balanceLabel}>ÜMUMI BALANS</Text>
+          <Text style={styles.balanceLabel}>{t('teacherDashboard.totalBalance')}</Text>
           <View style={styles.balanceRow}>
             {isLoading ? (
               <ActivityIndicator color="#fff" size="large" />
@@ -84,7 +86,7 @@ export default function TeacherDashboardScreen() {
           {user?.isVerified && (
             <View style={styles.verifiedChip}>
               <Ionicons name="checkmark-circle" size={14} color="#fff" />
-              <Text style={styles.verifiedChipText}>Təsdiqlənmiş hesab</Text>
+              <Text style={styles.verifiedChipText}>{t('teacherDashboard.verifiedAccount')}</Text>
             </View>
           )}
         </LinearGradient>
@@ -96,14 +98,14 @@ export default function TeacherDashboardScreen() {
               <Ionicons name="chatbubbles-outline" size={20} color={Colors.primary} />
             </View>
             <Text style={styles.statValue}>{answersCount}</Text>
-            <Text style={styles.statLabel}>Cavab sayı</Text>
+            <Text style={styles.statLabel}>{t('teacherDashboard.answersLabel')}</Text>
           </View>
           <View style={styles.statCard}>
             <View style={[styles.statIconBox, { backgroundColor: Colors.tertiary + '1A' }]}>
               <Ionicons name="checkmark-done-circle" size={20} color={Colors.tertiary} />
             </View>
             <Text style={styles.statValue}>{acceptanceRate}%</Text>
-            <Text style={styles.statLabel}>Qəbul olunan</Text>
+            <Text style={styles.statLabel}>{t('teacherDashboard.acceptedLabel')}</Text>
           </View>
         </View>
 
@@ -120,7 +122,7 @@ export default function TeacherDashboardScreen() {
             end={{ x: 1, y: 0 }}
           >
             <Ionicons name="cash-outline" size={20} color="#fff" />
-            <Text style={styles.primaryActionText}>Vəsaiti çıxar</Text>
+            <Text style={styles.primaryActionText}>{t('teacherDashboard.withdraw')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -130,7 +132,7 @@ export default function TeacherDashboardScreen() {
           onPress={() => navigation.navigate(Routes.Withdrawal)}
         >
           <Ionicons name="time-outline" size={20} color={Colors.textSecondary} />
-          <Text style={styles.secondaryActionText}>Əməliyyat tarixçəsi</Text>
+          <Text style={styles.secondaryActionText}>{t('teacherDashboard.history')}</Text>
         </TouchableOpacity>
 
         {/* AI Insight */}
@@ -140,9 +142,9 @@ export default function TeacherDashboardScreen() {
             <Ionicons name="sparkles" size={20} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.insightTitle}>AI İnsayt</Text>
+            <Text style={styles.insightTitle}>{t('teacherDashboard.aiInsight')}</Text>
             <Text style={styles.insightBody}>
-              Bu ay ötən ayla müqayisədə <Text style={styles.insightHighlight}>{lastMonthDelta}% daha çox</Text> qazanmısınız. Aktivliyinizi qorumaq üçün yeni sualları cavablandırmağa davam edin.
+              {t('teacherDashboard.insightPre')}<Text style={styles.insightHighlight}>{t('teacherDashboard.insightHighlight', { delta: lastMonthDelta })}</Text>{t('teacherDashboard.insightPost')}
             </Text>
           </View>
         </View>

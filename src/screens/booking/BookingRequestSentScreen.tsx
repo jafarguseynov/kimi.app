@@ -5,25 +5,27 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function BookingRequestSentScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Status toast */}
       <View style={styles.toast}>
         <View style={styles.toastDot} />
-        <Text style={styles.toastText}>Məlumatlar bazaya əlavə edildi</Text>
+        <Text style={styles.toastText}>{t('booking.sentToast')}</Text>
       </View>
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Təsdiqləmə</Text>
+        <Text style={styles.headerTitle}>{t('booking.sentHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -36,9 +38,9 @@ export default function BookingRequestSentScreen() {
               <Ionicons name="checkmark-circle" size={60} color="#fff" />
             </LinearGradient>
           </View>
-          <Text style={styles.cardTitle}>Sorğunuz uğurla göndərildi</Text>
+          <Text style={styles.cardTitle}>{t('booking.sentTitle')}</Text>
           <Text style={styles.cardSubtitle}>
-            Müəllim sorğunuzu nəzərdən keçirib tezliklə sizinlə əlaqə saxlayacaq. Siz həmçinin dərslərinizə sorğular bölməsindən nəzarət edə bilərsiniz.
+            {t('booking.sentSub')}
           </Text>
 
           <View style={styles.cardActions}>
@@ -47,7 +49,7 @@ export default function BookingRequestSentScreen() {
               onPress={() => navigation.navigate('BookingHistory' as never)}
             >
               <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                <Text style={styles.primaryBtnText}>Sorğulara bax</Text>
+                <Text style={styles.primaryBtnText}>{t('booking.viewRequests')}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity
@@ -55,7 +57,7 @@ export default function BookingRequestSentScreen() {
               onPress={() => navigation.navigate('HomeMain' as never)}
               activeOpacity={0.85}
             >
-              <Text style={styles.secondaryBtnText}>Ana səhifəyə qayıt</Text>
+              <Text style={styles.secondaryBtnText}>{t('booking.backHome')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -66,8 +68,8 @@ export default function BookingRequestSentScreen() {
             <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
           </View>
           <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>Bildirişləri aktiv et</Text>
-            <Text style={styles.infoSub}>Müəllim cavab yazanda dərhal xəbər tut</Text>
+            <Text style={styles.infoTitle}>{t('booking.enableNotifs')}</Text>
+            <Text style={styles.infoSub}>{t('booking.enableNotifsSub')}</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={Colors.textLight} />
         </View>

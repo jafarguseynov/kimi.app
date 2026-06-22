@@ -15,8 +15,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+const DIM_FIELD_KEYS: Record<string, string> = { 'qapalı': 'calc.dimClosed', 'açıq': 'calc.dimOpen', 'yazılı': 'calc.dimWritten' };
 
 type SubjectScores = { qapalı: string; açıq: string; yazılı: string };
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -43,6 +46,7 @@ function calcSubject(s: SubjectScores): number {
 
 export default function DIMCalculatorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'buraxilis' | 'blok'>('buraxilis');
   const [scores, setScores] = useState<Record<string, SubjectScores>>({
     riy: empty(), azDili: empty(), xDil: empty(),
@@ -63,11 +67,11 @@ export default function DIMCalculatorScreen() {
     setTotal(null);
   };
 
-  const getResultLabel = (t: number): string => {
-    if (t >= 500) return 'Əla nəticə!';
-    if (t >= 350) return 'Yaxşı nəticə!';
-    if (t >= 200) return 'Orta nəticə';
-    return 'Daha çox çalışın!';
+  const getResultLabel = (score: number): string => {
+    if (score >= 500) return t('calc.gradeExcellentMsg');
+    if (score >= 350) return t('calc.gradeGoodMsg');
+    if (score >= 200) return t('calc.gradeMidMsg');
+    return t('calc.gradeWorkMsg');
   };
 
   return (
@@ -77,7 +81,7 @@ export default function DIMCalculatorScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>DİM Kalkulyatoru</Text>
+          <Text style={styles.headerTitle}>{t('calc.dimHeader')}</Text>
           <View style={styles.headerBtn} />
         </View>
 
@@ -85,21 +89,21 @@ export default function DIMCalculatorScreen() {
           {/* Intro card */}
           <View style={styles.introCard}>
             <View style={styles.introBlob} />
-            <Text style={styles.introTag}>MƏSLƏHƏTÇİ</Text>
-            <Text style={styles.introTitle}>Ballarını dəqiq{'\n'}hesablamağa hazırsan?</Text>
+            <Text style={styles.introTag}>{t('calc.advisor')}</Text>
+            <Text style={styles.introTitle}>{t('calc.dimIntro')}</Text>
           </View>
 
           {/* Tabs */}
           <View style={styles.tabBar}>
-            {(['buraxilis', 'blok'] as const).map((t) => (
+            {(['buraxilis', 'blok'] as const).map((tb) => (
               <TouchableOpacity
-                key={t}
-                style={[styles.tabItem, tab === t && styles.tabItemActive]}
-                onPress={() => setTab(t)}
+                key={tb}
+                style={[styles.tabItem, tab === tb && styles.tabItemActive]}
+                onPress={() => setTab(tb)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                  {t === 'buraxilis' ? 'Buraxılış' : 'Blok'}
+                <Text style={[styles.tabText, tab === tb && styles.tabTextActive]}>
+                  {tb === 'buraxilis' ? t('calc.tabBuraxilis') : t('calc.tabBlok')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -117,7 +121,7 @@ export default function DIMCalculatorScreen() {
               <View style={styles.inputRow}>
                 {(['qapalı', 'açıq', 'yazılı'] as const).map((field) => (
                   <View key={field} style={styles.inputCol}>
-                    <Text style={styles.fieldLabel}>{field.charAt(0).toUpperCase() + field.slice(1)}</Text>
+                    <Text style={styles.fieldLabel}>{t(DIM_FIELD_KEYS[field])}</Text>
                     <TextInput
                       style={styles.inputField}
                       value={scores[subject.key][field]}
@@ -137,18 +141,18 @@ export default function DIMCalculatorScreen() {
           {/* Buttons */}
           <TouchableOpacity onPress={calculate} activeOpacity={0.9}>
             <LinearGradient colors={GRADIENT} style={styles.calcBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.calcBtnText}>Hesabla</Text>
+              <Text style={styles.calcBtnText}>{t('calc.calculate')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
-            <Text style={styles.resetBtnText}>Sıfırla</Text>
+            <Text style={styles.resetBtnText}>{t('calc.reset')}</Text>
           </TouchableOpacity>
 
           {/* Result */}
           <View style={styles.resultCard}>
             <View style={styles.resultBlob1} />
             <View style={styles.resultBlob2} />
-            <Text style={styles.resultTopLabel}>Ümumi Bal</Text>
+            <Text style={styles.resultTopLabel}>{t('calc.totalScore')}</Text>
             <Text style={styles.resultScore}>{total !== null ? total : '—'}</Text>
             {total !== null && (
               <View style={styles.resultBadge}>

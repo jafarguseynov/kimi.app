@@ -7,17 +7,19 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MarketplaceStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<MarketplaceStackParamList, typeof Routes.AIAnswerFallback> };
 
 export default function AIAnswerFallbackScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Kimi AI Köməkçisi</Text>
+        <Text style={styles.headerTitle}>{t('marketplace.aiAssistant')}</Text>
         <View style={styles.avatarCircle}>
           <Ionicons name="hardware-chip-outline" size={20} color={Colors.primary} />
         </View>
@@ -26,9 +28,9 @@ export default function AIAnswerFallbackScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero Section */}
         <View style={styles.heroSection}>
-          <Text style={styles.heroLabel}>Təhsilin Gələcəyi</Text>
-          <Text style={styles.heroTitle}>AI-dan Müəllimə</Text>
-          <Text style={styles.heroSub}>Süni intellektin gücü və insan müəllimin təcrübəsi bir arada.</Text>
+          <Text style={styles.heroLabel}>{t('marketplace.futureEdu')}</Text>
+          <Text style={styles.heroTitle}>{t('marketplace.aiToTeacher')}</Text>
+          <Text style={styles.heroSub}>{t('marketplace.aiToTeacherSub')}</Text>
         </View>
 
         {/* Main Anchor Card */}
@@ -36,9 +38,9 @@ export default function AIAnswerFallbackScreen({ navigation }: Props) {
           <View style={styles.mainCardIconWrap}>
             <Ionicons name="chatbubbles-outline" size={28} color={Colors.primary} />
           </View>
-          <Text style={styles.mainCardTitle}>AI cavab yetərli olmadı?</Text>
+          <Text style={styles.mainCardTitle}>{t('marketplace.aiNotEnough')}</Text>
           <Text style={styles.mainCardSub}>
-            Bəzən mövzunu daha dərindən anlamaq üçün canlı izah lazımdır. Bizim peşəkar müəllimlərimiz sizə kömək etməyə hazırdır.
+            {t('marketplace.aiNotEnoughSub')}
           </Text>
           <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MarketplaceHome)}>
             <LinearGradient
@@ -46,7 +48,7 @@ export default function AIAnswerFallbackScreen({ navigation }: Props) {
               style={styles.mainCta}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.mainCtaText}>Real müəllimdən cavab al</Text>
+              <Text style={styles.mainCtaText}>{t('marketplace.getRealAnswer')}</Text>
               <Ionicons name="chevron-forward" size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
@@ -57,15 +59,15 @@ export default function AIAnswerFallbackScreen({ navigation }: Props) {
           <View style={styles.secondaryCard}>
             <Ionicons name="flash-outline" size={28} color={Colors.primary} />
             <View style={{ marginTop: 'auto' as any }}>
-              <Text style={styles.secondaryCardTitle}>Sürətli</Text>
-              <Text style={styles.secondaryCardSub}>5 dəqiqəyə cavab</Text>
+              <Text style={styles.secondaryCardTitle}>{t('marketplace.fast')}</Text>
+              <Text style={styles.secondaryCardSub}>{t('marketplace.fastSub')}</Text>
             </View>
           </View>
           <View style={styles.secondaryCard}>
             <Ionicons name="shield-checkmark-outline" size={28} color={Colors.tertiary} />
             <View style={{ marginTop: 'auto' as any }}>
-              <Text style={styles.secondaryCardTitle}>Ekspert</Text>
-              <Text style={styles.secondaryCardSub}>Təsdiqlənmiş müəllimlər</Text>
+              <Text style={styles.secondaryCardTitle}>{t('marketplace.expert')}</Text>
+              <Text style={styles.secondaryCardSub}>{t('marketplace.expertSub')}</Text>
             </View>
           </View>
         </View>
@@ -74,9 +76,9 @@ export default function AIAnswerFallbackScreen({ navigation }: Props) {
         <View style={styles.tipCard}>
           <Ionicons name="bulb-outline" size={20} color={Colors.primary} style={{ marginTop: 2 }} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.tipTitle}>Faydalı məsləhət</Text>
+            <Text style={styles.tipTitle}>{t('marketplace.usefulTip')}</Text>
             <Text style={styles.tipText}>
-              Müəllimə sual verərkən problemin şəklini əlavə etməyi unutmayın. Bu, izahın daha dəqiq olmasına kömək edəcək.
+              {t('marketplace.usefulTipText')}
             </Text>
           </View>
         </View>

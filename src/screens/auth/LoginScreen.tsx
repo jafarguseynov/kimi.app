@@ -25,18 +25,20 @@ import { Colors } from '../../constants/colors';
 import { loginSchema, LoginFormData } from '../../utils/validation';
 import { useLogin } from '../../hooks/useAuth';
 import Input from '../../components/common/Input';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Login> };
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-const FEATURES: { icon: IconName; label: string }[] = [
-  { icon: 'flash', label: 'AI testlər' },
-  { icon: 'videocam', label: 'Canlı dərs' },
-  { icon: 'ribbon', label: 'Sertifikat' },
+const FEATURES: { icon: IconName; labelKey: string }[] = [
+  { icon: 'flash', labelKey: 'login.featAi' },
+  { icon: 'videocam', labelKey: 'login.featLive' },
+  { icon: 'ribbon', labelKey: 'login.featCert' },
 ];
 
 export default function LoginScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
@@ -57,7 +59,7 @@ export default function LoginScreen({ navigation }: Props) {
   const onSubmit = (data: LoginFormData) => {
     mutate(data, {
       onError: (err: any) => {
-        Alert.alert('Xəta', err?.response?.data?.message || 'Giriş zamanı xəta baş verdi');
+        Alert.alert(t('login.errorTitle'), err?.response?.data?.message || t('login.loginError'));
       },
     });
   };
@@ -87,16 +89,16 @@ export default function LoginScreen({ navigation }: Props) {
 
             {/* Headline */}
             <View style={styles.headline}>
-              <Text style={styles.title}>Kimi.az-a xoş gəlmisən</Text>
-              <Text style={styles.subtitle}>Süni intellekt dəstəkli təhsil platforması</Text>
+              <Text style={styles.title}>{t('login.welcome')}</Text>
+              <Text style={styles.subtitle}>{t('login.subtitle')}</Text>
             </View>
 
             {/* Feature pills */}
             <View style={styles.features}>
               {FEATURES.map((f) => (
-                <View key={f.label} style={styles.featurePill}>
+                <View key={f.labelKey} style={styles.featurePill}>
                   <Ionicons name={f.icon} size={14} color={Colors.primary} />
-                  <Text style={styles.featureText}>{f.label}</Text>
+                  <Text style={styles.featureText}>{t(f.labelKey)}</Text>
                 </View>
               ))}
             </View>
@@ -108,8 +110,8 @@ export default function LoginScreen({ navigation }: Props) {
                 name="identifier"
                 render={({ field: { onChange, value } }) => (
                   <Input
-                    label="Email və ya telefon nömrəsi"
-                    placeholder="email@example.com  və ya  +994XXXXXXXXX"
+                    label={t('login.identifierLabel')}
+                    placeholder={t('login.identifierPlaceholder')}
                     onChangeText={onChange}
                     value={value}
                     autoCapitalize="none"
@@ -122,7 +124,7 @@ export default function LoginScreen({ navigation }: Props) {
                 name="password"
                 render={({ field: { onChange, value } }) => (
                   <Input
-                    label="Şifrə"
+                    label={t('login.passwordLabel')}
                     placeholder="••••••••"
                     onChangeText={onChange}
                     value={value}
@@ -143,7 +145,7 @@ export default function LoginScreen({ navigation }: Props) {
                     <ActivityIndicator color="#fff" />
                   ) : (
                     <>
-                      <Text style={styles.loginBtnText}>Daxil ol</Text>
+                      <Text style={styles.loginBtnText}>{t('login.signIn')}</Text>
                       <Ionicons name="arrow-forward" size={20} color="#fff" />
                     </>
                   )}
@@ -153,7 +155,7 @@ export default function LoginScreen({ navigation }: Props) {
               {/* Divider */}
               <View style={styles.divider}>
                 <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>VƏ YA</Text>
+                <Text style={styles.dividerText}>{t('login.or')}</Text>
                 <View style={styles.dividerLine} />
               </View>
 
@@ -161,7 +163,7 @@ export default function LoginScreen({ navigation }: Props) {
               <View style={styles.ssoRow}>
                 <TouchableOpacity
                   style={styles.ssoBtn}
-                  onPress={() => Alert.alert('Tezliklə', 'Google ilə giriş tezliklə əlavə ediləcək')}
+                  onPress={() => Alert.alert(t('login.comingSoon'), t('login.googleSoon'))}
                   activeOpacity={0.85}
                 >
                   <Text style={styles.googleG}>G</Text>
@@ -170,7 +172,7 @@ export default function LoginScreen({ navigation }: Props) {
 
                 <TouchableOpacity
                   style={[styles.ssoBtn, styles.ssoBtnDark]}
-                  onPress={() => Alert.alert('Tezliklə', 'Apple ilə giriş tezliklə əlavə ediləcək')}
+                  onPress={() => Alert.alert(t('login.comingSoon'), t('login.appleSoon'))}
                   activeOpacity={0.85}
                 >
                   <Ionicons name="logo-apple" size={20} color="#fff" />
@@ -182,12 +184,12 @@ export default function LoginScreen({ navigation }: Props) {
             {/* Register link */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>
-                Hesabın yoxdur?{' '}
+                {t('login.noAccount')}{' '}
                 <Text
                   style={styles.footerLink}
                   onPress={() => navigation.navigate(Routes.Register)}
                 >
-                  Qeydiyyat
+                  {t('login.register')}
                 </Text>
               </Text>
             </View>

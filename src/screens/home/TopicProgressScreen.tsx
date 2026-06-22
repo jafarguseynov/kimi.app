@@ -5,22 +5,24 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type StepState = 'done' | 'active' | 'pending';
-interface Step { id: string; title: string; subtitle?: string; state: StepState; }
+interface Step { id: string; titleKey: string; subtitleKey?: string; state: StepState; }
 
 const STEPS: Step[] = [
-  { id: '1', title: 'Mövzu',    state: 'done' },
-  { id: '2', title: 'Practice', state: 'done' },
-  { id: '3', title: 'Retest',   state: 'active',  subtitle: 'Gözlənilir' },
-  { id: '4', title: 'Mastery',  state: 'pending', subtitle: 'Növbəti addım' },
+  { id: '1', titleKey: 'topicProgress.s1', state: 'done' },
+  { id: '2', titleKey: 'topicProgress.s2', state: 'done' },
+  { id: '3', titleKey: 'topicProgress.s3', state: 'active',  subtitleKey: 'topicProgress.s3sub' },
+  { id: '4', titleKey: 'topicProgress.s4', state: 'pending', subtitleKey: 'topicProgress.s4sub' },
 ];
 
 export default function TopicProgressScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t } = useTranslation();
   const topic = route.params?.topic ?? 'Faizlər';
   const pct = 60;
 
@@ -30,7 +32,7 @@ export default function TopicProgressScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Mövzu İnkişafı</Text>
+        <Text style={styles.headerTitle}>{t('topicProgress.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -54,7 +56,7 @@ export default function TopicProgressScreen() {
               <Text style={styles.ringText}>{pct}%</Text>
             </View>
           </View>
-          <Text style={styles.topicSub}>{pct}% öyrənildi</Text>
+          <Text style={styles.topicSub}>{t('topicProgress.learned', { n: pct })}</Text>
         </View>
 
         {/* Timeline */}
@@ -81,9 +83,9 @@ export default function TopicProgressScreen() {
                   s.state === 'active' && { color: Colors.primary, fontWeight: '700' },
                   s.state === 'pending' && { color: Colors.textSecondary, fontWeight: '500' },
                 ]}>
-                  {s.title}
+                  {t(s.titleKey)}
                 </Text>
-                {s.subtitle && <Text style={styles.stepSub}>{s.subtitle}</Text>}
+                {s.subtitleKey && <Text style={styles.stepSub}>{t(s.subtitleKey)}</Text>}
               </View>
             </View>
           ))}
@@ -96,10 +98,8 @@ export default function TopicProgressScreen() {
             <Ionicons name="hardware-chip" size={22} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.aiKicker}>Kimi deyir:</Text>
-            <Text style={styles.aiText}>
-              "Bu mövzunu tam öyrənməyə yaxındasan! Növbəti sınaq səni Mastery səviyyəsinə çatdıracaq."
-            </Text>
+            <Text style={styles.aiKicker}>{t('topicProgress.kimiSays')}</Text>
+            <Text style={styles.aiText}>{t('topicProgress.aiText')}</Text>
           </View>
         </View>
 
@@ -110,7 +110,7 @@ export default function TopicProgressScreen() {
               <Ionicons name="checkmark-done" size={16} color={Colors.tertiary} />
             </View>
             <View>
-              <Text style={styles.statLabel}>Düzgün</Text>
+              <Text style={styles.statLabel}>{t('topicProgress.correct')}</Text>
               <Text style={styles.statValue}>18</Text>
             </View>
           </View>
@@ -119,7 +119,7 @@ export default function TopicProgressScreen() {
               <Ionicons name="close" size={16} color={Colors.danger} />
             </View>
             <View>
-              <Text style={styles.statLabel}>Səhv</Text>
+              <Text style={styles.statLabel}>{t('topicProgress.wrong')}</Text>
               <Text style={styles.statValue}>4</Text>
             </View>
           </View>
@@ -128,8 +128,8 @@ export default function TopicProgressScreen() {
               <Ionicons name="time-outline" size={16} color={Colors.secondary ?? Colors.textSecondary} />
             </View>
             <View>
-              <Text style={styles.statLabel}>Sərf olunan vaxt</Text>
-              <Text style={styles.statValue}>12 dəq</Text>
+              <Text style={styles.statLabel}>{t('topicProgress.timeSpent')}</Text>
+              <Text style={styles.statValue}>{t('topicProgress.timeValue')}</Text>
             </View>
           </View>
         </View>
@@ -141,7 +141,7 @@ export default function TopicProgressScreen() {
       <View style={styles.footer}>
         <TouchableOpacity activeOpacity={0.85}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
-            <Text style={styles.ctaText}>Davam et</Text>
+            <Text style={styles.ctaText}>{t('topicProgress.continue')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

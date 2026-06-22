@@ -5,43 +5,44 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 interface Task {
   id: string;
-  title: string;
-  sub: string;
+  titleKey: string;
+  subKey: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
   iconColor: string;
 }
 
 const TASKS: Task[] = [
-  { id: 't1', title: '1 test et', sub: 'Biliklərini yoxla', icon: 'document-text', iconBg: Colors.secondaryContainer + '80', iconColor: Colors.primary },
-  { id: 't2', title: '5 sual cavabla', sub: 'Söhbətə qoşul', icon: 'chatbubble-ellipses', iconBg: Colors.tertiaryContainer + '4D', iconColor: Colors.tertiary },
-  { id: 't3', title: '3 flashcard öyrən', sub: 'Yeni sözlər kəşf et', icon: 'albums', iconBg: Colors.surfaceHighest, iconColor: Colors.primaryDim },
+  { id: 't1', titleKey: 'missions.task1Title', subKey: 'missions.task1Sub', icon: 'document-text', iconBg: Colors.secondaryContainer + '80', iconColor: Colors.primary },
+  { id: 't2', titleKey: 'missions.task2Title', subKey: 'missions.task2Sub', icon: 'chatbubble-ellipses', iconBg: Colors.tertiaryContainer + '4D', iconColor: Colors.tertiary },
+  { id: 't3', titleKey: 'missions.task3Title', subKey: 'missions.task3Sub', icon: 'albums', iconBg: Colors.surfaceHighest, iconColor: Colors.primaryDim },
 ];
 
 interface Mission {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  reward: string;
+  titleKey: string;
+  rewardKey: string;
   done: boolean;
 }
 
 const MISSIONS: Mission[] = [
-  { id: 'm1', icon: 'checkmark-circle', title: '10 sual həll et', reward: 'Mükafat: +50 XP', done: true },
-  { id: 'm2', icon: 'checkmark-circle', title: '1 İmtahan ver', reward: 'Mükafat: +100 XP', done: true },
-  { id: 'm3', icon: 'book', title: '3 Mövzu oxu', reward: 'Mükafat: +75 XP', done: false },
+  { id: 'm1', icon: 'checkmark-circle', titleKey: 'missions.m1Title', rewardKey: 'missions.m1Reward', done: true },
+  { id: 'm2', icon: 'checkmark-circle', titleKey: 'missions.m2Title', rewardKey: 'missions.m2Reward', done: true },
+  { id: 'm3', icon: 'book', titleKey: 'missions.m3Title', rewardKey: 'missions.m3Reward', done: false },
 ];
 
-interface Reward { id: string; title: string; sub: string; icon: keyof typeof Ionicons.glyphMap; color: string; locked?: boolean; }
+interface Reward { id: string; titleKey: string; subKey: string; icon: keyof typeof Ionicons.glyphMap; color: string; locked?: boolean; }
 const REWARDS: Reward[] = [
-  { id: 'r1', title: '150 Coin', sub: 'Bütün missiyaları bitir', icon: 'logo-bitcoin', color: '#FFB020' },
-  { id: 'r2', title: 'Gümüş Sandıq', sub: 'Həftəlik hədəf', icon: 'lock-closed', color: Colors.textLight, locked: true },
-  { id: 'r3', title: 'Qızıl Sandıq', sub: 'Aylıq hədəf', icon: 'lock-closed', color: Colors.textLight, locked: true },
+  { id: 'r1', titleKey: 'missions.r1Title', subKey: 'missions.r1Sub', icon: 'logo-bitcoin', color: '#FFB020' },
+  { id: 'r2', titleKey: 'missions.r2Title', subKey: 'missions.r2Sub', icon: 'lock-closed', color: Colors.textLight, locked: true },
+  { id: 'r3', titleKey: 'missions.r3Title', subKey: 'missions.r3Sub', icon: 'lock-closed', color: Colors.textLight, locked: true },
 ];
 
 const DONE_COUNT = MISSIONS.filter((m) => m.done).length;
@@ -52,6 +53,7 @@ type Tab = 'today' | 'progress';
 export default function MissionStartScreen() {
   const navigation = useNavigation<any>();
   const [view, setView] = useState<Tab>('today');
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -59,17 +61,17 @@ export default function MissionStartScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Missiyalar</Text>
+        <Text style={styles.headerTitle}>{t('missions.startHeaderTitle')}</Text>
         <View style={styles.backBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={pairTab.row}>
           <TouchableOpacity onPress={() => setView('today')} style={[pairTab.btn, view === 'today' && pairTab.btnActive]}>
-            <Text style={[pairTab.text, view === 'today' && pairTab.textActive]}>Bugünkü</Text>
+            <Text style={[pairTab.text, view === 'today' && pairTab.textActive]}>{t('missions.tabToday')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setView('progress')} style={[pairTab.btn, view === 'progress' && pairTab.btnActive]}>
-            <Text style={[pairTab.text, view === 'progress' && pairTab.textActive]}>Tərəqqi</Text>
+            <Text style={[pairTab.text, view === 'progress' && pairTab.textActive]}>{t('missions.tabProgress')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -82,11 +84,12 @@ export default function MissionStartScreen() {
 }
 
 function TodayView() {
+  const { t } = useTranslation();
   return (
     <>
       <View style={{ gap: 6 }}>
-        <Text style={styles.h2}>Bugünkü missiyalar</Text>
-        <Text style={styles.h2Sub}>Tapşırıqları tamamla və irəlilə</Text>
+        <Text style={styles.h2}>{t('missions.todayTitle')}</Text>
+        <Text style={styles.h2Sub}>{t('missions.todaySub')}</Text>
       </View>
 
       <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
@@ -95,23 +98,23 @@ function TodayView() {
         <View style={styles.heroIcon}>
           <Ionicons name="flame" size={26} color="#fff" />
         </View>
-        <Text style={styles.heroTitle}>Bu gün 3 tapşırıq səni gözləyir 🔥</Text>
+        <Text style={styles.heroTitle}>{t('missions.heroTitle')}</Text>
         <View style={styles.heroBarTrack}>
           <View style={styles.heroBarFill} />
         </View>
-        <Text style={styles.heroBarLabel}>0/3 Tamamlandı</Text>
+        <Text style={styles.heroBarLabel}>{t('missions.heroBarLabel')}</Text>
       </LinearGradient>
 
       <View style={{ gap: 14 }}>
-        {TASKS.map((t) => (
-          <TouchableOpacity key={t.id} activeOpacity={0.85} style={styles.taskCard}>
+        {TASKS.map((task) => (
+          <TouchableOpacity key={task.id} activeOpacity={0.85} style={styles.taskCard}>
             <View style={styles.checkbox} />
-            <View style={[styles.taskIcon, { backgroundColor: t.iconBg }]}>
-              <Ionicons name={t.icon} size={20} color={t.iconColor} />
+            <View style={[styles.taskIcon, { backgroundColor: task.iconBg }]}>
+              <Ionicons name={task.icon} size={20} color={task.iconColor} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.taskTitle}>{t.title}</Text>
-              <Text style={styles.taskSub}>{t.sub}</Text>
+              <Text style={styles.taskTitle}>{t(task.titleKey)}</Text>
+              <Text style={styles.taskSub}>{t(task.subKey)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
           </TouchableOpacity>
@@ -121,13 +124,13 @@ function TodayView() {
       <View style={styles.rewardChipWrap}>
         <View style={styles.rewardChip}>
           <Ionicons name="gift" size={18} color={Colors.primaryFixedDim} />
-          <Text style={styles.rewardChipText}>Tamamla və mükafat qazan 🎁</Text>
+          <Text style={styles.rewardChipText}>{t('missions.rewardChip')}</Text>
         </View>
       </View>
 
       <TouchableOpacity activeOpacity={0.9}>
         <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
-          <Text style={styles.ctaText}>Başla</Text>
+          <Text style={styles.ctaText}>{t('missions.start')}</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
@@ -136,12 +139,13 @@ function TodayView() {
 }
 
 function ProgressView() {
+  const { t } = useTranslation();
   return (
     <>
       <View style={styles.progressCard}>
         <View style={[styles.blob, { top: -40, left: -40 }]} />
         <View style={[styles.blob, { bottom: -40, right: -40 }]} />
-        <Text style={styles.progressLabel}>{DONE_COUNT}/{MISSIONS.length} Missiya tamamlandı</Text>
+        <Text style={styles.progressLabel}>{t('missions.completedOf', { done: DONE_COUNT, total: MISSIONS.length })}</Text>
 
         <View style={styles.ringWrap}>
           <View style={styles.ringTrack} />
@@ -159,14 +163,14 @@ function ProgressView() {
               <Ionicons name={m.icon} size={22} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={[styles.missionTitle, m.done && styles.missionTitleDone]}>{m.title}</Text>
-              <Text style={styles.missionReward}>{m.reward}</Text>
+              <Text style={[styles.missionTitle, m.done && styles.missionTitleDone]}>{t(m.titleKey)}</Text>
+              <Text style={styles.missionReward}>{t(m.rewardKey)}</Text>
             </View>
             {m.done ? (
-              <View style={styles.donePill}><Text style={styles.donePillText}>Tamamlandı</Text></View>
+              <View style={styles.donePill}><Text style={styles.donePillText}>{t('missions.done')}</Text></View>
             ) : (
               <TouchableOpacity activeOpacity={0.9} style={styles.startBtn}>
-                <Text style={styles.startBtnText}>Başla</Text>
+                <Text style={styles.startBtnText}>{t('missions.start')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -174,15 +178,15 @@ function ProgressView() {
       </View>
 
       <View style={{ gap: 16, marginTop: 8 }}>
-        <Text style={styles.sectionTitle}>Gündəlik Mükafatlar</Text>
+        <Text style={styles.sectionTitle}>{t('missions.rewardsTitle')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingRight: 16 }}>
           {REWARDS.map((r) => (
             <View key={r.id} style={[styles.rewardCard, r.locked && { opacity: 0.55 }]}>
               <View style={styles.rewardIcon}>
                 <Ionicons name={r.icon} size={28} color={r.color} />
               </View>
-              <Text style={styles.rewardTitle}>{r.title}</Text>
-              <Text style={styles.rewardSub}>{r.sub}</Text>
+              <Text style={styles.rewardTitle}>{t(r.titleKey)}</Text>
+              <Text style={styles.rewardSub}>{t(r.subKey)}</Text>
             </View>
           ))}
         </ScrollView>

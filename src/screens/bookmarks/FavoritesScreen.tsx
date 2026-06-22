@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { getBookmarks, removeBookmark, type Bookmark } from '../../api/bookmark.api';
+import { useTranslation } from '../../i18n';
 
 type Tab = 'teachers' | 'lessons';
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -49,6 +50,7 @@ const DEFAULT_TAGS: Record<string, string[]> = {
 
 export default function FavoritesScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('teachers');
   const [items, setItems] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,10 +66,10 @@ export default function FavoritesScreen() {
   }, []);
 
   const remove = (bm: Bookmark) => {
-    Alert.alert('Sevimlilərdən sil?', '', [
-      { text: 'Ləğv et', style: 'cancel' },
+    Alert.alert(t('bookmarks.removeFavTitle'), '', [
+      { text: t('bookmarks.cancel'), style: 'cancel' },
       {
-        text: 'Sil', style: 'destructive',
+        text: t('bookmarks.delete'), style: 'destructive',
         onPress: async () => {
           try {
             await removeBookmark(bm.id);
@@ -84,30 +86,30 @@ export default function FavoritesScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Təhsil</Text>
+        <Text style={styles.headerTitle}>{t('bookmarks.eduHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Editorial header */}
         <View style={styles.editorial}>
-          <Text style={styles.kicker}>SİZİN KOLLEKSİYANIZ</Text>
-          <Text style={styles.heroTitle}>Sevimlilər</Text>
-          <Text style={styles.heroSub}>Yadda saxladığınız ən yaxşı mütəxəssislər və dərslər.</Text>
+          <Text style={styles.kicker}>{t('bookmarks.favKicker')}</Text>
+          <Text style={styles.heroTitle}>{t('bookmarks.favHeroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('bookmarks.favHeroSub')}</Text>
         </View>
 
         {/* Segmented */}
         <View style={styles.segmented}>
-          {(['teachers', 'lessons'] as Tab[]).map((t) => {
-            const active = tab === t;
+          {(['teachers', 'lessons'] as Tab[]).map((tb) => {
+            const active = tab === tb;
             return (
               <TouchableOpacity
-                key={t} activeOpacity={0.85}
+                key={tb} activeOpacity={0.85}
                 style={[styles.segItem, active && styles.segItemActive]}
-                onPress={() => setTab(t)}
+                onPress={() => setTab(tb)}
               >
                 <Text style={[styles.segText, active && styles.segTextActive]}>
-                  {t === 'teachers' ? 'Müəllimlər' : 'Dərslər'}
+                  {tb === 'teachers' ? t('bookmarks.teachers') : t('bookmarks.lessons')}
                 </Text>
               </TouchableOpacity>
             );
@@ -119,44 +121,44 @@ export default function FavoritesScreen() {
         ) : tab === 'lessons' ? (
           <View style={styles.empty}>
             <Ionicons name="book-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>Hələ sevimli dərs yoxdur</Text>
-            <Text style={styles.emptySub}>Bəyəndiyiniz dərsləri ürək ikonu ilə yadda saxlayın</Text>
+            <Text style={styles.emptyTitle}>{t('bookmarks.emptyLessonsTitle')}</Text>
+            <Text style={styles.emptySub}>{t('bookmarks.emptyLessonsSub')}</Text>
           </View>
         ) : items.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="heart-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>Sevimli müəllim yoxdur</Text>
-            <Text style={styles.emptySub}>Müəllim profillərində ürək ikonuna basaraq əlavə edin</Text>
+            <Text style={styles.emptyTitle}>{t('bookmarks.emptyFavTitle')}</Text>
+            <Text style={styles.emptySub}>{t('bookmarks.emptyFavSub')}</Text>
           </View>
         ) : (
           <View style={{ gap: 18 }}>
             {items.map((bm) => {
-              const t = parseTeacher(bm);
-              const tags = t.tags?.length ? t.tags : (DEFAULT_TAGS[t.subject] ?? []);
+              const teacher = parseTeacher(bm);
+              const tags = teacher.tags?.length ? teacher.tags : (DEFAULT_TAGS[teacher.subject] ?? []);
               return (
                 <View key={bm.id} style={styles.card}>
                   <View style={styles.cardTopRow}>
                     <View style={{ flexDirection: 'row', gap: 14, flex: 1 }}>
                       <View style={styles.photoWrap}>
-                        {t.avatarUrl ? (
-                          <Image source={{ uri: t.avatarUrl }} style={styles.photo} />
+                        {teacher.avatarUrl ? (
+                          <Image source={{ uri: teacher.avatarUrl }} style={styles.photo} />
                         ) : (
                           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.photo}>
-                            <Text style={styles.photoInitial}>{initials(t.name)}</Text>
+                            <Text style={styles.photoInitial}>{initials(teacher.name)}</Text>
                           </LinearGradient>
                         )}
                       </View>
                       <View style={{ flex: 1 }}>
                         <View style={styles.nameRow}>
-                          <Text style={styles.name} numberOfLines={1}>{t.name}</Text>
-                          {t.isVerified && <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />}
+                          <Text style={styles.name} numberOfLines={1}>{teacher.name}</Text>
+                          {teacher.isVerified && <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />}
                         </View>
-                        <Text style={styles.expertise}>{t.subject} {t.experience ? `· ${t.experience}` : ''}</Text>
+                        <Text style={styles.expertise}>{teacher.subject} {teacher.experience ? `· ${teacher.experience}` : ''}</Text>
                         <View style={styles.ratingRow}>
                           <Ionicons name="star" size={14} color="#FBBF24" />
-                          <Text style={styles.ratingValue}>{t.rating > 0 ? t.rating.toFixed(1) : 'Yeni'}</Text>
-                          {typeof t.reviewCount === 'number' && (
-                            <Text style={styles.reviewCount}>({t.reviewCount} rəy)</Text>
+                          <Text style={styles.ratingValue}>{teacher.rating > 0 ? teacher.rating.toFixed(1) : t('bookmarks.ratingNew')}</Text>
+                          {typeof teacher.reviewCount === 'number' && (
+                            <Text style={styles.reviewCount}>{t('bookmarks.reviewCount', { count: teacher.reviewCount })}</Text>
                           )}
                         </View>
                       </View>
@@ -178,10 +180,10 @@ export default function FavoritesScreen() {
 
                   <View style={styles.cardFooter}>
                     <View>
-                      <Text style={styles.priceLabel}>QİYMƏT</Text>
+                      <Text style={styles.priceLabel}>{t('bookmarks.priceLabel')}</Text>
                       <Text style={styles.priceValue}>
-                        {t.hourlyRate > 0 ? `${t.hourlyRate} AZN` : '—'}
-                        <Text style={styles.priceUnit}>/saat</Text>
+                        {teacher.hourlyRate > 0 ? `${teacher.hourlyRate} AZN` : '—'}
+                        <Text style={styles.priceUnit}>{t('bookmarks.perHour')}</Text>
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -189,7 +191,7 @@ export default function FavoritesScreen() {
                       onPress={() => navigation.getParent()?.navigate('Booking', { screen: Routes.TeacherList })}
                     >
                       <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.reserveBtn}>
-                        <Text style={styles.reserveBtnText}>Rezerv et</Text>
+                        <Text style={styles.reserveBtnText}>{t('bookmarks.reserve')}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -201,13 +203,13 @@ export default function FavoritesScreen() {
 
         {/* Kimi suggestion */}
         <View style={styles.suggestion}>
-          <Text style={styles.sgTitle}>Daha çoxunu tap!</Text>
-          <Text style={styles.sgDesc}>Sizin maraqlarınıza uyğun daha 15 müəllim tapıldı.</Text>
+          <Text style={styles.sgTitle}>{t('bookmarks.discoverTitle')}</Text>
+          <Text style={styles.sgDesc}>{t('bookmarks.discoverDesc')}</Text>
           <TouchableOpacity
             style={styles.sgCta} activeOpacity={0.7}
             onPress={() => navigation.getParent()?.navigate('Booking', { screen: Routes.TeacherList })}
           >
-            <Text style={styles.sgCtaText}>Kəşf et</Text>
+            <Text style={styles.sgCtaText}>{t('bookmarks.discover')}</Text>
             <Ionicons name="arrow-forward" size={14} color={Colors.primary} />
           </TouchableOpacity>
         </View>

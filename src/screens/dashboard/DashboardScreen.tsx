@@ -14,9 +14,11 @@ import { useUserStats } from '../../hooks/useDashboard';
 import StatCard from '../../components/dashboard/StatCard';
 import RecentExamsList from '../../components/dashboard/RecentExamsList';
 import DailyMissionsWidget from '../home/DailyMissionsWidget';
+import { useTranslation } from '../../i18n';
 
 export default function DashboardScreen() {
   const { user } = useUserStore();
+  const { t } = useTranslation();
   const { data, isLoading, refetch, isRefetching } = useUserStats();
 
   return (
@@ -27,11 +29,11 @@ export default function DashboardScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.greeting}>Salam, {user?.name?.split(' ')[0] || 'Qonaq'} 👋</Text>
-          <Text style={styles.subtitle}>Bu gün nə öyrənəcəksən?</Text>
+          <Text style={styles.greeting}>{t('dashboard.greeting', { name: user?.name?.split(' ')[0] || t('dashboard.guest') })}</Text>
+          <Text style={styles.subtitle}>{t('dashboard.subtitle')}</Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Statistika</Text>
+        <Text style={styles.sectionTitle}>{t('dashboard.statistics')}</Text>
 
         {isLoading ? (
           <ActivityIndicator color={Colors.primary} style={{ marginVertical: 32 }} />
@@ -40,13 +42,13 @@ export default function DashboardScreen() {
             <View style={styles.statsGrid}>
               <StatCard
                 icon="📝"
-                label="Cəmi imtahan"
+                label={t('dashboard.totalExams')}
                 value={data?.totalExams ?? 0}
                 color={Colors.primary}
               />
               <StatCard
                 icon="⭐"
-                label="Orta xal"
+                label={t('dashboard.averageScore')}
                 value={`${data?.averageScore ?? 0}%`}
                 color={Colors.secondary}
               />
@@ -54,13 +56,13 @@ export default function DashboardScreen() {
             <View style={[styles.statsGrid, { marginTop: 12 }]}>
               <StatCard
                 icon="🔥"
-                label="Fəal günlər"
+                label={t('dashboard.activeDays')}
                 value={data?.activeDays ?? 0}
                 color={Colors.warning}
               />
               <StatCard
                 icon="🏆"
-                label="Ən yüksək"
+                label={t('dashboard.highest')}
                 value={`${data?.highestScore ?? 0}%`}
                 color={Colors.success}
               />
@@ -70,7 +72,7 @@ export default function DashboardScreen() {
               <DailyMissionsWidget />
             </View>
 
-            <Text style={[styles.sectionTitle]}>Son imtahanlar</Text>
+            <Text style={[styles.sectionTitle]}>{t('dashboard.recentExams')}</Text>
             <View style={styles.recentCard}>
               <RecentExamsList results={data?.recentResults ?? []} />
             </View>

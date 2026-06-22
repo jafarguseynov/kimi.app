@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -54,6 +55,7 @@ const NEARBY: NearbySchool[] = [
 export default function SchoolSearchScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const user = useUserStore((s) => s.user);
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
 
   const trimmed = query.trim().toLowerCase();
@@ -78,7 +80,7 @@ export default function SchoolSearchScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Ionicons name="school" size={22} color={Colors.primary} />
-          <Text style={styles.headerTitle}>Məktəblər</Text>
+          <Text style={styles.headerTitle}>{t('schoolSearch.headerTitle')}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={6}>
@@ -100,7 +102,7 @@ export default function SchoolSearchScreen() {
           <Ionicons name="search" size={20} color={Colors.primary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Məktəb axtar..."
+            placeholder={t('schoolSearch.searchPlaceholder')}
             placeholderTextColor={Colors.outlineVariant}
             value={query}
             onChangeText={setQuery}
@@ -120,16 +122,16 @@ export default function SchoolSearchScreen() {
             {/* Motivation banner */}
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.motivBanner}>
               <View style={styles.motivBlob} pointerEvents="none" />
-              <Text style={styles.motivTitle}>Sənin üçün ən yaxşı{'\n'}təhsil ocaqlarını seçdik!</Text>
-              <Text style={styles.motivSub}>Ən yaxşı məktəbləri sənin üçün sıraladıq. Gələcəyin burada başlayır.</Text>
+              <Text style={styles.motivTitle}>{t('schoolSearch.motivTitle')}</Text>
+              <Text style={styles.motivSub}>{t('schoolSearch.motivSub')}</Text>
             </LinearGradient>
 
             <View style={styles.section}>
-              <Text style={styles.resultsLabel}>Tapılan nəticələr ({filtered.length})</Text>
+              <Text style={styles.resultsLabel}>{t('schoolSearch.resultsFound', { n: filtered.length })}</Text>
               {filtered.length === 0 ? (
                 <View style={styles.emptyBox}>
                   <Ionicons name="search-outline" size={36} color={Colors.outlineVariant} />
-                  <Text style={styles.emptyText}>"{query}" üçün nəticə tapılmadı</Text>
+                  <Text style={styles.emptyText}>{t('schoolSearch.noResults', { q: query })}</Text>
                 </View>
               ) : (
                 filtered.map((s) => (
@@ -154,7 +156,7 @@ export default function SchoolSearchScreen() {
                       </View>
                       <View style={styles.bigStatsRow}>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.statColLabel}>Şagird sayı</Text>
+                          <Text style={styles.statColLabel}>{t('schoolSearch.studentCount')}</Text>
                           <View style={styles.statColValueRow}>
                             <Ionicons name="people" size={14} color={Colors.primary} />
                             <Text style={styles.statColValue}>{s.students}</Text>
@@ -162,7 +164,7 @@ export default function SchoolSearchScreen() {
                         </View>
                         <View style={styles.statColDivider} />
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.statColLabel}>Tədris</Text>
+                          <Text style={styles.statColLabel}>{t('schoolSearch.teaching')}</Text>
                           <Text style={styles.statColStandalone}>{s.languages}</Text>
                         </View>
                         <TouchableOpacity style={styles.bigArrowBtn} activeOpacity={0.7} onPress={() => openSchool(s.name)}>
@@ -184,10 +186,8 @@ export default function SchoolSearchScreen() {
                 <Ionicons name="sparkles" size={26} color="#fff" />
               </LinearGradient>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.kimiPrefix}>Kimi deyir:</Text>
-                <Text style={styles.kimiMsg}>
-                  "Bakıdakı ən yaxşı liseyləri axtarırsınız? Riyaziyyat təmayüllü məktəbləri süzgəcdən keçirə bilərəm."
-                </Text>
+                <Text style={styles.kimiPrefix}>{t('schoolSearch.kimiSays')}</Text>
+                <Text style={styles.kimiMsg}>{t('schoolSearch.kimiMsg')}</Text>
               </View>
             </View>
 
@@ -195,11 +195,11 @@ export default function SchoolSearchScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View>
-                  <Text style={styles.sectionTitle}>Top Məktəblər</Text>
-                  <Text style={styles.sectionSub}>Reytinqə görə seçilmişlər</Text>
+                  <Text style={styles.sectionTitle}>{t('schoolSearch.topSchools')}</Text>
+                  <Text style={styles.sectionSub}>{t('schoolSearch.topSchoolsSub')}</Text>
                 </View>
                 <TouchableOpacity hitSlop={8} onPress={() => navigation.navigate(Routes.SchoolRanking)}>
-                  <Text style={styles.sectionLink}>Hamısına bax</Text>
+                  <Text style={styles.sectionLink}>{t('schoolSearch.seeAll')}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -251,8 +251,8 @@ export default function SchoolSearchScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
                 <View>
-                  <Text style={styles.sectionTitle}>Yaxınlıqdakı Məktəblər</Text>
-                  <Text style={styles.sectionSub}>Sizin cari məkanınıza əsasən</Text>
+                  <Text style={styles.sectionTitle}>{t('schoolSearch.nearbyTitle')}</Text>
+                  <Text style={styles.sectionSub}>{t('schoolSearch.nearbySub')}</Text>
                 </View>
               </View>
               <View style={{ gap: 12 }}>
@@ -284,15 +284,15 @@ export default function SchoolSearchScreen() {
 
             {/* CTA — ask Kimi */}
             <View style={styles.ctaCard}>
-              <Text style={styles.ctaTitle}>Məktəb tapa bilmirsiniz?</Text>
-              <Text style={styles.ctaSub}>Kimi AI-dan sizin üçün ən uyğun məktəbi tapmasını istəyin.</Text>
+              <Text style={styles.ctaTitle}>{t('schoolSearch.ctaTitle')}</Text>
+              <Text style={styles.ctaSub}>{t('schoolSearch.ctaSub')}</Text>
               <TouchableOpacity
                 activeOpacity={0.9}
                 onPress={() => (navigation.getParent() as any)?.navigate(Routes.AIMentor)}
               >
                 <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
                   <Ionicons name="sparkles" size={16} color="#fff" />
-                  <Text style={styles.ctaBtnText}>Kimi-yə soruş</Text>
+                  <Text style={styles.ctaBtnText}>{t('schoolSearch.askKimi')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>

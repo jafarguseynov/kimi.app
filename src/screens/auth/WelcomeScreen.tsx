@@ -20,11 +20,16 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
-const { width: W } = Dimensions.get('window');
+const { width: W, height: H } = Dimensions.get('window');
+
+// Kiçik ekranlar (məs. Samsung A5 2017 ~360×640dp) üçün — illüstrasiya
+// həm enə, həm hündürlüyə görə kiçilməlidir ki, başlıqla üst-üstə düşməsin.
+const SMALL = H < 720;
 
 // Illustration stage geometry (scales down on small phones)
-const STAGE = Math.min(310, W - 56);
+const STAGE = Math.min(310, W - 56, Math.round(H * (SMALL ? 0.32 : 0.4)));
 const CARD = Math.round(STAGE * 0.74);
 const AURA = Math.round(STAGE * 0.84);
 const RING_R = STAGE / 2 - 5;
@@ -47,32 +52,32 @@ interface Satellite {
 
 interface Slide {
   id: string;
-  title: string;
-  subtitle: string;
+  titleKey: string;
+  subtitleKey: string;
   icon: IconName;
   gradient: [string, string];
   accent: string;
   badgeIcon: IconName;
-  badgeLabel: string;
+  badgeLabelKey: string;
   badgeColors: [string, string];
   chipIcon: IconName;
-  chipLabel: string;
+  chipLabelKey: string;
   satellites: [Satellite, Satellite];
 }
 
 const slides: Slide[] = [
   {
     id: '1',
-    title: 'Müəllimini tap',
-    subtitle: 'Minlərlə müəllim arasından özünə uyğun müəllimi tap.',
+    titleKey: 'welcome.slide1Title',
+    subtitleKey: 'welcome.slide1Sub',
     icon: 'school',
     gradient: ['#006190', '#47b4fa'],
     accent: '#47b4fa',
     badgeIcon: 'checkmark-circle',
-    badgeLabel: 'Təsdiqlənmiş',
+    badgeLabelKey: 'welcome.slide1Badge',
     badgeColors: ['#006947', '#0a8a5f'],
     chipIcon: 'star',
-    chipLabel: '4.9 reytinq',
+    chipLabelKey: 'welcome.slide1Chip',
     satellites: [
       { icon: 'people', color: '#47b4fa' },
       { icon: 'ribbon', color: '#F59E0B' },
@@ -80,16 +85,16 @@ const slides: Slide[] = [
   },
   {
     id: '2',
-    title: 'AI ilə imtahan ver',
-    subtitle: 'Süni intellekt ilə hazırlanan testlərlə biliklərini yoxla.',
+    titleKey: 'welcome.slide2Title',
+    subtitleKey: 'welcome.slide2Sub',
     icon: 'hardware-chip',
     gradient: ['#5B2BD9', '#9168F0'],
     accent: '#9168F0',
     badgeIcon: 'sparkles',
-    badgeLabel: 'AI Analiz',
+    badgeLabelKey: 'welcome.slide2Badge',
     badgeColors: ['#5B2BD9', '#7c4ddb'],
     chipIcon: 'flash',
-    chipLabel: 'Ani nəticə',
+    chipLabelKey: 'welcome.slide2Chip',
     satellites: [
       { icon: 'checkmark-done', color: '#22C55E' },
       { icon: 'bulb', color: '#F59E0B' },
@@ -97,16 +102,16 @@ const slides: Slide[] = [
   },
   {
     id: '3',
-    title: 'Öyrən və inkişaf et',
-    subtitle: 'Flashcard-lar və AI mentor ilə hər gün bir az daha irəli get.',
+    titleKey: 'welcome.slide3Title',
+    subtitleKey: 'welcome.slide3Sub',
     icon: 'trending-up',
     gradient: ['#006947', '#16C088'],
     accent: '#16C088',
     badgeIcon: 'rocket',
-    badgeLabel: 'Gündəlik plan',
+    badgeLabelKey: 'welcome.slide3Badge',
     badgeColors: ['#006947', '#0a8a5f'],
     chipIcon: 'flame',
-    chipLabel: '5 gün streak',
+    chipLabelKey: 'welcome.slide3Chip',
     satellites: [
       { icon: 'trophy', color: '#F59E0B' },
       { icon: 'library', color: '#16C088' },
@@ -116,6 +121,7 @@ const slides: Slide[] = [
 
 /** Animated, layered hero illustration for a single slide. */
 function Stage({ slide }: { slide: Slide }) {
+  const { t } = useTranslation();
   const float = useRef(new Animated.Value(0)).current;
   const pulse = useRef(new Animated.Value(0)).current;
   const spin = useRef(new Animated.Value(0)).current;
@@ -206,7 +212,7 @@ function Stage({ slide }: { slide: Slide }) {
         >
           <Ionicons name={slide.chipIcon} size={14} color="#fff" />
         </LinearGradient>
-        <Text style={styles.chipText}>{slide.chipLabel}</Text>
+        <Text style={styles.chipText}>{t(slide.chipLabelKey)}</Text>
       </Animated.View>
 
       {/* Status badge — bottom-left */}
@@ -218,7 +224,7 @@ function Stage({ slide }: { slide: Slide }) {
           style={styles.badge}
         >
           <Ionicons name={slide.badgeIcon} size={13} color="#fff" />
-          <Text style={styles.badgeText}>{slide.badgeLabel}</Text>
+          <Text style={styles.badgeText}>{t(slide.badgeLabelKey)}</Text>
         </LinearGradient>
       </Animated.View>
 
@@ -238,6 +244,7 @@ function Stage({ slide }: { slide: Slide }) {
 }
 
 export default function WelcomeScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatRef = useRef<FlatList<Slide>>(null);
 
@@ -266,7 +273,7 @@ export default function WelcomeScreen({ navigation }: Props) {
           resizeMode="contain"
         />
         <TouchableOpacity onPress={() => navigation.navigate(Routes.Login)} hitSlop={12}>
-          <Text style={styles.skip}>Keçid et</Text>
+          <Text style={styles.skip}>{t('welcome.skip')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -288,8 +295,8 @@ export default function WelcomeScreen({ navigation }: Props) {
 
             {/* Text */}
             <View style={styles.textSection}>
-              <Text style={styles.title}>{item.title}</Text>
-              <Text style={styles.subtitle}>{item.subtitle}</Text>
+              <Text style={styles.title}>{t(item.titleKey)}</Text>
+              <Text style={styles.subtitle}>{t(item.subtitleKey)}</Text>
             </View>
           </View>
         )}
@@ -314,14 +321,14 @@ export default function WelcomeScreen({ navigation }: Props) {
             end={{ x: 1, y: 1 }}
             style={styles.cta}
           >
-            <Text style={styles.ctaText}>{isLast ? 'Başlayaq' : 'Davam et'}</Text>
+            <Text style={styles.ctaText}>{isLast ? t('welcome.start') : t('welcome.continue')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.terms}>
-          Davam edərək{' '}
-          <Text style={styles.termsLink}>İstifadəçi şərtləri</Text>
-          {' '}ilə razılaşırsınız.
+          {t('welcome.termsPre')}
+          <Text style={styles.termsLink}>{t('welcome.termsLink')}</Text>
+          {t('welcome.termsPost')}
         </Text>
       </View>
     </SafeAreaView>
@@ -356,7 +363,7 @@ const styles = StyleSheet.create({
   illustrationWrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 40,
+    marginBottom: SMALL ? 20 : 40,
   },
 
   stage: {
@@ -471,19 +478,19 @@ const styles = StyleSheet.create({
 
   textSection: { alignItems: 'center', paddingHorizontal: 8 },
   title: {
-    fontSize: 34,
+    fontSize: SMALL ? 28 : 34,
     fontWeight: '800',
     color: Colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 42,
+    marginBottom: SMALL ? 8 : 12,
+    lineHeight: SMALL ? 34 : 42,
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 17,
+    fontSize: SMALL ? 15 : 17,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 26,
+    lineHeight: SMALL ? 22 : 26,
   },
 
   dots: {
@@ -491,7 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
-    marginTop: 24,
+    marginTop: SMALL ? 12 : 24,
     marginBottom: 12,
   },
   dot: { height: 8, borderRadius: 4 },

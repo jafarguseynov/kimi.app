@@ -5,22 +5,24 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const INVITE_LINK = 'kimi.az/invite/123';
 
 export default function InviteFriendsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   const onShare = async () => {
     try {
-      await Share.share({ message: `Kimi.az-a qoşul! ${INVITE_LINK}` });
+      await Share.share({ message: t('social.shareMessage', { link: INVITE_LINK }) });
     } catch {}
   };
 
   const onCopy = () => {
     Clipboard.setString(INVITE_LINK);
-    Alert.alert('Kopyalandı', 'Dəvət linki yaddaşa köçürüldü.');
+    Alert.alert(t('social.copiedTitle'), t('social.copiedMsg'));
   };
 
   return (
@@ -29,7 +31,7 @@ export default function InviteFriendsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dostlarını dəvət et</Text>
+        <Text style={styles.headerTitle}>{t('social.inviteTitle')}</Text>
         <View style={styles.iconBtn} />
       </View>
 
@@ -37,8 +39,8 @@ export default function InviteFriendsScreen() {
         {/* Hero Card */}
         <View style={styles.heroCard}>
           <View style={styles.heroBlob} />
-          <Text style={styles.heroTitle}>Link paylaş və mükafat qazan 🎁</Text>
-          <Text style={styles.heroSub}>Dostlarınızı Kimi.az-a dəvət edərək birlikdə öyrənin.</Text>
+          <Text style={styles.heroTitle}>{t('social.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('social.heroSub')}</Text>
 
           {/* Referral link box */}
           <View style={styles.linkBox}>
@@ -55,20 +57,20 @@ export default function InviteFriendsScreen() {
               style={styles.shareBtn}
             >
               <Ionicons name="share-social" size={20} color="#fff" />
-              <Text style={styles.shareBtnText}>Linki paylaş</Text>
+              <Text style={styles.shareBtnText}>{t('social.shareLink')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
         {/* Quick share */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.sectionLabel}>SÜRƏTLİ PAYLAŞIM</Text>
+          <Text style={styles.sectionLabel}>{t('social.quickShare')}</Text>
 
           <TouchableOpacity style={styles.quickRow} activeOpacity={0.85} onPress={onShare}>
             <View style={[styles.quickIcon, { backgroundColor: '#25D36619' }]}>
               <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
             </View>
-            <Text style={styles.quickText}>WhatsApp ilə paylaş</Text>
+            <Text style={styles.quickText}>{t('social.whatsappShare')}</Text>
             <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
           </TouchableOpacity>
 
@@ -76,7 +78,7 @@ export default function InviteFriendsScreen() {
             <View style={[styles.quickIcon, { backgroundColor: '#0088CC19' }]}>
               <Ionicons name="paper-plane" size={20} color="#0088CC" />
             </View>
-            <Text style={styles.quickText}>Telegram ilə paylaş</Text>
+            <Text style={styles.quickText}>{t('social.telegramShare')}</Text>
             <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
           </TouchableOpacity>
         </View>
@@ -86,9 +88,9 @@ export default function InviteFriendsScreen() {
           <View style={styles.rewardIcon}>
             <Ionicons name="cash" size={28} color={Colors.tertiary} />
           </View>
-          <Text style={styles.rewardTitle}>Dostun qoşulsa +10 bal qazan</Text>
+          <Text style={styles.rewardTitle}>{t('social.rewardTitle')}</Text>
           <Text style={styles.rewardSub}>
-            Dəvət etdiyiniz hər yeni istifadəçi üçün xal qazanın və reytinqdə yüksəlin.
+            {t('social.rewardSub')}
           </Text>
         </View>
 

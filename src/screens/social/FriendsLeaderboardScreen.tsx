@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const AVATAR = (seed: string) =>
@@ -32,6 +33,7 @@ const ROWS: RankRow[] = [
 
 export default function FriendsLeaderboardScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<Tab>('week');
 
   return (
@@ -41,7 +43,7 @@ export default function FriendsLeaderboardScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={6} style={styles.avatarWrap}>
             <Image source={{ uri: AVATAR('Sən') }} style={styles.avatar} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Dostlar TOP</Text>
+          <Text style={styles.headerTitle}>{t('social.friendsTop')}</Text>
         </View>
         <TouchableOpacity hitSlop={6} style={styles.bellBtn}>
           <Ionicons name="notifications" size={20} color={Colors.primary} />
@@ -56,10 +58,10 @@ export default function FriendsLeaderboardScreen() {
             onPress={() => navigation.replace(Routes.LeaderboardDetail)}
             style={pairTab.btn}
           >
-            <Text style={pairTab.text}>Hamı</Text>
+            <Text style={pairTab.text}>{t('social.all')}</Text>
           </TouchableOpacity>
           <View style={[pairTab.btn, pairTab.btnActive]}>
-            <Text style={[pairTab.text, pairTab.textActive]}>Dostlar</Text>
+            <Text style={[pairTab.text, pairTab.textActive]}>{t('social.friends')}</Text>
           </View>
         </View>
 
@@ -70,14 +72,14 @@ export default function FriendsLeaderboardScreen() {
             activeOpacity={0.85}
             onPress={() => setTab('week')}
           >
-            <Text style={[styles.segmentText, tab === 'week' && styles.segmentTextActive]}>Bu həftə</Text>
+            <Text style={[styles.segmentText, tab === 'week' && styles.segmentTextActive]}>{t('social.thisWeek')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.segmentBtn, tab === 'month' && styles.segmentBtnActive]}
             activeOpacity={0.85}
             onPress={() => setTab('month')}
           >
-            <Text style={[styles.segmentText, tab === 'month' && styles.segmentTextActive]}>Bu ay</Text>
+            <Text style={[styles.segmentText, tab === 'month' && styles.segmentTextActive]}>{t('social.thisMonth')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -90,7 +92,7 @@ export default function FriendsLeaderboardScreen() {
               <View style={styles.medalBubble}><Text style={styles.medal}>🥈</Text></View>
             </View>
             <Text style={styles.podiumName}>Leyla</Text>
-            <Text style={styles.podiumPts}>850 bal</Text>
+            <Text style={styles.podiumPts}>850 {t('social.points')}</Text>
             <View style={[styles.podiumBar, { height: 90, backgroundColor: Colors.surfaceLow }]} />
           </View>
 
@@ -102,7 +104,7 @@ export default function FriendsLeaderboardScreen() {
               <View style={[styles.medalBubble, styles.medalBubbleLg]}><Text style={styles.medalLg}>🥇</Text></View>
             </View>
             <Text style={styles.podiumNameLg}>Kamran</Text>
-            <Text style={styles.podiumPtsLg}>1,240 bal</Text>
+            <Text style={styles.podiumPtsLg}>1,240 {t('social.points')}</Text>
             <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={[styles.podiumBar, { height: 120 }]}>
               <Text style={styles.podiumBarNum}>1</Text>
             </LinearGradient>
@@ -115,7 +117,7 @@ export default function FriendsLeaderboardScreen() {
               <View style={styles.medalBubble}><Text style={styles.medal}>🥉</Text></View>
             </View>
             <Text style={styles.podiumName}>Ramin</Text>
-            <Text style={styles.podiumPts}>720 bal</Text>
+            <Text style={styles.podiumPts}>720 {t('social.points')}</Text>
             <View style={[styles.podiumBar, { height: 75, backgroundColor: Colors.surfaceHigh }]} />
           </View>
         </View>
@@ -142,11 +144,11 @@ export default function FriendsLeaderboardScreen() {
                 </View>
               )}
               <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={[styles.rowName, r.isYou && { fontWeight: '700' }]} numberOfLines={1}>{r.name}</Text>
+                <Text style={[styles.rowName, r.isYou && { fontWeight: '700' }]} numberOfLines={1}>{r.isYou ? t('social.you') : r.name}</Text>
                 {r.isYou && r.weekDelta ? (
                   <View style={styles.deltaPill}>
                     <Ionicons name="trending-up" size={11} color={Colors.tertiary} />
-                    <Text style={styles.deltaText}>+{r.weekDelta} bal bu həftə</Text>
+                    <Text style={styles.deltaText}>{t('social.weekDelta', { delta: r.weekDelta })}</Text>
                   </View>
                 ) : (
                   r.sub && <Text style={styles.rowSub} numberOfLines={1}>{r.sub}</Text>
@@ -154,7 +156,7 @@ export default function FriendsLeaderboardScreen() {
               </View>
               <View style={styles.ptsWrap}>
                 <Text style={styles.ptsValue}>{r.points}</Text>
-                <Text style={styles.ptsLabel}>bal</Text>
+                <Text style={styles.ptsLabel}>{t('social.points')}</Text>
               </View>
             </View>
           ))}

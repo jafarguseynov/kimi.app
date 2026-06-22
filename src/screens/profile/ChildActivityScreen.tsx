@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -35,7 +36,9 @@ const WEAK_TOPICS: WeakTopic[] = [
 export default function ChildActivityScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { t } = useTranslation();
   const childName: string | undefined = route.params?.childName;
+  const firstName = childName ? childName.split(' ')[0] : '';
   const initials = childName ? childName.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase() : 'M';
   const overallPct = 85;
 
@@ -50,7 +53,7 @@ export default function ChildActivityScreen() {
             <Text style={styles.headerAvatarText}>{initials}</Text>
           </View>
           <Text style={styles.headerTitle}>
-            {childName ? `${childName.split(' ')[0]}ın fəaliyyəti` : 'Fəaliyyət'}
+            {childName ? t('childActivity.titleWithName', { name: firstName }) : t('childActivity.titleNoName')}
           </Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
@@ -64,11 +67,11 @@ export default function ChildActivityScreen() {
           <View style={styles.heroRow}>
             <View style={{ flex: 1, gap: 6 }}>
               <View style={styles.heroBadge}>
-                <Text style={styles.heroBadgeText}>ÜMUMİ HAZIRLIQ</Text>
+                <Text style={styles.heroBadgeText}>{t('childActivity.heroBadge')}</Text>
               </View>
-              <Text style={styles.heroTitle}>Əla nəticə!</Text>
+              <Text style={styles.heroTitle}>{t('childActivity.heroTitle')}</Text>
               <Text style={styles.heroSub}>
-                {childName ? `${childName.split(' ')[0]} hədəfinə çox yaxındır.` : 'Övladınız hədəfinə çox yaxındır.'}
+                {childName ? t('childActivity.heroSubWithName', { name: firstName }) : t('childActivity.heroSubNoName')}
               </Text>
             </View>
             <View style={styles.ringWrap}>
@@ -84,8 +87,8 @@ export default function ChildActivityScreen() {
 
         {/* Son nəticələr */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Son nəticələr</Text>
-          <Text style={styles.sectionLink}>Son 7 imtahan</Text>
+          <Text style={styles.sectionTitle}>{t('childActivity.recentTitle')}</Text>
+          <Text style={styles.sectionLink}>{t('childActivity.recentLink')}</Text>
         </View>
 
         <View style={styles.chartCard}>
@@ -99,7 +102,7 @@ export default function ChildActivityScreen() {
                     start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
                   />
                 </View>
-                <Text style={styles.chartLabel}>{d.label}</Text>
+                <Text style={styles.chartLabel}>{d.label === 'Bugün' ? t('childActivity.today') : d.label}</Text>
               </View>
             ))}
           </View>
@@ -108,35 +111,34 @@ export default function ChildActivityScreen() {
         {/* AI Recommendation */}
         <View style={styles.aiCard}>
           <View style={styles.aiHead}>
-            <Text style={styles.aiTitle}>AI Tövsiyəsi</Text>
+            <Text style={styles.aiTitle}>{t('childActivity.aiTitle')}</Text>
             <Ionicons name="sparkles" size={14} color={Colors.primary} />
           </View>
           <Text style={styles.aiBody}>
-            {childName ? `${childName.split(' ')[0]},` : 'Övladınız'} "Kəsrlər" mövzusunda çətinlik çəkir. Bu həftə hər gün
-            15 dəqiqə əlavə tapşırıq etmək onun nəticəsini 20% artıra bilər!
+            {childName ? t('childActivity.aiBodyWithName', { name: firstName }) : t('childActivity.aiBodyNoName')}
           </Text>
           <View style={styles.aiAccent} pointerEvents="none" />
         </View>
 
         {/* Zəif mövzular */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Zəif mövzular</Text>
+          <Text style={styles.sectionTitle}>{t('childActivity.weakTitle')}</Text>
         </View>
 
         <View style={{ gap: 12 }}>
-          {WEAK_TOPICS.map((t) => (
-            <View key={t.name} style={styles.topicCard}>
+          {WEAK_TOPICS.map((topic) => (
+            <View key={topic.name} style={styles.topicCard}>
               <View style={styles.topicTopRow}>
                 <View style={styles.topicLeft}>
-                  <View style={[styles.topicIcon, { backgroundColor: t.bg }]}>
-                    <Ionicons name={t.icon} size={18} color={t.color} />
+                  <View style={[styles.topicIcon, { backgroundColor: topic.bg }]}>
+                    <Ionicons name={topic.icon} size={18} color={topic.color} />
                   </View>
-                  <Text style={styles.topicName}>{t.name}</Text>
+                  <Text style={styles.topicName}>{topic.name}</Text>
                 </View>
-                <Text style={[styles.topicScore, { color: t.color }]}>{t.score}%</Text>
+                <Text style={[styles.topicScore, { color: topic.color }]}>{topic.score}%</Text>
               </View>
               <View style={styles.topicTrack}>
-                <View style={[styles.topicFill, { width: `${t.score}%` as any, backgroundColor: t.color }]} />
+                <View style={[styles.topicFill, { width: `${topic.score}%` as any, backgroundColor: topic.color }]} />
               </View>
             </View>
           ))}

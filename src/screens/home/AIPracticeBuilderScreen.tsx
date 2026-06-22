@@ -5,11 +5,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Count = 5 | 10 | 20;
 type Difficulty = 'Asan' | 'Orta' | 'Çətin';
+const DIFF_TKEY: Record<Difficulty, string> = {
+  'Asan': 'aiPractice.diffEasy',
+  'Orta': 'aiPractice.diffMedium',
+  'Çətin': 'aiPractice.diffHard',
+};
 
 const HISTORY = [
   { id: '1', title: 'Riyaziyyat - Tənliklər', meta: 'Dünən, 10 sual',     icon: 'function' as any },
@@ -18,6 +24,7 @@ const HISTORY = [
 
 export default function AIPracticeBuilderScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [topic, setTopic] = useState('Faizlər');
   const [count, setCount] = useState<Count>(10);
   const [difficulty, setDifficulty] = useState<Difficulty>('Orta');
@@ -28,7 +35,7 @@ export default function AIPracticeBuilderScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>AI Məşq Yaradıcı</Text>
+        <Text style={styles.headerTitle}>{t('aiPractice.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="time-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -37,7 +44,7 @@ export default function AIPracticeBuilderScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Topic selector */}
         <View style={{ gap: 8 }}>
-          <Text style={styles.label}>Mövzu seç</Text>
+          <Text style={styles.label}>{t('aiPractice.topicLabel')}</Text>
           <TouchableOpacity style={styles.selector} activeOpacity={0.85}>
             <Text style={styles.selectorText}>{topic}</Text>
             <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
@@ -51,15 +58,15 @@ export default function AIPracticeBuilderScreen() {
             <Ionicons name="bulb" size={22} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.recTitle}>AI Tövsiyəsi</Text>
-            <Text style={styles.recSub}>AI sənin zəif mövzularına görə tövsiyə edir:</Text>
-            <Text style={styles.recValue}>10 sual</Text>
+            <Text style={styles.recTitle}>{t('aiPractice.recTitle')}</Text>
+            <Text style={styles.recSub}>{t('aiPractice.recSub')}</Text>
+            <Text style={styles.recValue}>{t('aiPractice.questions', { n: 10 })}</Text>
           </View>
         </View>
 
         {/* Question count */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.label}>Sual sayı</Text>
+          <Text style={styles.label}>{t('aiPractice.countLabel')}</Text>
           <View style={styles.segmented}>
             {([5, 10, 20] as Count[]).map((n) => {
               const active = count === n;
@@ -77,7 +84,7 @@ export default function AIPracticeBuilderScreen() {
 
         {/* Difficulty */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.label}>Çətinlik</Text>
+          <Text style={styles.label}>{t('aiPractice.diffLabel')}</Text>
           <View style={styles.segmented}>
             {(['Asan', 'Orta', 'Çətin'] as Difficulty[]).map((d) => {
               const active = difficulty === d;
@@ -86,7 +93,7 @@ export default function AIPracticeBuilderScreen() {
                   key={d} activeOpacity={0.85} onPress={() => setDifficulty(d)}
                   style={[styles.segItem, active && styles.segItemActive]}
                 >
-                  <Text style={[styles.segText, active && styles.segTextActive]}>{d}</Text>
+                  <Text style={[styles.segText, active && styles.segTextActive]}>{t(DIFF_TKEY[d])}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -97,13 +104,13 @@ export default function AIPracticeBuilderScreen() {
         <TouchableOpacity activeOpacity={0.85} style={{ marginTop: 8 }}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
             <Ionicons name="sparkles" size={20} color="#fff" />
-            <Text style={styles.ctaText}>Məşq yarat</Text>
+            <Text style={styles.ctaText}>{t('aiPractice.ctaCreate')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         {/* History */}
         <View style={{ gap: 16, marginTop: 16 }}>
-          <Text style={styles.sectionTitle}>Son yaradılan məşqlər</Text>
+          <Text style={styles.sectionTitle}>{t('aiPractice.historyTitle')}</Text>
           <View style={{ gap: 12 }}>
             {HISTORY.map((h) => (
               <TouchableOpacity key={h.id} style={styles.histItem} activeOpacity={0.85}>

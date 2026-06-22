@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,11 +19,12 @@ import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileComple
 import { useLogout } from '../../hooks/useAuth';
 import { useQuery } from '@tanstack/react-query';
 import { getUserStats } from '../../api/dashboard.api';
-import { getTeacherAnalytics, TeacherAnalytics, getTeachers } from '../../api/user.api';
+import { getTeacherAnalytics, TeacherAnalytics, getTeachers, getMe } from '../../api/user.api';
 import { getWallet } from '../../api/payment.api';
 import { getExamResults, getCertificates } from '../../api/certificate.api';
 import { UserStats } from '../../types/dashboard.types';
 import { Switch } from 'react-native';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -30,28 +32,30 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type MenuTab = 'self' | 'home' | 'exams';
 const BASE_STUDENT_MENU = [
-  { id: 'joinTeacher', icon: 'people-outline', label: 'Müəllimə qoşul', sub: 'Müəllim kodu ilə qoşul, bonus qazan', tab: 'self' as MenuTab, route: Routes.JoinTeacher },
-  { id: 'results', icon: 'analytics-outline', label: 'Mənim nəticələrim', sub: 'Ümumi performansın təhlili', tab: 'self' as MenuTab, route: Routes.ExamHistory },
-  { id: 'history', icon: 'time-outline', label: 'İmtahan tarixçəsi', sub: 'Keçirilən bütün sınaqlar', tab: 'self' as MenuTab, route: Routes.ExamHistory },
-  { id: 'questions', icon: 'help-circle-outline', label: 'Sual fəaliyyətim', sub: 'Düzgün və səhv cavablar', tab: 'self' as MenuTab, route: Routes.Achievements },
-  { id: 'balance', icon: 'wallet-outline', label: 'Balansım', sub: '', tab: 'self' as MenuTab, route: Routes.Wallet },
-  { id: 'subscription', icon: 'diamond-outline', label: 'Abunəlik Planları', sub: 'Premium imkanlar və Kimi Robot', tab: 'home' as MenuTab, route: Routes.Plans },
-  { id: 'goals', icon: 'flag-outline', label: 'Məqsədlərim', sub: 'Həftəlik hədəflər: 3/5', tab: 'home' as MenuTab, route: Routes.DailyMissions },
-  { id: 'medals', icon: 'trophy-outline', label: 'Medallar', sub: '', tab: 'self' as MenuTab, route: Routes.Achievements },
-  { id: 'certs', icon: 'ribbon-outline', label: 'Sertifikatlar', sub: '', tab: 'self' as MenuTab, route: Routes.CertificateList },
-  { id: 'rewards', icon: 'gift-outline', label: 'Mükafat tarixçəsi', sub: '', tab: 'self' as MenuTab, route: Routes.RewardHistory },
-  { id: 'duels', icon: 'flash-outline', label: 'Yarış tarixçəsi', sub: '', tab: 'self' as MenuTab, route: Routes.DuelHistory },
-  { id: 'referral', icon: 'share-social-outline', label: 'Referal sistemi', sub: '5 dostunu dəvət et', tab: 'self' as MenuTab, route: Routes.Referral },
+  { id: 'joinTeacher', icon: 'people-outline', labelKey: 'profileScreen.menuJoinTeacher', subKey: 'profileScreen.menuJoinTeacherSub', tab: 'self' as MenuTab, route: Routes.JoinTeacher },
+  { id: 'results', icon: 'analytics-outline', labelKey: 'profileScreen.menuResults', subKey: 'profileScreen.menuResultsSub', tab: 'self' as MenuTab, route: Routes.ExamHistory },
+  { id: 'history', icon: 'time-outline', labelKey: 'profileScreen.menuHistory', subKey: 'profileScreen.menuHistorySub', tab: 'self' as MenuTab, route: Routes.ExamHistory },
+  { id: 'questions', icon: 'help-circle-outline', labelKey: 'profileScreen.menuQuestions', subKey: 'profileScreen.menuQuestionsSub', tab: 'self' as MenuTab, route: Routes.Achievements },
+  { id: 'balance', icon: 'wallet-outline', labelKey: 'profileScreen.menuBalance', subKey: '', tab: 'self' as MenuTab, route: Routes.Wallet },
+  { id: 'subscription', icon: 'diamond-outline', labelKey: 'profileScreen.menuSubscription', subKey: 'profileScreen.menuSubscriptionSub', tab: 'home' as MenuTab, route: Routes.Plans },
+  { id: 'goals', icon: 'flag-outline', labelKey: 'profileScreen.menuGoals', subKey: 'profileScreen.menuGoalsSub', tab: 'home' as MenuTab, route: Routes.DailyMissions },
+  { id: 'medals', icon: 'trophy-outline', labelKey: 'profileScreen.menuMedals', subKey: '', tab: 'self' as MenuTab, route: Routes.Achievements },
+  { id: 'certs', icon: 'ribbon-outline', labelKey: 'profileScreen.menuCerts', subKey: '', tab: 'self' as MenuTab, route: Routes.CertificateList },
+  { id: 'rewards', icon: 'gift-outline', labelKey: 'profileScreen.menuRewards', subKey: '', tab: 'self' as MenuTab, route: Routes.RewardHistory },
+  { id: 'duels', icon: 'flash-outline', labelKey: 'profileScreen.menuDuels', subKey: '', tab: 'self' as MenuTab, route: Routes.DuelHistory },
+  { id: 'referral', icon: 'share-social-outline', labelKey: 'profileScreen.menuReferral', subKey: 'profileScreen.menuReferralSub', tab: 'self' as MenuTab, route: Routes.Referral },
 ] as const;
 
-function StudentView({ name, subtitle, logout, stats, walletBalance, navigation }: {
+function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, navigation }: {
   name: string;
   subtitle?: string;
   logout: () => void;
   stats?: UserStats;
   walletBalance?: number;
+  avatarUrl?: string;
   navigation: NativeStackNavigationProp<any>;
 }) {
+  const { t } = useTranslation();
   const initial = name?.[0]?.toUpperCase() ?? '?';
   const firstName = name.split(' ')[0];
 
@@ -66,11 +70,11 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
   const nextLevelXp = level * 2000;
   const prevLevelXp = (level - 1) * 2000;
   const xpProgress = Math.min(1, Math.max(0, (totalXp - prevLevelXp) / (nextLevelXp - prevLevelXp || 1)));
-  const tier = totalXp >= 5000 ? 'Almaz'
-    : totalXp >= 2000 ? 'Platin'
-    : totalXp >= 1000 ? 'Qızıl'
-    : totalXp >= 500 ? 'Gümüş'
-    : 'Bürünc';
+  const tier = totalXp >= 5000 ? t('profileScreen.tierDiamond')
+    : totalXp >= 2000 ? t('profileScreen.tierPlatinum')
+    : totalXp >= 1000 ? t('profileScreen.tierGold')
+    : totalXp >= 500 ? t('profileScreen.tierSilver')
+    : t('profileScreen.tierBronze');
   const streak = stats?.streak ?? 0;
   const rating = 1000 + Math.round((stats?.averageScore ?? 0) * 4);
 
@@ -79,9 +83,13 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
       {/* Avatar */}
       <View style={styles.avatarSection}>
         <View style={styles.avatarWrap}>
-          <LinearGradient colors={GRADIENT} style={styles.bigAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Text style={styles.bigAvatarInitial}>{initial}</Text>
-          </LinearGradient>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.bigAvatar} />
+          ) : (
+            <LinearGradient colors={GRADIENT} style={styles.bigAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={styles.bigAvatarInitial}>{initial}</Text>
+            </LinearGradient>
+          )}
           <TouchableOpacity
             style={styles.editAvatarBtn}
             activeOpacity={0.8}
@@ -90,7 +98,7 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
             <Ionicons name="pencil" size={12} color="#fff" />
           </TouchableOpacity>
           <View style={styles.levelChip}>
-            <Text style={styles.levelChipText}>Level {level}</Text>
+            <Text style={styles.levelChipText}>{t('profileScreen.level', { n: level })}</Text>
           </View>
         </View>
         <Text style={[styles.userName, { marginTop: 18 }]}>{firstName}</Text>
@@ -116,18 +124,18 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={styles.statValue}>{streak} gün</Text>
-          <Text style={styles.statLabel}>Streak</Text>
+          <Text style={styles.statValue}>{t('profileScreen.streakDays', { count: streak })}</Text>
+          <Text style={styles.statLabel}>{t('profileScreen.statStreak')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statEmoji}>🏆</Text>
           <Text style={styles.statValue}>{tier}</Text>
-          <Text style={styles.statLabel}>Liqa</Text>
+          <Text style={styles.statLabel}>{t('profileScreen.statLeague')}</Text>
         </View>
         <View style={styles.statItem}>
           <Text style={styles.statEmoji}>⭐</Text>
           <Text style={styles.statValue}>{rating}</Text>
-          <Text style={styles.statLabel}>Reytinq</Text>
+          <Text style={styles.statLabel}>{t('profileScreen.statRating')}</Text>
         </View>
       </View>
 
@@ -141,8 +149,8 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
           <Ionicons name="sparkles" size={22} color={Colors.tertiary} />
         </View>
         <View style={styles.aiCardBody}>
-          <Text style={styles.aiCardTitle}>AI Plan Statistikası</Text>
-          <Text style={styles.aiCardSub}>Süni intellekt analizi ilə tərəqqini izlə</Text>
+          <Text style={styles.aiCardTitle}>{t('profileScreen.aiCardTitle')}</Text>
+          <Text style={styles.aiCardSub}>{t('profileScreen.aiCardSub')}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={Colors.tertiary} />
       </TouchableOpacity>
@@ -152,8 +160,8 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
         {BASE_STUDENT_MENU.map((item, i) => {
           const isBalance = item.id === 'balance';
           const sub = isBalance && walletBalance !== undefined
-            ? `Cari vəsait: ${walletBalance.toFixed(2)} AZN`
-            : item.sub;
+            ? t('profileScreen.walletSub', { amount: walletBalance.toFixed(2) })
+            : (item.subKey ? t(item.subKey) : '');
           return (
           <TouchableOpacity
             key={item.id}
@@ -173,12 +181,12 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
               <Ionicons name={item.icon} size={20} color={Colors.primary} />
             </View>
             <View style={styles.menuItemBody}>
-              <Text style={styles.menuItemLabel}>{item.label}</Text>
+              <Text style={styles.menuItemLabel}>{t(item.labelKey)}</Text>
               {sub ? <Text style={styles.menuItemSub}>{sub}</Text> : null}
             </View>
             {isBalance && walletBalance !== undefined && walletBalance > 0 && (
               <View style={styles.activeBadge}>
-                <Text style={styles.activeBadgeText}>AKTİV</Text>
+                <Text style={styles.activeBadgeText}>{t('profileScreen.activeBadge')}</Text>
               </View>
             )}
             <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
@@ -189,15 +197,15 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
 
       {/* Kimi tip */}
       <View style={styles.tipCard}>
-        <Text style={styles.tipTitle}>Kimi-dən məsləhət!</Text>
+        <Text style={styles.tipTitle}>{t('profileScreen.tipTitle')}</Text>
         <Text style={styles.tipText}>
-          {firstName}, bu gün Azərbaycan dili dərsinə 15 dəqiqə vaxt ayırsan, Qızıl Liqadakı yerini qoruya bilərsən! 🚀
+          {t('profileScreen.tipText', { name: firstName })}
         </Text>
       </View>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
         <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-        <Text style={styles.logoutText}>Çıxış</Text>
+        <Text style={styles.logoutText}>{t('profileScreen.logout')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -205,13 +213,15 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, navigation 
 
 // ─── Teacher ──────────────────────────────────────────────────────────────────
 
-function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
+function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, navigation }: {
   name: string; logout: () => void;
   analytics?: TeacherAnalytics;
   subjects?: string[];
   bio?: string;
+  avatarUrl?: string;
   navigation: NativeStackNavigationProp<any>;
 }) {
+  const { t } = useTranslation();
   const initial = name?.[0]?.toUpperCase() ?? '?';
   const teacherSubjects = subjects?.length ? subjects : [];
   const teacherBio = bio ?? '';
@@ -220,10 +230,10 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
   const { pct: trustPct, nextStep } = useTeacherProfileCompletion();
 
   const metrics = [
-    { label: 'Aylıq Gəlir', value: analytics?.monthlyEarnings?.toString() ?? '—', unit: 'AZN', primary: true },
-    { label: 'Tələbələr', value: analytics?.totalStudents?.toString() ?? '—', unit: '', primary: false },
-    { label: 'Baxış sayı', value: analytics?.profileViews?.toString() ?? '—', unit: '', primary: false },
-    { label: 'Aktiv Sorğular', value: analytics?.activeQueries?.toString() ?? '—', unit: '', primary: true },
+    { label: t('profileScreen.metricEarnings'), value: analytics?.monthlyEarnings?.toString() ?? '—', unit: 'AZN', primary: true },
+    { label: t('profileScreen.metricStudents'), value: analytics?.totalStudents?.toString() ?? '—', unit: '', primary: false },
+    { label: t('profileScreen.metricViews'), value: analytics?.profileViews?.toString() ?? '—', unit: '', primary: false },
+    { label: t('profileScreen.metricQueries'), value: analytics?.activeQueries?.toString() ?? '—', unit: '', primary: true },
   ];
 
   return (
@@ -231,9 +241,13 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
       {/* Avatar + rating */}
       <View style={styles.avatarSection}>
         <View style={styles.avatarWrap}>
-          <LinearGradient colors={GRADIENT} style={styles.bigAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Text style={styles.bigAvatarInitial}>{initial}</Text>
-          </LinearGradient>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.bigAvatar} />
+          ) : (
+            <LinearGradient colors={GRADIENT} style={styles.bigAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={styles.bigAvatarInitial}>{initial}</Text>
+            </LinearGradient>
+          )}
           <View style={styles.verifiedBadge}>
             <Ionicons name="checkmark" size={12} color="#fff" />
           </View>
@@ -241,7 +255,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
         <Text style={styles.userName}>{name}</Text>
         <View style={styles.ratingPill}>
           <Ionicons name="star" size={16} color="#F59E0B" />
-          <Text style={styles.ratingText}>{analytics?.rating?.toFixed(1) ?? '—'} Reytinq</Text>
+          <Text style={styles.ratingText}>{t('profileScreen.ratingLabel', { rating: analytics?.rating?.toFixed(1) ?? '—' })}</Text>
         </View>
       </View>
 
@@ -267,7 +281,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
         >
           <LinearGradient colors={GRADIENT} style={styles.earningsGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="wallet-outline" size={18} color="#fff" />
-            <Text style={styles.earningsPrimaryText}>Qazancı çıxar</Text>
+            <Text style={styles.earningsPrimaryText}>{t('profileScreen.withdrawEarnings')}</Text>
           </LinearGradient>
         </TouchableOpacity>
         <TouchableOpacity
@@ -276,7 +290,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
           onPress={() => navigation.navigate(Routes.PayoutHistory)}
         >
           <Ionicons name="time-outline" size={18} color={Colors.primary} />
-          <Text style={styles.earningsSecondaryText}>Tarixçə</Text>
+          <Text style={styles.earningsSecondaryText}>{t('profileScreen.history')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -285,11 +299,11 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
         <LinearGradient colors={GRADIENT} style={styles.premiumCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
           <View style={styles.premiumLeft}>
             <View style={styles.premiumBadge}>
-              <Text style={styles.premiumBadgeText}>Profili İrəli Çək</Text>
+              <Text style={styles.premiumBadgeText}>{t('profileScreen.boostBadge')}</Text>
             </View>
-            <Text style={styles.premiumTitle}>Boost et</Text>
+            <Text style={styles.premiumTitle}>{t('profileScreen.boostTitle')}</Text>
             <Text style={styles.premiumSub}>
-              Profilini siyahının başına çıxar{'\n'}və daha çox tələbə səni tapsın.
+              {t('profileScreen.boostSub')}
             </Text>
           </View>
           <View style={styles.premiumIconWrap}>
@@ -310,8 +324,8 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
               <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={trustStyles.title}>Profil gücü</Text>
-              <Text style={trustStyles.sub}>Güclü profil daha çox şagird gətirir</Text>
+              <Text style={trustStyles.title}>{t('profileScreen.trustTitle')}</Text>
+              <Text style={trustStyles.sub}>{t('profileScreen.trustSub')}</Text>
             </View>
             <Text style={trustStyles.pct}>{trustPct}%</Text>
           </View>
@@ -321,7 +335,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
           {nextStep && (
             <View style={trustStyles.nextRow}>
               <Ionicons name="add-circle-outline" size={15} color={Colors.primary} />
-              <Text style={trustStyles.nextText}>Növbəti: {nextStep.label}</Text>
+              <Text style={trustStyles.nextText}>{t('profileScreen.trustNext', { step: nextStep.label })}</Text>
               <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
             </View>
           )}
@@ -330,19 +344,19 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
 
       {/* Müəllim İnkişafı */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Müəllim İnkişafı</Text>
+        <Text style={styles.sectionTitle}>{t('profileScreen.teacherDevTitle')}</Text>
         <View style={progStyles.list}>
           {[
-            { key: 'class', icon: 'people-circle' as const, title: 'Sinifim', sub: 'Şagird dəvət et', route: Routes.TeacherClass, local: true },
-            { key: 'students', icon: 'people' as const, title: 'Şagirdlərim', sub: 'Performans izləməsi', route: Routes.TeacherStudents, local: true },
-            { key: 'gradeCalc', icon: 'calculator' as const, title: 'Qiymət Kalkulyatoru', sub: 'Sinfin yarımillik & illik qiymətləri', route: Routes.ClassGradeCalc, local: true },
-            { key: 'calculators', icon: 'apps' as const, title: 'Kalkulyatorlar', sub: 'Semestr, illik, DİM, keyfiyyət, bal', route: Routes.Calculators, tab: 'Calculators' },
-            { key: 'referral', icon: 'share-social' as const, title: 'Referal proqramı', sub: 'Hər kəsi dəvət et, hər referala bonus', route: Routes.Referral, local: true },
-            { key: 'badges', icon: 'ribbon' as const, title: 'Nailiyyətlər', sub: 'Qazandığın badges', route: Routes.TeacherBadges },
-            { key: 'level', icon: 'flash' as const, title: 'Səviyyə', sub: 'XP & perks', route: Routes.TeacherLevel },
-            { key: 'verified', icon: 'checkmark-done' as const, title: 'Verified ol', sub: 'Tələblər və status', route: Routes.VerifiedTeacher },
-            { key: 'top', icon: 'trophy' as const, title: 'TOP Müəllim', sub: 'Leaderboard', route: Routes.TopTeachersLeaderboard },
-            { key: 'premium', icon: 'person-circle' as const, title: 'Premium Profil', sub: 'Önizləmə', route: Routes.TeacherProfilePremium },
+            { key: 'class', icon: 'people-circle' as const, title: t('profileScreen.progClassTitle'), sub: t('profileScreen.progClassSub'), route: Routes.TeacherClass, local: true },
+            { key: 'students', icon: 'people' as const, title: t('profileScreen.progStudentsTitle'), sub: t('profileScreen.progStudentsSub'), route: Routes.TeacherStudents, local: true },
+            { key: 'gradeCalc', icon: 'calculator' as const, title: t('profileScreen.progGradeCalcTitle'), sub: t('profileScreen.progGradeCalcSub'), route: Routes.ClassGradeCalc, local: true },
+            { key: 'calculators', icon: 'apps' as const, title: t('profileScreen.progCalculatorsTitle'), sub: t('profileScreen.progCalculatorsSub'), route: Routes.Calculators, tab: 'Calculators' },
+            { key: 'referral', icon: 'share-social' as const, title: t('profileScreen.progReferralTitle'), sub: t('profileScreen.progReferralSub'), route: Routes.Referral, local: true },
+            { key: 'badges', icon: 'ribbon' as const, title: t('profileScreen.progBadgesTitle'), sub: t('profileScreen.progBadgesSub'), route: Routes.TeacherBadges },
+            { key: 'level', icon: 'flash' as const, title: t('profileScreen.progLevelTitle'), sub: t('profileScreen.progLevelSub'), route: Routes.TeacherLevel },
+            { key: 'verified', icon: 'checkmark-done' as const, title: t('profileScreen.progVerifiedTitle'), sub: t('profileScreen.progVerifiedSub'), route: Routes.VerifiedTeacher },
+            { key: 'top', icon: 'trophy' as const, title: t('profileScreen.progTopTitle'), sub: t('profileScreen.progTopSub'), route: Routes.TopTeachersLeaderboard },
+            { key: 'premium', icon: 'person-circle' as const, title: t('profileScreen.progPremiumTitle'), sub: t('profileScreen.progPremiumSub'), route: Routes.TeacherProfilePremium },
           ].map((it) => (
             <TouchableOpacity
               key={it.key}
@@ -377,7 +391,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
       {/* Subjects */}
       {teacherSubjects.length > 0 && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Fənlər</Text>
+          <Text style={styles.sectionTitle}>{t('profileScreen.subjectsTitle')}</Text>
           <View style={styles.chipsRow}>
             {teacherSubjects.map((s) => (
               <View key={s} style={styles.chip}>
@@ -392,9 +406,9 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
       {!!teacherBio && (
         <View style={styles.section}>
           <View style={styles.bioTitleRow}>
-            <Text style={styles.sectionTitle}>Haqqımda</Text>
+            <Text style={styles.sectionTitle}>{t('profileScreen.aboutTitle')}</Text>
             <View style={styles.expBadge}>
-              <Text style={styles.expBadgeText}>Təcrübəli</Text>
+              <Text style={styles.expBadgeText}>{t('profileScreen.experiencedBadge')}</Text>
             </View>
           </View>
           <View style={styles.bioCard}>
@@ -411,13 +425,13 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
       >
         <LinearGradient colors={GRADIENT} style={styles.editProfileGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
           <Ionicons name="pencil" size={20} color="#fff" />
-          <Text style={styles.editProfileText}>Profil Redaktə Et</Text>
+          <Text style={styles.editProfileText}>{t('profileScreen.editProfile')}</Text>
         </LinearGradient>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
         <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-        <Text style={styles.logoutText}>Çıxış</Text>
+        <Text style={styles.logoutText}>{t('profileScreen.logout')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -426,19 +440,20 @@ function TeacherView({ name, logout, analytics, subjects, bio, navigation }: {
 // ─── Parent ───────────────────────────────────────────────────────────────────
 
 const PARENT_PERFORMANCE = [
-  { subject: 'Riyaziyyat', pct: 84, color: Colors.primary, note: 'Keçən aya nisbətən +5% artım' },
-  { subject: 'Azərbaycan dili', pct: 92, color: Colors.tertiary, note: 'Mükəmməl nəticə!' },
+  { subject: 'Riyaziyyat', pct: 84, color: Colors.primary, noteKey: 'profileScreen.perfNote1' },
+  { subject: 'Azərbaycan dili', pct: 92, color: Colors.tertiary, noteKey: 'profileScreen.perfNote2' },
 ];
 const WEAK_TOPICS = ['Kəsrlər', 'Sifətin dərəcələri'];
 const PARENT_EXAMS = [
-  { month: 'Mar', day: '15', title: 'Aylıq Sınaq', sub: 'Bütün fənlər üzrə', accentColor: Colors.primary },
-  { month: 'Apr', day: '02', title: 'Milli İmtahan', sub: 'Yekun qiymətləndirmə', accentColor: Colors.secondary },
+  { month: 'Mar', day: '15', titleKey: 'profileScreen.exam1Title', subKey: 'profileScreen.exam1Sub', accentColor: Colors.primary },
+  { month: 'Apr', day: '02', titleKey: 'profileScreen.exam2Title', subKey: 'profileScreen.exam2Sub', accentColor: Colors.secondary },
 ];
 
 function ParentView({ name, logout, childName, childGrade, childSchool, navigation }: { name: string; logout: () => void; childName?: string; childGrade?: string; childSchool?: string; navigation: NativeStackNavigationProp<any> }) {
+  const { t } = useTranslation();
   const initial = name?.[0]?.toUpperCase() ?? '?';
-  const displayChild = childName || 'Övladın';
-  const metaParts = [childGrade, childSchool].filter(Boolean).join(' • ') || 'Sinif və məktəb əlavə edilməyib';
+  const displayChild = childName || t('profileScreen.defaultChild');
+  const metaParts = [childGrade, childSchool].filter(Boolean).join(' • ') || t('profileScreen.noChildMeta');
 
   const { data: teachers = [] } = useQuery({
     queryKey: ['teachers', { limit: 6 }],
@@ -467,7 +482,7 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
         </View>
         <Text style={styles.userName}>{name}</Text>
         <View style={styles.roleBadge}>
-          <Text style={styles.roleBadgeText}>Valideyn</Text>
+          <Text style={styles.roleBadgeText}>{t('profileScreen.parentBadge')}</Text>
         </View>
       </View>
 
@@ -478,7 +493,7 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
             <Ionicons name="people-outline" size={22} color={Colors.primary} />
           </View>
           <View>
-            <Text style={styles.childName}>Övladım: {displayChild}</Text>
+            <Text style={styles.childName}>{t('profileScreen.childMeta', { child: displayChild })}</Text>
             <Text style={styles.childMeta}>{metaParts}</Text>
           </View>
         </View>
@@ -487,7 +502,7 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
           activeOpacity={0.8}
           onPress={() => navigation.navigate(Routes.ParentChildren)}
         >
-          <Text style={styles.childBtnText}>Hesabata bax</Text>
+          <Text style={styles.childBtnText}>{t('profileScreen.viewReport')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -502,19 +517,19 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
             <View style={styles.perfTrack}>
               <View style={[styles.perfFill, { width: `${p.pct}%` as any, backgroundColor: p.color }]} />
             </View>
-            <Text style={styles.perfNote}>{p.note}</Text>
+            <Text style={styles.perfNote}>{t(p.noteKey)}</Text>
           </View>
         ))}
       </View>
 
       {/* Weak topics */}
       <View style={styles.section}>
-        <Text style={styles.sectionSmallTitle}>Zəif Mövzular</Text>
+        <Text style={styles.sectionSmallTitle}>{t('profileScreen.weakTopicsTitle')}</Text>
         <View style={styles.chipsRow}>
-          {WEAK_TOPICS.map((t) => (
-            <View key={t} style={styles.weakChip}>
+          {WEAK_TOPICS.map((topic) => (
+            <View key={topic} style={styles.weakChip}>
               <Ionicons name="trending-down" size={14} color={Colors.danger} />
-              <Text style={styles.weakChipText}>{t}</Text>
+              <Text style={styles.weakChipText}>{topic}</Text>
             </View>
           ))}
         </View>
@@ -522,17 +537,17 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
 
       {/* Upcoming exams */}
       <View style={styles.section}>
-        <Text style={styles.sectionSmallTitle}>Növbəti İmtahanlar</Text>
+        <Text style={styles.sectionSmallTitle}>{t('profileScreen.upcomingExamsTitle')}</Text>
         <View style={styles.examList}>
           {PARENT_EXAMS.map((e) => (
-            <View key={e.title} style={[styles.examCard, { borderLeftColor: e.accentColor }]}>
+            <View key={e.titleKey} style={[styles.examCard, { borderLeftColor: e.accentColor }]}>
               <View style={styles.examDate}>
                 <Text style={[styles.examMonth, { color: e.accentColor }]}>{e.month}</Text>
                 <Text style={styles.examDay}>{e.day}</Text>
               </View>
               <View style={styles.examInfo}>
-                <Text style={styles.examTitle}>{e.title}</Text>
-                <Text style={styles.examSub}>{e.sub}</Text>
+                <Text style={styles.examTitle}>{t(e.titleKey)}</Text>
+                <Text style={styles.examSub}>{t(e.subKey)}</Text>
               </View>
               <Ionicons name="calendar-outline" size={20} color={Colors.textSecondary} />
             </View>
@@ -544,27 +559,27 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
       {teachers.length > 0 && (
         <View style={styles.section}>
           <View style={styles.suggestHeader}>
-            <Text style={styles.sectionSmallTitle}>Müəllim Təklifləri</Text>
+            <Text style={styles.sectionSmallTitle}>{t('profileScreen.teacherSuggestionsTitle')}</Text>
             <TouchableOpacity
               onPress={() => (navigation.getParent() as any)?.navigate('Marketplace')}
               activeOpacity={0.7}
             >
-              <Text style={styles.suggestLink}>Hamısı</Text>
+              <Text style={styles.suggestLink}>{t('profileScreen.all')}</Text>
             </TouchableOpacity>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.suggestRow}>
-            {teachers.map((t) => {
-              const tInitial = t.name?.[0]?.toUpperCase() ?? '?';
-              const subj = t.subjects?.[0] ?? 'Müəllim';
+            {teachers.map((teacher) => {
+              const tInitial = teacher.name?.[0]?.toUpperCase() ?? '?';
+              const subj = teacher.subjects?.[0] ?? t('profileScreen.defaultTeacher');
               return (
                 <TouchableOpacity
-                  key={t.id}
+                  key={teacher.id}
                   style={styles.suggestCard}
                   activeOpacity={0.85}
                   onPress={() =>
                     (navigation.getParent() as any)?.navigate('Marketplace', {
                       screen: Routes.TeacherProfile,
-                      params: { teacherId: t.id },
+                      params: { teacherId: teacher.id },
                       initial: false,
                     })
                   }
@@ -573,12 +588,12 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
                     <Text style={styles.suggestAvatarText}>{tInitial}</Text>
                   </LinearGradient>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.suggestName} numberOfLines={1}>{t.name}</Text>
+                    <Text style={styles.suggestName} numberOfLines={1}>{teacher.name}</Text>
                     <Text style={styles.suggestSubject} numberOfLines={1}>{subj}</Text>
                     <View style={styles.suggestRating}>
                       <Ionicons name="star" size={11} color="#F59E0B" />
                       <Text style={styles.suggestRatingText}>
-                        {(t.rating ?? 0).toFixed(1)}
+                        {(teacher.rating ?? 0).toFixed(1)}
                       </Text>
                     </View>
                   </View>
@@ -591,10 +606,10 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
 
       {/* Notification preferences */}
       <View style={styles.notifCard}>
-        <Text style={styles.sectionSmallTitle}>Bildiriş tənzimləmələri</Text>
+        <Text style={styles.sectionSmallTitle}>{t('profileScreen.notifTitle')}</Text>
         <View style={styles.notifList}>
           <View style={styles.notifRow}>
-            <Text style={styles.notifLabel}>İmtahan nəticələri</Text>
+            <Text style={styles.notifLabel}>{t('profileScreen.notifExam')}</Text>
             <Switch
               value={notifExam}
               onValueChange={setNotifExam}
@@ -603,7 +618,7 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
             />
           </View>
           <View style={styles.notifRow}>
-            <Text style={styles.notifLabel}>Dərs xatırlatmaları</Text>
+            <Text style={styles.notifLabel}>{t('profileScreen.notifLesson')}</Text>
             <Switch
               value={notifLesson}
               onValueChange={setNotifLesson}
@@ -612,7 +627,7 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
             />
           </View>
           <View style={styles.notifRow}>
-            <Text style={styles.notifLabel}>Yeni mesajlar</Text>
+            <Text style={styles.notifLabel}>{t('profileScreen.notifMessages')}</Text>
             <Switch
               value={notifMessages}
               onValueChange={setNotifMessages}
@@ -625,7 +640,7 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
 
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
         <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-        <Text style={styles.logoutText}>Çıxış</Text>
+        <Text style={styles.logoutText}>{t('profileScreen.logout')}</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -634,24 +649,38 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
+  const { t } = useTranslation();
   const logout = useLogout();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const name = user?.name ?? 'İstifadəçi';
+  const name = user?.name ?? t('profileScreen.defaultName');
   const isTeacher = user?.role === 'teacher';
   const isStudent = !isTeacher && user?.role !== 'parent';
 
   const { data: stats } = useQuery({ queryKey: ['user-stats'], queryFn: getUserStats, enabled: isStudent });
   const { data: wallet } = useQuery({ queryKey: ['wallet'], queryFn: getWallet, enabled: isStudent });
   const { data: analytics } = useQuery({ queryKey: ['teacher-analytics'], queryFn: getTeacherAnalytics, enabled: isTeacher });
+  // Tam profil (avatarUrl, subjects, bio...) serverdən təzələnir — store köhnə ola bilər.
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
+  React.useEffect(() => {
+    if (me) setUser({ ...(user as any), ...(me as any) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
 
-  const userAny = user as any;
+  const userAny = { ...(user as any), ...((me as any) ?? {}) };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.headerBtn} />
-        <Text style={styles.headerTitle}>Profil</Text>
+        <TouchableOpacity
+          style={styles.headerBtn}
+          activeOpacity={0.7}
+          hitSlop={8}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate(Routes.Home))}
+        >
+          <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{t('profileScreen.headerTitle')}</Text>
         <TouchableOpacity
           style={styles.headerBtn}
           activeOpacity={0.7}
@@ -665,7 +694,7 @@ export default function ProfileScreen() {
       </View>
 
       {isTeacher ? (
-        <TeacherView name={name} logout={logout} analytics={analytics} subjects={userAny?.subjects} bio={userAny?.bio} navigation={navigation} />
+        <TeacherView name={name} logout={logout} analytics={analytics} subjects={userAny?.subjects} bio={userAny?.bio} avatarUrl={userAny?.avatarUrl} navigation={navigation} />
       ) : user?.role === 'parent' ? (
         <ParentView
           name={name}
@@ -682,6 +711,7 @@ export default function ProfileScreen() {
           logout={logout}
           stats={stats}
           walletBalance={wallet?.balance}
+          avatarUrl={userAny?.avatarUrl}
           navigation={navigation}
         />
       )}

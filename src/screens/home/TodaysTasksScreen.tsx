@@ -6,28 +6,30 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 interface Task {
   id: string;
-  title: string;
-  hint?: string;
+  titleKey: string;
+  hintKey?: string;
   done: boolean;
 }
 
 const INITIAL: Task[] = [
-  { id: '1', title: '10 sual həll et', done: true },
-  { id: '2', title: '5 flashcard öyrən', done: true },
-  { id: '3', title: '1 mini test et', hint: 'Sonuncu tapşırığı bitir və hədəfə çat.', done: false },
+  { id: '1', titleKey: 'todaysTasks.task1', done: true },
+  { id: '2', titleKey: 'todaysTasks.task2', done: true },
+  { id: '3', titleKey: 'todaysTasks.task3', hintKey: 'todaysTasks.task3hint', done: false },
 ];
 
 export default function TodaysTasksScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [tasks, setTasks] = useState<Task[]>(INITIAL);
 
-  const toggle = (id: string) => setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
-  const completed = tasks.filter((t) => t.done).length;
+  const toggle = (id: string) => setTasks((prev) => prev.map((task) => task.id === id ? { ...task, done: !task.done } : task));
+  const completed = tasks.filter((task) => task.done).length;
   const pct = Math.round((completed / tasks.length) * 100);
 
   return (
@@ -36,7 +38,7 @@ export default function TodaysTasksScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bugünkü Tapşırıqlar</Text>
+        <Text style={styles.headerTitle}>{t('todaysTasks.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -44,10 +46,10 @@ export default function TodaysTasksScreen() {
         {/* Hero title */}
         <View style={{ gap: 8 }}>
           <Text style={styles.hero}>
-            Xoş gəldiniz,{'\n'}
-            <Text style={{ color: Colors.primary }}>Bugünkü Hədəflər</Text>
+            {t('todaysTasks.heroWelcome')}{'\n'}
+            <Text style={{ color: Colors.primary }}>{t('todaysTasks.heroGoals')}</Text>
           </Text>
-          <Text style={styles.heroSub}>Bu gün öyrənməyə davam edək. Hədəflərinizə çatmağa az qalıb.</Text>
+          <Text style={styles.heroSub}>{t('todaysTasks.heroSub')}</Text>
         </View>
 
         {/* Main task card */}
@@ -55,12 +57,12 @@ export default function TodaysTasksScreen() {
           <View style={styles.streakBadge}>
             <Text style={{ fontSize: 22 }}>🔥</Text>
           </View>
-          <Text style={styles.cardTitle}>Bugünkü Tapşırıqlar</Text>
+          <Text style={styles.cardTitle}>{t('todaysTasks.cardTitle')}</Text>
 
           <View style={{ marginBottom: 24 }}>
             <View style={styles.progressTopRow}>
-              <Text style={styles.progressLabel}>TƏRƏQQİ</Text>
-              <Text style={styles.progressValue}>{completed}/{tasks.length} tamamlandı</Text>
+              <Text style={styles.progressLabel}>{t('todaysTasks.progressLabel')}</Text>
+              <Text style={styles.progressValue}>{t('todaysTasks.completedOf', { done: completed, total: tasks.length })}</Text>
             </View>
             <View style={styles.progressTrack}>
               <LinearGradient
@@ -71,14 +73,14 @@ export default function TodaysTasksScreen() {
           </View>
 
           <View style={{ gap: 12, marginBottom: 28 }}>
-            {tasks.map((t) => (
-              <TouchableOpacity key={t.id} style={styles.taskRow} activeOpacity={0.85} onPress={() => toggle(t.id)}>
-                <View style={[styles.checkbox, t.done && styles.checkboxDone]}>
-                  {t.done && <Ionicons name="checkmark" size={14} color="#fff" />}
+            {tasks.map((task) => (
+              <TouchableOpacity key={task.id} style={styles.taskRow} activeOpacity={0.85} onPress={() => toggle(task.id)}>
+                <View style={[styles.checkbox, task.done && styles.checkboxDone]}>
+                  {task.done && <Ionicons name="checkmark" size={14} color="#fff" />}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.taskTitle, t.done && styles.taskTitleDone]}>{t.title}</Text>
-                  {t.hint && !t.done && <Text style={styles.taskHint}>{t.hint}</Text>}
+                  <Text style={[styles.taskTitle, task.done && styles.taskTitleDone]}>{t(task.titleKey)}</Text>
+                  {task.hintKey && !task.done && <Text style={styles.taskHint}>{t(task.hintKey)}</Text>}
                 </View>
               </TouchableOpacity>
             ))}
@@ -86,7 +88,7 @@ export default function TodaysTasksScreen() {
 
           <TouchableOpacity activeOpacity={0.85}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
-              <Text style={styles.ctaText}>Davam et</Text>
+              <Text style={styles.ctaText}>{t('todaysTasks.continue')}</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
@@ -97,13 +99,13 @@ export default function TodaysTasksScreen() {
           <View style={ttActStyles.row}>
             <TouchableOpacity style={ttActStyles.card} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MissionStart)}>
               <Ionicons name="flame" size={20} color={Colors.primary} />
-              <Text style={ttActStyles.cardTitle}>Missiya Start</Text>
-              <Text style={ttActStyles.cardSub}>Hero card</Text>
+              <Text style={ttActStyles.cardTitle}>{t('todaysTasks.missionStart')}</Text>
+              <Text style={ttActStyles.cardSub}>{t('todaysTasks.missionStartSub')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={ttActStyles.card} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MissionProgress)}>
               <Ionicons name="ribbon" size={20} color={Colors.primary} />
-              <Text style={ttActStyles.cardTitle}>Missiya Tərəqqi</Text>
-              <Text style={ttActStyles.cardSub}>2/3 + mükafat</Text>
+              <Text style={ttActStyles.cardTitle}>{t('todaysTasks.missionProgress')}</Text>
+              <Text style={ttActStyles.cardSub}>{t('todaysTasks.missionProgressSub')}</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -9,6 +9,7 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { getCertificates, type Certificate } from '../../api/certificate.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const PAGE_SIZE = 6;
@@ -17,11 +18,11 @@ type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof 
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
-function badgeForPct(pct: number): { label: string; icon: IconName } {
-  if (pct >= 95) return { label: 'Champion', icon: 'trophy' };
-  if (pct >= 85) return { label: 'Excellence', icon: 'ribbon' };
-  if (pct >= 50) return { label: 'Uğur', icon: 'star' };
-  return { label: 'İştirakçı', icon: 'school' };
+function badgeForPct(pct: number): { tKey: string; icon: IconName } {
+  if (pct >= 95) return { tKey: 'cert.tierChampion', icon: 'trophy' };
+  if (pct >= 85) return { tKey: 'cert.tierExcellence', icon: 'ribbon' };
+  if (pct >= 50) return { tKey: 'cert.tierSuccess', icon: 'star' };
+  return { tKey: 'cert.tierParticipant', icon: 'school' };
 }
 
 function formatDate(iso: string) {
@@ -34,6 +35,7 @@ function recent30Count(certs: Certificate[]) {
 }
 
 export default function CertificateListScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,7 +72,7 @@ export default function CertificateListScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sertifikatlar</Text>
+        <Text style={styles.headerTitle}>{t('cert.listTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -93,9 +95,9 @@ export default function CertificateListScreen({ navigation }: Props) {
             </LinearGradient>
           </View>
           <View style={styles.motivText}>
-            <Text style={styles.motivTitle}>Uğurlarının sayı artır!</Text>
+            <Text style={styles.motivTitle}>{t('cert.motivTitle')}</Text>
             <Text style={styles.motivSub}>
-              Bütün sertifikatlarını burada görə bilərsən. Səninlə fəxr edirik!
+              {t('cert.motivSub')}
             </Text>
           </View>
         </View>
@@ -108,10 +110,10 @@ export default function CertificateListScreen({ navigation }: Props) {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
           >
-            <Text style={styles.statCardChip}>Ümumi Nailiyyət</Text>
+            <Text style={styles.statCardChip}>{t('cert.totalAchievement')}</Text>
             <View style={styles.statCardNumRow}>
               <Text style={styles.statCardNum}>{certs.length}</Text>
-              <Text style={styles.statCardUnit}>Sertifikat</Text>
+              <Text style={styles.statCardUnit}>{t('cert.certificate')}</Text>
             </View>
           </LinearGradient>
 
@@ -119,8 +121,8 @@ export default function CertificateListScreen({ navigation }: Props) {
             <View style={styles.statSmallIcon}>
               <Ionicons name="ribbon" size={22} color={Colors.tertiary} />
             </View>
-            <Text style={styles.statSmallPeriod}>Son 30 gün</Text>
-            <Text style={styles.statSmallNum}>+{newCount} Yeni</Text>
+            <Text style={styles.statSmallPeriod}>{t('cert.last30')}</Text>
+            <Text style={styles.statSmallNum}>{t('cert.nNew', { n: newCount })}</Text>
           </View>
         </View>
 
@@ -130,8 +132,8 @@ export default function CertificateListScreen({ navigation }: Props) {
         ) : certs.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="ribbon-outline" size={56} color={Colors.primaryFixed} />
-            <Text style={styles.emptyTitle}>Sertifikat yoxdur</Text>
-            <Text style={styles.emptySub}>İmtahan həll etdikdən sonra burada görünəcək. Hər yeni imtahan yeni sertifikat qazandırır.</Text>
+            <Text style={styles.emptyTitle}>{t('cert.emptyTitle')}</Text>
+            <Text style={styles.emptySub}>{t('cert.emptySub')}</Text>
           </View>
         ) : (
           <>
@@ -154,7 +156,7 @@ export default function CertificateListScreen({ navigation }: Props) {
                       <Ionicons name={b.icon} size={48} color={Colors.primary + '88'} />
                       <View style={styles.previewBadge}>
                         <Ionicons name={b.icon} size={14} color="#f59e0b" />
-                        <Text style={styles.previewBadgeText}>{b.label}</Text>
+                        <Text style={styles.previewBadgeText}>{t(b.tKey)}</Text>
                       </View>
                     </LinearGradient>
                     <View style={styles.certInfo}>
@@ -176,7 +178,7 @@ export default function CertificateListScreen({ navigation }: Props) {
                 <View style={styles.lockedIconBox}>
                   <Ionicons name="lock-closed-outline" size={26} color={Colors.outline} />
                 </View>
-                <Text style={styles.lockedText}>Növbəti imtahanı tamamla və yeni sertifikat qazan!</Text>
+                <Text style={styles.lockedText}>{t('cert.lockedText')}</Text>
               </View>
             </View>
 
@@ -187,7 +189,7 @@ export default function CertificateListScreen({ navigation }: Props) {
                   onPress={() => setShown((s) => s + PAGE_SIZE)}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.loadMoreText}>Daha çox göstər</Text>
+                  <Text style={styles.loadMoreText}>{t('cert.loadMore')}</Text>
                   <Ionicons name="chevron-down" size={16} color={Colors.primary} />
                 </TouchableOpacity>
               </View>

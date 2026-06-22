@@ -15,6 +15,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -27,19 +28,20 @@ const TOP_STUDENTS = [
 ];
 
 const ACHIEVEMENTS = [
-  { icon: 'trophy-outline' as const, bg: '#FEF3C7', color: '#D97706', title: 'İlin Ən Yaxşı Məktəbi', sub: '2023 Qalibi' },
-  { icon: 'ribbon-outline' as const, bg: Colors.primaryLight, color: Colors.primary, title: 'Yüksək İmtahan Nəticəsi', sub: '95% Uğur' },
-  { icon: 'flask-outline' as const, bg: '#D1FAE5', color: '#059669', title: 'İnnovasiya Mərkəzi', sub: 'STEM Laboratoriya' },
-  { icon: 'globe-outline' as const, bg: '#EDE9FE', color: '#7C3AED', title: 'Beynəlxalq Əməkdaşlıq', sub: 'Global Proqramlar' },
+  { icon: 'trophy-outline' as const, bg: '#FEF3C7', color: '#D97706', titleKey: 'schoolDetail.ach1Title', subKey: 'schoolDetail.ach1Sub' },
+  { icon: 'ribbon-outline' as const, bg: Colors.primaryLight, color: Colors.primary, titleKey: 'schoolDetail.ach2Title', subKey: 'schoolDetail.ach2Sub' },
+  { icon: 'flask-outline' as const, bg: '#D1FAE5', color: '#059669', titleKey: 'schoolDetail.ach3Title', subKey: 'schoolDetail.ach3Sub' },
+  { icon: 'globe-outline' as const, bg: '#EDE9FE', color: '#7C3AED', titleKey: 'schoolDetail.ach4Title', subKey: 'schoolDetail.ach4Sub' },
 ];
 
 export default function SchoolDetailScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const route = useRoute<RouteProps>();
-  const schoolName = route.params?.schoolName ?? 'Bakı Müasir Məktəbi';
+  const { t } = useTranslation();
+  const schoolName = route.params?.schoolName ?? t('schoolDetail.defaultName');
 
   const handleShare = () => {
-    Share.share({ message: `${schoolName} — Kimi.az-da ən yaxşı məktəblərdən biri!` });
+    Share.share({ message: t('schoolDetail.shareMsg', { name: schoolName }) });
   };
 
   return (
@@ -48,7 +50,7 @@ export default function SchoolDetailScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>Məktəb Haqqında</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>{t('schoolDetail.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} onPress={handleShare} activeOpacity={0.7}>
           <Ionicons name="share-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -73,7 +75,7 @@ export default function SchoolDetailScreen() {
             <Text style={styles.heroName} numberOfLines={2}>{schoolName}</Text>
             <View style={styles.heroLocationRow}>
               <Ionicons name="location" size={14} color="rgba(255,255,255,0.85)" />
-              <Text style={styles.heroLocation}>Bakı, Azərbaycan</Text>
+              <Text style={styles.heroLocation}>{t('schoolDetail.location')}</Text>
             </View>
           </View>
         </View>
@@ -88,7 +90,7 @@ export default function SchoolDetailScreen() {
                 <Ionicons key={i} name="star" size={18} color={Colors.primaryFixed} />
               ))}
             </View>
-            <Text style={styles.ratingLabel}>Ümumi Reytinq</Text>
+            <Text style={styles.ratingLabel}>{t('schoolDetail.overallRating')}</Text>
           </View>
 
           {/* Stats column */}
@@ -98,14 +100,14 @@ export default function SchoolDetailScreen() {
                 <Ionicons name="people-outline" size={18} color={Colors.primary} />
               </View>
               <Text style={styles.statValue}>1,240+</Text>
-              <Text style={styles.statLabel}>Aktiv Şagird</Text>
+              <Text style={styles.statLabel}>{t('schoolDetail.activeStudents')}</Text>
             </View>
             <View style={[styles.bentoCard, styles.statCard]}>
               <View style={[styles.statIconBox, { backgroundColor: Colors.onTertiary }]}>
                 <Ionicons name="podium-outline" size={18} color={Colors.tertiary} />
               </View>
               <Text style={[styles.statValue, { color: Colors.tertiary }]}>#3</Text>
-              <Text style={styles.statLabel}>Şəhər üzrə</Text>
+              <Text style={styles.statLabel}>{t('schoolDetail.cityRank')}</Text>
             </View>
           </View>
         </View>
@@ -116,19 +118,17 @@ export default function SchoolDetailScreen() {
             <Ionicons name="hardware-chip-outline" size={26} color="#fff" />
           </LinearGradient>
           <View style={styles.aiBody}>
-            <Text style={styles.aiTitle}>Kimi Robot deyir ki...</Text>
-            <Text style={styles.aiText}>
-              "Bu məktəb rəqəmsal savadlılıq üzrə ölkədə liderdir. Riyaziyyat nəticələri ötən ilə nisbətən 12% artıb. Əla nəticədir!"
-            </Text>
+            <Text style={styles.aiTitle}>{t('schoolDetail.aiTitle')}</Text>
+            <Text style={styles.aiText}>{t('schoolDetail.aiText')}</Text>
           </View>
         </View>
 
         {/* Top Students */}
         <View style={styles.section}>
           <View style={styles.sectionRow}>
-            <Text style={styles.sectionTitle}>Top Şagirdlər</Text>
+            <Text style={styles.sectionTitle}>{t('schoolDetail.topStudents')}</Text>
             <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.seeAll}>Hamısı</Text>
+              <Text style={styles.seeAll}>{t('schoolDetail.seeAll')}</Text>
             </TouchableOpacity>
           </View>
           {TOP_STUDENTS.map((s) => (
@@ -150,12 +150,12 @@ export default function SchoolDetailScreen() {
                 </View>
                 <View>
                   <Text style={styles.studentName}>{s.name}</Text>
-                  <Text style={styles.studentGrade}>{s.grade} sinfi</Text>
+                  <Text style={styles.studentGrade}>{t('schoolDetail.gradeClass', { grade: s.grade })}</Text>
                 </View>
               </View>
               <View style={styles.studentRight}>
                 <Text style={styles.studentScore}>{s.score}</Text>
-                <Text style={styles.studentScoreLabel}>Ümumi Bal</Text>
+                <Text style={styles.studentScoreLabel}>{t('schoolDetail.totalScore')}</Text>
               </View>
             </View>
           ))}
@@ -163,15 +163,15 @@ export default function SchoolDetailScreen() {
 
         {/* Achievements */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Məktəb Nailiyyətləri</Text>
+          <Text style={styles.sectionTitle}>{t('schoolDetail.achievementsTitle')}</Text>
           <View style={styles.achievementGrid}>
             {ACHIEVEMENTS.map((a) => (
-              <View key={a.title} style={styles.achievementCard}>
+              <View key={a.titleKey} style={styles.achievementCard}>
                 <View style={[styles.achievementIconBox, { backgroundColor: a.bg }]}>
                   <Ionicons name={a.icon} size={24} color={a.color} />
                 </View>
-                <Text style={styles.achievementTitle}>{a.title}</Text>
-                <Text style={styles.achievementSub}>{a.sub}</Text>
+                <Text style={styles.achievementTitle}>{t(a.titleKey)}</Text>
+                <Text style={styles.achievementSub}>{t(a.subKey)}</Text>
               </View>
             ))}
           </View>
@@ -181,7 +181,7 @@ export default function SchoolDetailScreen() {
         <TouchableOpacity activeOpacity={0.9}>
           <LinearGradient colors={GRADIENT} style={styles.subscribeBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="bookmark-outline" size={20} color="#fff" />
-            <Text style={styles.subscribeBtnText}>Məktəbə Abunə Ol</Text>
+            <Text style={styles.subscribeBtnText}>{t('schoolDetail.subscribe')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>

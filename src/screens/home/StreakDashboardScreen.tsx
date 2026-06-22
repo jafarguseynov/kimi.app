@@ -5,19 +5,21 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const DAYS = [
-  { label: 'B.e', active: true },
-  { label: 'Ç.a', active: true },
-  { label: 'Ç.',  active: true },
-  { label: 'C.a', active: true },
-  { label: 'C.',  active: true },
-  { label: 'Ş.',  active: true },
-  { label: 'B.',  active: true, today: true },
+  { labelKey: 'streak.wdMon', active: true },
+  { labelKey: 'streak.wdTue', active: true },
+  { labelKey: 'streak.wdWed', active: true },
+  { labelKey: 'streak.wdThu', active: true },
+  { labelKey: 'streak.wdFri', active: true },
+  { labelKey: 'streak.wdSat', active: true },
+  { labelKey: 'streak.wdSun', active: true, today: true },
 ];
 
 export default function StreakDashboardScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -25,7 +27,7 @@ export default function StreakDashboardScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Streak</Text>
+        <Text style={styles.headerTitle}>{t('streak.dashTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8} onPress={() => navigation.navigate(Routes.Notifications)}>
           <Ionicons name="notifications-outline" size={22} color={Colors.textPrimary} />
           <View style={styles.notifDot} />
@@ -39,17 +41,17 @@ export default function StreakDashboardScreen() {
           <View style={styles.widgetTopRow}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={styles.widgetTitle}>7 günlük streak</Text>
+                <Text style={styles.widgetTitle}>{t('streak.dashWeekStreak')}</Text>
                 <Ionicons name="flame" size={28} color={Colors.primary} />
               </View>
-              <Text style={styles.widgetSub}>Bu gün də daxil ol və streak-ini qoru!</Text>
+              <Text style={styles.widgetSub}>{t('streak.dashWidgetSub')}</Text>
             </View>
           </View>
 
           <View style={{ marginTop: 20, marginBottom: 20 }}>
             <View style={styles.progRow}>
-              <Text style={styles.progLabel}>Həftəlik hədəf</Text>
-              <Text style={styles.progValue}>7/7 gün</Text>
+              <Text style={styles.progLabel}>{t('streak.dashWeeklyGoal')}</Text>
+              <Text style={styles.progValue}>{t('streak.dashSevenOfSeven')}</Text>
             </View>
             <View style={styles.progTrack}>
               <View style={[styles.progFill, { width: '100%' }]} />
@@ -57,17 +59,17 @@ export default function StreakDashboardScreen() {
           </View>
 
           <View style={styles.widgetCta}>
-            <Text style={styles.widgetCtaText}>Davam et</Text>
+            <Text style={styles.widgetCtaText}>{t('streak.dashContinue')}</Text>
           </View>
         </TouchableOpacity>
 
         {/* Weekly Activity */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Həftəlik fəaliyyət</Text>
+          <Text style={styles.sectionTitle}>{t('streak.dashWeeklyActivity')}</Text>
           <View style={styles.daysRow}>
             {DAYS.map((d, i) => (
               <View key={i} style={styles.dayCol}>
-                <Text style={[styles.dayLabel, d.today && { color: Colors.primary, fontWeight: '800' }]}>{d.label}</Text>
+                <Text style={[styles.dayLabel, d.today && { color: Colors.primary, fontWeight: '800' }]}>{t(d.labelKey)}</Text>
                 <View style={[styles.dayBubble, d.today && styles.dayBubbleToday]}>
                   <Ionicons name="flame" size={18} color={d.today ? '#fff' : Colors.primary} />
                 </View>
@@ -83,23 +85,23 @@ export default function StreakDashboardScreen() {
             <View style={styles.statIcon}>
               <Ionicons name="trophy" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.statLabel}>Ən uzun streak</Text>
-            <Text style={styles.statValue}>14 gün</Text>
+            <Text style={styles.statLabel}>{t('streak.dashLongest')}</Text>
+            <Text style={styles.statValue}>{t('streak.dashFourteenDays')}</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statIcon}>
               <Ionicons name="calendar" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.statLabel}>Ümumi aktiv</Text>
-            <Text style={styles.statValue}>42 gün</Text>
+            <Text style={styles.statLabel}>{t('streak.dashTotalActive')}</Text>
+            <Text style={styles.statValue}>{t('streak.dashFortyTwoDays')}</Text>
           </View>
           <View style={[styles.statCard, styles.statCardWide]}>
             <View style={{ flex: 1 }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                 <Ionicons name="flag" size={14} color={Colors.primary} />
-                <Text style={styles.statLabel}>Növbəti hədəf</Text>
+                <Text style={styles.statLabel}>{t('streak.dashNextTarget')}</Text>
               </View>
-              <Text style={styles.statValueSmall}>10 günlük streak</Text>
+              <Text style={styles.statValueSmall}>{t('streak.dashTenDayStreak')}</Text>
             </View>
             <View style={styles.ringWrap}>
               <View style={styles.ringTrack} />
@@ -111,7 +113,7 @@ export default function StreakDashboardScreen() {
 
         {/* Streak alt-actions */}
         <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>Daha çox</Text>
+          <Text style={styles.sectionTitle}>{t('streak.dashMore')}</Text>
 
           <TouchableOpacity
             style={styles.protectCard}
@@ -122,8 +124,8 @@ export default function StreakDashboardScreen() {
               <Ionicons name="trending-up" size={22} color="#ff4500" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.protectTitle}>Streak Detal</Text>
-              <Text style={styles.protectSub}>Tam timeline və tarix</Text>
+              <Text style={styles.protectTitle}>{t('streak.dashDetailTitle')}</Text>
+              <Text style={styles.protectSub}>{t('streak.dashDetailSub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
@@ -137,8 +139,8 @@ export default function StreakDashboardScreen() {
               <Ionicons name="snow" size={22} color={Colors.primaryFixed} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.protectTitle}>Streak qoru</Text>
-              <Text style={styles.protectSub}>Dondurma ilə bir günü atla</Text>
+              <Text style={styles.protectTitle}>{t('streak.dashProtectTitle')}</Text>
+              <Text style={styles.protectSub}>{t('streak.dashProtectSub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
@@ -152,8 +154,8 @@ export default function StreakDashboardScreen() {
               <Ionicons name="refresh-circle" size={22} color={Colors.danger} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.protectTitle}>Streak Bərpası</Text>
-              <Text style={styles.protectSub}>Yanan streak-i geri qaytar</Text>
+              <Text style={styles.protectTitle}>{t('streak.dashRecoverTitle')}</Text>
+              <Text style={styles.protectSub}>{t('streak.dashRecoverSub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
           </TouchableOpacity>
@@ -165,9 +167,9 @@ export default function StreakDashboardScreen() {
             <Ionicons name="sparkles" size={22} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.motivTitle}>Kimi deyir:</Text>
+            <Text style={styles.motivTitle}>{t('streak.dashKimiSays')}</Text>
             <Text style={styles.motivText}>
-              Möhtəşəm davam edirsən! Daha <Text style={{ color: Colors.primary, fontWeight: '700' }}>2 gün</Text> aktiv olsan yeni medal qazanacaqsan.
+              {t('streak.dashMotivPre')}<Text style={{ color: Colors.primary, fontWeight: '700' }}>{t('streak.dashMotivBold')}</Text>{t('streak.dashMotivPost')}
             </Text>
           </View>
         </View>

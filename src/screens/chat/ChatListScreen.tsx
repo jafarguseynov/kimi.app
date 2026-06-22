@@ -17,6 +17,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { formatDate } from '../../utils/formatters';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -31,6 +32,7 @@ interface ChatItem {
 
 export default function ChatListScreen({ navigation }: Props) {
   const { user } = useUserStore();
+  const { t } = useTranslation();
   const { data: chats = [], isLoading } = useQuery<ChatItem[]>({
     queryKey: ['chats'],
     queryFn: async () => {
@@ -55,16 +57,16 @@ export default function ChatListScreen({ navigation }: Props) {
             <Ionicons name="hardware-chip" size={52} color="#fff" />
           </LinearGradient>
           <View style={styles.emptyLabel}>
-            <Text style={styles.emptyLabelText}>Chat boşdur</Text>
+            <Text style={styles.emptyLabelText}>{t('chat.emptyBadge')}</Text>
           </View>
         </View>
         <View style={styles.emptyFloat1} />
         <View style={styles.emptyFloat2} />
       </View>
 
-      <Text style={styles.emptyTitle}>Söhbət yoxdur</Text>
+      <Text style={styles.emptyTitle}>{t('chat.emptyTitle')}</Text>
       <Text style={styles.emptySub}>
-        Müəllimlərlə yazışmaq üçün bir dərs sorğusu göndər və ya mesaj yaz.
+        {t('chat.emptySub')}
       </Text>
 
       <TouchableOpacity
@@ -73,7 +75,7 @@ export default function ChatListScreen({ navigation }: Props) {
         onPress={() => navigation.navigate(Routes.TeacherList)}
       >
         <LinearGradient colors={GRADIENT} style={styles.emptyCta} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-          <Text style={styles.emptyCtaText}>Müəllimlərə bax</Text>
+          <Text style={styles.emptyCtaText}>{t('chat.viewTeachers')}</Text>
         </LinearGradient>
       </TouchableOpacity>
     </View>
@@ -83,10 +85,18 @@ export default function ChatListScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity
+            style={styles.headerBackBtn}
+            activeOpacity={0.7}
+            hitSlop={8}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate(Routes.Home))}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
           <LinearGradient colors={GRADIENT} style={styles.headerAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Ionicons name="hardware-chip" size={20} color="#fff" />
           </LinearGradient>
-          <Text style={styles.headerTitle}>Mesajlar</Text>
+          <Text style={styles.headerTitle}>{t('chat.headerTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="create-outline" size={22} color={Colors.primary} />
@@ -143,7 +153,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.7)',
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerBackBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   headerAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },

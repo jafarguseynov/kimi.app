@@ -18,10 +18,12 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useExamCollections, useStartCollectionTest } from '../../hooks/useExams';
 import { ExamCollectionCard } from '../../api/examCollection.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ExamCollectionsScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { data: collections = [], isLoading, isError, refetch, isRefetching } = useExamCollections();
   const startTest = useStartCollectionTest();
@@ -30,12 +32,12 @@ export default function ExamCollectionsScreen() {
   const openCard = (c: ExamCollectionCard) => {
     if (c.locked) {
       Alert.alert(
-        'Premium bank',
-        'Bu bank yalnız premium istifadəçilər üçündür. Abunə planlarına baxmaq istəyirsən?',
+        t('examCollections.premiumBankTitle'),
+        t('examCollections.premiumBankMsg'),
         [
-          { text: 'İmtina', style: 'cancel' },
+          { text: t('examCollections.decline'), style: 'cancel' },
           {
-            text: 'Planlar',
+            text: t('examCollections.plans'),
             onPress: () => (navigation.getParent() as any)?.navigate(Routes.Home, { screen: Routes.Plans, initial: false }),
           },
         ],
@@ -43,7 +45,7 @@ export default function ExamCollectionsScreen() {
       return;
     }
     if (c.questionCount === 0) {
-      Alert.alert('Boş bank', 'Bu bankda hələ sual yoxdur.');
+      Alert.alert(t('examCollections.emptyBankTitle'), t('examCollections.emptyBankMsg'));
       return;
     }
     setStartingId(c.id);
@@ -54,7 +56,7 @@ export default function ExamCollectionsScreen() {
       },
       onError: (err: any) => {
         setStartingId(null);
-        Alert.alert('Xəta', err?.response?.data?.message ?? 'Test başladıla bilmədi.');
+        Alert.alert(t('examCollections.errorTitle'), err?.response?.data?.message ?? t('examCollections.startFailed'));
       },
     });
   };
@@ -65,7 +67,7 @@ export default function ExamCollectionsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İmtahan Bankları</Text>
+        <Text style={styles.headerTitle}>{t('examCollections.title')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -76,21 +78,21 @@ export default function ExamCollectionsScreen() {
       >
         <LinearGradient colors={GRADIENT} style={styles.hero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={styles.heroBlob} />
-          <Text style={styles.heroTitle}>Real imtahan sualları</Text>
-          <Text style={styles.heroSub}>Hər banka toxun — sual hovuzundan random test qurulur.</Text>
+          <Text style={styles.heroTitle}>{t('examCollections.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('examCollections.heroSub')}</Text>
         </LinearGradient>
 
         {isLoading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
         ) : isError ? (
           <View style={styles.center}>
-            <Text style={styles.muted}>Banklar yüklənmədi.</Text>
-            <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}><Text style={styles.retryText}>Yenidən</Text></TouchableOpacity>
+            <Text style={styles.muted}>{t('examCollections.loadFailed')}</Text>
+            <TouchableOpacity style={styles.retryBtn} onPress={() => refetch()}><Text style={styles.retryText}>{t('examCollections.retry')}</Text></TouchableOpacity>
           </View>
         ) : collections.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="library-outline" size={40} color={Colors.outlineVariant} />
-            <Text style={styles.muted}>Hələ bank əlavə edilməyib.</Text>
+            <Text style={styles.muted}>{t('examCollections.emptyNone')}</Text>
           </View>
         ) : (
           collections.map((c) => (
@@ -104,14 +106,14 @@ export default function ExamCollectionsScreen() {
                   {c.access === 'premium' && (
                     <View style={styles.premiumBadge}>
                       <Ionicons name="diamond" size={10} color="#fff" />
-                      <Text style={styles.premiumText}>PREMIUM</Text>
+                      <Text style={styles.premiumText}>{t('examCollections.premium')}</Text>
                     </View>
                   )}
                 </View>
                 {!!c.subject && <Text style={styles.cardSub}>{c.subject}{c.grade ? ` • ${c.grade}` : ''}</Text>}
                 <View style={styles.metaRow}>
-                  <View style={styles.metaChip}><Ionicons name="help-circle-outline" size={13} color={Colors.textSecondary} /><Text style={styles.metaText}>{c.questionsPerTest} sual</Text></View>
-                  <View style={styles.metaChip}><Ionicons name="time-outline" size={13} color={Colors.textSecondary} /><Text style={styles.metaText}>{c.duration} dəq</Text></View>
+                  <View style={styles.metaChip}><Ionicons name="help-circle-outline" size={13} color={Colors.textSecondary} /><Text style={styles.metaText}>{t('examCollections.nQuestions', { n: c.questionsPerTest })}</Text></View>
+                  <View style={styles.metaChip}><Ionicons name="time-outline" size={13} color={Colors.textSecondary} /><Text style={styles.metaText}>{t('examCollections.nMin', { n: c.duration })}</Text></View>
                   {c.bestScore !== null && (
                     <View style={styles.metaChip}><Ionicons name="trophy-outline" size={13} color={Colors.tertiary} /><Text style={[styles.metaText, { color: Colors.tertiary }]}>{c.bestScore}%</Text></View>
                   )}

@@ -23,6 +23,7 @@ import { getQuestion, createAnswer, acceptAnswer, MarketAnswer } from '../../api
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { formatDate } from '../../utils/formatters';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -33,6 +34,7 @@ type TabKey = 'answers' | 'ai';
 
 export default function QuestionDetailScreen({ navigation, route }: Props) {
   const { questionId } = route.params as { questionId: string };
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const qc = useQueryClient();
 
@@ -66,7 +68,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
 
   const handleSubmitAnswer = () => {
     if (answerText.trim().length < 10) {
-      Alert.alert('Xəta', 'Cavab ən azı 10 hərf olmalıdır');
+      Alert.alert(t('marketplace.errorTitle'), t('marketplace.answerTooShort'));
       return;
     }
     submitAnswer();
@@ -84,7 +86,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
     accept(pendingAnswerId);
     setRateModalOpen(false);
     setPendingAnswerId(null);
-    Alert.alert('Təşəkkürlər', 'Rəyiniz qeyd olundu.');
+    Alert.alert(t('marketplace.thanks'), t('marketplace.reviewRecorded'));
   };
 
   if (isLoading || !data) {
@@ -105,7 +107,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Sualın Təfərrüatları</Text>
+          <Text style={styles.headerTitle}>{t('marketplace.detailHeader')}</Text>
           <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="ellipsis-vertical" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
@@ -119,7 +121,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 <Ionicons name="school-outline" size={20} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.subjectMeta}>MÖVZU: {(question.subject ?? 'Ümumi').toUpperCase()}</Text>
+                <Text style={styles.subjectMeta}>{t('marketplace.topicMeta', { subject: (question.subject ?? t('marketplace.generalSubject')).toUpperCase() })}</Text>
                 <Text style={styles.subjectTitle} numberOfLines={1}>{question.title}</Text>
               </View>
             </View>
@@ -148,7 +150,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
               activeOpacity={0.8}
             >
               <Text style={[styles.tabText, tab === 'answers' && styles.tabTextActive]}>
-                Cavablar {answers.length > 0 && `(${answers.length})`}
+                {t('marketplace.tabAnswers')} {answers.length > 0 && `(${answers.length})`}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -157,7 +159,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
               activeOpacity={0.8}
             >
               <Ionicons name="sparkles" size={14} color={tab === 'ai' ? Colors.primary : Colors.textSecondary} />
-              <Text style={[styles.tabText, tab === 'ai' && styles.tabTextActive]}>AI cavab</Text>
+              <Text style={[styles.tabText, tab === 'ai' && styles.tabTextActive]}>{t('marketplace.tabAi')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -167,7 +169,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
               {answers.length === 0 ? (
                 <View style={styles.emptyAnswers}>
                   <Ionicons name="chatbubbles-outline" size={36} color={Colors.outlineVariant} />
-                  <Text style={styles.emptyText}>Hələ cavab yoxdur</Text>
+                  <Text style={styles.emptyText}>{t('marketplace.noAnswers')}</Text>
                 </View>
               ) : (
                 answers.map((a: MarketAnswer) => (
@@ -188,7 +190,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                       </View>
                       {a.isAccepted && (
                         <View style={styles.expertBadge}>
-                          <Text style={styles.expertBadgeText}>SEÇİLDİ</Text>
+                          <Text style={styles.expertBadgeText}>{t('marketplace.selected')}</Text>
                         </View>
                       )}
                     </View>
@@ -203,7 +205,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                           style={styles.selectBtn}
                           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                         >
-                          <Text style={styles.selectBtnText}>Bu cavabı seç</Text>
+                          <Text style={styles.selectBtnText}>{t('marketplace.selectAnswer')}</Text>
                           <Ionicons name="chevron-forward" size={16} color="#fff" />
                         </LinearGradient>
                       </TouchableOpacity>
@@ -219,7 +221,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                   onPress={() => setShowWriteAnswer(true)}
                 >
                   <Ionicons name="create-outline" size={18} color={Colors.primary} />
-                  <Text style={styles.writeBtnText}>Cavab yaz</Text>
+                  <Text style={styles.writeBtnText}>{t('marketplace.writeAnswer')}</Text>
                 </TouchableOpacity>
               )}
 
@@ -227,7 +229,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 <View style={styles.writeBox}>
                   <TextInput
                     style={styles.writeInput}
-                    placeholder="Cavabını yaz..."
+                    placeholder={t('marketplace.answerPlaceholder')}
                     placeholderTextColor={Colors.textMuted}
                     value={answerText}
                     onChangeText={setAnswerText}
@@ -246,7 +248,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     >
                       <Text style={styles.sendBtnText}>
-                        {isSubmitting ? 'Göndərilir...' : 'Cavabı göndər'}
+                        {isSubmitting ? t('marketplace.sending') : t('marketplace.sendAnswer')}
                       </Text>
                     </LinearGradient>
                   </TouchableOpacity>
@@ -266,7 +268,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.aiTitle}>Kimi AI</Text>
               </View>
               <Text style={styles.aiBody}>
-                AI sualınızı analiz edib detallı izah hazırlayır. Cavab gəldikdə bildiriş alacaqsınız.
+                {t('marketplace.aiAnalyzing2')}
               </Text>
             </View>
           )}
@@ -300,8 +302,8 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 </View>
               </LinearGradient>
 
-              <Text style={styles.rateTitle}>Cavabdan razısan?</Text>
-              <Text style={styles.rateSub}>Müəllimi daha yaxşı qiymətləndirmək üçün təcrübəni bölüş.</Text>
+              <Text style={styles.rateTitle}>{t('marketplace.rateSatisfied')}</Text>
+              <Text style={styles.rateSub}>{t('marketplace.rateSub')}</Text>
 
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((n) => (
@@ -319,10 +321,10 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 ))}
               </View>
 
-              <Text style={styles.rateFieldLabel}>Əlavə qeydlər</Text>
+              <Text style={styles.rateFieldLabel}>{t('marketplace.extraNotes')}</Text>
               <TextInput
                 style={styles.rateInput}
-                placeholder="Rəyinizi buraya yazın..."
+                placeholder={t('marketplace.reviewPlaceholder')}
                 placeholderTextColor={Colors.outlineVariant}
                 value={feedback}
                 onChangeText={setFeedback}
@@ -341,7 +343,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                   style={styles.rateConfirm}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.rateConfirmText}>Təsdiqlə</Text>
+                  <Text style={styles.rateConfirmText}>{t('marketplace.confirm')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
 
@@ -350,7 +352,7 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 onPress={() => setRateModalOpen(false)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.rateLaterText}>Daha sonra</Text>
+                <Text style={styles.rateLaterText}>{t('marketplace.later')}</Text>
               </TouchableOpacity>
             </Pressable>
           </Pressable>

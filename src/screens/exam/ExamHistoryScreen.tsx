@@ -19,6 +19,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useQuery } from '@tanstack/react-query';
 import { getExamResults, type ExamResultRow } from '../../api/certificate.api';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamHistory> };
 
@@ -26,6 +27,22 @@ type DateBucket = 'month' | '3months' | 'all';
 
 const SUBJECT_FILTERS = ['Hamısı', 'Riyaziyyat', 'Azərbaycan dili', 'İngilis dili'] as const;
 const CATEGORY_FILTERS = ['Hamısı', 'Orta Məktəb', 'Abituriyent', 'Magistratura', 'MİQ', 'Sınaqlar'] as const;
+
+// Filter dəyərləri məntiq açarıdır (AZ saxlanılır); göstərmək üçün tərcümə açarına xəritələnir.
+const CATEGORY_TKEY: Record<string, string> = {
+  'Hamısı': 'examHistory.catAll',
+  'Orta Məktəb': 'examHistory.catSchool',
+  'Abituriyent': 'examHistory.catAbituriyent',
+  'Magistratura': 'examHistory.catMagistr',
+  'MİQ': 'examHistory.catMiq',
+  'Sınaqlar': 'examHistory.catMocks',
+};
+const SUBJECT_TKEY: Record<string, string> = {
+  'Hamısı': 'examHistory.subjAll',
+  'Riyaziyyat': 'examHistory.subjMath',
+  'Azərbaycan dili': 'examHistory.subjAz',
+  'İngilis dili': 'examHistory.subjEn',
+};
 
 function matchCategory(cat: string, title: string, subject?: string): boolean {
   if (cat === 'Hamısı') return true;
@@ -84,6 +101,7 @@ function ScoreRing({ pct }: { pct: number }) {
 }
 
 export default function ExamHistoryScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [subject, setSubject] = useState<(typeof SUBJECT_FILTERS)[number]>('Hamısı');
@@ -140,7 +158,7 @@ export default function ExamHistoryScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İmtahan Tarixçəsi</Text>
+        <Text style={styles.headerTitle}>{t('examHistory.title')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -155,7 +173,7 @@ export default function ExamHistoryScreen({ navigation }: Props) {
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="İmtahan axtar..."
+            placeholder={t('examHistory.searchPlaceholder')}
             placeholderTextColor={Colors.textMuted}
             style={styles.searchInput}
           />
@@ -173,14 +191,14 @@ export default function ExamHistoryScreen({ navigation }: Props) {
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     style={styles.catPillActive}
                   >
-                    <Text style={styles.catPillActiveText}>{c}</Text>
+                    <Text style={styles.catPillActiveText}>{t(CATEGORY_TKEY[c])}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               );
             }
             return (
               <TouchableOpacity key={c} style={styles.catPill} activeOpacity={0.85} onPress={() => setCategory(c)}>
-                <Text style={styles.catPillText}>{c}</Text>
+                <Text style={styles.catPillText}>{t(CATEGORY_TKEY[c])}</Text>
               </TouchableOpacity>
             );
           })}
@@ -189,19 +207,19 @@ export default function ExamHistoryScreen({ navigation }: Props) {
         {/* Stats grid (asymmetric 3/2) */}
         <View style={styles.statsGrid}>
           <View style={styles.statBig}>
-            <Text style={styles.statBigKicker}>Ümumi Orta Nəticə</Text>
+            <Text style={styles.statBigKicker}>{t('examHistory.avgResult')}</Text>
             <Text style={styles.statBigValue}>{avgPct}%</Text>
             <Ionicons name="trending-up" size={88} color={Colors.primary + '14'} style={styles.statBigIcon} />
           </View>
           <View style={styles.statSmall}>
-            <Text style={styles.statSmallKicker}>Tamamlanıb</Text>
-            <Text style={styles.statSmallValue}>{certs.length} İmtahan</Text>
+            <Text style={styles.statSmallKicker}>{t('examHistory.completed')}</Text>
+            <Text style={styles.statSmallValue}>{t('examHistory.nExams', { n: certs.length })}</Text>
           </View>
         </View>
 
         {/* Subject filter */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Fənn üzrə</Text>
+          <Text style={styles.filterLabel}>{t('examHistory.bySubject')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
             {SUBJECT_FILTERS.map((s) => {
               const active = subject === s;
@@ -213,14 +231,14 @@ export default function ExamHistoryScreen({ navigation }: Props) {
                       start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                       style={styles.chipActive}
                     >
-                      <Text style={styles.chipActiveText}>{s}</Text>
+                      <Text style={styles.chipActiveText}>{t(SUBJECT_TKEY[s])}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 );
               }
               return (
                 <TouchableOpacity key={s} style={styles.chip} activeOpacity={0.85} onPress={() => setSubject(s)}>
-                  <Text style={styles.chipText}>{s}</Text>
+                  <Text style={styles.chipText}>{t(SUBJECT_TKEY[s])}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -229,12 +247,12 @@ export default function ExamHistoryScreen({ navigation }: Props) {
 
         {/* Date segmented */}
         <View style={styles.filterSection}>
-          <Text style={styles.filterLabel}>Tarix üzrə</Text>
+          <Text style={styles.filterLabel}>{t('examHistory.byDate')}</Text>
           <View style={styles.segmented}>
             {([
-              { id: 'month', label: 'Bu ay' },
-              { id: '3months', label: 'Son 3 ay' },
-              { id: 'all', label: 'Hamısı' },
+              { id: 'month', label: t('examHistory.thisMonth') },
+              { id: '3months', label: t('examHistory.last3') },
+              { id: 'all', label: t('examHistory.all') },
             ] as { id: DateBucket; label: string }[]).map((opt) => {
               const active = dateBucket === opt.id;
               return (
@@ -260,7 +278,7 @@ export default function ExamHistoryScreen({ navigation }: Props) {
           <View style={styles.center}>
             <Ionicons name="ribbon-outline" size={48} color={Colors.primaryFixed} />
             <Text style={styles.emptyText}>
-              {certs.length === 0 ? 'Hələ heç bir imtahan verməmisən.' : 'Filterə uyğun nəticə tapılmadı.'}
+              {certs.length === 0 ? t('examHistory.emptyNone') : t('examHistory.emptyFilter')}
             </Text>
           </View>
         ) : (
@@ -287,7 +305,7 @@ export default function ExamHistoryScreen({ navigation }: Props) {
                     activeOpacity={0.85}
                     onPress={() => navigation.navigate(Routes.ExamResult, { examId: cert.examId })}
                   >
-                    <Text style={styles.detailBtnText}>Detallara bax</Text>
+                    <Text style={styles.detailBtnText}>{t('examHistory.details')}</Text>
                   </TouchableOpacity>
                 </View>
               );

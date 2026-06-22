@@ -5,17 +5,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface Option { id: string; icon: keyof typeof Ionicons.glyphMap; iconBg: string; iconColor: string; title: string; }
+interface Option { id: string; icon: keyof typeof Ionicons.glyphMap; iconBg: string; iconColor: string; titleKey: string; }
 const OPTIONS: Option[] = [
-  { id: 'bonus',  icon: 'star',          iconBg: Colors.tertiaryContainer, iconColor: Colors.tertiary, title: '1 bonus istifadə et' },
-  { id: 'points', icon: 'pricetag',      iconBg: Colors.secondaryContainer, iconColor: Colors.primary, title: '50 bal ilə bərpa et' },
+  { id: 'bonus',  icon: 'star',          iconBg: Colors.tertiaryContainer, iconColor: Colors.tertiary, titleKey: 'streak.recUseBonus' },
+  { id: 'points', icon: 'pricetag',      iconBg: Colors.secondaryContainer, iconColor: Colors.primary, titleKey: 'streak.recUsePoints' },
 ];
 
 export default function StreakRecoveryScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -29,8 +31,8 @@ export default function StreakRecoveryScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={{ alignItems: 'center', gap: 10 }}>
-          <Text style={styles.title}>Streak qırıldı 😢</Text>
-          <Text style={styles.sub}>Amma hər şey hələ bitməyib. Onu geri qaytara bilərsən.</Text>
+          <Text style={styles.title}>{t('streak.recTitle')}</Text>
+          <Text style={styles.sub}>{t('streak.recSub')}</Text>
         </View>
 
         {/* Broken flame visual */}
@@ -42,14 +44,14 @@ export default function StreakRecoveryScreen() {
 
         {/* Recovery options card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Streak-i bərpa etmək istəyirsən?</Text>
+          <Text style={styles.cardTitle}>{t('streak.recCardTitle')}</Text>
           <View style={{ gap: 12 }}>
             {OPTIONS.map((o) => (
               <TouchableOpacity key={o.id} activeOpacity={0.85} style={styles.optionBtn}>
                 <View style={[styles.optionIcon, { backgroundColor: o.iconBg }]}>
                   <Ionicons name={o.icon} size={20} color={o.iconColor} />
                 </View>
-                <Text style={styles.optionText}>{o.title}</Text>
+                <Text style={styles.optionText}>{t(o.titleKey)}</Text>
                 <Ionicons name="arrow-forward" size={20} color={Colors.textLight} />
               </TouchableOpacity>
             ))}
@@ -60,11 +62,11 @@ export default function StreakRecoveryScreen() {
         <View style={{ gap: 12, width: '100%' }}>
           <TouchableOpacity activeOpacity={0.9}>
             <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>Bərpa et</Text>
+              <Text style={styles.primaryBtnText}>{t('streak.recover')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.7} onPress={() => navigation.goBack()} style={styles.ghostBtn}>
-            <Text style={styles.ghostBtnText}>Yeni streak başla</Text>
+            <Text style={styles.ghostBtnText}>{t('streak.startNewStreak')}</Text>
           </TouchableOpacity>
         </View>
 

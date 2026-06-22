@@ -17,6 +17,7 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useStartExam } from '../../hooks/useExams';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamSettings>;
@@ -25,21 +26,22 @@ type Props = {
 
 const QUESTION_COUNTS = [10, 20, 30, 40, 50];
 const DURATIONS = [15, 30, 45, 60, 90];
-const DIFFICULTIES: { id: 'easy' | 'medium' | 'hard' | 'mixed'; label: string; color: string }[] = [
-  { id: 'easy', label: 'Asan', color: Colors.tertiary },
-  { id: 'medium', label: 'Orta', color: Colors.primary },
-  { id: 'hard', label: 'Çətin', color: Colors.danger },
-  { id: 'mixed', label: 'Qarışıq', color: Colors.secondary },
+const DIFFICULTIES: { id: 'easy' | 'medium' | 'hard' | 'mixed'; labelKey: string; color: string }[] = [
+  { id: 'easy', labelKey: 'examList.diff.easy', color: Colors.tertiary },
+  { id: 'medium', labelKey: 'examList.diff.medium', color: Colors.primary },
+  { id: 'hard', labelKey: 'examList.diff.hard', color: Colors.danger },
+  { id: 'mixed', labelKey: 'examSettings.diffMixed', color: Colors.secondary },
 ];
-const QUESTION_TYPES: { id: 'test' | 'open' | 'both'; label: string }[] = [
-  { id: 'test', label: 'Test' },
-  { id: 'open', label: 'Açıq' },
-  { id: 'both', label: 'Hər ikisi' },
+const QUESTION_TYPES: { id: 'test' | 'open' | 'both'; labelKey: string }[] = [
+  { id: 'test', labelKey: 'examSettings.typeTest' },
+  { id: 'open', labelKey: 'examSettings.typeOpen' },
+  { id: 'both', labelKey: 'examSettings.typeBoth' },
 ];
 
 export default function ExamSettingsScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const examId = route.params?.examId;
-  const title = route.params?.title ?? 'İmtahan tənzimləmələri';
+  const title = route.params?.title ?? t('examSettings.titleFallback');
   const { mutate, isPending } = useStartExam();
 
   const [questionCount, setQuestionCount] = useState(20);
@@ -67,7 +69,7 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
     }
     mutate(examId, {
       onSuccess: () => navigation.navigate(Routes.ExamSession),
-      onError: () => Alert.alert('Xəta', 'İmtahan başlamadı, yenidən cəhd edin'),
+      onError: () => Alert.alert(t('examSettings.errorTitle'), t('examSettings.startFailed')),
     });
   };
 
@@ -91,7 +93,7 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Tənzimləmələr</Text>
+          <Text style={styles.headerTitle}>{t('examSettings.headerTitle')}</Text>
           <Text style={styles.headerSub} numberOfLines={1}>{title}</Text>
         </View>
         <TouchableOpacity style={styles.resetBtn} onPress={handleReset} hitSlop={8}>
@@ -104,9 +106,9 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
           <View style={styles.heroIcon}>
             <Ionicons name="settings-outline" size={26} color={Colors.primary} />
           </View>
-          <Text style={styles.heroTitle}>İmtahan tənzimləmələri</Text>
+          <Text style={styles.heroTitle}>{t('examSettings.heroTitle')}</Text>
           <Text style={styles.heroSub}>
-            İmtahanın çətinliyini, müddətini və sual növünü öz tələblərinə görə ayarlay
+            {t('examSettings.heroSub')}
           </Text>
         </View>
 
@@ -117,8 +119,8 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
               <Ionicons name="help-circle-outline" size={18} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Sual sayı</Text>
-              <Text style={styles.cardSub}>İmtahanda neçə sual olsun?</Text>
+              <Text style={styles.cardTitle}>{t('examSettings.qCount')}</Text>
+              <Text style={styles.cardSub}>{t('examSettings.qCountSub')}</Text>
             </View>
             <Text style={styles.cardValue}>{questionCount}</Text>
           </View>
@@ -146,8 +148,8 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
               <Ionicons name="time-outline" size={18} color={Colors.secondary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Müddət</Text>
-              <Text style={styles.cardSub}>İmtahan vaxtı (dəq)</Text>
+              <Text style={styles.cardTitle}>{t('examSettings.duration')}</Text>
+              <Text style={styles.cardSub}>{t('examSettings.durationSub')}</Text>
             </View>
             <Text style={styles.cardValue}>{noTimeLimit ? '∞' : `${duration}m`}</Text>
           </View>
@@ -167,7 +169,7 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
             })}
           </View>
           <View style={styles.toggleRow}>
-            <Text style={styles.toggleLabel}>Vaxt limiti olmasın</Text>
+            <Text style={styles.toggleLabel}>{t('examSettings.noTimeLimit')}</Text>
             <Switch
               value={noTimeLimit}
               onValueChange={setNoTimeLimit}
@@ -184,8 +186,8 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
               <Ionicons name="bar-chart-outline" size={18} color={Colors.danger} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Çətinlik səviyyəsi</Text>
-              <Text style={styles.cardSub}>Suallar nə qədər çətin olsun?</Text>
+              <Text style={styles.cardTitle}>{t('examSettings.difficulty')}</Text>
+              <Text style={styles.cardSub}>{t('examSettings.difficultySub')}</Text>
             </View>
           </View>
           <View style={styles.chipRow}>
@@ -201,7 +203,7 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
                     active && { backgroundColor: d.color },
                   ]}
                 >
-                  <Text style={active ? styles.chipActiveText : styles.chipText}>{d.label}</Text>
+                  <Text style={active ? styles.chipActiveText : styles.chipText}>{t(d.labelKey)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -215,21 +217,21 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
               <Ionicons name="list-outline" size={18} color={Colors.tertiary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardTitle}>Sual növü</Text>
-              <Text style={styles.cardSub}>Test, açıq və ya hər ikisi</Text>
+              <Text style={styles.cardTitle}>{t('examSettings.qType')}</Text>
+              <Text style={styles.cardSub}>{t('examSettings.qTypeSub')}</Text>
             </View>
           </View>
           <View style={styles.chipRow}>
-            {QUESTION_TYPES.map((t) => {
-              const active = questionType === t.id;
+            {QUESTION_TYPES.map((qt) => {
+              const active = questionType === qt.id;
               return (
                 <TouchableOpacity
-                  key={t.id}
-                  onPress={() => setQuestionType(t.id)}
+                  key={qt.id}
+                  onPress={() => setQuestionType(qt.id)}
                   activeOpacity={0.85}
                   style={active ? styles.chipActive : styles.chip}
                 >
-                  <Text style={active ? styles.chipActiveText : styles.chipText}>{t.label}</Text>
+                  <Text style={active ? styles.chipActiveText : styles.chipText}>{t(qt.labelKey)}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -238,12 +240,12 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
 
         {/* Davranış */}
         <View style={styles.card}>
-          <Text style={styles.sectionLabel}>Davranış</Text>
+          <Text style={styles.sectionLabel}>{t('examSettings.behavior')}</Text>
 
           <View style={styles.toggleRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleLabel}>Sualları qarışdır</Text>
-              <Text style={styles.toggleSub}>Hər dəfə fərqli sıra ilə</Text>
+              <Text style={styles.toggleLabel}>{t('examSettings.shuffle')}</Text>
+              <Text style={styles.toggleSub}>{t('examSettings.shuffleSub')}</Text>
             </View>
             <Switch
               value={shuffleQuestions}
@@ -257,8 +259,8 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
 
           <View style={styles.toggleRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleLabel}>Düzgün cavabı göstər</Text>
-              <Text style={styles.toggleSub}>Sual cavablandıqda izahla göstər</Text>
+              <Text style={styles.toggleLabel}>{t('examSettings.showCorrect')}</Text>
+              <Text style={styles.toggleSub}>{t('examSettings.showCorrectSub')}</Text>
             </View>
             <Switch
               value={showCorrect}
@@ -272,8 +274,8 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
 
           <View style={styles.toggleRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleLabel}>Avtomatik növbəti</Text>
-              <Text style={styles.toggleSub}>Cavabdan sonra növbəti suala keç</Text>
+              <Text style={styles.toggleLabel}>{t('examSettings.autoNext')}</Text>
+              <Text style={styles.toggleSub}>{t('examSettings.autoNextSub')}</Text>
             </View>
             <Switch
               value={autoNext}
@@ -287,8 +289,8 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
 
           <View style={styles.toggleRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleLabel}>Səs effektləri</Text>
-              <Text style={styles.toggleSub}>Düzgün/səhv səsləri</Text>
+              <Text style={styles.toggleLabel}>{t('examSettings.sound')}</Text>
+              <Text style={styles.toggleSub}>{t('examSettings.soundSub')}</Text>
             </View>
             <Switch
               value={soundEffects}
@@ -302,8 +304,8 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
 
           <View style={styles.toggleRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.toggleLabel}>Vibrasiya</Text>
-              <Text style={styles.toggleSub}>Cavab verdikdə kiçik vibrasiya</Text>
+              <Text style={styles.toggleLabel}>{t('examSettings.haptic')}</Text>
+              <Text style={styles.toggleSub}>{t('examSettings.hapticSub')}</Text>
             </View>
             <Switch
               value={hapticFeedback}
@@ -317,9 +319,7 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
         <View style={styles.tipCard}>
           <Ionicons name="bulb-outline" size={18} color={Colors.primary} />
           <Text style={styles.tipText}>
-            {examId
-              ? 'Tənzimləmələr bu imtahan sessiyasında tətbiq olunur.'
-              : 'Bu ayarlarla yeni imtahan yaratmaq üçün sonra mövzu və fənn seçəcəksən.'}
+            {examId ? t('examSettings.tipExam') : t('examSettings.tipNew')}
           </Text>
         </View>
 
@@ -336,7 +336,7 @@ export default function ExamSettingsScreen({ navigation, route }: Props) {
           >
             <Ionicons name="rocket-outline" size={22} color="#fff" />
             <Text style={styles.startBtnText}>
-              {examId ? 'Tənzimləmələrlə başla' : 'Tənzimləmələrlə yeni imtahan yarat'}
+              {examId ? t('examSettings.startExam') : t('examSettings.startNew')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>

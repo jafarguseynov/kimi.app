@@ -15,14 +15,17 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-function getGrade(score: number): string {
-  if (score >= 91) return '5 (Əla)';
-  if (score >= 71) return '4 (Yaxşı)';
-  if (score >= 51) return '3 (Kafi)';
-  return '2 (Qeyri-kafi)';
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+function getGrade(score: number, t: TFn): string {
+  if (score >= 91) return t('calc.gradeExcellentFull');
+  if (score >= 71) return t('calc.gradeGoodFull');
+  if (score >= 51) return t('calc.gradeFairFull');
+  return t('calc.gradePoorFull');
 }
 
 function getLetter(score: number): string {
@@ -36,6 +39,7 @@ type Result = { final: number; grade: string; letter: string; passed: boolean };
 
 export default function AnnualCalculatorScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const [sem1, setSem1] = useState('');
   const [sem2, setSem2] = useState('');
   const [result, setResult] = useState<Result | null>(null);
@@ -43,7 +47,7 @@ export default function AnnualCalculatorScreen() {
   const calculate = () => {
     if (!sem1.trim() || !sem2.trim()) return;
     const final = (Number(sem1) + Number(sem2)) / 2;
-    setResult({ final, grade: getGrade(final), letter: getLetter(final), passed: final >= 51 });
+    setResult({ final, grade: getGrade(final, t), letter: getLetter(final), passed: final >= 51 });
   };
 
   const reset = () => {
@@ -59,7 +63,7 @@ export default function AnnualCalculatorScreen() {
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>İllik Qiymətləndirmə</Text>
+          <Text style={styles.headerTitle}>{t('calc.annualHeader')}</Text>
           <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="help-circle-outline" size={22} color={Colors.primary} />
           </TouchableOpacity>
@@ -68,8 +72,8 @@ export default function AnnualCalculatorScreen() {
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
           {/* Hero */}
           <View style={styles.hero}>
-            <Text style={styles.heroTitle}>İllik balını anında hesablayın.</Text>
-            <Text style={styles.heroSub}>Qiymətlərinizi daxil edin, Kimi sizin üçün nəticəni tapsın.</Text>
+            <Text style={styles.heroTitle}>{t('calc.annHero')}</Text>
+            <Text style={styles.heroSub}>{t('calc.annHeroSub')}</Text>
           </View>
 
           {/* Input Cards */}
@@ -79,7 +83,7 @@ export default function AnnualCalculatorScreen() {
                 <View style={styles.inputIconBox}>
                   <Ionicons name="filter-outline" size={20} color={Colors.primary} />
                 </View>
-                <Text style={styles.inputCardLabel}>1-ci yarımil balı</Text>
+                <Text style={styles.inputCardLabel}>{t('calc.sem1')}</Text>
               </View>
               <TextInput
                 style={styles.inputField}
@@ -96,7 +100,7 @@ export default function AnnualCalculatorScreen() {
                 <View style={styles.inputIconBox}>
                   <Ionicons name="filter-outline" size={20} color={Colors.primary} />
                 </View>
-                <Text style={styles.inputCardLabel}>2-ci yarımil balı</Text>
+                <Text style={styles.inputCardLabel}>{t('calc.sem2')}</Text>
               </View>
               <TextInput
                 style={styles.inputField}
@@ -113,18 +117,18 @@ export default function AnnualCalculatorScreen() {
           {/* Buttons */}
           <TouchableOpacity onPress={calculate} activeOpacity={0.9}>
             <LinearGradient colors={GRADIENT} style={styles.calcBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-              <Text style={styles.calcBtnText}>Hesabla</Text>
+              <Text style={styles.calcBtnText}>{t('calc.calculate')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.resetBtn} onPress={reset} activeOpacity={0.8}>
-            <Text style={styles.resetBtnText}>Sıfırla</Text>
+            <Text style={styles.resetBtnText}>{t('calc.reset')}</Text>
           </TouchableOpacity>
 
           {/* Result */}
           <View style={styles.resultCard}>
             <View style={styles.resultTop}>
               <View>
-                <Text style={styles.resultTopLabel}>Yekun İllik Bal</Text>
+                <Text style={styles.resultTopLabel}>{t('calc.finalAnnual')}</Text>
                 <Text style={styles.resultTopScore}>{result ? result.final.toFixed(1) : '—'}</Text>
               </View>
               <LinearGradient colors={GRADIENT} style={styles.letterCircle} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -134,16 +138,16 @@ export default function AnnualCalculatorScreen() {
 
             <View style={styles.resultGrid}>
               <View style={styles.resultCell}>
-                <Text style={styles.resultCellLabel}>Yekun Qiymət</Text>
+                <Text style={styles.resultCellLabel}>{t('calc.finalGrade')}</Text>
                 <Text style={styles.resultCellValue}>{result ? result.grade : '—'}</Text>
               </View>
               <View style={styles.resultCell}>
-                <Text style={styles.resultCellLabel}>Status</Text>
+                <Text style={styles.resultCellLabel}>{t('calc.status')}</Text>
                 {result ? (
                   <View style={styles.statusRow}>
                     <View style={[styles.statusDot, { backgroundColor: result.passed ? Colors.tertiary : Colors.danger }]} />
                     <Text style={[styles.resultCellValue, { color: result.passed ? Colors.tertiary : Colors.danger }]}>
-                      {result.passed ? 'Uğurlu' : 'Uğursuz'}
+                      {result.passed ? t('calc.passed') : t('calc.failed')}
                     </Text>
                   </View>
                 ) : (
@@ -157,8 +161,8 @@ export default function AnnualCalculatorScreen() {
                 <Ionicons name="information-circle" size={20} color={Colors.primary} />
                 <Text style={styles.infoText}>
                   {result.passed
-                    ? 'Təbriklər! Sizin illik nəticəniz yüksəkdir. Kimi dərslərinizdə uğurlar arzulayır!'
-                    : 'Üzülməyin! Növbəti dəfə daha yaxşı nəticə üçün çalışın. Kimi sizinlədir!'}
+                    ? t('calc.passedMsg')
+                    : t('calc.failedMsg')}
                 </Text>
               </View>
             )}

@@ -7,12 +7,14 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.PasswordChanged>;
 };
 
 export default function PasswordChangedScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Header */}
@@ -20,7 +22,7 @@ export default function PasswordChangedScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Uğurlu əməliyyat</Text>
+        <Text style={styles.headerTitle}>{t('passwordChanged.headerTitle')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -35,9 +37,9 @@ export default function PasswordChangedScreen({ navigation }: Props) {
 
         {/* Text */}
         <View style={styles.textBlock}>
-          <Text style={styles.title}>Şifrəniz uğurla dəyişdirildi</Text>
+          <Text style={styles.title}>{t('passwordChanged.title')}</Text>
           <Text style={styles.subtitle}>
-            Artıq yeni şifrənizlə daxil ola bilərsiniz. Təhlükəsizliyiniz bizim üçün önəmlidir.
+            {t('passwordChanged.subtitle')}
           </Text>
         </View>
 
@@ -53,7 +55,7 @@ export default function PasswordChangedScreen({ navigation }: Props) {
               style={styles.ctaBtn}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.ctaBtnText}>Profilə qayıt</Text>
+              <Text style={styles.ctaBtnText}>{t('passwordChanged.backToProfile')}</Text>
               <Ionicons name="person" size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
@@ -64,9 +66,9 @@ export default function PasswordChangedScreen({ navigation }: Props) {
               <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
             </View>
             <View style={styles.tipText}>
-              <Text style={styles.tipLabel}>TƏHLÜKƏSİZLİK TÖVSİYƏSİ</Text>
+              <Text style={styles.tipLabel}>{t('passwordChanged.tipLabel')}</Text>
               <Text style={styles.tipNote}>
-                Şifrənizi heç kimlə bölüşməyin və mütəmadi olaraq yeniləyin.
+                {t('passwordChanged.tipNote')}
               </Text>
             </View>
           </View>

@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const AVATAR = (seed: string) =>
@@ -26,6 +27,7 @@ const FRIENDS: Friend[] = [
 
 export default function MyFriendsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [filter] = useState<'all' | 'online'>('all');
 
   const visible = filter === 'online' ? FRIENDS.filter((f) => f.online) : FRIENDS;
@@ -36,7 +38,7 @@ export default function MyFriendsScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.iconBtn}>
           <Ionicons name="chevron-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dostlarım</Text>
+        <Text style={styles.headerTitle}>{t('social.myFriends')}</Text>
         <TouchableOpacity hitSlop={8} style={styles.iconBtn}>
           <Ionicons name="search" size={20} color={Colors.textPrimary} />
         </TouchableOpacity>
@@ -45,8 +47,8 @@ export default function MyFriendsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.titleRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Tələbə Yoldaşları</Text>
-            <Text style={styles.subtitle}>Birlikdə öyrən, yarış və inkişaf et.</Text>
+            <Text style={styles.title}>{t('social.studentMates')}</Text>
+            <Text style={styles.subtitle}>{t('social.subtitle')}</Text>
           </View>
           <TouchableOpacity style={styles.addBtn} activeOpacity={0.85}>
             <Ionicons name="person-add" size={20} color={Colors.primary} />
@@ -72,7 +74,7 @@ export default function MyFriendsScreen() {
                   {f.online ? (
                     <View style={styles.statusRow}>
                       <View style={styles.statusDot} />
-                      <Text style={styles.statusOnline}>aktivdir</Text>
+                      <Text style={styles.statusOnline}>{t('social.active')}</Text>
                     </View>
                   ) : (
                     <View style={styles.statusRow}>
@@ -92,12 +94,12 @@ export default function MyFriendsScreen() {
                       colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                       style={styles.challengeBtn}
                     >
-                      <Text style={styles.challengeBtnText}>Challenge et</Text>
+                      <Text style={styles.challengeBtnText}>{t('social.challenge')}</Text>
                     </LinearGradient>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity style={[styles.challengeBtn, styles.challengeGhost]} activeOpacity={0.85}>
-                    <Text style={styles.challengeGhostText}>Challenge et</Text>
+                    <Text style={styles.challengeGhostText}>{t('social.challenge')}</Text>
                   </TouchableOpacity>
                 )}
               </View>

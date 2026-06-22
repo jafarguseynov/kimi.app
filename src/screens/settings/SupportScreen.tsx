@@ -6,12 +6,14 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const SUPPORT_EMAIL = 'support@kimi.az';
 
 export default function SupportScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   const openChat = () => {
     const parent = navigation.getParent() as any;
@@ -27,7 +29,7 @@ export default function SupportScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dəstək və Əlaqə</Text>
+        <Text style={styles.headerTitle}>{t('support.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -40,8 +42,8 @@ export default function SupportScreen() {
               <Ionicons name="headset-outline" size={64} color="#fff" />
             </LinearGradient>
           </View>
-          <Text style={styles.heroTitle}>Sizə necə kömək edə bilərik?</Text>
-          <Text style={styles.heroSub}>Kimi komandası dərslərinizdə və texniki məsələlərdə sizə dəstək olmağa hazırdır.</Text>
+          <Text style={styles.heroTitle}>{t('support.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('support.heroSub')}</Text>
         </View>
 
         {/* Status card */}
@@ -50,10 +52,10 @@ export default function SupportScreen() {
             <View style={styles.dotRow}>
               <View style={styles.pingOuter} />
               <View style={styles.pingDot} />
-              <Text style={styles.statusLabel}>Dəstək komandası onlayndır</Text>
+              <Text style={styles.statusLabel}>{t('support.statusLabel')}</Text>
             </View>
             <Text style={styles.statusSub}>
-              Gözləmə müddəti: <Text style={styles.statusHighlight}>~10 dəqiqə</Text>
+              {t('support.statusWaitPre')}<Text style={styles.statusHighlight}>{t('support.statusWaitValue')}</Text>
             </Text>
           </View>
           <View style={styles.statusIconWrap}>
@@ -68,8 +70,8 @@ export default function SupportScreen() {
               <Ionicons name="chatbubble-ellipses" size={24} color="#fff" />
             </LinearGradient>
             <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>Canlı Çat</Text>
-              <Text style={styles.contactSub}>2 dəqiqəyə cavab</Text>
+              <Text style={styles.contactTitle}>{t('support.liveChat')}</Text>
+              <Text style={styles.contactSub}>{t('support.liveChatSub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.outlineVariant} />
           </TouchableOpacity>
@@ -79,8 +81,8 @@ export default function SupportScreen() {
               <Ionicons name="mail-outline" size={24} color={Colors.primary} />
             </View>
             <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>Email Dəstəyi</Text>
-              <Text style={styles.contactSub}>24 saat ərzində</Text>
+              <Text style={styles.contactTitle}>{t('support.emailSupport')}</Text>
+              <Text style={styles.contactSub}>{t('support.emailSupportSub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color={Colors.outlineVariant} />
           </TouchableOpacity>
@@ -88,22 +90,22 @@ export default function SupportScreen() {
 
         {/* Problem report */}
         <View style={styles.problemSection}>
-          <Text style={styles.problemSectionTitle}>Texniki məsələlər</Text>
+          <Text style={styles.problemSectionTitle}>{t('support.techTitle')}</Text>
           <View style={styles.problemCard}>
             <View style={styles.problemIconWrap}>
               <Ionicons name="warning" size={22} color={Colors.danger} />
             </View>
-            <Text style={styles.problemTitle}>Xəta və ya Problem Bildir</Text>
-            <Text style={styles.problemDesc}>Tətbiqdə qarşılaşdığınız texniki problemləri bizə bildirin.</Text>
+            <Text style={styles.problemTitle}>{t('support.reportCardTitle')}</Text>
+            <Text style={styles.problemDesc}>{t('support.reportCardDesc')}</Text>
             <TouchableOpacity style={styles.problemBtn} activeOpacity={0.85} onPress={openReport}>
-              <Text style={styles.problemBtnText}>Problem Bildir</Text>
+              <Text style={styles.problemBtnText}>{t('support.reportBtn')}</Text>
             </TouchableOpacity>
           </View>
         </View>
 
         {/* FAQ link */}
         <TouchableOpacity style={styles.faqLink} activeOpacity={0.7} onPress={openFaq}>
-          <Text style={styles.faqLinkText}>Tez-tez verilən suallar (FAQ)</Text>
+          <Text style={styles.faqLinkText}>{t('support.faqLink')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

@@ -6,16 +6,17 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 type FilterTab = 'all' | 'popular' | 'new' | 'mine';
 
-const FILTER_TABS: { id: FilterTab; label: string }[] = [
-  { id: 'all', label: 'Hamısı' },
-  { id: 'popular', label: 'Populyar' },
-  { id: 'new', label: 'Yeni' },
-  { id: 'mine', label: 'Mənim qruplarım' },
+const FILTER_TABS: { id: FilterTab; labelKey: string }[] = [
+  { id: 'all', labelKey: 'learning.filterAll' },
+  { id: 'popular', labelKey: 'learning.filterPopular' },
+  { id: 'new', labelKey: 'learning.filterNew' },
+  { id: 'mine', labelKey: 'learning.filterMine' },
 ];
 
 type Group = {
@@ -73,6 +74,7 @@ const GROUPS: Group[] = [
 ];
 
 export default function LearningGroupsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [focused, setFocused] = useState(false);
@@ -100,11 +102,11 @@ export default function LearningGroupsScreen({ navigation }: Props) {
     });
     if (!wasJoined) {
       Alert.alert(
-        'Qoşuldun!',
-        `"${g.title}" qrupuna üzv oldun. Söhbətlər və materiallar artıq sənə açıqdır.`,
+        t('learning.joinedTitle'),
+        t('learning.joinedMsg', { title: g.title }),
         [
-          { text: 'Sonra', style: 'cancel' },
-          { text: 'Qrupa keç', onPress: () => openGroup(g) },
+          { text: t('learning.later'), style: 'cancel' },
+          { text: t('learning.goToGroup'), onPress: () => openGroup(g) },
         ],
       );
     }
@@ -120,11 +122,11 @@ export default function LearningGroupsScreen({ navigation }: Props) {
     });
     if (!was) {
       Alert.alert(
-        'Qeydiyyat tamamlandı',
-        `"${g.title}" yarışmasında iştirak edirsən. Bildiriş yarış başlayanda gələcək.`,
+        t('learning.regDoneTitle'),
+        t('learning.regDoneMsg', { title: g.title }),
         [
-          { text: 'Sonra', style: 'cancel' },
-          { text: 'Qrupa keç', onPress: () => openGroup(g) },
+          { text: t('learning.later'), style: 'cancel' },
+          { text: t('learning.goToGroup'), onPress: () => openGroup(g) },
         ],
       );
     }
@@ -155,12 +157,12 @@ export default function LearningGroupsScreen({ navigation }: Props) {
           >
             <Ionicons name="arrow-back" size={24} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Öyrənmə Qrupları</Text>
+          <Text style={styles.headerTitle}>{t('learning.groupsTitle')}</Text>
         </View>
         <TouchableOpacity
           style={styles.avatarCircle}
           activeOpacity={0.7}
-          onPress={() => Alert.alert('Qrup yarat', 'Yaxın günlərdə öz qrupunu yaratmaq imkanı əlavə olunacaq.')}
+          onPress={() => Alert.alert(t('learning.createGroup'), t('learning.createGroupMsg'))}
         >
           <Ionicons name="add" size={20} color={Colors.primary} />
         </TouchableOpacity>
@@ -174,7 +176,7 @@ export default function LearningGroupsScreen({ navigation }: Props) {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Qrup axtar..."
+            placeholder={t('learning.searchGroup')}
             placeholderTextColor={Colors.textMuted}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
@@ -197,7 +199,7 @@ export default function LearningGroupsScreen({ navigation }: Props) {
                   style={styles.filterChipActive}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.filterChipActiveText}>{tab.label}</Text>
+                  <Text style={styles.filterChipActiveText}>{t(tab.labelKey)}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             ) : (
@@ -207,7 +209,7 @@ export default function LearningGroupsScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => setActiveFilter(tab.id)}
               >
-                <Text style={styles.filterChipText}>{tab.label}</Text>
+                <Text style={styles.filterChipText}>{t(tab.labelKey)}</Text>
               </TouchableOpacity>
             )
           )}
@@ -240,11 +242,11 @@ export default function LearningGroupsScreen({ navigation }: Props) {
                 {group.members != null && (
                   <View style={styles.groupMeta}>
                     <Ionicons name="people-outline" size={14} color={Colors.textMuted} />
-                    <Text style={styles.groupMetaText}>{memberDisplay} üzv</Text>
+                    <Text style={styles.groupMetaText}>{t('learning.membersN', { n: memberDisplay })}</Text>
                     {group.online != null && group.online > 0 && (
                       <>
                         <View style={styles.metaDot} />
-                        <Text style={styles.onlineText}>{group.online} Onlayn</Text>
+                        <Text style={styles.onlineText}>{t('learning.onlineN', { n: group.online })}</Text>
                       </>
                     )}
                   </View>
@@ -274,7 +276,7 @@ export default function LearningGroupsScreen({ navigation }: Props) {
                       <View style={[styles.joinedBtn, group.isChallenge && styles.joinBtnFull]}>
                         <Ionicons name="checkmark" size={14} color={Colors.primary} />
                         <Text style={styles.joinedBtnText}>
-                          {group.isChallenge ? 'İştirak edirsən' : 'Qrupa keç'}
+                          {group.isChallenge ? t('learning.participating') : t('learning.goToGroup')}
                         </Text>
                         <Ionicons name="chevron-forward" size={14} color={Colors.primary} />
                       </View>
@@ -284,7 +286,7 @@ export default function LearningGroupsScreen({ navigation }: Props) {
                         style={[styles.joinBtn, group.isChallenge && styles.joinBtnFull]}
                         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                       >
-                        <Text style={styles.joinBtnText}>{group.isChallenge ? 'İştirak et' : 'Qoşul'}</Text>
+                        <Text style={styles.joinBtnText}>{group.isChallenge ? t('learning.participate') : t('learning.join')}</Text>
                       </LinearGradient>
                     )}
                   </TouchableOpacity>
@@ -297,20 +299,20 @@ export default function LearningGroupsScreen({ navigation }: Props) {
         {filteredGroups.length === 0 && (
           <View style={styles.emptyState}>
             <Ionicons name="search" size={32} color={Colors.outlineVariant} />
-            <Text style={styles.emptyTitle}>Heç bir qrup tapılmadı</Text>
+            <Text style={styles.emptyTitle}>{t('learning.noGroupsTitle')}</Text>
             <Text style={styles.emptySub}>
-              {activeFilter === 'mine' ? 'Hələ heç bir qrupa qoşulmamısan' : 'Başqa açar söz və ya filtr sına'}
+              {activeFilter === 'mine' ? t('learning.noGroupsMineSub') : t('learning.noGroupsSub')}
             </Text>
           </View>
         )}
 
         {/* Kimi AI Suggestion */}
         <View style={styles.suggestionCard}>
-          <Text style={styles.suggestionTitle}>Kimi-nin tövsiyəsi</Text>
+          <Text style={styles.suggestionTitle}>{t('learning.kimiSuggestion')}</Text>
           <Text style={styles.suggestionText}>
-            Sənin son nəticələrinə əsasən{' '}
+            {t('learning.suggestionPre')}{' '}
             <Text style={{ fontWeight: '800' }}>"Fizika laboratoriyası"</Text>
-            {' '}qrupuna qoşulmaq faydalı olar.
+            {' '}{t('learning.suggestionPost')}
           </Text>
           <TouchableOpacity
             style={styles.suggestionBtn}
@@ -320,9 +322,9 @@ export default function LearningGroupsScreen({ navigation }: Props) {
                 'Fizika laboratoriyası',
                 '67 üzv · 4 onlayn\n\nMexanika, elektrik və optika üzrə həftəlik məsələ həlli sessiyaları. Səviyyəyə uyğun qruplar.',
                 [
-                  { text: 'Bağla', style: 'cancel' },
+                  { text: t('learning.close'), style: 'cancel' },
                   {
-                    text: 'Qoşul',
+                    text: t('learning.join'),
                     onPress: () =>
                       setJoined((prev) => {
                         const next = new Set(prev);
@@ -334,7 +336,7 @@ export default function LearningGroupsScreen({ navigation }: Props) {
               )
             }
           >
-            <Text style={styles.suggestionBtnText}>Daha çox öyrən</Text>
+            <Text style={styles.suggestionBtnText}>{t('learning.learnMore')}</Text>
             <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
           </TouchableOpacity>
         </View>

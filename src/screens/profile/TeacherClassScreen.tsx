@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { getMyClass, getClassMembers, ClassMember } from '../../api/collaboration.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -19,6 +20,7 @@ function getInitials(name: string): string {
 
 export default function TeacherClassScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: cls, isLoading, isError, refetch: refetchClass } = useQuery({ queryKey: ['myClass'], queryFn: getMyClass, retry: 1 });
@@ -34,7 +36,7 @@ export default function TeacherClassScreen() {
     if (!cls) return;
     try {
       await Share.share({
-        message: `Mənim Kimi.az sinifimə qoşul! Kod: ${cls.joinCode}\n${cls.link}\nQoşulanda 7 günlük pulsuz premium qazanırsan 🎁`,
+        message: t('teacherClass.shareMessage', { code: cls.joinCode, link: cls.link }),
       });
     } catch {}
   };
@@ -45,7 +47,7 @@ export default function TeacherClassScreen() {
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sinifim</Text>
+        <Text style={styles.headerTitle}>{t('teacherClass.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={onShare}>
           <Ionicons name="share-social-outline" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -59,16 +61,16 @@ export default function TeacherClassScreen() {
         {isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.loadingText}>Sinif yüklənir...</Text>
+            <Text style={styles.loadingText}>{t('teacherClass.loading')}</Text>
           </View>
         ) : isError || !cls?.joinCode ? (
           <View style={styles.errorCard}>
             <Ionicons name="cloud-offline-outline" size={40} color={Colors.textMuted} />
-            <Text style={styles.errorTitle}>Sinif yüklənmədi</Text>
-            <Text style={styles.errorSub}>Serverə qoşula bilmədik. Bağlantını yoxla və yenidən cəhd et.</Text>
+            <Text style={styles.errorTitle}>{t('teacherClass.errorTitle')}</Text>
+            <Text style={styles.errorSub}>{t('teacherClass.errorSub')}</Text>
             <TouchableOpacity style={styles.retryBtn} activeOpacity={0.85} onPress={onRefresh}>
               <Ionicons name="refresh" size={18} color="#fff" />
-              <Text style={styles.retryBtnText}>Yenidən cəhd et</Text>
+              <Text style={styles.retryBtnText}>{t('teacherClass.retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -76,28 +78,28 @@ export default function TeacherClassScreen() {
             {/* Invite card */}
             <LinearGradient colors={GRADIENT} style={styles.inviteCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
               <View style={styles.inviteAura} pointerEvents="none" />
-              <Text style={styles.inviteLabel}>SİNİF KODU</Text>
+              <Text style={styles.inviteLabel}>{t('teacherClass.classCode')}</Text>
               <Text style={styles.inviteCode}>{cls.joinCode}</Text>
-              <Text style={styles.inviteHint}>Şagirdlərin bu kodla qoşulur və 7 günlük pulsuz premium qazanır</Text>
+              <Text style={styles.inviteHint}>{t('teacherClass.inviteHint')}</Text>
               <View style={styles.inviteBtns}>
                 <TouchableOpacity style={styles.shareBtn} activeOpacity={0.85} onPress={onShare}>
                   <Ionicons name="share-social" size={18} color={Colors.primary} />
-                  <Text style={styles.shareBtnText}>Dəvət et</Text>
+                  <Text style={styles.shareBtnText}>{t('teacherClass.invite')}</Text>
                 </TouchableOpacity>
               </View>
             </LinearGradient>
 
             {/* Members */}
             <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>Qoşulan şagirdlər</Text>
+              <Text style={styles.sectionTitle}>{t('teacherClass.membersTitle')}</Text>
               <View style={styles.countPill}><Text style={styles.countPillText}>{cls?.memberCount ?? members.length}</Text></View>
             </View>
 
             {members.length === 0 ? (
               <View style={styles.center}>
                 <Ionicons name="people-outline" size={44} color={Colors.primaryFixed} />
-                <Text style={styles.emptyText}>Hələ qoşulan yoxdur</Text>
-                <Text style={styles.emptySub}>Kodu şagirdlərinlə paylaş — qoşulanda burada görünəcəklər.</Text>
+                <Text style={styles.emptyText}>{t('teacherClass.emptyText')}</Text>
+                <Text style={styles.emptySub}>{t('teacherClass.emptySub')}</Text>
               </View>
             ) : (
               members.map((m: ClassMember) => (
@@ -110,7 +112,7 @@ export default function TeacherClassScreen() {
             )}
 
             <Text style={styles.note}>
-              İpucu: Qoşulan şagirdlər həm də "Şagirdlərim" panelində performansları ilə görünür.
+              {t('teacherClass.note')}
             </Text>
           </>
         )}

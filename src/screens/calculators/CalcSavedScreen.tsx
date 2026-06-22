@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -55,6 +56,7 @@ const RESULT_STYLES: Record<ResultVariant, { bg: string; color: string }> = {
 
 export default function CalcSavedScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -62,15 +64,15 @@ export default function CalcSavedScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yadda saxlanılanlar</Text>
+        <Text style={styles.headerTitle}>{t('calc.savedHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Section header */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Hesablamaların</Text>
-          <Text style={styles.sectionSub}>Ümumi 12 qeydə alınmış nəticə</Text>
+          <Text style={styles.sectionTitle}>{t('calc.yourCalcs')}</Text>
+          <Text style={styles.sectionSub}>{t('calc.savedCount')}</Text>
         </View>
 
         {/* Saved cards */}
@@ -112,9 +114,9 @@ export default function CalcSavedScreen() {
               <Ionicons name="trending-up-outline" size={22} color={Colors.primary} />
             </View>
             <View style={styles.bentoTextGroup}>
-              <Text style={styles.bentoTitle}>Artım</Text>
+              <Text style={styles.bentoTitle}>{t('calc.growth')}</Text>
               <Text style={styles.bentoSub}>
-                Ötən aya nisbətən <Text style={styles.bentoGreen}>+12%</Text>
+                {t('calc.growthPre')}<Text style={styles.bentoGreen}>+12%</Text>
               </Text>
             </View>
           </View>
@@ -125,15 +127,15 @@ export default function CalcSavedScreen() {
               <Ionicons name="sparkles-outline" size={22} color="#fff" />
             </View>
             <View style={styles.bentoTextGroup}>
-              <Text style={styles.bentoAiTitle}>AI Analiz</Text>
-              <Text style={styles.bentoAiSub}>Yeni təkliflərin var!</Text>
+              <Text style={styles.bentoAiTitle}>{t('calc.aiAnalysis')}</Text>
+              <Text style={styles.bentoAiSub}>{t('calc.aiNewOffers')}</Text>
             </View>
           </LinearGradient>
         </View>
 
         {/* Load more */}
         <TouchableOpacity style={styles.loadMoreBtn} activeOpacity={0.8}>
-          <Text style={styles.loadMoreText}>Daha çox göstər</Text>
+          <Text style={styles.loadMoreText}>{t('calc.loadMore')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

@@ -17,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -37,6 +38,7 @@ interface ReferralFriend {
 
 export default function ReferralScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery<ReferralData>({
     queryKey: ['referral'],
     queryFn: async () => {
@@ -64,7 +66,7 @@ export default function ReferralScreen() {
 
   const handleShare = async () => {
     await Share.share({
-      message: `Kimi.az tətbiqini yüklə! ${displayLink}`,
+      message: t('referral.shareMessage', { link: displayLink }),
       url: displayLink,
     });
   };
@@ -75,7 +77,7 @@ export default function ReferralScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dostlarını dəvət et</Text>
+        <Text style={styles.headerTitle}>{t('referral.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={handleShare}>
           <Ionicons name="ellipsis-vertical" size={22} color={Colors.primary} />
         </TouchableOpacity>
@@ -91,10 +93,10 @@ export default function ReferralScreen() {
             <View style={styles.heroOrbBottomLeft} pointerEvents="none" />
             <View style={styles.heroContent}>
               <View style={styles.heroPill}>
-                <Text style={styles.heroPillText}>Kompaniya</Text>
+                <Text style={styles.heroPillText}>{t('referral.heroPill')}</Text>
               </View>
-              <Text style={styles.heroTitle}>Birlikdə öyrənmək{'\n'}daha maraqlıdır!</Text>
-              <Text style={styles.heroSub}>Dostlarını Kimi.az-a dəvət et, hər ikiniz bonus qazanın.</Text>
+              <Text style={styles.heroTitle}>{t('referral.heroTitle')}</Text>
+              <Text style={styles.heroSub}>{t('referral.heroSub')}</Text>
             </View>
           </View>
 
@@ -103,7 +105,7 @@ export default function ReferralScreen() {
             <View style={styles.balanceOrbTopRight} pointerEvents="none" />
             <View style={styles.balanceOrbBottomLeft} pointerEvents="none" />
             <View style={styles.balanceContent}>
-              <Text style={styles.balanceLabel}>Referal bonus balansı</Text>
+              <Text style={styles.balanceLabel}>{t('referral.balanceLabel')}</Text>
               <View style={styles.balanceAmountRow}>
                 <Text style={styles.balanceAmount}>{totalEarned.toFixed(2)}</Text>
                 <Text style={styles.balanceCurrency}>AZN</Text>
@@ -114,14 +116,14 @@ export default function ReferralScreen() {
                   activeOpacity={0.85}
                   onPress={() => navigation.navigate(Routes.Wallet)}
                 >
-                  <Text style={styles.balanceBtnSolidText}>Balansı artır</Text>
+                  <Text style={styles.balanceBtnSolidText}>{t('referral.increaseBalance')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.balanceBtnGhost}
                   activeOpacity={0.85}
                   onPress={() => navigation.navigate(Routes.ReferralBalance)}
                 >
-                  <Text style={styles.balanceBtnGhostText}>Detallar</Text>
+                  <Text style={styles.balanceBtnGhostText}>{t('referral.details')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -129,18 +131,18 @@ export default function ReferralScreen() {
 
           {/* Referral link */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Sənin referal linkin</Text>
+            <Text style={styles.sectionLabel}>{t('referral.linkLabel')}</Text>
             <View style={styles.linkPill}>
               <Text style={styles.linkText} numberOfLines={1}>{displayLink}</Text>
               <TouchableOpacity style={styles.copyChip} onPress={handleShare} activeOpacity={0.85}>
                 <Ionicons name="copy-outline" size={14} color={Colors.primary} />
-                <Text style={styles.copyChipText}>KOPYALA</Text>
+                <Text style={styles.copyChipText}>{t('referral.copy')}</Text>
               </TouchableOpacity>
             </View>
             <TouchableOpacity activeOpacity={0.9} onPress={handleShare}>
               <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.shareCta}>
                 <Ionicons name="share-social-outline" size={20} color="#fff" />
-                <Text style={styles.shareCtaText}>Linki paylaş</Text>
+                <Text style={styles.shareCtaText}>{t('referral.shareLink')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -148,17 +150,17 @@ export default function ReferralScreen() {
           {/* Statistics */}
           <View style={styles.section}>
             <View style={styles.statsHeader}>
-              <Text style={styles.sectionLabel}>Statistika</Text>
+              <Text style={styles.sectionLabel}>{t('referral.statistics')}</Text>
               <View style={styles.statsPill}>
                 <View style={styles.statsDot} />
-                <Text style={styles.statsPillText}>Son 30 gün</Text>
+                <Text style={styles.statsPillText}>{t('referral.last30Days')}</Text>
               </View>
             </View>
             <View style={styles.statsGrid}>
-              <StatCard icon="people-outline" iconColor={Colors.primary} iconBg="#EFF8FE" value={invitedCount} label="Dəvət etdiklərim" />
-              <StatCard icon="person-add-outline" iconColor="#4F46E5" iconBg="#EEF2FF" value={registeredCount} label="Qeydiyyatdan keçənlər" />
-              <StatCard icon="flash-outline" iconColor="#059669" iconBg="#ECFDF5" value={activeCount} label="Aktiv istifadəçilər" />
-              <StatCard icon="card-outline" iconColor="#D97706" iconBg="#FFFBEB" value={payingCount} label="Ödəniş edənlər" highlight />
+              <StatCard icon="people-outline" iconColor={Colors.primary} iconBg="#EFF8FE" value={invitedCount} label={t('referral.statInvited')} />
+              <StatCard icon="person-add-outline" iconColor="#4F46E5" iconBg="#EEF2FF" value={registeredCount} label={t('referral.statRegistered')} />
+              <StatCard icon="flash-outline" iconColor="#059669" iconBg="#ECFDF5" value={activeCount} label={t('referral.statActive')} />
+              <StatCard icon="card-outline" iconColor="#D97706" iconBg="#FFFBEB" value={payingCount} label={t('referral.statPaying')} highlight />
             </View>
           </View>
 

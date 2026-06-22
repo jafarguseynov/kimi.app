@@ -7,17 +7,19 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MarketplaceStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<MarketplaceStackParamList, typeof Routes.AIAnswer> };
 
 export default function AIAnswerScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="close" size={24} color={Colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sual Yarandı</Text>
+        <Text style={styles.headerTitle}>{t('marketplace.aiAnswerHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -37,9 +39,9 @@ export default function AIAnswerScreen({ navigation }: Props) {
 
         {/* Text */}
         <View style={styles.textSection}>
-          <Text style={styles.title}>AI cavab verə bilmədi</Text>
+          <Text style={styles.title}>{t('marketplace.aiCouldntAnswer')}</Text>
           <Text style={styles.subtitle}>
-            Təəssüf ki, süni intellekt bu sualı anlaya bilmədi. Bu sualı müəllimlərə göndərmək istəyirsən?
+            {t('marketplace.aiCouldntAnswerSub')}
           </Text>
         </View>
 
@@ -56,7 +58,7 @@ export default function AIAnswerScreen({ navigation }: Props) {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.primaryBtnText}>Müəllimlərə göndər</Text>
+              <Text style={styles.primaryBtnText}>{t('marketplace.sendToTeachers')}</Text>
             </LinearGradient>
           </TouchableOpacity>
 
@@ -65,14 +67,14 @@ export default function AIAnswerScreen({ navigation }: Props) {
             onPress={() => navigation.goBack()}
             activeOpacity={0.7}
           >
-            <Text style={styles.secondaryBtnText}>Yenidən yoxla</Text>
+            <Text style={styles.secondaryBtnText}>{t('marketplace.recheck')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Hint */}
         <View style={styles.hint}>
           <Ionicons name="information-circle-outline" size={18} color={Colors.textMuted} />
-          <Text style={styles.hintText}>Sualınız 15 dəqiqə ərzində cavablandırılacaq</Text>
+          <Text style={styles.hintText}>{t('marketplace.answerWithin15')}</Text>
         </View>
       </View>
     </SafeAreaView>

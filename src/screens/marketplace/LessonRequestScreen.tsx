@@ -19,6 +19,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { createLessonRequest } from '../../api/lessonRequest.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -26,9 +27,11 @@ const SUBJECTS = ['Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Fizika', '
 const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif', 'Abituriyent', 'Magistratura'];
 const FORMATS = ['Online', 'Evdə', 'Kursda'] as const;
 type Format = typeof FORMATS[number];
+const FORMAT_LABEL_KEYS: Record<Format, string> = { Online: 'marketplace.formatOnline', 'Evdə': 'marketplace.formatHome', Kursda: 'marketplace.formatCourse' };
 
 export default function LessonRequestScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [subject, setSubject] = useState('');
   const [grade, setGrade] = useState('');
@@ -55,19 +58,19 @@ export default function LessonRequestScreen() {
       });
     },
     onError: (e: any) =>
-      Alert.alert('Xəta', e?.response?.data?.message || 'Sorğu göndərilə bilmədi'),
+      Alert.alert(t('marketplace.errorTitle'), e?.response?.data?.message || t('marketplace.requestFail')),
   });
 
   const showSubjectPicker = () =>
-    Alert.alert('Fənn seçin', '', [
+    Alert.alert(t('marketplace.selectSubjectTitle'), '', [
       ...SUBJECTS.map(s => ({ text: s, onPress: () => setSubject(s) })),
-      { text: 'Ləğv et', style: 'cancel' as const, onPress: () => {} },
+      { text: t('marketplace.cancel'), style: 'cancel' as const, onPress: () => {} },
     ]);
 
   const showGradePicker = () =>
-    Alert.alert('Sinif seçin', '', [
+    Alert.alert(t('marketplace.selectGradeTitle'), '', [
       ...GRADES.map(g => ({ text: g, onPress: () => setGrade(g) })),
-      { text: 'Ləğv et', style: 'cancel' as const, onPress: () => {} },
+      { text: t('marketplace.cancel'), style: 'cancel' as const, onPress: () => {} },
     ]);
 
   return (
@@ -87,7 +90,7 @@ export default function LessonRequestScreen() {
             >
               <Ionicons name="arrow-back" size={22} color={Colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.headerTitle}>Dərs Sorğusu</Text>
+            <Text style={styles.headerTitle}>{t('marketplace.lessonRequestHeader')}</Text>
           </View>
           <View style={styles.headerBtn}>
             <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
@@ -98,9 +101,9 @@ export default function LessonRequestScreen() {
           {/* Kimi mascot banner */}
           <View style={styles.mascotBanner}>
             <View style={styles.mascotText}>
-              <Text style={styles.mascotTitle}>Salam! Mən Kimi.</Text>
+              <Text style={styles.mascotTitle}>{t('marketplace.mascotGreet')}</Text>
               <Text style={styles.mascotSub}>
-                Sizin üçün ən uyğun müəllimi tapmağım üçün zəhmət olmasa dərslə bağlı detalları qeyd edin.
+                {t('marketplace.mascotGreetSub')}
               </Text>
             </View>
             <LinearGradient colors={GRADIENT} style={styles.mascotGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -113,19 +116,19 @@ export default function LessonRequestScreen() {
             {/* Subject + Grade */}
             <View style={styles.row}>
               <View style={styles.halfField}>
-                <Text style={styles.fieldLabel}>FƏNN</Text>
+                <Text style={styles.fieldLabel}>{t('marketplace.subjectUpper')}</Text>
                 <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={showSubjectPicker}>
                   <Text style={[styles.selectText, !subject && styles.selectPlaceholder]}>
-                    {subject || 'Fənn seçin'}
+                    {subject || t('marketplace.selectSubject')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={Colors.primary} />
                 </TouchableOpacity>
               </View>
               <View style={styles.halfField}>
-                <Text style={styles.fieldLabel}>SİNİF</Text>
+                <Text style={styles.fieldLabel}>{t('marketplace.gradeUpper')}</Text>
                 <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={showGradePicker}>
                   <Text style={[styles.selectText, !grade && styles.selectPlaceholder]}>
-                    {grade || 'Sinif seçin'}
+                    {grade || t('marketplace.selectGrade')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={Colors.primary} />
                 </TouchableOpacity>
@@ -134,10 +137,10 @@ export default function LessonRequestScreen() {
 
             {/* Topic */}
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>MÖVZU</Text>
+              <Text style={styles.fieldLabel}>{t('marketplace.topicUpper')}</Text>
               <TextInput
                 style={styles.textInput}
-                placeholder="Öyrənmək istədiyiniz mövzunu daxil edin"
+                placeholder={t('marketplace.topicPlaceholder')}
                 placeholderTextColor={Colors.outlineVariant}
                 value={topic}
                 onChangeText={setTopic}
@@ -146,7 +149,7 @@ export default function LessonRequestScreen() {
 
             {/* Format */}
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>DƏRS FORMATI</Text>
+              <Text style={styles.fieldLabel}>{t('marketplace.formatUpper')}</Text>
               <View style={styles.formatRow}>
                 {FORMATS.map(f => (
                   <TouchableOpacity
@@ -156,7 +159,7 @@ export default function LessonRequestScreen() {
                     onPress={() => setFormat(f)}
                   >
                     <Text style={[styles.formatBtnText, format === f && styles.formatBtnTextActive]}>
-                      {f}
+                      {t(FORMAT_LABEL_KEYS[f])}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -166,7 +169,7 @@ export default function LessonRequestScreen() {
             {/* Time + Frequency */}
             <View style={styles.row}>
               <View style={styles.halfField}>
-                <Text style={styles.fieldLabel}>VAXT</Text>
+                <Text style={styles.fieldLabel}>{t('marketplace.timeUpper')}</Text>
                 <TextInput
                   style={styles.textInput}
                   placeholder="HH:MM"
@@ -175,7 +178,7 @@ export default function LessonRequestScreen() {
                 />
               </View>
               <View style={styles.halfField}>
-                <Text style={styles.fieldLabel}>HƏFTƏDƏ NƏ QƏDƏR</Text>
+                <Text style={styles.fieldLabel}>{t('marketplace.freqUpper')}</Text>
                 <View style={styles.stepperBox}>
                   <TouchableOpacity
                     style={styles.stepBtn}
@@ -184,7 +187,7 @@ export default function LessonRequestScreen() {
                   >
                     <Ionicons name="remove" size={20} color={Colors.primary} />
                   </TouchableOpacity>
-                  <Text style={styles.stepperValue}>{frequency} dəfə</Text>
+                  <Text style={styles.stepperValue}>{t('marketplace.freqValue', { n: frequency })}</Text>
                   <TouchableOpacity
                     style={styles.stepBtn}
                     activeOpacity={0.7}
@@ -198,10 +201,10 @@ export default function LessonRequestScreen() {
 
             {/* Notes */}
             <View style={styles.field}>
-              <Text style={styles.fieldLabel}>QEYD</Text>
+              <Text style={styles.fieldLabel}>{t('marketplace.noteUpper')}</Text>
               <TextInput
                 style={styles.textarea}
-                placeholder="Müəllim üçün əlavə qeydləriniz varsa bura yaza bilərsiniz..."
+                placeholder={t('marketplace.notePlaceholder')}
                 placeholderTextColor={Colors.outlineVariant}
                 multiline
                 numberOfLines={4}
@@ -217,9 +220,9 @@ export default function LessonRequestScreen() {
               style={{ marginTop: 8 }}
               disabled={isPending}
               onPress={() => {
-                if (!subject) return Alert.alert('Fənn', 'Zəhmət olmasa fənn seçin');
-                if (!grade) return Alert.alert('Sinif', 'Zəhmət olmasa sinif seçin');
-                if (!topic.trim()) return Alert.alert('Mövzu', 'Mövzunu daxil edin');
+                if (!subject) return Alert.alert(t('marketplace.errSubjectTitle'), t('marketplace.errSubjectMsg2'));
+                if (!grade) return Alert.alert(t('marketplace.errGradeTitle'), t('marketplace.errGradeMsg'));
+                if (!topic.trim()) return Alert.alert(t('marketplace.errTopicTitle'), t('marketplace.errTopicMsg'));
                 submitRequest();
               }}
             >
@@ -229,11 +232,11 @@ export default function LessonRequestScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.submitBtnText}>Sorğu göndər</Text>
+                <Text style={styles.submitBtnText}>{t('marketplace.sendRequestBtn')}</Text>
                 <Ionicons name="send" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
-            <Text style={styles.submitNote}>Sorğu 24 saat ərzində cavablandırılacaq</Text>
+            <Text style={styles.submitNote}>{t('marketplace.requestNote')}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

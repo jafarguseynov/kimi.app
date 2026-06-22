@@ -5,26 +5,27 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 interface Mission {
   id: string;
   icon: keyof typeof Ionicons.glyphMap;
-  title: string;
-  reward: string;
+  titleKey: string;
+  rewardKey: string;
   done: boolean;
 }
 
 const MISSIONS: Mission[] = [
-  { id: 'm1', icon: 'checkmark-circle', title: '10 sual həll et', reward: 'Mükafat: +50 XP', done: true },
-  { id: 'm2', icon: 'checkmark-circle', title: '1 İmtahan ver', reward: 'Mükafat: +100 XP', done: true },
-  { id: 'm3', icon: 'book', title: '3 Mövzu oxu', reward: 'Mükafat: +75 XP', done: false },
+  { id: 'm1', icon: 'checkmark-circle', titleKey: 'missions.m1Title', rewardKey: 'missions.m1Reward', done: true },
+  { id: 'm2', icon: 'checkmark-circle', titleKey: 'missions.m2Title', rewardKey: 'missions.m2Reward', done: true },
+  { id: 'm3', icon: 'book', titleKey: 'missions.m3Title', rewardKey: 'missions.m3Reward', done: false },
 ];
 
-interface Reward { id: string; title: string; sub: string; icon: keyof typeof Ionicons.glyphMap; color: string; locked?: boolean; }
+interface Reward { id: string; titleKey: string; subKey: string; icon: keyof typeof Ionicons.glyphMap; color: string; locked?: boolean; }
 const REWARDS: Reward[] = [
-  { id: 'r1', title: '150 Coin', sub: 'Bütün missiyaları bitir', icon: 'logo-bitcoin', color: '#FFB020' },
-  { id: 'r2', title: 'Gümüş Sandıq', sub: 'Həftəlik hədəf', icon: 'lock-closed', color: Colors.textLight, locked: true },
-  { id: 'r3', title: 'Qızıl Sandıq', sub: 'Aylıq hədəf', icon: 'lock-closed', color: Colors.textLight, locked: true },
+  { id: 'r1', titleKey: 'missions.r1Title', subKey: 'missions.r1Sub', icon: 'logo-bitcoin', color: '#FFB020' },
+  { id: 'r2', titleKey: 'missions.r2Title', subKey: 'missions.r2Sub', icon: 'lock-closed', color: Colors.textLight, locked: true },
+  { id: 'r3', titleKey: 'missions.r3Title', subKey: 'missions.r3Sub', icon: 'lock-closed', color: Colors.textLight, locked: true },
 ];
 
 const DONE_COUNT = MISSIONS.filter((m) => m.done).length;
@@ -32,6 +33,7 @@ const PROGRESS = DONE_COUNT / MISSIONS.length;
 
 export default function MissionProgressScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -39,17 +41,17 @@ export default function MissionProgressScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Gündəlik Missiyalar</Text>
+        <Text style={styles.headerTitle}>{t('missions.progressHeaderTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={pairTab.row}>
           <TouchableOpacity onPress={() => navigation.replace(Routes.MissionStart)} style={pairTab.btn}>
-            <Text style={pairTab.text}>Bugünkü</Text>
+            <Text style={pairTab.text}>{t('missions.tabToday')}</Text>
           </TouchableOpacity>
           <View style={[pairTab.btn, pairTab.btnActive]}>
-            <Text style={[pairTab.text, pairTab.textActive]}>Tərəqqi</Text>
+            <Text style={[pairTab.text, pairTab.textActive]}>{t('missions.tabProgress')}</Text>
           </View>
         </View>
 
@@ -57,7 +59,7 @@ export default function MissionProgressScreen() {
         <View style={styles.progressCard}>
           <View style={[styles.blob, { top: -40, left: -40 }]} />
           <View style={[styles.blob, { bottom: -40, right: -40 }]} />
-          <Text style={styles.progressLabel}>{DONE_COUNT}/{MISSIONS.length} Missiya tamamlandı</Text>
+          <Text style={styles.progressLabel}>{t('missions.completedOf', { done: DONE_COUNT, total: MISSIONS.length })}</Text>
 
           {/* Ring */}
           <View style={styles.ringWrap}>
@@ -77,14 +79,14 @@ export default function MissionProgressScreen() {
                 <Ionicons name={m.icon} size={22} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.missionTitle, m.done && styles.missionTitleDone]}>{m.title}</Text>
-                <Text style={styles.missionReward}>{m.reward}</Text>
+                <Text style={[styles.missionTitle, m.done && styles.missionTitleDone]}>{t(m.titleKey)}</Text>
+                <Text style={styles.missionReward}>{t(m.rewardKey)}</Text>
               </View>
               {m.done ? (
-                <View style={styles.donePill}><Text style={styles.donePillText}>Tamamlandı</Text></View>
+                <View style={styles.donePill}><Text style={styles.donePillText}>{t('missions.done')}</Text></View>
               ) : (
                 <TouchableOpacity activeOpacity={0.9} style={styles.startBtn}>
-                  <Text style={styles.startBtnText}>Başla</Text>
+                  <Text style={styles.startBtnText}>{t('missions.start')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -93,15 +95,15 @@ export default function MissionProgressScreen() {
 
         {/* Rewards */}
         <View style={{ gap: 16, marginTop: 8 }}>
-          <Text style={styles.sectionTitle}>Gündəlik Mükafatlar</Text>
+          <Text style={styles.sectionTitle}>{t('missions.rewardsTitle')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingRight: 16 }}>
             {REWARDS.map((r) => (
               <View key={r.id} style={[styles.rewardCard, r.locked && { opacity: 0.55 }]}>
                 <View style={styles.rewardIcon}>
                   <Ionicons name={r.icon} size={28} color={r.color} />
                 </View>
-                <Text style={styles.rewardTitle}>{r.title}</Text>
-                <Text style={styles.rewardSub}>{r.sub}</Text>
+                <Text style={styles.rewardTitle}>{t(r.titleKey)}</Text>
+                <Text style={styles.rewardSub}>{t(r.subKey)}</Text>
               </View>
             ))}
           </ScrollView>

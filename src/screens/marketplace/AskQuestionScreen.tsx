@@ -23,6 +23,7 @@ import { Colors } from '../../constants/colors';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createQuestion } from '../../api/marketplace.api';
 import { getWallet } from '../../api/payment.api';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<MarketplaceStackParamList, typeof Routes.AskQuestion> };
 
@@ -30,6 +31,7 @@ const SUBJECTS = ['Riyaziyyat', 'Azərbaycan dili', 'Fizika', 'Kimya', 'Biologiy
 const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif'];
 
 export default function AskQuestionScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [subject, setSubject] = useState<string | null>(null);
   const [grade, setGrade] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -46,7 +48,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
 
   const { mutate: submit, isPending } = useMutation({
     mutationFn: () => createQuestion({
-      title: `${subject ?? 'Sual'}${grade ? ` • ${grade}` : ''} — ${text.trim().slice(0, 60)}`,
+      title: `${subject ?? t('marketplace.defaultQuestionWord')}${grade ? ` • ${grade}` : ''} — ${text.trim().slice(0, 60)}`,
       body: text.trim(),
       subject: subject ?? 'general',
       price,
@@ -54,7 +56,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
     onSuccess: (q) => {
       navigation.navigate(Routes.AISolution, { question: text.trim(), questionId: q.id });
     },
-    onError: () => Alert.alert('Xəta', 'Sual göndərilmədi. Yenidən cəhd edin.'),
+    onError: () => Alert.alert(t('marketplace.errorTitle'), t('marketplace.submitFail')),
   });
 
   useEffect(() => {
@@ -77,9 +79,9 @@ export default function AskQuestionScreen({ navigation }: Props) {
   }, [isPending]);
 
   const handleSubmit = () => {
-    if (!subject) { Alert.alert('Fənn seçin', 'Zəhmət olmasa fənni seçin.'); return; }
+    if (!subject) { Alert.alert(t('marketplace.errSubject'), t('marketplace.errSubjectMsg')); return; }
     if (text.trim().length < 5) {
-      Alert.alert('Sual qısa', 'Zəhmət olmasa daha ətraflı sual yazın (minimum 5 simvol).');
+      Alert.alert(t('marketplace.errShort'), t('marketplace.errShortMsg'));
       return;
     }
     if (balance < price) { setShowBalanceModal(true); return; }
@@ -107,9 +109,9 @@ export default function AskQuestionScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
-        <Text style={styles.aiLoadingTitle}>Kimi AI sualı təhlil edir...</Text>
+        <Text style={styles.aiLoadingTitle}>{t('marketplace.aiAnalyzing')}</Text>
         <Text style={styles.aiLoadingSub}>
-          Sizin üçün ən dəqiq və faydalı cavabı hazırlayırıq. Bir az gözləyin.
+          {t('marketplace.aiAnalyzingSub')}
         </Text>
       </View>
     );
@@ -128,7 +130,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
             >
               <Ionicons name="hardware-chip" size={18} color="#fff" />
             </LinearGradient>
-            <Text style={styles.headerTitle}>Sual Paylaş</Text>
+            <Text style={styles.headerTitle}>{t('marketplace.askHeader')}</Text>
           </View>
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="close" size={22} color={Colors.textSecondary} />
@@ -137,9 +139,9 @@ export default function AskQuestionScreen({ navigation }: Props) {
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.hero}>
-            <Text style={styles.heroTitle}>Zəkanın köməyi ilə öyrən</Text>
+            <Text style={styles.heroTitle}>{t('marketplace.askHeroTitle')}</Text>
             <Text style={styles.heroSub}>
-              Sualını paylaş, həm süni intellekt, həm də peşəkar müəllimlər sənə anlaşıqlı izahlar təqdim etsin.
+              {t('marketplace.askHeroSub')}
             </Text>
           </View>
 
@@ -147,49 +149,49 @@ export default function AskQuestionScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.uploadCard}
               activeOpacity={0.85}
-              onPress={() => Alert.alert('Kamera', 'Kamera inteqrasiyası tezliklə əlavə olunacaq')}
+              onPress={() => Alert.alert(t('marketplace.cameraTitle'), t('marketplace.cameraSoon'))}
             >
               <View style={styles.uploadIconBox}>
                 <Ionicons name="camera-outline" size={28} color={Colors.primary} />
               </View>
-              <Text style={styles.uploadLabel}>Şəkil çək</Text>
+              <Text style={styles.uploadLabel}>{t('marketplace.takePhoto')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.uploadCard}
               activeOpacity={0.85}
-              onPress={() => Alert.alert('Qalereya', 'Qalereya inteqrasiyası tezliklə əlavə olunacaq')}
+              onPress={() => Alert.alert(t('marketplace.galleryTitle'), t('marketplace.gallerySoon'))}
             >
               <View style={styles.uploadIconBox}>
                 <Ionicons name="cloud-upload-outline" size={28} color={Colors.primary} />
               </View>
-              <Text style={styles.uploadLabel}>Şəkil yüklə</Text>
+              <Text style={styles.uploadLabel}>{t('marketplace.uploadPhoto')}</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.formCard}>
             <View style={styles.fieldRow}>
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Fənn</Text>
+                <Text style={styles.fieldLabel}>{t('marketplace.subjectLabel')}</Text>
                 <TouchableOpacity
                   style={styles.select}
                   activeOpacity={0.7}
                   onPress={() => setPickerOpen('subject')}
                 >
                   <Text style={[styles.selectText, !subject && styles.selectPlaceholder]}>
-                    {subject ?? 'Fənni seçin'}
+                    {subject ?? t('marketplace.selectSubject')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={Colors.outline} />
                 </TouchableOpacity>
               </View>
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Sinif</Text>
+                <Text style={styles.fieldLabel}>{t('marketplace.gradeLabel')}</Text>
                 <TouchableOpacity
                   style={styles.select}
                   activeOpacity={0.7}
                   onPress={() => setPickerOpen('grade')}
                 >
                   <Text style={[styles.selectText, !grade && styles.selectPlaceholder]}>
-                    {grade ?? 'Sinfi seçin'}
+                    {grade ?? t('marketplace.selectGrade')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={Colors.outline} />
                 </TouchableOpacity>
@@ -197,10 +199,10 @@ export default function AskQuestionScreen({ navigation }: Props) {
             </View>
 
             <View>
-              <Text style={styles.fieldLabel}>Açıqlama</Text>
+              <Text style={styles.fieldLabel}>{t('marketplace.descriptionLabel')}</Text>
               <TextInput
                 style={styles.textArea}
-                placeholder="Sual haqqında əlavə qeydləriniz..."
+                placeholder={t('marketplace.descPlaceholder')}
                 placeholderTextColor={Colors.textMuted}
                 value={text}
                 onChangeText={setText}
@@ -212,7 +214,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
 
             <View style={styles.urgentRow}>
               <View style={styles.urgentLeft}>
-                <Text style={styles.urgentTitle}>Təcili cavab istəyirəm</Text>
+                <Text style={styles.urgentTitle}>{t('marketplace.urgentAnswer')}</Text>
                 <Ionicons name="information-circle-outline" size={16} color={Colors.outline} />
               </View>
               <Switch
@@ -227,7 +229,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
           <View style={styles.priceCard}>
             <View style={styles.priceLeft}>
               <Ionicons name="cash-outline" size={20} color={Colors.primary} />
-              <Text style={styles.priceLabel}>Bu sual üçün:</Text>
+              <Text style={styles.priceLabel}>{t('marketplace.forThisQuestion')}</Text>
             </View>
             <Text style={styles.priceValue}>{price.toFixed(2)} AZN</Text>
           </View>
@@ -239,7 +241,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.submitText}>Paylaş</Text>
+              <Text style={styles.submitText}>{t('marketplace.shareBtn')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
@@ -257,7 +259,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
           >
             <View style={styles.pickerSheet}>
               <Text style={styles.pickerTitle}>
-                {pickerOpen === 'subject' ? 'Fənni seçin' : 'Sinfi seçin'}
+                {pickerOpen === 'subject' ? t('marketplace.selectSubject') : t('marketplace.selectGrade')}
               </Text>
               <ScrollView>
                 {(pickerOpen === 'subject' ? SUBJECTS : GRADES).map((opt) => (
@@ -298,12 +300,12 @@ export default function AskQuestionScreen({ navigation }: Props) {
                 </LinearGradient>
               </View>
               <View style={styles.modalBody}>
-                <Text style={styles.modalTitle}>Balans kifayət deyil</Text>
+                <Text style={styles.modalTitle}>{t('marketplace.balanceInsufficient')}</Text>
                 <Text style={styles.modalSub}>
-                  Sual vermək üçün balansınızda kifayət qədər vəsait yoxdur. Zəhmət olmasa balansınızı artırın.
+                  {t('marketplace.balanceInsufficientSub')}
                 </Text>
                 <View style={styles.balanceDisplay}>
-                  <Text style={styles.balanceDisplayLabel}>Mövcud balans:</Text>
+                  <Text style={styles.balanceDisplayLabel}>{t('marketplace.currentBalance')}</Text>
                   <Text style={styles.balanceDisplayValue}>{balance.toFixed(2)} ₼</Text>
                 </View>
                 <TouchableOpacity
@@ -320,7 +322,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.modalPrimaryBtnText}>Balans artır</Text>
+                    <Text style={styles.modalPrimaryBtnText}>{t('marketplace.topUp')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -328,7 +330,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
                   onPress={() => setShowBalanceModal(false)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.modalSecondaryBtnText}>Ləğv et</Text>
+                  <Text style={styles.modalSecondaryBtnText}>{t('marketplace.cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </View>

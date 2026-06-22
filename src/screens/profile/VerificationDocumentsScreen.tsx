@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -14,19 +15,20 @@ type DocStatus = 'empty' | 'uploaded' | 'missing';
 type DocItem = {
   id: string;
   icon: string;
-  title: string;
+  titleKey: string;
   optional?: boolean;
   status: DocStatus;
 };
 
 const DOCS: DocItem[] = [
-  { id: '1', icon: 'card-outline', title: 'Şəxsiyyət vəsiqəsi', status: 'missing' },
-  { id: '2', icon: 'school-outline', title: 'Diplom / sertifikat', status: 'missing' },
-  { id: '3', icon: 'document-outline', title: 'Digər sənəd', optional: true, status: 'empty' },
+  { id: '1', icon: 'card-outline', titleKey: 'verificationDocuments.doc1Title', status: 'missing' },
+  { id: '2', icon: 'school-outline', titleKey: 'verificationDocuments.doc2Title', status: 'missing' },
+  { id: '3', icon: 'document-outline', titleKey: 'verificationDocuments.doc3Title', optional: true, status: 'empty' },
 ];
 
 export default function VerificationDocumentsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -34,7 +36,7 @@ export default function VerificationDocumentsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sənədlərin Təsdiqi</Text>
+        <Text style={styles.headerTitle}>{t('verificationDocuments.headerTitle')}</Text>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7}>
           <Ionicons name="help-circle-outline" size={22} color={Colors.textMuted} />
         </TouchableOpacity>
@@ -44,8 +46,8 @@ export default function VerificationDocumentsScreen() {
         {/* Welcome card */}
         <View style={styles.welcomeCard}>
           <View style={styles.welcomeText}>
-            <Text style={styles.welcomeTitle}>Salam, Müəllim!</Text>
-            <Text style={styles.welcomeSub}>Sənədlərinizi yükləyərək profilinizi rəsmiləşdirin.</Text>
+            <Text style={styles.welcomeTitle}>{t('verificationDocuments.welcomeTitle')}</Text>
+            <Text style={styles.welcomeSub}>{t('verificationDocuments.welcomeSub')}</Text>
           </View>
           <View style={styles.welcomeIcon}>
             <LinearGradient colors={GRADIENT} style={styles.welcomeIconBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -67,8 +69,8 @@ export default function VerificationDocumentsScreen() {
               </View>
               <View style={styles.docInfo}>
                 <View style={styles.docTitleRow}>
-                  <Text style={styles.docTitle}>{doc.title}</Text>
-                  {doc.optional && <Text style={styles.docOptional}>(isteğe bağlı)</Text>}
+                  <Text style={styles.docTitle}>{t(doc.titleKey)}</Text>
+                  {doc.optional && <Text style={styles.docOptional}>{t('verificationDocuments.optional')}</Text>}
                 </View>
                 <View style={styles.docMeta}>
                   <View style={styles.formatChip}>
@@ -87,7 +89,7 @@ export default function VerificationDocumentsScreen() {
                       doc.status === 'uploaded' && styles.statusTextSuccess,
                       doc.status === 'empty' && styles.statusTextNeutral,
                     ]}>
-                      {doc.status === 'missing' ? 'Yüklənməyib' : doc.status === 'uploaded' ? 'Yükləndi' : 'Boş'}
+                      {doc.status === 'missing' ? t('verificationDocuments.statusMissing') : doc.status === 'uploaded' ? t('verificationDocuments.statusUploaded') : t('verificationDocuments.statusEmpty')}
                     </Text>
                   </View>
                 </View>
@@ -97,7 +99,7 @@ export default function VerificationDocumentsScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={[styles.uploadBtnText, doc.status === 'empty' && styles.uploadBtnTextNeutral]}>
-                  Yüklə
+                  {t('verificationDocuments.upload')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -106,15 +108,15 @@ export default function VerificationDocumentsScreen() {
 
         {/* Disclaimer */}
         <Text style={styles.disclaimer}>
-          Təsdiqə göndərməklə siz{' '}
-          <Text style={styles.disclaimerLink}>istifadə şərtlərini</Text>
-          {' '}və məlumatlarınızın emal olunmasını qəbul edirsiniz.
+          {t('verificationDocuments.disclaimerPre')}
+          <Text style={styles.disclaimerLink}>{t('verificationDocuments.disclaimerLink')}</Text>
+          {t('verificationDocuments.disclaimerPost')}
         </Text>
 
         {/* Submit button */}
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.VerificationPending)}>
           <LinearGradient colors={GRADIENT} style={styles.submitBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.submitBtnText}>Təsdiqə göndər</Text>
+            <Text style={styles.submitBtnText}>{t('verificationDocuments.submit')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>

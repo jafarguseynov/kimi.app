@@ -7,9 +7,16 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.AIExamRecommendations>;
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+const DIFFICULTY_TKEY: Record<string, string> = {
+  Asan: 'examList.diff.easy',
+  Orta: 'examList.diff.medium',
+  Çətin: 'examList.diff.hard',
+};
 
 type AiTag = 'AI SEÇİMİ' | 'YENİ';
 
@@ -38,6 +45,7 @@ const DIFFICULTY_COLOR: Record<Rec['difficulty'], string> = {
 };
 
 export default function AIExamRecommendationsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const readyPct = 82;
 
   return (
@@ -46,7 +54,7 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>İmtahanlar</Text>
+        <Text style={styles.headerTitle}>{t('examList.title')}</Text>
         <Text style={styles.brand}>Kimi.az</Text>
       </View>
 
@@ -55,10 +63,10 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
         <View style={styles.heroWrap}>
           <View style={styles.heroBlob} pointerEvents="none" />
           <Text style={styles.heroTitle}>
-            Sənin üçün <Text style={{ color: Colors.primary }}>ən yaxşı</Text> sınaqlar!
+            {t('aiRec.heroPre')}<Text style={{ color: Colors.primary }}>{t('aiRec.heroEm')}</Text>{t('aiRec.heroPost')}
           </Text>
           <Text style={styles.heroSub}>
-            AI sənin performansını analiz edərək bu imtahanları seçdi.
+            {t('aiRec.heroSub')}
           </Text>
         </View>
 
@@ -67,8 +75,8 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
           <View style={styles.analysisIconBox}>
             <Ionicons name="analytics" size={22} color={Colors.primary} />
           </View>
-          <Text style={styles.analysisKicker}>HAZIRLIQ SƏVİYYƏSİ</Text>
-          <Text style={styles.analysisTitle}>Analiz: {readyPct}% hazır</Text>
+          <Text style={styles.analysisKicker}>{t('aiRec.readyLevel')}</Text>
+          <Text style={styles.analysisTitle}>{t('aiRec.analysis', { n: readyPct })}</Text>
           <View style={styles.progressTrack}>
             <LinearGradient
               colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -79,9 +87,9 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
 
         {/* Section header */}
         <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>Sənə uyğun imtahanlar</Text>
+          <Text style={styles.sectionTitle}>{t('aiRec.forYou')}</Text>
           <TouchableOpacity activeOpacity={0.7}>
-            <Text style={styles.sectionMore}>Buna da bax →</Text>
+            <Text style={styles.sectionMore}>{t('aiRec.seeMore')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -89,8 +97,10 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
         <View style={{ gap: 24 }}>
           {RECS.map((r) => {
             const diffColor = DIFFICULTY_COLOR[r.difficulty];
-            const tagBg = r.tag === 'AI SEÇİMİ' ? '#DCFCE7' : Colors.primary + '33';
-            const tagFg = r.tag === 'AI SEÇİMİ' ? Colors.tertiary : Colors.primary;
+            const isAiPick = r.tag === 'AI SEÇİMİ';
+            const tagBg = isAiPick ? '#DCFCE7' : Colors.primary + '33';
+            const tagFg = isAiPick ? Colors.tertiary : Colors.primary;
+            const tagLabel = isAiPick ? t('aiRec.tagAi') : t('aiRec.tagNew');
             return (
               <View key={r.id} style={styles.recCard}>
                 <View style={styles.recTopRow}>
@@ -100,8 +110,8 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
                         <Text style={styles.subjectChipText}>{r.subject}</Text>
                       </View>
                       <View style={[styles.aiChip, { backgroundColor: tagBg }]}>
-                        {r.tag === 'AI SEÇİMİ' && <Ionicons name="sparkles" size={12} color={tagFg} />}
-                        <Text style={[styles.aiChipText, { color: tagFg }]}>{r.tag}</Text>
+                        {isAiPick && <Ionicons name="sparkles" size={12} color={tagFg} />}
+                        <Text style={[styles.aiChipText, { color: tagFg }]}>{tagLabel}</Text>
                       </View>
                     </View>
                     <Text style={styles.recTitle}>{r.title}</Text>
@@ -114,15 +124,15 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
                 <View style={styles.metaRow}>
                   <View style={styles.metaItem}>
                     <Ionicons name="time-outline" size={14} color={Colors.textSecondary} />
-                    <Text style={styles.metaText}>{r.durationMin} dəq</Text>
+                    <Text style={styles.metaText}>{t('aiRec.nMin', { n: r.durationMin })}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Ionicons name="bar-chart-outline" size={14} color={diffColor} />
-                    <Text style={[styles.metaText, { color: diffColor, fontWeight: '700' }]}>{r.difficulty}</Text>
+                    <Text style={[styles.metaText, { color: diffColor, fontWeight: '700' }]}>{t(DIFFICULTY_TKEY[r.difficulty])}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Ionicons name="help-circle-outline" size={14} color={Colors.textSecondary} />
-                    <Text style={styles.metaText}>{r.questions} sual</Text>
+                    <Text style={styles.metaText}>{t('aiRec.nQuestions', { n: r.questions })}</Text>
                   </View>
                 </View>
 
@@ -131,7 +141,7 @@ export default function AIExamRecommendationsScreen({ navigation }: Props) {
                   onPress={() => navigation.navigate(Routes.ExamInfo, { examId: r.id, title: r.title })}
                 >
                   <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-                    <Text style={styles.startBtnText}>Başla</Text>
+                    <Text style={styles.startBtnText}>{t('aiRec.start')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>

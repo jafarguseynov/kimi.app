@@ -8,6 +8,7 @@ import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useSettingsStore } from '../../store/settings.store';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.NotificationSettings>;
@@ -18,8 +19,8 @@ type NotifItem = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   iconBg: string;
   iconColor: string;
-  title: string;
-  sub: string;
+  titleKey: string;
+  subKey: string;
   isPremium?: boolean;
   isGradient?: boolean;
   defaultOn: boolean;
@@ -29,43 +30,43 @@ const ITEMS: NotifItem[] = [
   {
     id: 'exam', icon: 'help-circle-outline',
     iconBg: Colors.primaryFixed + '33', iconColor: Colors.primary,
-    title: 'İmtahan bildirişləri', sub: 'Yaxınlaşan imtahanlar və nəticələr haqqında',
+    titleKey: 'notifSettings.examTitle', subKey: 'notifSettings.examSub',
     defaultOn: true,
   },
   {
     id: 'competition', icon: 'trophy-outline',
     iconBg: Colors.tertiaryContainer + '33', iconColor: Colors.tertiary,
-    title: 'Yarış bildirişləri', sub: 'Yeni turnirlər və liderlik cədvəli yenilikləri',
+    titleKey: 'notifSettings.compTitle', subKey: 'notifSettings.compSub',
     defaultOn: true,
   },
   {
     id: 'chat', icon: 'chatbubbles-outline',
     iconBg: Colors.secondaryContainer + '4D', iconColor: Colors.secondary,
-    title: 'Chat bildirişləri', sub: 'Müəllim və həmyaşıdlardan gələn mesajlar',
+    titleKey: 'notifSettings.chatTitle', subKey: 'notifSettings.chatSub',
     defaultOn: true,
   },
   {
     id: 'referral', icon: 'people-outline',
     iconBg: Colors.warningLight, iconColor: Colors.warning,
-    title: 'Referal bildirişləri', sub: 'Dəvət etdiyiniz dostlarınız qeydiyyatdan keçdikdə',
+    titleKey: 'notifSettings.referralTitle', subKey: 'notifSettings.referralSub',
     defaultOn: false,
   },
   {
     id: 'lesson', icon: 'book-outline',
     iconBg: Colors.primaryFixed + '33', iconColor: Colors.primary,
-    title: 'Dərs tələbi bildirişləri', sub: 'Yeni dərs materialları və tapşırıq müraciətləri',
+    titleKey: 'notifSettings.lessonTitle', subKey: 'notifSettings.lessonSub',
     defaultOn: true,
   },
   {
     id: 'daily', icon: 'alarm-outline',
     iconBg: '#FEF9C3', iconColor: '#A16207',
-    title: 'Gündəlik xatırlatmalar', sub: 'Öyrənmə hədəflərinizə çatmaq üçün xatırlatmalar',
+    titleKey: 'notifSettings.dailyTitle', subKey: 'notifSettings.dailySub',
     defaultOn: true,
   },
   {
     id: 'ai', icon: 'hardware-chip-outline',
     iconBg: Colors.primary, iconColor: '#fff',
-    title: 'AI tövsiyələri', sub: 'Süni intellekt əsaslı fərdi öyrənmə yolları',
+    titleKey: 'notifSettings.aiTitle', subKey: 'notifSettings.aiSub',
     isPremium: true, isGradient: true, defaultOn: true,
   },
 ];
@@ -73,14 +74,15 @@ const ITEMS: NotifItem[] = [
 const DEFAULTS = Object.fromEntries(ITEMS.map(i => [i.id, i.defaultOn])) as Record<string, boolean>;
 
 export default function NotificationSettingsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { notificationPrefs, setNotificationPrefs } = useSettingsStore();
   const [toggles, setToggles] = useState<Record<string, boolean>>({ ...DEFAULTS, ...notificationPrefs });
   const flip = (id: string) => setToggles(p => ({ ...p, [id]: !p[id] }));
   const reset = () => setToggles(DEFAULTS);
   const save = () => {
     setNotificationPrefs(toggles);
-    Alert.alert('Yadda saxlanıldı', 'Bildiriş tənzimləmələriniz tətbiq edildi.', [
-      { text: 'OK', onPress: () => navigation.goBack() },
+    Alert.alert(t('notifSettings.savedTitle'), t('notifSettings.savedMsg'), [
+      { text: t('notifSettings.ok'), onPress: () => navigation.goBack() },
     ]);
   };
 
@@ -90,15 +92,15 @@ export default function NotificationSettingsScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bildiriş tənzimləmələri</Text>
+        <Text style={styles.headerTitle}>{t('notifSettings.headerTitle')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.heroCard}>
-          <Text style={styles.heroTitle}>Fərdi Bildirişlər</Text>
+          <Text style={styles.heroTitle}>{t('notifSettings.heroTitle')}</Text>
           <Text style={styles.heroSub}>
-            Öyrənmə təcrübənizi idarə etmək üçün bildiriş üstünlüklərinizi aşağıdan tənzimləyin.
+            {t('notifSettings.heroSub')}
           </Text>
         </View>
 
@@ -124,14 +126,14 @@ export default function NotificationSettingsScreen({ navigation }: Props) {
               )}
               <View style={styles.rowText}>
                 <View style={styles.rowTitleRow}>
-                  <Text style={styles.rowTitle}>{item.title}</Text>
+                  <Text style={styles.rowTitle}>{t(item.titleKey)}</Text>
                   {item.isPremium && (
                     <View style={styles.premiumBadge}>
-                      <Text style={styles.premiumBadgeText}>PREMIUM</Text>
+                      <Text style={styles.premiumBadgeText}>{t('notifSettings.premium')}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.rowSub}>{item.sub}</Text>
+                <Text style={styles.rowSub}>{t(item.subKey)}</Text>
               </View>
               <Switch
                 value={toggles[item.id]}
@@ -151,11 +153,11 @@ export default function NotificationSettingsScreen({ navigation }: Props) {
               style={styles.saveBtn}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
             >
-              <Text style={styles.saveBtnText}>Yadda saxla</Text>
+              <Text style={styles.saveBtnText}>{t('notifSettings.save')}</Text>
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.resetBtn} activeOpacity={0.7} onPress={reset}>
-            <Text style={styles.resetBtnText}>Sıfırla</Text>
+            <Text style={styles.resetBtnText}>{t('notifSettings.reset')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

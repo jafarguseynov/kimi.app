@@ -8,6 +8,7 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useExamCategories } from '../../hooks/useExamCategories';
+import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamCategories>;
 
@@ -21,6 +22,7 @@ interface Category {
 
 const CATEGORIES: Category[] = [
   { key: 'middle',        title: 'Orta Məktəb',   desc: '1–11-ci sinif imtahanları',      emoji: '📘',     bg: '#EFF6FF' },
+  { key: 'russian',       title: 'Rus bölməsi',   desc: 'Rus sektoru · 1–11 + abituriyent', emoji: '🇷🇺',  bg: '#EEF2FF' },
   { key: 'abituriyent',   title: 'Abituriyent',   desc: 'DİM bakalavriat I–V qrup',       emoji: '🎓',     bg: '#FFFBEB' },
   { key: 'magistr',       title: 'Magistratura',  desc: 'Magistr hazırlıq',               emoji: '📚',     bg: '#F5F3FF' },
   { key: 'miq',           title: 'MIQ',           desc: 'Müəllimlərin işə qəbulu',        emoji: '👨‍🏫', bg: '#ECFDF5' },
@@ -38,16 +40,33 @@ const CATEGORIES: Category[] = [
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function ExamCategoriesScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const remote = useExamCategories();
+
+  // Açar üzrə tərcümə varsa onu götür, yoxsa backend/statik başlığa düş.
+  const tOr = (key: string, fallback: string) => {
+    const hit = t(key);
+    return hit === key ? fallback : hit;
+  };
+
   const categories: Category[] = remote
     ? remote.map((c) => ({
         key: c.key,
-        title: c.title,
-        desc: c.description ?? '',
+        title: tOr(`examCat.${c.key}.title`, c.title),
+        desc: tOr(`examCat.${c.key}.desc`, c.description ?? ''),
         emoji: c.emoji ?? '📂',
         bg: c.bg ?? '#EFF6FF',
       }))
-    : CATEGORIES;
+    : CATEGORIES.map((c) => ({
+        ...c,
+        title: tOr(`examCat.${c.key}.title`, c.title),
+        desc: tOr(`examCat.${c.key}.desc`, c.desc),
+      }));
+
+  // "Sınaqlar" (mock) kateqoriyasını ən yuxarı çıxar — qalanların sırası dəyişmir.
+  const orderedCategories = categories
+    .slice()
+    .sort((a, b) => (b.key === 'mock' ? 1 : 0) - (a.key === 'mock' ? 1 : 0));
 
   const openCategory = (cat: Category) => {
     navigation.navigate(Routes.CategorySubcategories, { categoryKey: cat.key, categoryTitle: cat.title });
@@ -64,7 +83,7 @@ export default function ExamCategoriesScreen({ navigation }: Props) {
             <View style={styles.brandIcon}>
               <Text style={{ fontSize: 18 }}>🤖</Text>
             </View>
-            <Text style={styles.headerTitle}>Kateqoriyalar</Text>
+            <Text style={styles.headerTitle}>{t('examCat.headerTitle')}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8} onPress={() => (navigation.getParent() as any)?.navigate('Home', { screen: Routes.Notifications })}>
@@ -75,16 +94,16 @@ export default function ExamCategoriesScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero intro */}
         <View style={styles.heroIntro}>
-          <Text style={styles.heroKicker}>İmtahan Mərkəzi</Text>
+          <Text style={styles.heroKicker}>{t('examCat.kicker')}</Text>
           <Text style={styles.heroTitle}>
-            Gələcəyini{'\n'}
-            <Text style={{ color: Colors.primary }}>bizimlə planla.</Text>
+            {t('examCat.heroTitleLine1')}{'\n'}
+            <Text style={{ color: Colors.primary }}>{t('examCat.heroTitleLine2')}</Text>
           </Text>
         </View>
 
         {/* Bento grid */}
         <View style={styles.grid}>
-          {categories.map((c) => (
+          {orderedCategories.map((c) => (
             <View key={c.key} style={styles.card}>
               <View style={[styles.iconBox, { backgroundColor: c.bg }]}>
                 <Text style={{ fontSize: 22 }}>{c.emoji}</Text>
@@ -97,7 +116,7 @@ export default function ExamCategoriesScreen({ navigation }: Props) {
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   style={styles.cardCta}
                 >
-                  <Text style={styles.cardCtaText}>Daxil ol</Text>
+                  <Text style={styles.cardCtaText}>{t('examCat.enter')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -109,12 +128,12 @@ export default function ExamCategoriesScreen({ navigation }: Props) {
           <View style={styles.featuredGlow} pointerEvents="none" />
           <View style={styles.featuredLiveRow}>
             <View style={styles.livePulse} />
-            <Text style={styles.featuredKicker}>YENİ KURSLAR</Text>
+            <Text style={styles.featuredKicker}>{t('examCat.featuredKicker')}</Text>
           </View>
-          <Text style={styles.featuredTitle}>Robotika Dünyası</Text>
-          <Text style={styles.featuredDesc}>AI və Robotika haqqında öyrənməyə elə indi başla.</Text>
+          <Text style={styles.featuredTitle}>{t('examCat.featuredTitle')}</Text>
+          <Text style={styles.featuredDesc}>{t('examCat.featuredDesc')}</Text>
           <TouchableOpacity style={styles.featuredBtn} activeOpacity={0.85}>
-            <Text style={styles.featuredBtnText}>Ətraflı</Text>
+            <Text style={styles.featuredBtnText}>{t('examCat.featuredBtn')}</Text>
           </TouchableOpacity>
           <View style={styles.featuredRobotIcon} pointerEvents="none">
             <Ionicons name="hardware-chip" size={96} color={Colors.primary} />

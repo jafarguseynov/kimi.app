@@ -12,12 +12,14 @@ import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { changePassword } from '../../api/auth.api';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, typeof Routes.ChangePassword>;
 };
 
 export default function ChangePasswordScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState('');
   const [newPass, setNewPass] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -28,13 +30,13 @@ export default function ChangePasswordScreen({ navigation }: Props) {
   const { mutate, isPending } = useMutation({
     mutationFn: () => changePassword({ currentPassword: current, newPassword: newPass }),
     onSuccess: () => navigation.navigate(Routes.PasswordChanged),
-    onError: (e: any) => Alert.alert('Xəta', e?.response?.data?.message || 'Şifrə dəyişdirilə bilmədi'),
+    onError: (e: any) => Alert.alert(t('changePassword.errorTitle'), e?.response?.data?.message || t('changePassword.changeFailed')),
   });
 
   const onSubmit = () => {
-    if (!current) return Alert.alert('Cari şifrə', 'Cari şifrənizi daxil edin');
-    if (newPass.length < 8) return Alert.alert('Yeni şifrə', 'Yeni şifrə minimum 8 simvol olmalıdır');
-    if (newPass !== confirm) return Alert.alert('Təsdiq', 'Yeni şifrə və təsdiq uyğun gəlmir');
+    if (!current) return Alert.alert(t('changePassword.currentTitle'), t('changePassword.currentMsg'));
+    if (newPass.length < 8) return Alert.alert(t('changePassword.newTitle'), t('changePassword.newMsg'));
+    if (newPass !== confirm) return Alert.alert(t('changePassword.confirmTitle'), t('changePassword.confirmMsg'));
     mutate();
   };
 
@@ -46,7 +48,7 @@ export default function ChangePasswordScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Şifrəni dəyiş</Text>
+          <Text style={styles.headerTitle}>{t('changePassword.headerTitle')}</Text>
           <View style={{ width: 36 }} />
         </View>
 
@@ -61,9 +63,9 @@ export default function ChangePasswordScreen({ navigation }: Props) {
               <Ionicons name="key" size={30} color="#fff" />
             </LinearGradient>
             <View style={styles.securityText}>
-              <Text style={styles.securityTitle}>Təhlükəsizlik Ayarları</Text>
+              <Text style={styles.securityTitle}>{t('changePassword.securityTitle')}</Text>
               <Text style={styles.securitySub}>
-                Hesabınızın təhlükəsizliyini təmin etmək üçün güclü şifrə istifadə edin.
+                {t('changePassword.securitySub')}
               </Text>
             </View>
           </View>
@@ -72,13 +74,13 @@ export default function ChangePasswordScreen({ navigation }: Props) {
           <View style={styles.formCard}>
             {/* Current password */}
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Cari şifrə</Text>
+              <Text style={styles.fieldLabel}>{t('changePassword.currentLabel')}</Text>
               <View style={styles.inputWrap}>
                 <TextInput
                   style={styles.input}
                   value={current}
                   onChangeText={setCurrent}
-                  placeholder="Cari şifrənizi daxil edin"
+                  placeholder={t('changePassword.currentPlaceholder')}
                   placeholderTextColor={Colors.textMuted}
                   secureTextEntry={!showCurrent}
                 />
@@ -90,13 +92,13 @@ export default function ChangePasswordScreen({ navigation }: Props) {
 
             {/* New password */}
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Yeni şifrə</Text>
+              <Text style={styles.fieldLabel}>{t('changePassword.newLabel')}</Text>
               <View style={styles.inputWrap}>
                 <TextInput
                   style={styles.input}
                   value={newPass}
                   onChangeText={setNewPass}
-                  placeholder="Yeni şifrənizi daxil edin"
+                  placeholder={t('changePassword.newPlaceholder')}
                   placeholderTextColor={Colors.textMuted}
                   secureTextEntry={!showNew}
                 />
@@ -113,13 +115,13 @@ export default function ChangePasswordScreen({ navigation }: Props) {
 
             {/* Confirm password */}
             <View style={styles.fieldBlock}>
-              <Text style={styles.fieldLabel}>Yeni şifrəni təsdiqlə</Text>
+              <Text style={styles.fieldLabel}>{t('changePassword.confirmLabel')}</Text>
               <View style={styles.inputWrap}>
                 <TextInput
                   style={styles.input}
                   value={confirm}
                   onChangeText={setConfirm}
-                  placeholder="Yeni şifrənizi təsdiqləyin"
+                  placeholder={t('changePassword.confirmPlaceholder')}
                   placeholderTextColor={Colors.textMuted}
                   secureTextEntry={!showConfirm}
                 />
@@ -137,17 +139,17 @@ export default function ChangePasswordScreen({ navigation }: Props) {
                   style={styles.submitBtn}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 >
-                  {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>Şifrəni dəyiş</Text>}
+                  {isPending ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{t('changePassword.submit')}</Text>}
                 </LinearGradient>
               </TouchableOpacity>
               <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-                <Text style={styles.cancelBtnText}>Ləğv et</Text>
+                <Text style={styles.cancelBtnText}>{t('changePassword.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           <Text style={styles.footerNote}>
-            Şifrənizi dəyişdikdən sonra bütün digər cihazlarda hesabınızdan çıxış ediləcək.
+            {t('changePassword.footerNote')}
           </Text>
         </ScrollView>
       </SafeAreaView>

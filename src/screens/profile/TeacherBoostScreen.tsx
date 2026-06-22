@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { boostTeacher } from '../../api/user.api';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -16,19 +17,22 @@ interface BoostPackage {
   id: string;
   days: number;
   price: number;
-  title: string;
-  sub: string;
+  titleKey: string;
+  subKey: string;
   best?: boolean;
 }
 
 const PACKAGES: BoostPackage[] = [
-  { id: 'b-1', days: 1, price: 5, title: '1 Günlük Boost', sub: 'Sürətli görünürlük' },
-  { id: 'b-7', days: 7, price: 25, title: '7 Günlük Boost', sub: 'Ən populyar seçim', best: true },
-  { id: 'b-30', days: 30, price: 80, title: '30 Günlük Boost', sub: 'Maksimum görünürlük' },
+  { id: 'b-1', days: 1, price: 5, titleKey: 'teacherBoost.pkg1Title', subKey: 'teacherBoost.pkg1Sub' },
+  { id: 'b-7', days: 7, price: 25, titleKey: 'teacherBoost.pkg7Title', subKey: 'teacherBoost.pkg7Sub', best: true },
+  { id: 'b-30', days: 30, price: 80, titleKey: 'teacherBoost.pkg30Title', subKey: 'teacherBoost.pkg30Sub' },
 ];
+
+const DATE_LOCALE: Record<string, string> = { az: 'az-AZ', ru: 'ru-RU', en: 'en-US' };
 
 export default function TeacherBoostScreen() {
   const navigation = useNavigation<any>();
+  const { t, language } = useTranslation();
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<BoostPackage>(PACKAGES[1]);
 
@@ -36,14 +40,14 @@ export default function TeacherBoostScreen() {
     mutationFn: () => boostTeacher(selected.days),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
-      const until = new Date(data.featuredUntil).toLocaleDateString('az-AZ', { day: 'numeric', month: 'long' });
+      const until = new Date(data.featuredUntil).toLocaleDateString(DATE_LOCALE[language] ?? 'az-AZ', { day: 'numeric', month: 'long' });
       Alert.alert(
-        'Profiliniz irəli çəkildi! 🚀',
-        `Profiliniz ${until} tarixinə qədər müəllimlər siyahısının başında göstəriləcək.`,
-        [{ text: 'Əla', onPress: () => navigation.goBack() }],
+        t('teacherBoost.successTitle'),
+        t('teacherBoost.successBody', { until }),
+        [{ text: t('teacherBoost.great'), onPress: () => navigation.goBack() }],
       );
     },
-    onError: (err: any) => Alert.alert('Xəta', err?.response?.data?.message ?? 'Boost aktivləşdirilə bilmədi.'),
+    onError: (err: any) => Alert.alert(t('teacherBoost.errorTitle'), err?.response?.data?.message ?? t('teacherBoost.errorBody')),
   });
 
   return (
@@ -52,7 +56,7 @@ export default function TeacherBoostScreen() {
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profili İrəli Çək</Text>
+        <Text style={styles.headerTitle}>{t('teacherBoost.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -63,13 +67,13 @@ export default function TeacherBoostScreen() {
           <View style={styles.heroIcon}>
             <Ionicons name="rocket" size={32} color="#fff" />
           </View>
-          <Text style={styles.heroTitle}>Daha çox şagird səni tapsın</Text>
+          <Text style={styles.heroTitle}>{t('teacherBoost.heroTitle')}</Text>
           <Text style={styles.heroSub}>
-            Boost ilə profilin müəllimlər siyahısının ən başında, "İrəli çəkilmiş" nişanı ilə göstərilir.
+            {t('teacherBoost.heroSub')}
           </Text>
         </LinearGradient>
 
-        <Text style={styles.sectionTitle}>Paket seç</Text>
+        <Text style={styles.sectionTitle}>{t('teacherBoost.selectPackage')}</Text>
 
         {PACKAGES.map((p) => {
           const active = selected.id === p.id;
@@ -85,14 +89,14 @@ export default function TeacherBoostScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <View style={styles.pkgTitleRow}>
-                  <Text style={styles.pkgTitle}>{p.title}</Text>
+                  <Text style={styles.pkgTitle}>{t(p.titleKey)}</Text>
                   {p.best && (
                     <View style={styles.bestBadge}>
-                      <Text style={styles.bestBadgeText}>TÖVSİYƏ</Text>
+                      <Text style={styles.bestBadgeText}>{t('teacherBoost.recommended')}</Text>
                     </View>
                   )}
                 </View>
-                <Text style={styles.pkgSub}>{p.sub}</Text>
+                <Text style={styles.pkgSub}>{t(p.subKey)}</Text>
               </View>
               <View style={styles.priceWrap}>
                 <Text style={styles.priceNum}>{p.price}</Text>
@@ -109,14 +113,14 @@ export default function TeacherBoostScreen() {
             ) : (
               <>
                 <Ionicons name="flash" size={20} color="#fff" />
-                <Text style={styles.payBtnText}>{selected.price} AZN — İrəli çək</Text>
+                <Text style={styles.payBtnText}>{t('teacherBoost.payBtn', { price: selected.price })}</Text>
               </>
             )}
           </LinearGradient>
         </TouchableOpacity>
 
         <Text style={styles.note}>
-          Ödəniş birdəfəlikdir və seçilmiş müddət bitəndə avtomatik dayanır.
+          {t('teacherBoost.note')}
         </Text>
       </ScrollView>
     </SafeAreaView>

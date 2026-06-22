@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,12 +20,19 @@ import { useSubmitExam, useSubmitCollectionTest } from '../../hooks/useExams';
 import { formatTime } from '../../utils/formatters';
 import { hapticLight, hapticMedium, hapticSelection } from '../../utils/haptics';
 import { rf, rs } from '../../utils/responsive';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamSession> };
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
+// Alçaq ekranlar (məs. Samsung A5 2017 ~640dp hündürlük) — şaquli boşluqları
+// sıxlaşdır ki, sual + bütün variantlar ekrana sığsın.
+const { height: SCREEN_H } = Dimensions.get('window');
+const SHORT = SCREEN_H < 720;
+
 export default function ExamSessionScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const {
     questions,
     currentIndex,
@@ -47,19 +55,19 @@ export default function ExamSessionScreen({ navigation }: Props) {
   const isLast = currentIndex === questions.length - 1;
   const isFirst = currentIndex === 0;
   const progress = questions.length > 0 ? (currentIndex + 1) / questions.length : 0;
-  const questionLabel = `Sual ${String(currentIndex + 1).padStart(2, '0')}`;
+  const questionLabel = t('examSession.questionLabel', { n: String(currentIndex + 1).padStart(2, '0') });
 
   const submit = () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!examId) {
-      Alert.alert('Xəta', 'İmtahan sessiyası tapılmadı. Yenidən cəhd edin.');
+      Alert.alert(t('examSession.errorTitle'), t('examSession.noSession'));
       navigation.goBack();
       return;
     }
     const timeSpent = Math.max(0, durationSeconds - timeRemaining);
     const onSuccess = () => navigation.replace(Routes.ExamResult);
     const onError = (err: any) => {
-      Alert.alert('Xəta', err?.response?.data?.message ?? 'Nəticə saxlanıla bilmədi. Yenidən cəhd edin.');
+      Alert.alert(t('examSession.errorTitle'), err?.response?.data?.message ?? t('examSession.saveFailed'));
     };
     if (collectionId) {
       // İmtahan Bankı testi — bank endpoint-inə təqdim et
@@ -74,12 +82,12 @@ export default function ExamSessionScreen({ navigation }: Props) {
 
   const handleClose = () => {
     Alert.alert(
-      'İmtahandan çıxmaq istəyirsiniz?',
-      'Tərəqqiniz saxlanılmayacaq.',
+      t('examSession.exitTitle'),
+      t('examSession.exitMsg'),
       [
-        { text: 'Xeyr', style: 'cancel' },
+        { text: t('examSession.exitNo'), style: 'cancel' },
         {
-          text: 'Çıx',
+          text: t('examSession.exitYes'),
           style: 'destructive',
           onPress: () => {
             if (timerRef.current) clearInterval(timerRef.current);
@@ -117,7 +125,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
         >
           <Ionicons name="close" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>İmtahan</Text>
+        <Text style={styles.topBarTitle}>{t('examSession.title')}</Text>
         <View style={styles.timerBadge}>
           <Text style={[styles.timerText, timeRemaining < 60 && { color: Colors.danger }]}>
             {formatTime(timeRemaining)}
@@ -134,9 +142,17 @@ export default function ExamSessionScreen({ navigation }: Props) {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Question Badge */}
-        <View style={styles.questionBadge}>
-          <Text style={styles.questionBadgeText}>{questionLabel}</Text>
+        {/* Question Badge + fənn bloku (çoxfənnli sınaqda) */}
+        <View style={styles.badgeRow}>
+          <View style={styles.questionBadge}>
+            <Text style={styles.questionBadgeText}>{questionLabel}</Text>
+          </View>
+          {!!currentQuestion.section && (
+            <View style={styles.sectionBadge}>
+              <Ionicons name="book-outline" size={12} color={Colors.primary} />
+              <Text style={styles.sectionBadgeText}>{currentQuestion.section}</Text>
+            </View>
+          )}
         </View>
 
         {/* Question Card */}
@@ -175,16 +191,18 @@ export default function ExamSessionScreen({ navigation }: Props) {
           })}
         </View>
 
-        {/* AI Tip */}
+        {/* AI Tip — alçaq ekranlarda gizlət ki, variantlar tam görünsün */}
+        {!SHORT && (
         <View style={styles.aiTipCard}>
           <View style={styles.aiTipAvatar}>
             <Ionicons name="hardware-chip-outline" size={26} color={Colors.primary} />
           </View>
           <View style={styles.aiTipBody}>
-            <Text style={styles.aiTipLabel}>Kimi Robot İpucu</Text>
-            <Text style={styles.aiTipText}>Viyet teoremini xatırlamağa çalışın.</Text>
+            <Text style={styles.aiTipLabel}>{t('examSession.aiTipLabel')}</Text>
+            <Text style={styles.aiTipText}>{t('examSession.aiTipText')}</Text>
           </View>
         </View>
+        )}
       </ScrollView>
 
       {/* Bottom Navigation */}
@@ -195,7 +213,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
           activeOpacity={isFirst ? 1 : 0.8}
         >
           <Ionicons name="arrow-back-outline" size={16} color={isFirst ? Colors.textMuted : Colors.textSecondary} />
-          <Text style={[styles.navBtnTextBack, isFirst && { color: Colors.textMuted }]}>Geri</Text>
+          <Text style={[styles.navBtnTextBack, isFirst && { color: Colors.textMuted }]}>{t('examSession.back')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -210,7 +228,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
             end={{ x: 1, y: 0 }}
           >
             <Text style={styles.navBtnTextNext}>
-              {(isPending || isPendingCollection) ? 'Yüklənir...' : isLast ? 'Bitir' : 'Növbəti'}
+              {(isPending || isPendingCollection) ? t('examSession.loading') : isLast ? t('examSession.finish') : t('examSession.next')}
             </Text>
             {!isLast && <Ionicons name="arrow-forward-outline" size={16} color="#fff" />}
           </LinearGradient>
@@ -259,16 +277,23 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20 },
+  scroll: { paddingHorizontal: 20, paddingTop: SHORT ? 12 : 24, paddingBottom: 20 },
 
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: SHORT ? 10 : 16, flexWrap: 'wrap' },
   questionBadge: {
     alignSelf: 'flex-start',
     backgroundColor: Colors.surfaceLow,
     borderRadius: 999,
     paddingHorizontal: 14,
     paddingVertical: 6,
-    marginBottom: 16,
   },
+  sectionBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.primary + '14',
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  sectionBadgeText: { fontSize: 11, fontWeight: '800', color: Colors.primary, letterSpacing: 0.3 },
   questionBadgeText: {
     fontSize: 11,
     fontWeight: '700',
@@ -280,8 +305,8 @@ const styles = StyleSheet.create({
   questionCard: {
     backgroundColor: Colors.surface,
     borderRadius: 20,
-    padding: rs(24),
-    marginBottom: rs(20),
+    padding: rs(SHORT ? 14 : 24),
+    marginBottom: rs(SHORT ? 12 : 20),
     overflow: 'hidden',
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 10 },
@@ -309,25 +334,25 @@ const styles = StyleSheet.create({
   formulaBox: {
     backgroundColor: Colors.surfaceLow,
     borderRadius: 14,
-    paddingVertical: rs(20),
-    paddingHorizontal: rs(20),
+    paddingVertical: rs(SHORT ? 14 : 20),
+    paddingHorizontal: rs(SHORT ? 14 : 20),
     alignItems: 'center',
   },
   formulaText: {
-    fontSize: rf(19),
+    fontSize: rf(SHORT ? 17 : 19),
     fontWeight: '700',
     color: Colors.primaryDim,
     letterSpacing: 0.5,
     textAlign: 'center',
   },
 
-  optionsContainer: { gap: 12, marginBottom: 28 },
+  optionsContainer: { gap: SHORT ? 8 : 12, marginBottom: SHORT ? 12 : 28 },
   optionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.surface,
     borderRadius: 999,
-    paddingVertical: rs(13),
+    paddingVertical: rs(SHORT ? 10 : 13),
     paddingHorizontal: rs(16),
     borderWidth: 2,
     borderColor: Colors.borderLight,
@@ -339,9 +364,9 @@ const styles = StyleSheet.create({
   },
   optionRowSelected: { borderColor: Colors.primaryFixed },
   letterCircle: {
-    width: rs(36),
-    height: rs(36),
-    borderRadius: rs(18),
+    width: rs(SHORT ? 30 : 36),
+    height: rs(SHORT ? 30 : 36),
+    borderRadius: rs(SHORT ? 15 : 18),
     backgroundColor: Colors.surfaceLow,
     alignItems: 'center',
     justifyContent: 'center',

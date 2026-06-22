@@ -17,17 +17,25 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useExamList } from '../../hooks/useExams';
 import { Exam } from '../../types/exam.types';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamBrowse>;
 
 const FILTER_CHIPS = ['Hamısı', 'Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Digər'];
+const CHIP_TKEY: Record<string, string> = {
+  'Hamısı': 'examHistory.subjAll',
+  'Riyaziyyat': 'examHistory.subjMath',
+  'Azərbaycan dili': 'examHistory.subjAz',
+  'İngilis dili': 'examHistory.subjEn',
+  'Digər': 'examBrowse.filterOther',
+};
 
-const DIFFICULTY_MAP: Record<string, { label: string; color: string }> = {
-  easy: { label: 'Asan', color: Colors.tertiary },
-  medium: { label: 'Orta', color: Colors.primary },
-  hard: { label: 'Çətin', color: Colors.danger },
+const DIFFICULTY_TKEY: Record<string, { tKey: string; color: string }> = {
+  easy: { tKey: 'examList.diff.easy', color: Colors.tertiary },
+  medium: { tKey: 'examList.diff.medium', color: Colors.primary },
+  hard: { tKey: 'examList.diff.hard', color: Colors.danger },
 };
 
 const KNOWN_SUBJECTS = ['riyaziyyat', 'math', 'azərbaycan', 'azerbaijani', 'ingilis', 'english'];
@@ -42,11 +50,56 @@ const matchesFilter = (subject: string, filter: string): boolean => {
   return true;
 };
 
-function diffInfo(exam: Exam) {
-  return DIFFICULTY_MAP[exam.difficulty] ?? { label: exam.difficulty, color: Colors.textSecondary };
+function diffInfo(exam: { difficulty: Exam['difficulty'] }): { tKey: string | null; fallback: string; color: string } {
+  const meta = DIFFICULTY_TKEY[exam.difficulty];
+  return meta ? { tKey: meta.tKey, fallback: exam.difficulty, color: meta.color } : { tKey: null, fallback: exam.difficulty, color: Colors.textSecondary };
+}
+
+// Eyni fən·ixtisas üçün hovuzda çoxlu variant olur (20, 21, 25 suallı...).
+// Onları bir kateqoriya kartında birləşdiririk ki, alt-alta təkrar görünməsin.
+// Başlamaq üçün ən dolğun variantı (ən çox suallı — standarta ən yaxın) seçirik.
+type ExamGroup = {
+  key: string;
+  title: string;
+  subject: string;
+  difficulty: Exam['difficulty'];
+  duration: number;
+  questionCount: number;
+  variants: number;
+  representative: Exam;
+};
+
+function groupExams(exams: Exam[]): ExamGroup[] {
+  const map = new Map<string, ExamGroup>();
+  for (const e of exams) {
+    const key = e.title.trim().toLowerCase();
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, {
+        key,
+        title: e.title,
+        subject: e.subject,
+        difficulty: e.difficulty,
+        duration: e.duration,
+        questionCount: e.questionCount ?? 0,
+        variants: 1,
+        representative: e,
+      });
+    } else {
+      existing.variants += 1;
+      if ((e.questionCount ?? 0) > (existing.representative.questionCount ?? 0)) {
+        existing.representative = e;
+        existing.questionCount = e.questionCount ?? 0;
+        existing.duration = e.duration;
+        existing.difficulty = e.difficulty;
+      }
+    }
+  }
+  return Array.from(map.values());
 }
 
 export default function ExamBrowseScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { data: exams = [], isLoading } = useExamList();
   const initialFilter = FILTER_CHIPS.includes(route.params?.subject ?? '') ? (route.params?.subject as string) : 'Hamısı';
   const [activeFilter, setActiveFilter] = useState(initialFilter);
@@ -57,6 +110,7 @@ export default function ExamBrowseScreen({ navigation, route }: Props) {
     const matchFilter = matchesFilter(e.subject, activeFilter);
     return matchSearch && matchFilter;
   });
+  const groups = groupExams(displayed);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -65,8 +119,8 @@ export default function ExamBrowseScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.headerTitle}>Sınaq İmtahanları</Text>
-          <Text style={styles.headerSub}>Uyğun imtahanı seç</Text>
+          <Text style={styles.headerTitle}>{t('examBrowse.title')}</Text>
+          <Text style={styles.headerSub}>{t('examBrowse.sub')}</Text>
         </View>
         <TouchableOpacity
           style={styles.headerSettingsBtn}
@@ -83,7 +137,7 @@ export default function ExamBrowseScreen({ navigation, route }: Props) {
           <Ionicons name="search-outline" size={20} color={Colors.textMuted} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="İmtahan axtar..."
+            placeholder={t('examBrowse.searchPlaceholder')}
             placeholderTextColor={Colors.textMuted}
             value={search}
             onChangeText={setSearch}
@@ -97,11 +151,11 @@ export default function ExamBrowseScreen({ navigation, route }: Props) {
               <TouchableOpacity key={chip} onPress={() => setActiveFilter(chip)} activeOpacity={0.85}>
                 {active ? (
                   <LinearGradient colors={GRADIENT} style={styles.filterChipActive} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                    <Text style={styles.filterChipActiveText}>{chip}</Text>
+                    <Text style={styles.filterChipActiveText}>{t(CHIP_TKEY[chip])}</Text>
                   </LinearGradient>
                 ) : (
                   <View style={styles.filterChip}>
-                    <Text style={styles.filterChipText}>{chip}</Text>
+                    <Text style={styles.filterChipText}>{t(CHIP_TKEY[chip])}</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -110,9 +164,9 @@ export default function ExamBrowseScreen({ navigation, route }: Props) {
         </ScrollView>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Məktəb İmtahanları</Text>
+          <Text style={styles.sectionTitle}>{t('examBrowse.sectionTitle')}</Text>
           <View style={styles.countBadge}>
-            <Text style={styles.countBadgeText}>{displayed.length} nəticə</Text>
+            <Text style={styles.countBadgeText}>{t('examBrowse.nCategories', { n: groups.length })}</Text>
           </View>
         </View>
 
@@ -120,46 +174,54 @@ export default function ExamBrowseScreen({ navigation, route }: Props) {
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
-        ) : displayed.length === 0 ? (
+        ) : groups.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="search-outline" size={48} color={Colors.primaryFixed} />
-            <Text style={styles.emptyText}>Heç bir imtahan tapılmadı</Text>
+            <Text style={styles.emptyText}>{t('examBrowse.emptyText')}</Text>
           </View>
         ) : (
-          displayed.map((exam) => {
-            const { label: diffLabel, color: diffColor } = diffInfo(exam);
+          groups.map((group) => {
+            const di = diffInfo(group);
+            const diffLabel = di.tKey ? t(di.tKey) : di.fallback;
+            const diffColor = di.color;
             return (
-              <View key={exam.id} style={styles.examCard}>
+              <View key={group.key} style={styles.examCard}>
                 <View style={styles.examCardTop}>
                   <View style={[styles.tagBadge, { backgroundColor: Colors.tertiaryContainer + '4D' }]}>
-                    <Text style={[styles.tagBadgeText, { color: Colors.tertiary }]}>{exam.subject}</Text>
+                    <Text style={[styles.tagBadgeText, { color: Colors.tertiary }]}>{group.subject}</Text>
                   </View>
                   <View style={styles.freeRow}>
                     <Ionicons name="lock-open-outline" size={16} color={Colors.tertiary} />
-                    <Text style={styles.freeText}>Pulsuz</Text>
+                    <Text style={styles.freeText}>{t('examBrowse.free')}</Text>
                   </View>
                 </View>
 
-                <Text style={styles.examTitle}>{exam.title}</Text>
+                <Text style={styles.examTitle}>{group.title}</Text>
 
                 <View style={styles.examMeta}>
                   <View style={styles.metaItem}>
                     <Ionicons name="help-circle-outline" size={15} color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{exam.questionCount ?? '?'} sual</Text>
+                    <Text style={styles.metaText}>{t('examBrowse.nQuestions', { n: group.questionCount || '?' })}</Text>
                   </View>
                   <View style={styles.metaItem}>
                     <Ionicons name="time-outline" size={15} color={Colors.textMuted} />
-                    <Text style={styles.metaText}>{exam.duration} dəq</Text>
+                    <Text style={styles.metaText}>{t('examBrowse.nMin', { n: group.duration })}</Text>
                   </View>
+                  {group.variants > 1 && (
+                    <View style={styles.metaItem}>
+                      <Ionicons name="layers-outline" size={15} color={Colors.textMuted} />
+                      <Text style={styles.metaText}>{t('examBrowse.nVariants', { n: group.variants })}</Text>
+                    </View>
+                  )}
                   <Text style={[styles.metaDifficulty, { color: diffColor }]}>{diffLabel}</Text>
                 </View>
 
                 <TouchableOpacity
                   activeOpacity={0.9}
-                  onPress={() => navigation.navigate(Routes.ExamDetail, { examId: exam.id, title: exam.title })}
+                  onPress={() => navigation.navigate(Routes.ExamDetail, { examId: group.representative.id, title: group.title })}
                 >
                   <LinearGradient colors={GRADIENT} style={styles.ctaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                    <Text style={styles.ctaBtnText}>Başla</Text>
+                    <Text style={styles.ctaBtnText}>{t('examBrowse.start')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>

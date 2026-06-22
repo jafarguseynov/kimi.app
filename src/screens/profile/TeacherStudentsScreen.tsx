@@ -9,6 +9,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { getTeacherStudents, TeacherStudent } from '../../api/user.api';
+import { useTranslation } from '../../i18n';
 
 function getInitials(name: string): string {
   return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
@@ -23,6 +24,7 @@ function scoreColor(avg: number | null): string {
 
 export default function TeacherStudentsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [refreshing, setRefreshing] = useState(false);
 
   const { data: students = [], isLoading, isError, refetch } = useQuery({
@@ -43,7 +45,7 @@ export default function TeacherStudentsScreen() {
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Şagirdlərim</Text>
+        <Text style={styles.headerTitle}>{t('teacherStudents.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -55,23 +57,23 @@ export default function TeacherStudentsScreen() {
         {isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.emptySub}>Yüklənir...</Text>
+            <Text style={styles.emptySub}>{t('teacherStudents.loading')}</Text>
           </View>
         ) : isError ? (
           <View style={styles.center}>
             <Ionicons name="cloud-offline-outline" size={44} color={Colors.textMuted} />
-            <Text style={styles.emptyText}>Məlumat yüklənmədi</Text>
-            <Text style={styles.emptySub}>Serverə qoşula bilmədik. Yenidən cəhd et.</Text>
+            <Text style={styles.emptyText}>{t('teacherStudents.errorText')}</Text>
+            <Text style={styles.emptySub}>{t('teacherStudents.errorSub')}</Text>
             <TouchableOpacity style={styles.retryBtn} activeOpacity={0.85} onPress={onRefresh}>
               <Ionicons name="refresh" size={18} color="#fff" />
-              <Text style={styles.retryBtnText}>Yenidən cəhd et</Text>
+              <Text style={styles.retryBtnText}>{t('teacherStudents.retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : students.length === 0 ? (
           <View style={styles.center}>
             <Ionicons name="people-outline" size={48} color={Colors.primaryFixed} />
-            <Text style={styles.emptyText}>Hələ şagird yoxdur</Text>
-            <Text style={styles.emptySub}>Sorğuları qəbul etdikcə şagirdlər burada görünəcək.</Text>
+            <Text style={styles.emptyText}>{t('teacherStudents.emptyText')}</Text>
+            <Text style={styles.emptySub}>{t('teacherStudents.emptySub')}</Text>
           </View>
         ) : (
           students.map((s: TeacherStudent) => (
@@ -83,27 +85,27 @@ export default function TeacherStudentsScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{s.name}</Text>
                   <Text style={styles.subjects}>
-                    {s.subjects.length ? s.subjects.join(', ') : 'Fənn qeyd olunmayıb'}
+                    {s.subjects.length ? s.subjects.join(', ') : t('teacherStudents.noSubject')}
                   </Text>
                 </View>
                 <View style={styles.scorePill}>
                   <Text style={[styles.scoreValue, { color: scoreColor(s.avgScore) }]}>
                     {s.avgScore != null ? `${s.avgScore}%` : '—'}
                   </Text>
-                  <Text style={styles.scoreLabel}>Orta</Text>
+                  <Text style={styles.scoreLabel}>{t('teacherStudents.avg')}</Text>
                 </View>
               </View>
 
               <View style={styles.metaRow}>
                 <View style={styles.metaItem}>
                   <Ionicons name="document-text-outline" size={14} color={Colors.textMuted} />
-                  <Text style={styles.metaText}>{s.examsTaken} imtahan</Text>
+                  <Text style={styles.metaText}>{t('teacherStudents.examsCount', { count: s.examsTaken })}</Text>
                 </View>
                 {s.weakSubjects.length > 0 && (
                   <View style={styles.metaItem}>
                     <Ionicons name="alert-circle-outline" size={14} color="#e11d48" />
                     <Text style={[styles.metaText, { color: '#e11d48' }]}>
-                      {s.weakSubjects.length} zəif fənn
+                      {t('teacherStudents.weakCount', { count: s.weakSubjects.length })}
                     </Text>
                   </View>
                 )}

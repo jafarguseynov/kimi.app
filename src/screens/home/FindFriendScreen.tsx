@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const AVATAR = (seed: string) =>
@@ -28,6 +29,7 @@ const USERS: UserCard[] = [
 export default function FindFriendScreen() {
   const navigation = useNavigation<any>();
   const [query, setQuery] = useState('');
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -36,7 +38,7 @@ export default function FindFriendScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.avatarWrap}>
             <Image source={{ uri: AVATAR('Sən') }} style={styles.avatar} />
           </TouchableOpacity>
-          <Text style={styles.title}>Dost tap</Text>
+          <Text style={styles.title}>{t('findFriend.title')}</Text>
         </View>
         <TouchableOpacity style={styles.bellBtn} hitSlop={8}>
           <Ionicons name="notifications" size={18} color={Colors.textSecondary} />
@@ -48,7 +50,7 @@ export default function FindFriendScreen() {
         <View style={styles.searchWrap}>
           <Ionicons name="search" size={20} color={Colors.outlineVariant} style={{ marginLeft: 16 }} />
           <TextInput
-            placeholder="İstifadəçi axtar..."
+            placeholder={t('findFriend.searchPlaceholder')}
             placeholderTextColor={Colors.outlineVariant}
             value={query}
             onChangeText={setQuery}
@@ -74,20 +76,20 @@ export default function FindFriendScreen() {
                     style={styles.actionBtn}
                   >
                     <Ionicons name="person-add" size={16} color="#fff" />
-                    <Text style={styles.actionBtnText}>Əlavə et</Text>
+                    <Text style={styles.actionBtnText}>{t('findFriend.add')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               )}
               {u.status === 'sent' && (
                 <View style={[styles.actionBtn, styles.actionBtnSent]}>
                   <Ionicons name="hourglass" size={16} color={Colors.textSecondary} />
-                  <Text style={styles.actionBtnSentText}>Göndərildi</Text>
+                  <Text style={styles.actionBtnSentText}>{t('findFriend.sent')}</Text>
                 </View>
               )}
               {u.status === 'friend' && (
                 <View style={styles.friendPill}>
                   <Ionicons name="checkmark-circle" size={16} color={Colors.tertiary} />
-                  <Text style={styles.friendPillText}>Dost</Text>
+                  <Text style={styles.friendPillText}>{t('findFriend.friend')}</Text>
                 </View>
               )}
             </View>
@@ -100,8 +102,8 @@ export default function FindFriendScreen() {
             <Ionicons name="trophy" size={24} color={Colors.primary} />
           </View>
           <Text style={styles.footerText}>
-            Dostlarınla yarış və inkişaf et.{'\n'}
-            <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>Birlikdə daha güclüsünüz!</Text>
+            {t('findFriend.footerPre')}{'\n'}
+            <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{t('findFriend.footerBold')}</Text>
           </Text>
         </View>
 

@@ -24,6 +24,7 @@ import { useUserStore } from '../../store/user.store';
 import { useQuery } from '@tanstack/react-query';
 import { getSpecializations } from '../../api/specialization.api';
 import AreaPicker from '../../components/common/AreaPicker';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.ProfileSetup> };
 
@@ -52,15 +53,16 @@ const STUDENT_GRADES: { value: string; label: string; icon: keyof typeof Ionicon
 
 type GoalType = 'university' | 'school' | 'general';
 
-const GOALS: { id: GoalType; icon: keyof typeof Ionicons.glyphMap; label: string; sub: string }[] = [
-  { id: 'university', icon: 'school', label: 'Qəbul hazırlığı', sub: 'Universitetə ən yüksək balla gir' },
-  { id: 'school', icon: 'library-outline', label: 'Məktəb nəticələri', sub: 'Dərslərini təkmilləşdir və fərqlən' },
-  { id: 'general', icon: 'sparkles-outline', label: 'Ümumi inkişaf', sub: 'Yeni biliklər qazan və özünü kəşf et' },
+const GOALS: { id: GoalType; icon: keyof typeof Ionicons.glyphMap; labelKey: string; subKey: string }[] = [
+  { id: 'university', icon: 'school', labelKey: 'onboarding.goalUniversity', subKey: 'onboarding.goalUniversitySub' },
+  { id: 'school', icon: 'library-outline', labelKey: 'onboarding.goalSchool', subKey: 'onboarding.goalSchoolSub' },
+  { id: 'general', icon: 'sparkles-outline', labelKey: 'onboarding.goalGeneral', subKey: 'onboarding.goalGeneralSub' },
 ];
 
 type FormatType = 'online' | 'home' | 'center';
 
 export default function ProfileSetupScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const { mutate, isPending } = useUpdateUser();
   const role = user?.role ?? 'student';
@@ -112,7 +114,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
   const onFinish = () => {
     if (name.trim().length < 2) {
-      Alert.alert('Xəta', 'Ad ən azı 2 hərf olmalıdır');
+      Alert.alert(t('onboarding.errorTitle'), t('onboarding.errName'));
       return;
     }
     mutate({ name: name.trim() }, {
@@ -122,11 +124,11 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
   const onTeacherStep1Next = () => {
     if (name.trim().length < 2) {
-      Alert.alert('Xəta', 'Ad ən azı 2 hərf olmalıdır');
+      Alert.alert(t('onboarding.errorTitle'), t('onboarding.errName'));
       return;
     }
     if (subjects.length === 0) {
-      Alert.alert('Fənlər', 'Ən azı bir ixtisas/fənn seçin');
+      Alert.alert(t('onboarding.subjectsErr'), t('onboarding.subjectsErrMsg'));
       return;
     }
     setStep(2);
@@ -134,7 +136,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
 
   const onTeacherFinish = () => {
     if (!area) {
-      Alert.alert('Ərazi', 'Zəhmət olmasa fəaliyyət ərazinizi seçin');
+      Alert.alert(t('onboarding.areaErr'), t('onboarding.areaErrMsg'));
       return;
     }
     mutate(
@@ -162,7 +164,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
               <Ionicons name="arrow-back" size={22} color={Colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.simpleHeaderTitle}>Qeydiyyat</Text>
+            <Text style={styles.simpleHeaderTitle}>{t('onboarding.registration')}</Text>
             <View style={{ width: 40 }} />
           </View>
           <ScrollView contentContainerStyle={styles.simpleScroll} keyboardShouldPersistTaps="handled">
@@ -176,13 +178,13 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 <Ionicons name="person" size={48} color="rgba(255,255,255,0.9)" />
               </LinearGradient>
             </View>
-            <Text style={styles.sectionTitle}>Ad Soyad</Text>
+            <Text style={styles.sectionTitle}>{t('onboarding.nameLabel')}</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={styles.textInput}
                 value={name}
                 onChangeText={setName}
-                placeholder="Adınızı daxil edin"
+                placeholder={t('onboarding.namePlaceholder')}
                 placeholderTextColor={Colors.outline}
               />
               <Ionicons name="person-outline" size={20} color={Colors.outlineVariant} style={styles.inputIcon} />
@@ -190,7 +192,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <TouchableOpacity
               onPress={() => {
                 if (name.trim().length < 2) {
-                  Alert.alert('Xəta', 'Ad ən azı 2 hərf olmalıdır');
+                  Alert.alert(t('onboarding.errorTitle'), t('onboarding.errName'));
                   return;
                 }
                 setStudentStep(2);
@@ -204,7 +206,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 end={{ x: 1, y: 1 }}
                 style={styles.ctaBtn}
               >
-                <Text style={styles.ctaBtnText}>Davam et</Text>
+                <Text style={styles.ctaBtnText}>{t('onboarding.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -228,13 +230,13 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <TouchableOpacity onPress={() => setStudentStep(1)} style={styles.backBtn} hitSlop={12}>
               <Ionicons name="arrow-back" size={22} color={Colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.simpleHeaderTitle}>Qeydiyyat</Text>
+            <Text style={styles.simpleHeaderTitle}>{t('onboarding.registration')}</Text>
             <View style={{ width: 40 }} />
           </View>
           <ScrollView contentContainerStyle={styles.gradeScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.gradeHeadline}>Hansı sinifdə oxuyursan?</Text>
+            <Text style={styles.gradeHeadline}>{t('onboarding.gradeHeadline')}</Text>
             <Text style={styles.gradeSub}>
-              Sənə ən uyğun dərsləri və tapşırıqları təqdim etmək üçün təhsil səviyyəni seç.
+              {t('onboarding.gradeSub')}
             </Text>
 
             <View style={styles.gradeGrid}>
@@ -264,7 +266,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                           />
                         </View>
                         <Text style={styles.gradeLabel}>{g.label}</Text>
-                        {isSelected && <Text style={styles.gradeSelectedTag}>Seçilib</Text>}
+                        {isSelected && <Text style={styles.gradeSelectedTag}>{t('onboarding.selected')}</Text>}
                       </TouchableOpacity>
                     );
                   })}
@@ -297,7 +299,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             </View>
 
             <Text style={styles.gradeHintText}>
-              Sinif seçimi sənə uyğun tədris materiallarını görməyə kömək edir. İstədiyin vaxt profildən dəyişə bilərsən.
+              {t('onboarding.gradeHint')}
             </Text>
           </ScrollView>
 
@@ -312,7 +314,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 end={{ x: 1, y: 1 }}
                 style={[styles.ctaBtn, !grade && { opacity: 0.55 }]}
               >
-                <Text style={styles.ctaBtnText}>Davam et</Text>
+                <Text style={styles.ctaBtnText}>{t('onboarding.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -329,14 +331,14 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <TouchableOpacity onPress={() => setStudentStep(2)} style={styles.backBtn} hitSlop={12}>
               <Ionicons name="arrow-back" size={22} color={Colors.primary} />
             </TouchableOpacity>
-            <Text style={styles.simpleHeaderTitle}>Qeydiyyat</Text>
+            <Text style={styles.simpleHeaderTitle}>{t('onboarding.registration')}</Text>
             <View style={{ width: 40 }} />
           </View>
           <ScrollView contentContainerStyle={styles.gradeScroll} keyboardShouldPersistTaps="handled">
-            <Text style={styles.gradeHeadline}>Məktəbini və şəhərini seç</Text>
-            <Text style={styles.gradeSub}>Təhsil nəticələrinə uyğun xüsusi plan üçün lazımdır.</Text>
+            <Text style={styles.gradeHeadline}>{t('onboarding.schoolCityHeadline')}</Text>
+            <Text style={styles.gradeSub}>{t('onboarding.schoolCitySub')}</Text>
 
-            <Text style={styles.fieldLabelPrimary}>Şəhər</Text>
+            <Text style={styles.fieldLabelPrimary}>{t('onboarding.cityLabel')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
               <View style={styles.chipRow}>
                 {CITIES.map((c) => (
@@ -351,14 +353,14 @@ export default function ProfileSetupScreen({ navigation }: Props) {
               </View>
             </ScrollView>
 
-            <Text style={[styles.fieldLabelPrimary, { marginTop: 24 }]}>Məktəb</Text>
+            <Text style={[styles.fieldLabelPrimary, { marginTop: 24 }]}>{t('onboarding.schoolLabel')}</Text>
             <View style={[styles.inputRow, { borderWidth: 1.5, borderColor: Colors.border }]}>
               <Ionicons name="search-outline" size={20} color={Colors.outline} style={styles.inputIconLeft} />
               <TextInput
                 style={[styles.textInput, { paddingLeft: 44 }]}
                 value={school}
                 onChangeText={setSchool}
-                placeholder="Məktəb adı"
+                placeholder={t('onboarding.schoolNamePlaceholder')}
                 placeholderTextColor={Colors.outline}
               />
             </View>
@@ -366,7 +368,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <View style={styles.infoBanner}>
               <Ionicons name="information-circle" size={20} color={Colors.primary} />
               <Text style={styles.infoBannerText}>
-                Məlumatlar yalnız sizə uyğun dərsliklərin və sınaq imtahanlarının təyin edilməsi üçün istifadə olunacaq.
+                {t('onboarding.infoBanner')}
               </Text>
             </View>
 
@@ -385,7 +387,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 end={{ x: 1, y: 1 }}
                 style={styles.ctaBtn}
               >
-                <Text style={styles.ctaBtnText}>Davam et</Text>
+                <Text style={styles.ctaBtnText}>{t('onboarding.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -405,8 +407,8 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           <View style={{ width: 40 }} />
         </View>
         <ScrollView contentContainerStyle={styles.gradeScroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.stepBadge}>Addım 3/4</Text>
-          <Text style={styles.gradeHeadline}>Əsas məqsədin nədir?</Text>
+          <Text style={styles.stepBadge}>{t('onboarding.stepBadge34')}</Text>
+          <Text style={styles.gradeHeadline}>{t('onboarding.goalHeadline')}</Text>
 
           <View style={styles.goalList}>
             {GOALS.map((g) => {
@@ -433,8 +435,8 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                     </View>
                   )}
                   <View style={styles.goalTextBlock}>
-                    <Text style={styles.goalLabel}>{g.label}</Text>
-                    <Text style={styles.goalSub}>{g.sub}</Text>
+                    <Text style={styles.goalLabel}>{t(g.labelKey)}</Text>
+                    <Text style={styles.goalSub}>{t(g.subKey)}</Text>
                   </View>
                   {isSelected && (
                     <View style={styles.goalCheck}>
@@ -447,7 +449,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           </View>
 
           <Text style={styles.gradeHintText}>
-            Seçiminiz tədris planınızı sizin üçün özəlləşdirməyə kömək edəcək. İstənilən vaxt tənzimləmələrdən dəyişə bilərsiniz.
+            {t('onboarding.goalHint')}
           </Text>
         </ScrollView>
 
@@ -469,7 +471,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             >
               {isPending ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={styles.ctaBtnText}>Hazırdır</Text>
+                  <Text style={styles.ctaBtnText}>{t('onboarding.done')}</Text>
                   <Ionicons name="checkmark" size={20} color="#fff" />
                 </>
               )}
@@ -488,37 +490,37 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.simpleHeaderTitle}>Valideyn Qeydiyyatı</Text>
+          <Text style={styles.simpleHeaderTitle}>{t('onboarding.parentReg')}</Text>
           <View style={{ width: 40 }} />
         </View>
         <ScrollView contentContainerStyle={styles.parentScroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.parentHeadline}>Valideyn Profili</Text>
-          <Text style={styles.parentLabel}>Övladınızın təhsil yolunu bizimlə birlikdə izləyin.</Text>
+          <Text style={styles.parentHeadline}>{t('onboarding.parentHeadline')}</Text>
+          <Text style={styles.parentLabel}>{t('onboarding.parentLabel')}</Text>
 
           {/* Section 1 */}
           <View style={styles.sectionCard}>
             <View style={styles.sectionCardHeader}>
               <Ionicons name="person-outline" size={22} color={Colors.primary} />
-              <Text style={styles.sectionCardTitle}>Şəxsi Məlumatlar</Text>
+              <Text style={styles.sectionCardTitle}>{t('onboarding.personalInfo')}</Text>
             </View>
             <View style={styles.sectionBadge}>
               <Text style={styles.sectionBadgeText}>1</Text>
             </View>
-            <Text style={styles.fieldLabel}>Valideyn adı</Text>
+            <Text style={styles.fieldLabel}>{t('onboarding.parentNameLabel')}</Text>
             <TextInput
               style={styles.textInput}
               value={name}
               onChangeText={setName}
-              placeholder="Məs: Anar Məmmədov"
+              placeholder={t('onboarding.parentNamePlaceholder')}
               placeholderTextColor={Colors.outline}
             />
-            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Əlaqəli şagird</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>{t('onboarding.linkedStudent')}</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={[styles.textInput, { paddingLeft: 40 }]}
                 value={studentSearch}
                 onChangeText={setStudentSearch}
-                placeholder="Şagirdin adını və ya kodunu daxil edin"
+                placeholder={t('onboarding.linkedStudentPlaceholder')}
                 placeholderTextColor={Colors.outline}
               />
               <Ionicons name="search-outline" size={20} color={Colors.outline} style={styles.inputIconLeft} />
@@ -529,12 +531,12 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           <View style={styles.sectionCard}>
             <View style={styles.sectionCardHeader}>
               <Ionicons name="school-outline" size={22} color={Colors.primary} />
-              <Text style={styles.sectionCardTitle}>Təhsil Məlumatları</Text>
+              <Text style={styles.sectionCardTitle}>{t('onboarding.eduInfo')}</Text>
             </View>
             <View style={styles.sectionBadge}>
               <Text style={styles.sectionBadgeText}>2</Text>
             </View>
-            <Text style={styles.fieldLabel}>Övladının sinfi</Text>
+            <Text style={styles.fieldLabel}>{t('onboarding.childGrade')}</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
               <View style={styles.chipRow}>
                 {GRADES.map((g) => (
@@ -543,18 +545,18 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                     style={[styles.chip, grade === g && styles.chipActive]}
                     onPress={() => setGrade(g)}
                   >
-                    <Text style={[styles.chipText, grade === g && styles.chipTextActive]}>{g} sinif</Text>
+                    <Text style={[styles.chipText, grade === g && styles.chipTextActive]}>{t('onboarding.gradeChip', { g })}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </ScrollView>
-            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>Məktəb</Text>
+            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>{t('onboarding.schoolLabel')}</Text>
             <View style={styles.inputRow}>
               <TextInput
                 style={[styles.textInput, { paddingLeft: 40 }]}
                 value={school}
                 onChangeText={setSchool}
-                placeholder="Məs: 132-ci məktəb"
+                placeholder={t('onboarding.parentSchoolPlaceholder')}
                 placeholderTextColor={Colors.outline}
               />
               <Ionicons name="school-outline" size={20} color={Colors.outline} style={styles.inputIconLeft} />
@@ -565,15 +567,15 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           <View style={styles.sectionCard}>
             <View style={styles.sectionCardHeader}>
               <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
-              <Text style={styles.sectionCardTitle}>Bildiriş Seçimləri</Text>
+              <Text style={styles.sectionCardTitle}>{t('onboarding.notifPrefs')}</Text>
             </View>
             <View style={styles.sectionBadge}>
               <Text style={styles.sectionBadgeText}>3</Text>
             </View>
             <View style={styles.toggleItem}>
               <View style={styles.toggleLeft}>
-                <Text style={styles.toggleTitle}>İmtahan nəticələri</Text>
-                <Text style={styles.toggleSub}>Övladınızın imtahan balları haqqında anında məlumat</Text>
+                <Text style={styles.toggleTitle}>{t('onboarding.notifExamTitle')}</Text>
+                <Text style={styles.toggleSub}>{t('onboarding.notifExamSub')}</Text>
               </View>
               <Switch
                 value={notifExam}
@@ -584,8 +586,8 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             </View>
             <View style={[styles.toggleItem, { borderTopWidth: 1, borderTopColor: Colors.surfaceLow }]}>
               <View style={styles.toggleLeft}>
-                <Text style={styles.toggleTitle}>Dərsə davamiyyət</Text>
-                <Text style={styles.toggleSub}>Dərsə gecikmə və ya iştirak etməmə bildirişləri</Text>
+                <Text style={styles.toggleTitle}>{t('onboarding.notifAttTitle')}</Text>
+                <Text style={styles.toggleSub}>{t('onboarding.notifAttSub')}</Text>
               </View>
               <Switch
                 value={notifAttendance}
@@ -596,8 +598,8 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             </View>
             <View style={[styles.toggleItem, { borderTopWidth: 1, borderTopColor: Colors.surfaceLow }]}>
               <View style={styles.toggleLeft}>
-                <Text style={styles.toggleTitle}>Həftəlik hesabat</Text>
-                <Text style={styles.toggleSub}>Hər bazar günü ümumi tərəqqi icmalı</Text>
+                <Text style={styles.toggleTitle}>{t('onboarding.notifWeeklyTitle')}</Text>
+                <Text style={styles.toggleSub}>{t('onboarding.notifWeeklySub')}</Text>
               </View>
               <Switch
                 value={notifWeekly}
@@ -617,7 +619,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             >
               {isPending ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={styles.ctaBtnText}>Təsdiqlə və Davam et</Text>
+                  <Text style={styles.ctaBtnText}>{t('onboarding.confirmContinue')}</Text>
                   <Ionicons name="arrow-forward" size={20} color="#fff" />
                 </>
               )}
@@ -636,8 +638,8 @@ export default function ProfileSetupScreen({ navigation }: Props) {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn} hitSlop={12}>
             <Ionicons name="close" size={22} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={styles.simpleHeaderTitle}>Müəllim Profili</Text>
-          <Text style={styles.stepLabel}>Addım 1 / {totalSteps}</Text>
+          <Text style={styles.simpleHeaderTitle}>{t('onboarding.teacherProfile')}</Text>
+          <Text style={styles.stepLabel}>{t('onboarding.step', { n: 1, total: totalSteps })}</Text>
         </View>
 
         <ScrollView contentContainerStyle={styles.teacherScroll} keyboardShouldPersistTaps="handled">
@@ -658,24 +660,24 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             </View>
           </View>
 
-          <Text style={styles.heroTitle}>Profilinizi qurun</Text>
-          <Text style={styles.heroSub}>Tələbələrin sizi daha yaxşı tanıması üçün məlumatlarınızı daxil edin.</Text>
+          <Text style={styles.heroTitle}>{t('onboarding.buildProfile')}</Text>
+          <Text style={styles.heroSub}>{t('onboarding.buildProfileSub')}</Text>
 
           {/* Name */}
-          <Text style={styles.fieldLabelPrimary}>Ad soyad</Text>
+          <Text style={styles.fieldLabelPrimary}>{t('onboarding.teacherNameLabel')}</Text>
           <View style={styles.inputRow}>
             <TextInput
               style={styles.textInput}
               value={name}
               onChangeText={setName}
-              placeholder="Məsələn: Elnur Məmmədov"
+              placeholder={t('onboarding.teacherNamePlaceholder')}
               placeholderTextColor={Colors.outline}
             />
             <Ionicons name="person-outline" size={20} color={Colors.outlineVariant} style={styles.inputIcon} />
           </View>
 
           {/* Subjects */}
-          <Text style={[styles.fieldLabelPrimary, { marginTop: 8 }]}>Fənlər</Text>
+          <Text style={[styles.fieldLabelPrimary, { marginTop: 8 }]}>{t('onboarding.subjectsLabel')}</Text>
           <View style={styles.subjectContainer}>
             <View style={styles.subjectPills}>
               {subjects.map((s) => (
@@ -691,7 +693,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 onPress={() => setShowSubjectPicker(!showSubjectPicker)}
               >
                 <Ionicons name="add" size={16} color={Colors.primary} />
-                <Text style={styles.addSubjectText}>Fənn əlavə et</Text>
+                <Text style={styles.addSubjectText}>{t('onboarding.addSubject')}</Text>
               </TouchableOpacity>
             </View>
             {showSubjectPicker && (
@@ -709,7 +711,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             )}
           </View>
           {subjects.length === 0 && (
-            <Text style={styles.fieldHint}>Ən azı bir fənn seçməlisiniz.</Text>
+            <Text style={styles.fieldHint}>{t('onboarding.minSubjectHint')}</Text>
           )}
 
           {/* Experience */}
@@ -718,12 +720,12 @@ export default function ProfileSetupScreen({ navigation }: Props) {
               <View style={styles.bentoIcon}>
                 <Ionicons name="time-outline" size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.bentoLabel}>Təcrübə (İl)</Text>
+              <Text style={styles.bentoLabel}>{t('onboarding.expYears')}</Text>
               <TextInput
                 style={styles.bentoInput}
                 value={experience}
                 onChangeText={setExperience}
-                placeholder="Məs: 5"
+                placeholder={t('onboarding.expPlaceholder')}
                 placeholderTextColor={Colors.outline}
                 keyboardType="number-pad"
               />
@@ -732,15 +734,15 @@ export default function ProfileSetupScreen({ navigation }: Props) {
               <View style={[styles.bentoIcon, { backgroundColor: Colors.tertiaryContainer + '44' }]}>
                 <Ionicons name="checkmark-circle" size={20} color={Colors.tertiary} />
               </View>
-              <Text style={styles.bentoLabel}>Doğrulanmış Profil</Text>
-              <Text style={styles.bentoSub}>Sənədlərinizi növbəti addımda yükləyə bilərsiniz.</Text>
+              <Text style={styles.bentoLabel}>{t('onboarding.verifiedProfile')}</Text>
+              <Text style={styles.bentoSub}>{t('onboarding.verifiedSub')}</Text>
             </View>
           </View>
 
           {/* Footer buttons */}
           <View style={styles.footerRow}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backFooterBtn}>
-              <Text style={styles.backFooterText}>Geri</Text>
+              <Text style={styles.backFooterText}>{t('onboarding.back')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={onTeacherStep1Next}
@@ -753,7 +755,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
                 end={{ x: 1, y: 1 }}
                 style={styles.ctaBtn}
               >
-                <Text style={styles.ctaBtnText}>Davam et</Text>
+                <Text style={styles.ctaBtnText}>{t('onboarding.continue')}</Text>
                 <Ionicons name="arrow-forward" size={20} color="#fff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -770,34 +772,34 @@ export default function ProfileSetupScreen({ navigation }: Props) {
         <TouchableOpacity onPress={() => setStep(1)} style={styles.backBtn} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.simpleHeaderTitle}>Dərs Detalları</Text>
-        <Text style={styles.stepLabel}>Addım 2 / {totalSteps}</Text>
+        <Text style={styles.simpleHeaderTitle}>{t('onboarding.lessonDetails')}</Text>
+        <Text style={styles.stepLabel}>{t('onboarding.step', { n: 2, total: totalSteps })}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.teacherScroll} keyboardShouldPersistTaps="handled">
         {/* Price */}
-        <Text style={styles.fieldLabelPrimary}>Dərs qiyməti</Text>
+        <Text style={styles.fieldLabelPrimary}>{t('onboarding.priceLabel')}</Text>
         <View style={[styles.inputRow, styles.priceRow]}>
           <Ionicons name="card-outline" size={20} color={Colors.primary} style={styles.inputIconLeft} />
           <TextInput
             style={[styles.textInput, { paddingLeft: 40, flex: 1, fontSize: 17, fontWeight: '600' }]}
             value={price}
             onChangeText={setPrice}
-            placeholder="Məsələn: 25"
+            placeholder={t('onboarding.pricePlaceholder')}
             placeholderTextColor={Colors.outline}
             keyboardType="number-pad"
           />
-          <Text style={styles.currency}>AZN / saat</Text>
+          <Text style={styles.currency}>{t('onboarding.currency')}</Text>
         </View>
-        <Text style={styles.fieldHint}>Tələbələr adətən orta qiymətə üstünlük verirlər.</Text>
+        <Text style={styles.fieldHint}>{t('onboarding.priceHint')}</Text>
 
         {/* Format */}
-        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>Dərs formatı</Text>
+        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>{t('onboarding.formatLabel')}</Text>
         <View style={styles.formatRow}>
           {([
-            { id: 'online', icon: 'videocam-outline', label: 'Online' },
-            { id: 'home', icon: 'home-outline', label: 'Evdə' },
-            { id: 'center', icon: 'business-outline', label: 'Kursda' },
+            { id: 'online', icon: 'videocam-outline', label: t('onboarding.formatOnline') },
+            { id: 'home', icon: 'home-outline', label: t('onboarding.formatHome') },
+            { id: 'center', icon: 'business-outline', label: t('onboarding.formatCenter') },
           ] as { id: FormatType; icon: keyof typeof Ionicons.glyphMap; label: string }[]).map((f) => (
             <TouchableOpacity
               key={f.id}
@@ -823,17 +825,17 @@ export default function ProfileSetupScreen({ navigation }: Props) {
         </View>
 
         {/* Ərazi — Lokasiyalar iyerarxiyasından seçim */}
-        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>Fəaliyyət ərazisi</Text>
+        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>{t('onboarding.activityArea')}</Text>
         <AreaPicker value={area?.areaName} onSelect={setArea} />
-        <Text style={styles.fieldHint}>Tələbələr sizi ərazi üzrə tapacaq.</Text>
+        <Text style={styles.fieldHint}>{t('onboarding.areaHint')}</Text>
 
         {/* Bio */}
-        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>Bio / Özünüz haqqında</Text>
+        <Text style={[styles.fieldLabelPrimary, { marginTop: 16 }]}>{t('onboarding.bioLabel')}</Text>
         <TextInput
           style={styles.bioInput}
           value={bio}
           onChangeText={setBio}
-          placeholder="Təcrübəniz, metodologiyanız və dərsləriniz haqqında qısa məlumat verin..."
+          placeholder={t('onboarding.bioPlaceholder')}
           placeholderTextColor={Colors.outline}
           multiline
           numberOfLines={5}
@@ -848,9 +850,9 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             <Ionicons name="hardware-chip" size={22} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.kimiTipLabel}>Kimi Məsləhəti</Text>
+            <Text style={styles.kimiTipLabel}>{t('onboarding.kimiTip')}</Text>
             <Text style={styles.kimiTipText}>
-              Təcrübənizi rəqəmlərlə qeyd etmək (məs: 5 illik təcrübə) tələbələrin etibarını 40% artırır!
+              {t('onboarding.kimiTipText')}
             </Text>
           </View>
         </View>
@@ -874,7 +876,7 @@ export default function ProfileSetupScreen({ navigation }: Props) {
             >
               {isPending ? <ActivityIndicator color="#fff" /> : (
                 <>
-                  <Text style={styles.ctaBtnText}>Tamamla</Text>
+                  <Text style={styles.ctaBtnText}>{t('onboarding.complete')}</Text>
                   <Ionicons name="checkmark" size={20} color="#fff" />
                 </>
               )}

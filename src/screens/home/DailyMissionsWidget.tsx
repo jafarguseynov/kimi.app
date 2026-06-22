@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 interface Mission {
   id: string;
@@ -19,6 +20,7 @@ const TYPE_ICONS: Record<string, string> = {
 };
 
 export default function DailyMissionsWidget() {
+  const { t } = useTranslation();
   const { data: missions = [] } = useQuery<Mission[]>({
     queryKey: ['dailyMissions'],
     queryFn: () => api.get('/engagement/missions').then((r) => r.data),
@@ -30,8 +32,8 @@ export default function DailyMissionsWidget() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🎯 Günlük Tapşırıqlar</Text>
-        <Text style={styles.subtitle}>Hər gün yenilənir</Text>
+        <Text style={styles.title}>{t('missionsWidget.title')}</Text>
+        <Text style={styles.subtitle}>{t('missionsWidget.refreshDaily')}</Text>
       </View>
       {missions.map((m) => (
         <View key={m.id} style={styles.mission}>

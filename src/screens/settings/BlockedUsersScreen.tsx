@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -26,6 +27,7 @@ const initials = (n: string) => n.split(' ').map((w) => w[0]).slice(0, 2).join('
 
 export default function BlockedUsersScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const [users, setUsers] = useState<BlockedUser[]>(INITIAL_BLOCKED);
   const [query, setQuery] = useState('');
 
@@ -36,9 +38,9 @@ export default function BlockedUsersScreen() {
   }, [users, query]);
 
   const unblock = (u: BlockedUser) => {
-    Alert.alert('Bloku aç?', `${u.name} sizə yenidən mesaj yaza biləcək.`, [
-      { text: 'Ləğv et', style: 'cancel' },
-      { text: 'Bloku aç', onPress: () => setUsers((p) => p.filter((x) => x.id !== u.id)) },
+    Alert.alert(t('blockedUsers.unblockTitle'), t('blockedUsers.unblockBody', { name: u.name }), [
+      { text: t('blockedUsers.cancel'), style: 'cancel' },
+      { text: t('blockedUsers.unblock'), onPress: () => setUsers((p) => p.filter((x) => x.id !== u.id)) },
     ]);
   };
 
@@ -48,7 +50,7 @@ export default function BlockedUsersScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bloklanmış istifadəçilər</Text>
+        <Text style={styles.headerTitle}>{t('blockedUsers.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -58,9 +60,9 @@ export default function BlockedUsersScreen() {
           <View style={styles.heroIcon}>
             <Ionicons name="ban" size={36} color={Colors.primary} />
           </View>
-          <Text style={styles.heroTitle}>Məxfilik və İdarəetmə</Text>
+          <Text style={styles.heroTitle}>{t('blockedUsers.heroTitle')}</Text>
           <Text style={styles.heroSub}>
-            Blokladığınız istifadəçilər sizin profilinizi görə bilməz və sizə mesaj göndərə bilməzlər.
+            {t('blockedUsers.heroSub')}
           </Text>
         </View>
 
@@ -69,7 +71,7 @@ export default function BlockedUsersScreen() {
           <Ionicons name="search" size={20} color={Colors.textMuted} style={styles.searchIcon} />
           <TextInput
             value={query} onChangeText={setQuery}
-            placeholder="İstifadəçi axtar..."
+            placeholder={t('blockedUsers.searchPlaceholder')}
             placeholderTextColor={Colors.textMuted + 'AA'}
             style={styles.searchInput}
           />
@@ -78,9 +80,9 @@ export default function BlockedUsersScreen() {
         {filtered.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="checkmark-circle-outline" size={42} color={Colors.textMuted} />
-            <Text style={styles.emptyTitle}>{users.length === 0 ? 'Bloklanmış istifadəçi yoxdur' : 'Nəticə tapılmadı'}</Text>
+            <Text style={styles.emptyTitle}>{users.length === 0 ? t('blockedUsers.emptyTitleNone') : t('blockedUsers.emptyTitleNoResult')}</Text>
             <Text style={styles.emptySub}>
-              {users.length === 0 ? 'Bloklamağınız mümkün olan istifadəçi olmayanda burada görünməyəcək.' : 'Başqa axtarış termini cəhd edin.'}
+              {users.length === 0 ? t('blockedUsers.emptySubNone') : t('blockedUsers.emptySubNoResult')}
             </Text>
           </View>
         ) : (
@@ -110,7 +112,7 @@ export default function BlockedUsersScreen() {
                   </View>
                 </View>
                 <TouchableOpacity style={styles.unblockBtn} activeOpacity={0.85} onPress={() => unblock(u)}>
-                  <Text style={styles.unblockText}>Bloku aç</Text>
+                  <Text style={styles.unblockText}>{t('blockedUsers.unblock')}</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -118,7 +120,7 @@ export default function BlockedUsersScreen() {
         )}
 
         <Text style={styles.footerCount}>
-          Cəmi {users.length} bloklanmış istifadəçi {users.length === 0 ? 'yoxdur' : 'tapıldı'}
+          {users.length === 0 ? t('blockedUsers.footerCountNone') : t('blockedUsers.footerCountSome', { count: users.length })}
         </Text>
 
         <View style={{ height: 32 }} />

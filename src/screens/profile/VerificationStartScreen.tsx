@@ -6,11 +6,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function VerificationStartScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -18,7 +20,7 @@ export default function VerificationStartScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verifikasiya</Text>
+        <Text style={styles.headerTitle}>{t('verificationStart.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -34,9 +36,9 @@ export default function VerificationStartScreen() {
               <Ionicons name="sparkles" size={14} color="#fff" />
             </View>
           </View>
-          <Text style={styles.heroTitle}>Profilini təsdiqlə</Text>
+          <Text style={styles.heroTitle}>{t('verificationStart.heroTitle')}</Text>
           <Text style={styles.heroSubtitle}>
-            Təcrübənizi rəsmiləşdirin və təhsil ekosistemində bir addım öndə olun.
+            {t('verificationStart.heroSubtitle')}
           </Text>
         </View>
 
@@ -49,8 +51,8 @@ export default function VerificationStartScreen() {
             </View>
           </View>
           <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>Güvən qazan</Text>
-            <Text style={styles.cardSub}>Təsdiqlənmiş profil şagirdlərin sizə olan etibarını artırır.</Text>
+            <Text style={styles.cardTitle}>{t('verificationStart.card1Title')}</Text>
+            <Text style={styles.cardSub}>{t('verificationStart.card1Sub')}</Text>
           </View>
         </View>
 
@@ -59,8 +61,8 @@ export default function VerificationStartScreen() {
             <Ionicons name="trending-up" size={22} color={Colors.tertiary} />
           </View>
           <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>Daha çox görünürlük</Text>
-            <Text style={styles.cardSub}>Axtarış nəticələrində ön plana çıxın və daha çox dərs sorğusu alın.</Text>
+            <Text style={styles.cardTitle}>{t('verificationStart.card2Title')}</Text>
+            <Text style={styles.cardSub}>{t('verificationStart.card2Sub')}</Text>
           </View>
         </View>
 
@@ -69,15 +71,15 @@ export default function VerificationStartScreen() {
             <Ionicons name="ribbon" size={22} color={Colors.primary} />
           </View>
           <View style={styles.cardBody}>
-            <Text style={styles.cardTitle}>Premium nişan</Text>
-            <Text style={styles.cardSub}>Profilinizdə xüsusi təsdiq nişanı ilə digərlərindən fərqlənin.</Text>
+            <Text style={styles.cardTitle}>{t('verificationStart.card3Title')}</Text>
+            <Text style={styles.cardSub}>{t('verificationStart.card3Sub')}</Text>
           </View>
         </View>
 
         {/* Info banner */}
         <View style={styles.infoBanner}>
           <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
-          <Text style={styles.infoText}>Verifikasiya prosesi adətən 24 saat ərzində tamamlanır.</Text>
+          <Text style={styles.infoText}>{t('verificationStart.infoBanner')}</Text>
         </View>
       </ScrollView>
 
@@ -85,7 +87,7 @@ export default function VerificationStartScreen() {
       <View style={styles.footer}>
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.VerificationDocuments)}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryBtnText}>Təsdiqə başla</Text>
+            <Text style={styles.primaryBtnText}>{t('verificationStart.startBtn')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

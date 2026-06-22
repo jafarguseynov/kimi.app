@@ -4,30 +4,31 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
-interface DayPoint { label: string; value: number; }
+interface DayPoint { labelKey: string; value: number; }
 const POINTS: DayPoint[] = [
-  { label: 'B.e', value: 25 },
-  { label: 'Ç.a', value: 35 },
-  { label: 'Ç',   value: 28 },
-  { label: 'C.a', value: 60 },
-  { label: 'C',   value: 50 },
-  { label: 'Ş',   value: 75 },
-  { label: 'B',   value: 70 },
+  { labelKey: 'weeklyReport.wdMon', value: 25 },
+  { labelKey: 'weeklyReport.wdTue', value: 35 },
+  { labelKey: 'weeklyReport.wdWed', value: 28 },
+  { labelKey: 'weeklyReport.wdThu', value: 60 },
+  { labelKey: 'weeklyReport.wdFri', value: 50 },
+  { labelKey: 'weeklyReport.wdSat', value: 75 },
+  { labelKey: 'weeklyReport.wdSun', value: 70 },
 ];
 
 interface Topic {
   id: string;
   name: string;
-  sub: string;
+  subKey: string;
   icon: keyof typeof Ionicons.glyphMap;
   pct: number;
   tone: 'success' | 'danger';
 }
 
 const TOPICS: Topic[] = [
-  { id: 't1', name: 'Riyaziyyat', sub: 'Mükəmməl qavrama', icon: 'calculator', pct: 92, tone: 'success' },
-  { id: 't2', name: 'İngilis dili', sub: 'Daha çox məşq lazımdır', icon: 'language', pct: 45, tone: 'danger' },
+  { id: 't1', name: 'Riyaziyyat', subKey: 'weeklyReport.topicStrong', icon: 'calculator', pct: 92, tone: 'success' },
+  { id: 't2', name: 'İngilis dili', subKey: 'weeklyReport.topicWeak', icon: 'language', pct: 45, tone: 'danger' },
 ];
 
 const CHART_H = 128;
@@ -35,6 +36,7 @@ const TODAY_INDEX = POINTS.length - 1;
 
 export default function WeeklyReportScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -42,7 +44,7 @@ export default function WeeklyReportScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={24} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Həftəlik Hesabat</Text>
+        <Text style={styles.headerTitle}>{t('weeklyReport.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -51,14 +53,14 @@ export default function WeeklyReportScreen() {
         <View style={styles.chartCard}>
           <View style={styles.chartBlob} pointerEvents="none" />
           <View style={{ gap: 4 }}>
-            <Text style={styles.chartKicker}>Ümumi irəliləyiş</Text>
+            <Text style={styles.chartKicker}>{t('weeklyReport.chartKicker')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
               <Text style={styles.chartBig}>78%</Text>
-              <Text style={styles.chartSub}>Bu həftə</Text>
+              <Text style={styles.chartSub}>{t('weeklyReport.thisWeek')}</Text>
             </View>
             <View style={styles.deltaPill}>
               <Ionicons name="trending-up" size={14} color={Colors.tertiary} />
-              <Text style={styles.deltaText}>+12% inkişaf</Text>
+              <Text style={styles.deltaText}>{t('weeklyReport.delta')}</Text>
             </View>
           </View>
 
@@ -73,7 +75,7 @@ export default function WeeklyReportScreen() {
                 const isToday = i === TODAY_INDEX;
                 const h = Math.max(8, (p.value / 100) * CHART_H);
                 return (
-                  <View key={p.label} style={styles.barCol}>
+                  <View key={p.labelKey} style={styles.barCol}>
                     <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
                       <View
                         style={[
@@ -90,7 +92,7 @@ export default function WeeklyReportScreen() {
           </View>
           <View style={styles.daysRow}>
             {POINTS.map((p) => (
-              <Text key={p.label} style={styles.dayLabel}>{p.label}</Text>
+              <Text key={p.labelKey} style={styles.dayLabel}>{t(p.labelKey)}</Text>
             ))}
           </View>
         </View>
@@ -102,12 +104,12 @@ export default function WeeklyReportScreen() {
               <Ionicons name="medal" size={22} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.statKicker}>Ümumi Bal</Text>
+              <Text style={styles.statKicker}>{t('weeklyReport.scoreKicker')}</Text>
               <Text style={styles.statBig}>78%</Text>
             </View>
           </View>
           <View style={styles.highBadge}>
-            <Text style={styles.highBadgeText}>Yüksək</Text>
+            <Text style={styles.highBadgeText}>{t('weeklyReport.high')}</Text>
           </View>
         </View>
 
@@ -120,9 +122,9 @@ export default function WeeklyReportScreen() {
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
                 <Text style={styles.miniBig}>45</Text>
-                <Text style={styles.miniUnit}>sual</Text>
+                <Text style={styles.miniUnit}>{t('weeklyReport.correctUnit')}</Text>
               </View>
-              <Text style={styles.miniLabel}>DÜZGÜN CAVABLAR</Text>
+              <Text style={styles.miniLabel}>{t('weeklyReport.correctLabel')}</Text>
             </View>
           </View>
           <View style={styles.miniCard}>
@@ -130,28 +132,28 @@ export default function WeeklyReportScreen() {
               <Ionicons name="time" size={20} color={Colors.secondary} />
             </View>
             <View>
-              <Text style={styles.miniBig}>2s 30d</Text>
-              <Text style={styles.miniLabel}>SƏRF OLUNAN VAXT</Text>
+              <Text style={styles.miniBig}>{t('weeklyReport.timeValue')}</Text>
+              <Text style={styles.miniLabel}>{t('weeklyReport.timeLabel')}</Text>
             </View>
           </View>
         </View>
 
         {/* Topic analysis */}
         <View style={{ gap: 14 }}>
-          <Text style={styles.sectionTitle}>Güclü və Zəif Mövzular</Text>
-          {TOPICS.map((t) => {
-            const color = t.tone === 'success' ? Colors.tertiary : Colors.danger;
+          <Text style={styles.sectionTitle}>{t('weeklyReport.sectionTitle')}</Text>
+          {TOPICS.map((topic) => {
+            const color = topic.tone === 'success' ? Colors.tertiary : Colors.danger;
             return (
-              <View key={t.id} style={styles.topicCard}>
+              <View key={topic.id} style={styles.topicCard}>
                 <View style={[styles.topicStripe, { backgroundColor: color }]} />
                 <View style={[styles.topicIcon]}>
-                  <Ionicons name={t.icon} size={20} color={Colors.textSecondary} />
+                  <Ionicons name={topic.icon} size={20} color={Colors.textSecondary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.topicName}>{t.name}</Text>
-                  <Text style={styles.topicSub}>{t.sub}</Text>
+                  <Text style={styles.topicName}>{topic.name}</Text>
+                  <Text style={styles.topicSub}>{t(topic.subKey)}</Text>
                 </View>
-                <Text style={[styles.topicPct, { color }]}>{t.pct}%</Text>
+                <Text style={[styles.topicPct, { color }]}>{topic.pct}%</Text>
               </View>
             );
           })}
@@ -159,7 +161,7 @@ export default function WeeklyReportScreen() {
 
         {/* CTA */}
         <TouchableOpacity activeOpacity={0.9} style={styles.cta}>
-          <Text style={styles.ctaText}>Məşqə başla</Text>
+          <Text style={styles.ctaText}>{t('weeklyReport.ctaText')}</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
 

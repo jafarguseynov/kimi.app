@@ -10,6 +10,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { getCertificate, getExamResult, type Certificate } from '../../api/certificate.api';
 import { useUserStore } from '../../store/user.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const GOLD = '#D4AF37';
@@ -26,13 +27,14 @@ function formatDate(iso: string): string {
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
-function tierForPct(pct: number): 'Champion' | 'Excellence' | 'Uğur' {
-  if (pct >= 95) return 'Champion';
-  if (pct >= 85) return 'Excellence';
-  return 'Uğur';
+function tierKeyForPct(pct: number): string {
+  if (pct >= 95) return 'cert.tierChampion';
+  if (pct >= 85) return 'cert.tierExcellence';
+  return 'cert.tierSuccess';
 }
 
 export default function CertificatePreviewScreen({ navigation, route }: Props) {
+  const { t } = useTranslation();
   const { examId } = route.params;
   const [cert, setCert] = useState<Certificate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,16 +62,16 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
     if (!cert) return;
     try {
       await Share.share({
-        message: `🎉 Kimi.az-da ${cert.examTitle} imtahanında ${cert.percentage}% nəticə əldə etdim! (${cert.score}/${cert.total})\n\nSən də sına: https://kimi.az`,
-        title: 'Kimi.az Sertifikatım',
+        message: t('cert.shareMsg', { title: cert.examTitle, pct: cert.percentage, score: cert.score, total: cert.total }),
+        title: t('cert.shareTitle'),
       });
-    } catch { Alert.alert('Xəta', 'Paylaşma alınmadı'); }
+    } catch { Alert.alert(t('cert.errorTitle'), t('cert.shareFailed')); }
   };
 
   const handleDownload = () => {
-    Alert.alert('PDF yüklə', 'Sertifikat PDF kimi paylaşılacaq.', [
-      { text: 'İmtina', style: 'cancel' },
-      { text: 'Davam et', onPress: handleShare },
+    Alert.alert(t('cert.pdfTitle'), t('cert.pdfMsg'), [
+      { text: t('cert.decline'), style: 'cancel' },
+      { text: t('cert.continue'), onPress: handleShare },
     ]);
   };
 
@@ -79,7 +81,7 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sertifikat Təfərrüatı</Text>
+        <Text style={styles.headerTitle}>{t('cert.previewTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -90,8 +92,8 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
       ) : !cert ? (
         <View style={styles.center}>
           <Ionicons name="ribbon-outline" size={56} color={Colors.primaryFixed} />
-          <Text style={styles.errTitle}>Sertifikat tapılmadı</Text>
-          <Text style={styles.errSub}>Bu imtahan üçün sertifikat hələ verilməyib.</Text>
+          <Text style={styles.errTitle}>{t('cert.notFoundTitle')}</Text>
+          <Text style={styles.errSub}>{t('cert.notFoundSub')}</Text>
         </View>
       ) : (
         <>
@@ -111,16 +113,16 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
                 Kimi<Text style={styles.brandAccent}>.az</Text>
               </Text>
 
-              <Text style={styles.kicker}>MÜVƏFFƏQİYYƏT SERTİFİKATI</Text>
+              <Text style={styles.kicker}>{t('cert.diploma')}</Text>
 
-              <Text style={styles.intro}>Bu sertifikat təqdim olunur:</Text>
-              <Text style={styles.name}>{user?.name ?? 'İstifadəçi'}</Text>
+              <Text style={styles.intro}>{t('cert.awardedTo')}</Text>
+              <Text style={styles.name}>{user?.name ?? t('cert.userFallback')}</Text>
 
               <View style={styles.divider} />
 
               <Text style={styles.desc}>
-                <Text style={styles.descBold}>{cert.examTitle}</Text> imtahanını{' '}
-                <Text style={styles.descScore}>{cert.score}/{cert.total}</Text> nəticə ilə uğurla başa vurduğu üçün.
+                {t('cert.descPre')}<Text style={styles.descBold}>{cert.examTitle}</Text>{t('cert.descMid')}
+                <Text style={styles.descScore}>{cert.score}/{cert.total}</Text>{t('cert.descPost')}
               </Text>
 
               {/* Gold champion badge */}
@@ -133,18 +135,18 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                 >
-                  <Text style={styles.badgePillText}>{tierForPct(cert.percentage)}</Text>
+                  <Text style={styles.badgePillText}>{t(tierKeyForPct(cert.percentage))}</Text>
                 </LinearGradient>
               </View>
 
               <View style={styles.dateBlock}>
-                <Text style={styles.dateLabel}>TARİX</Text>
+                <Text style={styles.dateLabel}>{t('cert.dateLabel')}</Text>
                 <Text style={styles.dateValue}>{formatDate(cert.issuedAt)}</Text>
               </View>
             </View>
 
             {/* Ətraflı Məlumat */}
-            <Text style={styles.sectionTitle}>Ətraflı Məlumat</Text>
+            <Text style={styles.sectionTitle}>{t('cert.details')}</Text>
 
             <View style={styles.infoGrid}>
               <View style={styles.infoCard}>
@@ -152,8 +154,8 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
                   <Ionicons name="medal-outline" size={22} color={Colors.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>Sertifikat növü</Text>
-                  <Text style={styles.infoValue}>{tierForPct(cert.percentage)}</Text>
+                  <Text style={styles.infoLabel}>{t('cert.certType')}</Text>
+                  <Text style={styles.infoValue}>{t(tierKeyForPct(cert.percentage))}</Text>
                 </View>
               </View>
               <View style={styles.infoCard}>
@@ -161,8 +163,8 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
                   <Ionicons name="document-text-outline" size={22} color={Colors.tertiary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>İmtahan</Text>
-                  <Text style={styles.infoValue} numberOfLines={1}>Sınaq</Text>
+                  <Text style={styles.infoLabel}>{t('cert.exam')}</Text>
+                  <Text style={styles.infoValue} numberOfLines={1}>{t('cert.examMock')}</Text>
                 </View>
               </View>
             </View>
@@ -174,9 +176,9 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
                 <Ionicons name="bulb-outline" size={28} color={Colors.primaryDim} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.hintTitle}>Möhtəşəm nəticə!</Text>
+                <Text style={styles.hintTitle}>{t('cert.hintTitle')}</Text>
                 <Text style={styles.hintSub}>
-                  Siz bu kursu ən yüksək 5% tələbə sırasına daxil olaraq bitirdiniz. Sertifikatınızı PDF olaraq yükləyə və ya paylaşa bilərsiniz.
+                  {t('cert.hintSub')}
                 </Text>
               </View>
             </View>
@@ -194,7 +196,7 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
                 end={{ x: 1, y: 0 }}
               >
                 <Ionicons name="download-outline" size={20} color="#fff" />
-                <Text style={styles.primaryBtnText}>PDF yüklə</Text>
+                <Text style={styles.primaryBtnText}>{t('cert.pdfDownload')}</Text>
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconBtn} onPress={handleShare} activeOpacity={0.85}>

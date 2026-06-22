@@ -5,12 +5,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function MotivationReminderScreen() {
   const navigation = useNavigation<any>();
   const [notifications, setNotifications] = useState(true);
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -18,7 +20,7 @@ export default function MotivationReminderScreen() {
         <TouchableOpacity style={styles.headerBackBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sənin üçün xatırlatma</Text>
+        <Text style={styles.headerTitle}>{t('motivReminder.title')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -29,10 +31,8 @@ export default function MotivationReminderScreen() {
           <View style={styles.heroIcon}>
             <Ionicons name="checkmark-done-circle" size={48} color={Colors.primary} />
           </View>
-          <Text style={styles.heroTitle}>Bu gün hələ tapşırıqlarını etməmisən</Text>
-          <Text style={styles.heroSub}>
-            Sənin inkişafın sənə bağlıdır. Gündəlik hədəfinə çatmaq üçün sadəcə bir neçə dəqiqə lazımdır.
-          </Text>
+          <Text style={styles.heroTitle}>{t('motivReminder.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('motivReminder.heroSub')}</Text>
         </View>
 
         {/* AI Emotional message */}
@@ -43,10 +43,10 @@ export default function MotivationReminderScreen() {
           <View style={styles.aiBubble}>
             <View style={styles.bubbleTail} />
             <Text style={styles.aiBubbleText}>
-              Davam etsən, <Text style={{ fontWeight: '800' }}>7 günlük streak</Text> qazana bilərsən{' '}
+              {t('motivReminder.aiPre')}<Text style={{ fontWeight: '800' }}>{t('motivReminder.aiBold')}</Text>{t('motivReminder.aiPost')}
               <Text style={{ fontSize: 20 }}>🔥</Text>
             </Text>
-            <Text style={styles.aiBubbleSub}>Mən inanıram ki, sən bunu edə bilərsən!</Text>
+            <Text style={styles.aiBubbleSub}>{t('motivReminder.aiSub')}</Text>
           </View>
         </View>
 
@@ -54,12 +54,12 @@ export default function MotivationReminderScreen() {
         <View style={{ gap: 16 }}>
           <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.goBack()}>
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
-              <Text style={styles.primaryBtnText}>İndi başla</Text>
+              <Text style={styles.primaryBtnText}>{t('motivReminder.startNow')}</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </LinearGradient>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} activeOpacity={0.85}>
-            <Text style={styles.secondaryBtnText}>Sonra xatırlat</Text>
+            <Text style={styles.secondaryBtnText}>{t('motivReminder.remindLater')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -70,8 +70,8 @@ export default function MotivationReminderScreen() {
               <Ionicons name="notifications-circle" size={26} color={Colors.textSecondary} />
             </View>
             <View>
-              <Text style={styles.settingsTitle}>Bildirişləri aktiv et</Text>
-              <Text style={styles.settingsSub}>Motivasiyanı əldən vermə</Text>
+              <Text style={styles.settingsTitle}>{t('motivReminder.enableNotif')}</Text>
+              <Text style={styles.settingsSub}>{t('motivReminder.enableNotifSub')}</Text>
             </View>
           </View>
           <Switch

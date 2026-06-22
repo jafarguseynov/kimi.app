@@ -5,11 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function VerificationSuccessScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -17,7 +19,7 @@ export default function VerificationSuccessScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Təsdiqləndi</Text>
+        <Text style={styles.headerTitle}>{t('verificationSuccess.headerTitle')}</Text>
         <LinearGradient colors={GRADIENT} style={styles.headerAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <Text style={styles.headerAvatarText}>K</Text>
         </LinearGradient>
@@ -34,17 +36,17 @@ export default function VerificationSuccessScreen() {
               <Ionicons name="sparkles" size={12} color="#fff" />
             </View>
           </View>
-          <Text style={styles.heroTitle}>Profiliniz Təsdiqləndi!</Text>
+          <Text style={styles.heroTitle}>{t('verificationSuccess.heroTitle')}</Text>
           <Text style={styles.heroSubtitle}>
-            Təbriklər! Sənədləriniz uğurla yoxlanıldı və profilinizə{' '}
-            <Text style={styles.heroHighlight}>'Təsdiqlənmiş Müəllim'</Text>
-            {' '}nişanı əlavə olundu.
+            {t('verificationSuccess.heroSubPre')}
+            <Text style={styles.heroHighlight}>{t('verificationSuccess.heroBadgeName')}</Text>
+            {t('verificationSuccess.heroSubPost')}
           </Text>
         </View>
 
         {/* Profile preview card */}
         <View style={styles.sectionLabel}>
-          <Text style={styles.sectionLabelText}>Yeni Profil Görünüşünüz</Text>
+          <Text style={styles.sectionLabelText}>{t('verificationSuccess.previewLabel')}</Text>
         </View>
         <View style={styles.previewCard}>
           <View style={styles.previewCardDecor} />
@@ -61,7 +63,7 @@ export default function VerificationSuccessScreen() {
               <Text style={styles.previewName}>Leyla Əliyeva</Text>
               <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.previewSubject}>Riyaziyyat və Fizika Müəllimi</Text>
+            <Text style={styles.previewSubject}>{t('verificationSuccess.previewSubject')}</Text>
             <View style={styles.previewStats}>
               <View style={styles.previewStatChip}>
                 <Ionicons name="star" size={13} color="#f59e0b" />
@@ -69,7 +71,7 @@ export default function VerificationSuccessScreen() {
               </View>
               <View style={styles.previewStatRow}>
                 <Ionicons name="people-outline" size={14} color={Colors.textMuted} />
-                <Text style={styles.previewStatMuted}>120+ Şagird</Text>
+                <Text style={styles.previewStatMuted}>{t('verificationSuccess.previewStudents')}</Text>
               </View>
             </View>
           </View>
@@ -77,7 +79,7 @@ export default function VerificationSuccessScreen() {
 
         {/* Benefits grid */}
         <View style={styles.sectionLabel}>
-          <Text style={styles.sectionLabelText}>Qazandığınız Üstünlüklər</Text>
+          <Text style={styles.sectionLabelText}>{t('verificationSuccess.benefitsLabel')}</Text>
         </View>
         <View style={styles.benefitsGrid}>
           <View style={styles.benefitCard}>
@@ -85,8 +87,8 @@ export default function VerificationSuccessScreen() {
               <Ionicons name="trending-up" size={22} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.benefitTitle}>Axtarışda ön sıralar</Text>
-              <Text style={styles.benefitSub}>Profiliniz şagirdlərin axtarış nəticələrində ilk sıralarda göstəriləcək.</Text>
+              <Text style={styles.benefitTitle}>{t('verificationSuccess.benefit1Title')}</Text>
+              <Text style={styles.benefitSub}>{t('verificationSuccess.benefit1Sub')}</Text>
             </View>
           </View>
 
@@ -95,8 +97,8 @@ export default function VerificationSuccessScreen() {
               <Ionicons name="shield-outline" size={22} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.benefitTitle}>Şagirdlər tərəfindən yüksək etibar</Text>
-              <Text style={styles.benefitSub}>Təsdiq nişanı ilə valideynlər və şagirdlərin güvənini daha tez qazanın.</Text>
+              <Text style={styles.benefitTitle}>{t('verificationSuccess.benefit2Title')}</Text>
+              <Text style={styles.benefitSub}>{t('verificationSuccess.benefit2Sub')}</Text>
             </View>
           </View>
 
@@ -105,8 +107,8 @@ export default function VerificationSuccessScreen() {
               <Ionicons name="ribbon" size={22} color={Colors.primary} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.benefitTitle}>Premium dərs sorğularına çıxış</Text>
-              <Text style={styles.benefitSub}>Yalnız təsdiqlənmiş müəllimlər üçün nəzərdə tutulmuş eksklüziv dərs təkliflərinə müraciət edə bilərsiniz.</Text>
+              <Text style={styles.benefitTitle}>{t('verificationSuccess.benefit3Title')}</Text>
+              <Text style={styles.benefitSub}>{t('verificationSuccess.benefit3Sub')}</Text>
             </View>
           </View>
         </View>
@@ -114,12 +116,12 @@ export default function VerificationSuccessScreen() {
         {/* Action buttons */}
         <TouchableOpacity activeOpacity={0.9}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryBtnText}>Profilimə bax</Text>
+            <Text style={styles.primaryBtnText}>{t('verificationSuccess.viewProfile')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.secondaryBtn} onPress={() => navigation.navigate('HomeMain' as never)} activeOpacity={0.85}>
-          <Text style={styles.secondaryBtnText}>Ana səhifəyə qayıt</Text>
+          <Text style={styles.secondaryBtnText}>{t('verificationSuccess.backHome')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

@@ -17,8 +17,12 @@ import { Routes } from '../../constants/routes';
 import { useQuery } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { getTeacherReviews, getStudentBookings, Review } from '../../api/booking.api';
+import { useTranslation } from '../../i18n';
 
-const FILTER_CHIPS = ['Hamısı', '5 ulduz', '4 ulduz', '3 ulduz', '2 ulduz', '1 ulduz'];
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
+
+// Filtr açarları (dəyişməz): 'all' və ulduz sayı
+const FILTER_KEYS = ['all', '5', '4', '3', '2', '1'] as const;
 
 const AVATAR_GRADIENTS: [string, string][] = [
   [Colors.gradientStart, Colors.gradientEnd],
@@ -26,22 +30,24 @@ const AVATAR_GRADIENTS: [string, string][] = [
   ['#006947', '#58e7ab'],
 ];
 
-function formatDate(iso: string): string {
+function formatDate(iso: string, t: TFn): string {
   const d = new Date(iso);
   const now = Date.now();
   const diff = Math.floor((now - d.getTime()) / 86400000);
-  if (diff === 0) return 'Bu gün';
-  if (diff === 1) return 'Dünən';
-  if (diff < 7) return `${diff} gün əvvəl`;
-  if (diff < 30) return `${Math.floor(diff / 7)} həftə əvvəl`;
-  return `${Math.floor(diff / 30)} ay əvvəl`;
+  if (diff === 0) return t('booking.today');
+  if (diff === 1) return t('booking.yesterday');
+  if (diff < 7) return t('booking.daysAgo', { n: diff });
+  if (diff < 30) return t('booking.weeksAgo', { n: Math.floor(diff / 7) });
+  return t('booking.monthsAgo', { n: Math.floor(diff / 30) });
 }
 
 export default function AllReviewsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProp<{ params: { teacherId?: string; teacherName?: string } }, 'params'>>();
-  const { teacherId = '', teacherName = 'Müəllim' } = route.params ?? {};
-  const [activeFilter, setActiveFilter] = useState('Hamısı');
+  const { teacherId = '', teacherName = t('booking.defaultTeacher') } = route.params ?? {};
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const chipLabel = (key: string) => key === 'all' ? t('booking.filterAll') : t('booking.filterStar', { n: key });
 
   const { data: reviews = [], isLoading } = useQuery({
     queryKey: ['teacher-reviews', teacherId],
@@ -58,7 +64,7 @@ export default function AllReviewsScreen() {
     if (!teacherId) return;
     const booking = myBookings.find((b) => b.teacher?.id === teacherId);
     if (!booking) {
-      Alert.alert('Rezervasiya tələb olunur', 'Bu müəllimə rəy yazmaq üçün əvvəlcə dərs sifariş etməlisən.');
+      Alert.alert(t('booking.bookingRequired'), t('booking.bookingRequiredMsg'));
       return;
     }
     navigation.navigate(Routes.LeaveReview, {
@@ -69,7 +75,7 @@ export default function AllReviewsScreen() {
     });
   };
 
-  const filterStar = activeFilter === 'Hamısı' ? 0 : parseInt(activeFilter[0], 10);
+  const filterStar = activeFilter === 'all' ? 0 : parseInt(activeFilter, 10);
   const displayed = filterStar ? reviews.filter((r) => r.rating === filterStar) : reviews;
 
   const avgRating = reviews.length
@@ -91,7 +97,7 @@ export default function AllReviewsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Bütün rəylər</Text>
+        <Text style={styles.headerTitle}>{t('booking.allReviewsHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -105,8 +111,8 @@ export default function AllReviewsScreen() {
             <View style={styles.emptyIllustration}>
               <Ionicons name="chatbubble-ellipses-outline" size={80} color={Colors.primary + '28'} />
             </View>
-            <Text style={styles.emptyTitle}>Hələ rəy yoxdur</Text>
-            <Text style={styles.emptySub}>İlk rəy yazan sən ol</Text>
+            <Text style={styles.emptyTitle}>{t('booking.noReviewsTitle')}</Text>
+            <Text style={styles.emptySub}>{t('booking.noReviewsSub')}</Text>
 
             <TouchableOpacity
               style={{ width: '100%' }}
@@ -120,19 +126,19 @@ export default function AllReviewsScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 <Ionicons name="create-outline" size={20} color="#fff" />
-                <Text style={styles.emptyBtnText}>Rəy yaz</Text>
+                <Text style={styles.emptyBtnText}>{t('booking.writeReview')}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            <Text style={styles.emptyFooter}>Kimi.az Təhsil Platforması</Text>
+            <Text style={styles.emptyFooter}>{t('booking.platformFooter')}</Text>
 
             <View style={styles.emptyInfoCard}>
               <View style={styles.emptyInfoRow}>
                 <Ionicons name="shield-checkmark-outline" size={16} color={Colors.primary} />
-                <Text style={styles.emptyInfoLabel}>Təhlükəsiz Rəylər</Text>
+                <Text style={styles.emptyInfoLabel}>{t('booking.safeReviews')}</Text>
               </View>
               <Text style={styles.emptyInfoText}>
-                Bütün rəylər platformamız tərəfindən doğrulanır və şəffaflıq qorunur.
+                {t('booking.safeReviewsText')}
               </Text>
             </View>
           </View>
@@ -152,7 +158,7 @@ export default function AllReviewsScreen() {
                     />
                   ))}
                 </View>
-                <Text style={styles.overviewCount}>{reviews.length} rəy</Text>
+                <Text style={styles.overviewCount}>{t('booking.reviewCount', { count: reviews.length })}</Text>
               </View>
               <View style={styles.barsSection}>
                 {ratingBars.map((bar) => (
@@ -173,7 +179,7 @@ export default function AllReviewsScreen() {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.chipsList}
             >
-              {FILTER_CHIPS.map((chip) => {
+              {FILTER_KEYS.map((chip) => {
                 const isActive = activeFilter === chip;
                 if (isActive) {
                   return (
@@ -184,7 +190,7 @@ export default function AllReviewsScreen() {
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                       >
-                        <Text style={styles.chipActiveText}>{chip}</Text>
+                        <Text style={styles.chipActiveText}>{chipLabel(chip)}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   );
@@ -196,7 +202,7 @@ export default function AllReviewsScreen() {
                     onPress={() => setActiveFilter(chip)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.chipText}>{chip}</Text>
+                    <Text style={styles.chipText}>{chipLabel(chip)}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -206,7 +212,7 @@ export default function AllReviewsScreen() {
             <View style={styles.reviewsList}>
               {displayed.map((review: Review, idx) => {
                 const gradient = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
-                const name = review.student?.name ?? 'Şagird';
+                const name = review.student?.name ?? t('booking.defaultStudent');
                 const initial = name[0]?.toUpperCase() ?? '?';
                 return (
                   <View key={review.id} style={styles.reviewCard}>
@@ -222,7 +228,7 @@ export default function AllReviewsScreen() {
                         </LinearGradient>
                         <View>
                           <Text style={styles.reviewAuthorName}>{name}</Text>
-                          <Text style={styles.reviewDate}>{formatDate(review.createdAt)}</Text>
+                          <Text style={styles.reviewDate}>{formatDate(review.createdAt, t)}</Text>
                         </View>
                       </View>
                       <View style={styles.reviewStarsRow}>

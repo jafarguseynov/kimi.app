@@ -17,37 +17,39 @@ import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useLogout } from '../../hooks/useAuth';
 import { useSettingsStore } from '../../store/settings.store';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { user } = useUserStore();
+  const { t } = useTranslation();
   const logout = useLogout();
   const { pushEnabled, emailEnabled, setPushEnabled, setEmailEnabled, language } = useSettingsStore();
 
-  const name = user?.name ?? 'İstifadəçi';
+  const name = user?.name ?? t('profileSettings.defaultName');
   const initial = name[0]?.toUpperCase() ?? '?';
   const languageLabel = language === 'en' ? 'English' : language === 'ru' ? 'Русский' : 'Azərbaycan dili';
 
   const SECURITY_ITEMS = [
-    { icon: 'lock-closed-outline' as const, label: 'Şifrəni dəyiş', route: Routes.ChangePassword },
-    { icon: 'shield-checkmark-outline' as const, label: 'İki-faktorlu təsdiqləmə', route: Routes.TwoFactor },
-    { icon: 'ban-outline' as const, label: 'Bloklanmış istifadəçilər', route: Routes.BlockedUsers },
-    { icon: 'person-remove-outline' as const, label: 'Hesabın idarəetməsi', route: Routes.AccountManagement },
+    { icon: 'lock-closed-outline' as const, label: t('profileSettings.secChangePassword'), route: Routes.ChangePassword },
+    { icon: 'shield-checkmark-outline' as const, label: t('profileSettings.secTwoFactor'), route: Routes.TwoFactor },
+    { icon: 'ban-outline' as const, label: t('profileSettings.secBlocked'), route: Routes.BlockedUsers },
+    { icon: 'person-remove-outline' as const, label: t('profileSettings.secAccountMgmt'), route: Routes.AccountManagement },
   ];
 
   const HELP_ITEMS = [
-    { icon: 'help-buoy-outline' as const, label: 'Yardım Mərkəzi', route: Routes.HelpCenter },
-    { icon: 'chatbubbles-outline' as const, label: 'Dəstək və Əlaqə', route: Routes.Support },
-    { icon: 'bug-outline' as const, label: 'Problemi bildir', route: Routes.ReportProblem },
-    { icon: 'document-text-outline' as const, label: 'İstifadə şərtləri', route: Routes.TermsOfService },
-    { icon: 'information-circle-outline' as const, label: 'Tətbiq haqqında', route: Routes.AboutApp },
+    { icon: 'help-buoy-outline' as const, label: t('profileSettings.helpCenter'), route: Routes.HelpCenter },
+    { icon: 'chatbubbles-outline' as const, label: t('profileSettings.helpSupport'), route: Routes.Support },
+    { icon: 'bug-outline' as const, label: t('profileSettings.helpReport'), route: Routes.ReportProblem },
+    { icon: 'document-text-outline' as const, label: t('profileSettings.helpTerms'), route: Routes.TermsOfService },
+    { icon: 'information-circle-outline' as const, label: t('profileSettings.helpAbout'), route: Routes.AboutApp },
   ];
 
   const goEditProfile = () => {
-    const parent = navigation.getParent() as any;
-    parent?.navigate(Routes.Profile, { screen: Routes.EditProfile });
+    // Settings ilə eyni stack-dədir — birbaşa push et ki, geri Settings-ə qayıtsın.
+    navigation.navigate(Routes.EditProfile);
   };
 
   return (
@@ -56,7 +58,7 @@ export default function SettingsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tənzimləmələr</Text>
+        <Text style={styles.headerTitle}>{t('profileSettings.headerTitle')}</Text>
         <View style={styles.headerBtn}>
           <Ionicons name="settings-outline" size={22} color={Colors.primary} />
         </View>
@@ -74,23 +76,23 @@ export default function SettingsScreen() {
             </LinearGradient>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{name}</Text>
-              <Text style={styles.profileEmail}>{user?.phone ?? 'kimi.az hesabı'}</Text>
+              <Text style={styles.profileEmail}>{user?.phone ?? t('profileSettings.defaultAccount')}</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.editProfileBtn} activeOpacity={0.8} onPress={goEditProfile}>
-            <Text style={styles.editProfileText}>Profili redaktə et</Text>
+            <Text style={styles.editProfileText}>{t('profileSettings.editProfile')}</Text>
           </TouchableOpacity>
         </View>
 
         {/* Notifications */}
-        <Text style={styles.sectionLabel}>Bildiriş ayarları</Text>
+        <Text style={styles.sectionLabel}>{t('profileSettings.notifSection')}</Text>
         <View style={styles.card}>
           <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
               <View style={styles.iconBox}>
                 <Ionicons name="notifications-outline" size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.settingText}>Push bildirişlər</Text>
+              <Text style={styles.settingText}>{t('profileSettings.pushNotif')}</Text>
             </View>
             <Switch
               value={pushEnabled}
@@ -105,7 +107,7 @@ export default function SettingsScreen() {
               <View style={styles.iconBox}>
                 <Ionicons name="mail-outline" size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.settingText}>Email yenilikləri</Text>
+              <Text style={styles.settingText}>{t('profileSettings.emailNews')}</Text>
             </View>
             <Switch
               value={emailEnabled}
@@ -124,14 +126,14 @@ export default function SettingsScreen() {
               <View style={styles.iconBox}>
                 <Ionicons name="options-outline" size={20} color={Colors.primary} />
               </View>
-              <Text style={styles.settingText}>Detallı bildiriş tənzimləmələri</Text>
+              <Text style={styles.settingText}>{t('profileSettings.detailedNotif')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
           </TouchableOpacity>
         </View>
 
         {/* Language */}
-        <Text style={styles.sectionLabel}>Dil</Text>
+        <Text style={styles.sectionLabel}>{t('profileSettings.languageSection')}</Text>
         <View style={styles.card}>
           <TouchableOpacity
             style={styles.settingRow}
@@ -149,7 +151,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Security */}
-        <Text style={styles.sectionLabel}>Təhlükəsizlik</Text>
+        <Text style={styles.sectionLabel}>{t('profileSettings.securitySection')}</Text>
         <View style={styles.card}>
           {SECURITY_ITEMS.map((item, i) => (
             <React.Fragment key={item.label}>
@@ -172,7 +174,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* Help & support */}
-        <Text style={styles.sectionLabel}>Yardım və Dəstək</Text>
+        <Text style={styles.sectionLabel}>{t('profileSettings.helpSection')}</Text>
         <View style={styles.card}>
           {HELP_ITEMS.map((item, i) => (
             <React.Fragment key={item.label}>
@@ -197,7 +199,7 @@ export default function SettingsScreen() {
         {/* Logout */}
         <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.85}>
           <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
-          <Text style={styles.logoutText}>Hesabdan çıxış</Text>
+          <Text style={styles.logoutText}>{t('profileSettings.logout')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

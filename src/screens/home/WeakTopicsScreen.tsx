@@ -5,6 +5,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 interface Weak {
   id: string;
@@ -25,6 +26,7 @@ const SEVERITY: Record<Weak['severity'], { color: string; icon: keyof typeof Ion
 
 export default function WeakTopicsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -32,7 +34,7 @@ export default function WeakTopicsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sənin Zəif Mövzuların</Text>
+        <Text style={styles.headerTitle}>{t('weakTopics.title')}</Text>
         <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
           <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondary} />
         </TouchableOpacity>
@@ -46,18 +48,18 @@ export default function WeakTopicsScreen() {
               <Ionicons name="hardware-chip" size={26} color={Colors.primary} />
             </View>
             <View style={{ flex: 1, paddingTop: 2 }}>
-              <Text style={styles.analysisTitle}>AI sənin son testlərini analiz etdi</Text>
-              <Text style={styles.analysisSub}>Səhvlərini düzəltmək üçün xüsusi plan hazırdır.</Text>
+              <Text style={styles.analysisTitle}>{t('weakTopics.aiAnalyzed')}</Text>
+              <Text style={styles.analysisSub}>{t('weakTopics.aiAnalyzedSub')}</Text>
             </View>
           </View>
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>Yeniləndi</Text>
+            <Text style={styles.badgeText}>{t('weakTopics.updated')}</Text>
           </View>
         </View>
 
         {/* Section */}
         <View style={{ gap: 20 }}>
-          <Text style={styles.sectionTitle}>Diqqət tələb edən mövzular</Text>
+          <Text style={styles.sectionTitle}>{t('weakTopics.attentionSection')}</Text>
           {WEAK.map((w) => {
             const sev = SEVERITY[w.severity];
             return (
@@ -67,7 +69,7 @@ export default function WeakTopicsScreen() {
                     <Text style={styles.cardTitle}>{w.topic}</Text>
                     <View style={styles.errorRow}>
                       <Ionicons name={sev.icon} size={16} color={sev.color} />
-                      <Text style={[styles.errorText, { color: sev.color }]}>{w.errorPct}% səhv</Text>
+                      <Text style={[styles.errorText, { color: sev.color }]}>{t('weakTopics.errorPct', { n: w.errorPct })}</Text>
                     </View>
                   </View>
                   <TouchableOpacity
@@ -75,7 +77,7 @@ export default function WeakTopicsScreen() {
                     style={styles.repeatBtn}
                     onPress={() => navigation.navigate(Routes.TopicProgress, { topic: w.topic })}
                   >
-                    <Text style={styles.repeatBtnText}>Təkrar et</Text>
+                    <Text style={styles.repeatBtnText}>{t('weakTopics.review')}</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.progressTrack}>
@@ -90,9 +92,9 @@ export default function WeakTopicsScreen() {
         <View style={styles.tipCard}>
           <View style={styles.tipKickerRow}>
             <Ionicons name="bulb" size={20} color={Colors.primary} />
-            <Text style={styles.tipKicker}>KİMİ-DƏN MƏSLƏHƏT</Text>
+            <Text style={styles.tipKicker}>{t('weakTopics.tipKicker')}</Text>
           </View>
-          <Text style={styles.tipText}>Bu mövzular üzərində işləsən nəticən 40% yaxşılaşa bilər.</Text>
+          <Text style={styles.tipText}>{t('weakTopics.tipText')}</Text>
         </View>
 
         <View style={{ height: 32 }} />

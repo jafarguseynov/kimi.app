@@ -23,18 +23,20 @@ import { registerSchema, RegisterFormData } from '../../utils/validation';
 import { useRegister } from '../../hooks/useAuth';
 import Input from '../../components/common/Input';
 import { UserRole } from '../../types/auth.types';
+import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Register> };
 
-const ROLE_OPTIONS: { id: Exclude<UserRole, 'admin'>; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { id: 'student', label: 'Şagird', icon: 'school-outline' },
-  { id: 'teacher', label: 'Müəllim', icon: 'person-circle-outline' },
-  { id: 'parent', label: 'Valideyn', icon: 'people-outline' },
+const ROLE_OPTIONS: { id: Exclude<UserRole, 'admin'>; labelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'student', labelKey: 'register.roleStudent', icon: 'school-outline' },
+  { id: 'teacher', labelKey: 'register.roleTeacher', icon: 'person-circle-outline' },
+  { id: 'parent', labelKey: 'register.roleParent', icon: 'people-outline' },
 ];
 
 const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif', 'Abituriyent'];
 
 export default function RegisterScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: { phone: '+994' },
@@ -47,15 +49,15 @@ export default function RegisterScreen({ navigation }: Props) {
   const [referralCode, setReferralCode] = React.useState('');
 
   const pickGrade = () =>
-    Alert.alert('Sinif seçin', '', [
+    Alert.alert(t('register.pickGrade'), '', [
       ...GRADES.map((g) => ({ text: g, onPress: () => setGrade(g) })),
-      { text: 'Ləğv et', style: 'cancel' as const, onPress: () => {} },
+      { text: t('register.cancel'), style: 'cancel' as const, onPress: () => {} },
     ]);
 
   const onSubmit = (data: RegisterFormData) => {
     if (role === 'parent') {
-      if (!childName.trim()) return Alert.alert('Övlad', 'Övladınızın adını daxil edin');
-      if (!grade) return Alert.alert('Sinif', 'Övladınızın sinfini seçin');
+      if (!childName.trim()) return Alert.alert(t('register.childTitle'), t('register.childMsg'));
+      if (!grade) return Alert.alert(t('register.gradeTitle'), t('register.gradeMsg'));
     }
 
     mutate(
@@ -70,7 +72,7 @@ export default function RegisterScreen({ navigation }: Props) {
       },
       {
         onError: (err: any) => {
-          Alert.alert('Xəta', err?.response?.data?.message || 'Qeydiyyat zamanı xəta baş verdi');
+          Alert.alert(t('register.errorTitle'), err?.response?.data?.message || t('register.registerError'));
         },
       },
     );
@@ -90,18 +92,18 @@ export default function RegisterScreen({ navigation }: Props) {
             style={styles.logoImage}
             resizeMode="contain"
           />
-          <Text style={styles.logoSub}>Gələcəyin təhsil platforması</Text>
+          <Text style={styles.logoSub}>{t('register.logoSub')}</Text>
         </View>
 
         {/* Form card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Yeni hesab yarat</Text>
-          <Text style={styles.cardSub}>Məlumatları daxil edərək qeydiyyatdan keçin</Text>
+          <Text style={styles.cardTitle}>{t('register.cardTitle')}</Text>
+          <Text style={styles.cardSub}>{t('register.cardSub')}</Text>
 
           <View style={styles.form}>
             {/* Role */}
             <View style={styles.labelWrap}>
-              <Text style={styles.fieldLabel}>ROL</Text>
+              <Text style={styles.fieldLabel}>{t('register.roleLabel')}</Text>
             </View>
             <View style={styles.roleRow}>
               {ROLE_OPTIONS.map((opt) => {
@@ -119,7 +121,7 @@ export default function RegisterScreen({ navigation }: Props) {
                       color={active ? '#fff' : Colors.primary}
                     />
                     <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -128,14 +130,14 @@ export default function RegisterScreen({ navigation }: Props) {
 
             {/* Name */}
             <View style={[styles.labelWrap, { marginTop: 16 }]}>
-              <Text style={styles.fieldLabel}>AD SOYAD</Text>
+              <Text style={styles.fieldLabel}>{t('register.nameLabel')}</Text>
             </View>
             <Controller
               control={control}
               name="name"
               render={({ field: { onChange, value } }) => (
                 <Input
-                  placeholder="Məs: Əli Məmmədov"
+                  placeholder={t('register.namePlaceholder')}
                   onChangeText={onChange}
                   value={value}
                   error={errors.name?.message}
@@ -145,7 +147,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
             {/* Phone */}
             <View style={styles.labelWrap}>
-              <Text style={styles.fieldLabel}>TELEFON</Text>
+              <Text style={styles.fieldLabel}>{t('register.phoneLabel')}</Text>
             </View>
             <Controller
               control={control}
@@ -163,14 +165,14 @@ export default function RegisterScreen({ navigation }: Props) {
 
             {/* Email */}
             <View style={styles.labelWrap}>
-              <Text style={styles.fieldLabel}>EMAIL</Text>
+              <Text style={styles.fieldLabel}>{t('register.emailLabel')}</Text>
             </View>
             <Controller
               control={control}
               name="email"
               render={({ field: { onChange, value } }) => (
                 <Input
-                  placeholder="nümunə@mail.com"
+                  placeholder={t('register.emailPlaceholder')}
                   onChangeText={onChange}
                   value={value}
                   keyboardType="email-address"
@@ -181,7 +183,7 @@ export default function RegisterScreen({ navigation }: Props) {
 
             {/* Password */}
             <View style={styles.labelWrap}>
-              <Text style={styles.fieldLabel}>ŞİFRƏ</Text>
+              <Text style={styles.fieldLabel}>{t('register.passwordLabel')}</Text>
             </View>
             <Controller
               control={control}
@@ -202,7 +204,7 @@ export default function RegisterScreen({ navigation }: Props) {
               <View style={styles.infoNote}>
                 <Ionicons name="information-circle-outline" size={18} color={Colors.primary} />
                 <Text style={styles.infoNoteText}>
-                  Sinif və məktəbini qeydiyyatdan sonra profil bölməsində seçəcəksən.
+                  {t('register.studentInfo')}
                 </Text>
               </View>
             )}
@@ -210,29 +212,29 @@ export default function RegisterScreen({ navigation }: Props) {
             {role === 'parent' && (
               <>
                 <View style={styles.labelWrap}>
-                  <Text style={styles.fieldLabel}>ÖVLADIN ADI</Text>
+                  <Text style={styles.fieldLabel}>{t('register.childNameLabel')}</Text>
                 </View>
                 <Input
-                  placeholder="Məs: Cəfər Yusifov"
+                  placeholder={t('register.childNamePlaceholder')}
                   value={childName}
                   onChangeText={setChildName}
                 />
 
                 <View style={styles.labelWrap}>
-                  <Text style={styles.fieldLabel}>ÖVLADIN SİNFİ</Text>
+                  <Text style={styles.fieldLabel}>{t('register.childGradeLabel')}</Text>
                 </View>
                 <TouchableOpacity style={styles.selectBox} activeOpacity={0.7} onPress={pickGrade}>
                   <Text style={[styles.selectText, !grade && styles.selectPlaceholder]}>
-                    {grade || 'Sinif seçin'}
+                    {grade || t('register.pickGrade')}
                   </Text>
                   <Ionicons name="chevron-down" size={18} color={Colors.primary} />
                 </TouchableOpacity>
 
                 <View style={styles.labelWrap}>
-                  <Text style={styles.fieldLabel}>ÖVLADIN MƏKTƏBİ (istəyə bağlı)</Text>
+                  <Text style={styles.fieldLabel}>{t('register.childSchoolLabel')}</Text>
                 </View>
                 <Input
-                  placeholder="Məktəb adı"
+                  placeholder={t('register.schoolPlaceholder')}
                   value={school}
                   onChangeText={setSchool}
                 />
@@ -240,12 +242,12 @@ export default function RegisterScreen({ navigation }: Props) {
             )}
 
             <View style={styles.labelWrap}>
-              <Text style={styles.fieldLabel}>REFERAL KODU (istəyə bağlı)</Text>
+              <Text style={styles.fieldLabel}>{t('register.referralLabel')}</Text>
             </View>
             <Input
-              placeholder="Məs: SF1A2B3C"
+              placeholder={t('register.referralPlaceholder')}
               value={referralCode}
-              onChangeText={(t: string) => setReferralCode(t.toUpperCase())}
+              onChangeText={(val: string) => setReferralCode(val.toUpperCase())}
               autoCapitalize="characters"
             />
 
@@ -266,7 +268,7 @@ export default function RegisterScreen({ navigation }: Props) {
                   <ActivityIndicator color="#fff" />
                 ) : (
                   <>
-                    <Text style={styles.submitBtnText}>Qeydiyyatdan keç</Text>
+                    <Text style={styles.submitBtnText}>{t('register.submit')}</Text>
                     <Ionicons name="arrow-forward" size={18} color="#fff" />
                   </>
                 )}
@@ -278,12 +280,12 @@ export default function RegisterScreen({ navigation }: Props) {
           <View style={styles.cardFooter}>
             <View style={styles.dividerLine} />
             <Text style={styles.loginLink}>
-              Artıq hesabınız var?{' '}
+              {t('register.haveAccount')}{' '}
               <Text
                 style={styles.loginLinkBold}
                 onPress={() => navigation.navigate(Routes.Login)}
               >
-                Daxil olun
+                {t('register.signIn')}
               </Text>
             </Text>
           </View>
@@ -291,11 +293,11 @@ export default function RegisterScreen({ navigation }: Props) {
 
         {/* Terms */}
         <Text style={styles.terms}>
-          Qeydiyyatdan keçməklə siz Kimi.az-ın{' '}
-          <Text style={styles.termsLink}>İstifadə Şərtləri</Text>
-          {' '}və{' '}
-          <Text style={styles.termsLink}>Məxfilik Siyasəti</Text>
-          {' '}ilə razılaşırsınız.
+          {t('register.termsPre')}
+          <Text style={styles.termsLink}>{t('register.termsOfUse')}</Text>
+          {t('register.and')}
+          <Text style={styles.termsLink}>{t('register.privacyPolicy')}</Text>
+          {t('register.termsPost')}
         </Text>
       </ScrollView>
     </SafeAreaView>

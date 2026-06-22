@@ -5,26 +5,28 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface Benefit { id: string; title: string; desc: string; }
+interface Benefit { id: string; titleKey: string; descKey: string; }
 const BENEFITS: Benefit[] = [
-  { id: '1', title: 'Etibar nişanı',        desc: 'Profilinizdə ekspert olduğunuzu göstərən rəsmi nişan.' },
-  { id: '2', title: 'Daha çox görünürlük',  desc: 'Tələbə axtarışlarında daha üst sıralarda yer alma şansı.' },
-  { id: '3', title: 'Daha yüksək qazanc',   desc: 'Dərsləriniz üçün daha yüksək tariflər təyin etmək imkanı.' },
+  { id: '1', titleKey: 'verifiedTeacher.benefit1Title', descKey: 'verifiedTeacher.benefit1Desc' },
+  { id: '2', titleKey: 'verifiedTeacher.benefit2Title', descKey: 'verifiedTeacher.benefit2Desc' },
+  { id: '3', titleKey: 'verifiedTeacher.benefit3Title', descKey: 'verifiedTeacher.benefit3Desc' },
 ];
 
-interface Req { id: string; icon: keyof typeof Ionicons.glyphMap; title: string; current: number; total: number; metPct: number; isPct?: boolean; met?: boolean; }
+interface Req { id: string; icon: keyof typeof Ionicons.glyphMap; titleKey: string; current: number; total: number; metPct: number; isPct?: boolean; met?: boolean; }
 const REQS: Req[] = [
-  { id: '1', icon: 'chatbubbles',  title: 'Minimum 20 cavab',        current: 15, total: 20, metPct: 75 },
-  { id: '2', icon: 'thumbs-up',    title: '80% qəbul olunmuş cavab', current: 92, total: 100, metPct: 92, isPct: true, met: true },
+  { id: '1', icon: 'chatbubbles',  titleKey: 'verifiedTeacher.req1Title',        current: 15, total: 20, metPct: 75 },
+  { id: '2', icon: 'thumbs-up',    titleKey: 'verifiedTeacher.req2Title', current: 92, total: 100, metPct: 92, isPct: true, met: true },
 ];
 
 const ALL_MET = REQS.every((r) => r.met);
 
 export default function VerifiedTeacherScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -32,7 +34,7 @@ export default function VerifiedTeacherScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Status</Text>
+        <Text style={styles.headerTitle}>{t('verifiedTeacher.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -42,14 +44,14 @@ export default function VerifiedTeacherScreen() {
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroBadge}>
             <Ionicons name="checkmark-done" size={42} color="#fff" />
           </LinearGradient>
-          <Text style={styles.heroTitle}>Verified müəllim ol</Text>
-          <Text style={styles.heroSub}>Kimi platformasında ekspertliyinizi təsdiqləyin və daha çox imtiyaz qazanın.</Text>
+          <Text style={styles.heroTitle}>{t('verifiedTeacher.heroTitle')}</Text>
+          <Text style={styles.heroSub}>{t('verifiedTeacher.heroSub')}</Text>
         </View>
 
         {/* Benefits */}
         <View style={styles.card}>
           <View style={styles.cardBlob} pointerEvents="none" />
-          <Text style={styles.cardTitle}>Təsdiq statusunun üstünlükləri</Text>
+          <Text style={styles.cardTitle}>{t('verifiedTeacher.benefitsTitle')}</Text>
           <View style={{ gap: 16, marginTop: 16 }}>
             {BENEFITS.map((b) => (
               <View key={b.id} style={styles.benefitRow}>
@@ -57,8 +59,8 @@ export default function VerifiedTeacherScreen() {
                   <Ionicons name="checkmark" size={14} color={Colors.tertiary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.benefitTitle}>{b.title}</Text>
-                  <Text style={styles.benefitDesc}>{b.desc}</Text>
+                  <Text style={styles.benefitTitle}>{t(b.titleKey)}</Text>
+                  <Text style={styles.benefitDesc}>{t(b.descKey)}</Text>
                 </View>
               </View>
             ))}
@@ -67,14 +69,14 @@ export default function VerifiedTeacherScreen() {
 
         {/* Requirements */}
         <View style={[styles.card, { backgroundColor: Colors.surfaceLow }]}>
-          <Text style={styles.cardTitle}>Tələblər</Text>
+          <Text style={styles.cardTitle}>{t('verifiedTeacher.reqsTitle')}</Text>
           <View style={{ gap: 20, marginTop: 16 }}>
             {REQS.map((r) => (
               <View key={r.id} style={{ gap: 8 }}>
                 <View style={styles.reqHead}>
                   <View style={styles.reqLabelRow}>
                     <Ionicons name={r.icon} size={18} color={Colors.primary} />
-                    <Text style={styles.reqLabel}>{r.title}</Text>
+                    <Text style={styles.reqLabel}>{t(r.titleKey)}</Text>
                   </View>
                   <Text style={[styles.reqValue, r.met && { color: Colors.tertiary }]}>
                     {r.isPct ? `${r.current}%` : `${r.current}/${r.total}`}
@@ -94,7 +96,7 @@ export default function VerifiedTeacherScreen() {
           <View style={styles.infoRow}>
             <Ionicons name="information-circle" size={16} color={Colors.textSecondary} style={{ marginTop: 1 }} />
             <Text style={styles.infoText}>
-              Siz hazırda birinci tələb üzrə irəliləyirsiniz. Bütün tələbləri qarşıladıqdan sonra müraciət düyməsi aktivləşəcək.
+              {t('verifiedTeacher.infoText')}
             </Text>
           </View>
         </View>
@@ -107,11 +109,11 @@ export default function VerifiedTeacherScreen() {
         <TouchableOpacity activeOpacity={0.9} disabled={!ALL_MET} style={{ width: '100%' }}>
           {ALL_MET ? (
             <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
-              <Text style={styles.ctaText}>Müraciət et</Text>
+              <Text style={styles.ctaText}>{t('verifiedTeacher.apply')}</Text>
             </LinearGradient>
           ) : (
             <View style={[styles.ctaBtn, styles.ctaBtnDisabled]}>
-              <Text style={[styles.ctaText, { color: Colors.textSecondary }]}>Müraciət et</Text>
+              <Text style={[styles.ctaText, { color: Colors.textSecondary }]}>{t('verifiedTeacher.apply')}</Text>
             </View>
           )}
         </TouchableOpacity>

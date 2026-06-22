@@ -24,6 +24,7 @@ import {
   expressInterest,
   type PublicLessonRequest,
 } from '../../api/lessonRequest.api';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.AllOpenRequests>;
@@ -33,16 +34,16 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const SUBJECT_FILTERS = ['Hamısı', 'Riyaziyyat', 'Fizika', 'Kimya', 'Biologiya', 'İngilis dili', 'Azərbaycan dili', 'Tarix', 'İbtidai'];
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, t: (k: string, v?: any) => string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'İndi';
-  if (m < 60) return `${m} dəq əvvəl`;
+  if (m < 1) return t('allOpenRequests.timeNow');
+  if (m < 60) return t('allOpenRequests.timeMin', { n: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h} saat əvvəl`;
+  if (h < 24) return t('allOpenRequests.timeHour', { n: h });
   const d = Math.floor(h / 24);
-  if (d < 7) return `${d} gün əvvəl`;
-  return `${Math.floor(d / 7)} həftə əvvəl`;
+  if (d < 7) return t('allOpenRequests.timeDay', { n: d });
+  return t('allOpenRequests.timeWeek', { n: Math.floor(d / 7) });
 }
 
 function isNew(iso: string): boolean {
@@ -50,6 +51,7 @@ function isNew(iso: string): boolean {
 }
 
 export default function AllOpenRequestsScreen({ navigation }: Props) {
+  const { t } = useTranslation();
   const { user } = useUserStore();
   const isTeacher = user?.role === 'teacher';
   const [search, setSearch] = useState('');
@@ -79,22 +81,22 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
 
   const handleInterest = async (id: string) => {
     if (!isTeacher) {
-      Alert.alert('Müəllim hesabı tələb olunur', 'Yalnız müəllimlər sorğularla maraqlana bilər.');
+      Alert.alert(t('allOpenRequests.alertTeacherTitle'), t('allOpenRequests.alertTeacherMsg'));
       return;
     }
     try {
       await expressInterest(id);
-      Alert.alert('Uğurlu', 'Maraq bildirildi. Şagird sizinlə əlaqə saxlaya bilər.');
+      Alert.alert(t('allOpenRequests.alertSuccessTitle'), t('allOpenRequests.alertSuccessMsg'));
       refetch();
     } catch (e: any) {
       const msg = e?.response?.data?.message;
       if (msg === 'SUBSCRIPTION_REQUIRED' || e?.response?.status === 403) {
-        Alert.alert('Premium paket lazımdır', 'Açıq dərs sorğularıyla maraqlanmaq üçün abonə paketi alın.', [
-          { text: 'İmtina', style: 'cancel' },
-          { text: 'Paketi al', onPress: () => navigation.navigate(Routes.Plans) },
+        Alert.alert(t('allOpenRequests.alertPremiumTitle'), t('allOpenRequests.alertPremiumMsg'), [
+          { text: t('allOpenRequests.cancel'), style: 'cancel' },
+          { text: t('allOpenRequests.buyPlan'), onPress: () => navigation.navigate(Routes.Plans) },
         ]);
       } else {
-        Alert.alert('Xəta', msg || 'Əməliyyat alınmadı');
+        Alert.alert(t('allOpenRequests.alertErrorTitle'), msg || t('allOpenRequests.alertErrorMsg'));
       }
     }
   };
@@ -110,7 +112,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={Colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Sorğu Bazarı</Text>
+        <Text style={styles.headerTitle}>{t('allOpenRequests.headerTitle')}</Text>
         {!isTeacher ? (
           <TouchableOpacity
             style={styles.backBtn}
@@ -137,11 +139,11 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
         >
           {/* Editorial hero */}
           <View style={styles.hero}>
-            <Text style={styles.heroTitle}>Tələbə İstəkləri</Text>
+            <Text style={styles.heroTitle}>{t('allOpenRequests.heroTitle')}</Text>
             <Text style={styles.heroSub}>
               {isTeacher
-                ? 'Sizə uyğun tələbəni tapın və təhsil səyahətinə başlayın.'
-                : 'Açıq dərs sorğularına bax, müəllimlər səninlə əlaqə saxlasın.'}
+                ? t('allOpenRequests.heroSubTeacher')
+                : t('allOpenRequests.heroSubStudent')}
             </Text>
           </View>
 
@@ -150,7 +152,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
             <Ionicons name="search-outline" size={20} color={Colors.textMuted} style={{ marginLeft: 14 }} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Fənn və ya açar söz axtar..."
+              placeholder={t('allOpenRequests.searchPlaceholder')}
               placeholderTextColor={Colors.textMuted}
               value={search}
               onChangeText={setSearch}
@@ -175,10 +177,10 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                 >
                   {active ? (
                     <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.chipActive}>
-                      <Text style={styles.chipActiveText}>{chip}</Text>
+                      <Text style={styles.chipActiveText}>{chip === 'Hamısı' ? t('allOpenRequests.all') : chip}</Text>
                     </LinearGradient>
                   ) : (
-                    <Text style={styles.chipText}>{chip}</Text>
+                    <Text style={styles.chipText}>{chip === 'Hamısı' ? t('allOpenRequests.all') : chip}</Text>
                   )}
                 </TouchableOpacity>
               );
@@ -186,17 +188,17 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
           </ScrollView>
 
           <Text style={styles.countLabel}>
-            {filtered.length} sorğu {search || subjectFilter !== 'Hamısı' ? '(filtrlənmiş)' : ''}
+            {t('allOpenRequests.countLabel', { n: filtered.length })} {search || subjectFilter !== 'Hamısı' ? t('allOpenRequests.filtered') : ''}
           </Text>
 
           {filtered.length === 0 ? (
             <View style={styles.emptyBox}>
               <Ionicons name="document-text-outline" size={42} color={Colors.textMuted} />
-              <Text style={styles.emptyTitle}>Sorğu tapılmadı</Text>
+              <Text style={styles.emptyTitle}>{t('allOpenRequests.emptyTitle')}</Text>
               <Text style={styles.emptySub}>
                 {search || subjectFilter !== 'Hamısı'
-                  ? 'Filtrləri dəyiş və ya təmizlə.'
-                  : 'Yeni sorğular yaradıldıqda burada görünəcək.'}
+                  ? t('allOpenRequests.emptyFiltered')
+                  : t('allOpenRequests.emptyDefault')}
               </Text>
             </View>
           ) : (
@@ -213,12 +215,12 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                     <View style={styles.cardTopRow}>
                       {fresh ? (
                         <View style={[styles.statusPill, styles.newPill]}>
-                          <Text style={styles.newPillText}>YENİ</Text>
+                          <Text style={styles.newPillText}>{t('allOpenRequests.newBadge')}</Text>
                         </View>
                       ) : (
                         <View style={styles.statusDot} />
                       )}
-                      <Text style={styles.timeText}>{timeAgo(r.createdAt)}</Text>
+                      <Text style={styles.timeText}>{timeAgo(r.createdAt, t)}</Text>
                     </View>
 
                     <Text style={styles.cardTitle} numberOfLines={2}>
@@ -245,7 +247,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                       {!!r.frequency && (
                         <View style={styles.metaChip}>
                           <Ionicons name="repeat-outline" size={13} color={Colors.textSecondary} />
-                          <Text style={styles.metaChipText}>{r.frequency}/həftə</Text>
+                          <Text style={styles.metaChipText}>{t('allOpenRequests.freqUnit', { n: r.frequency })}</Text>
                         </View>
                       )}
                     </View>
@@ -253,7 +255,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                     {!!r.note && (
                       <View style={styles.noteBox}>
                         <Text style={styles.noteText} numberOfLines={3}>
-                          <Text style={styles.noteLabel}>Qısa qeyd: </Text>
+                          <Text style={styles.noteLabel}>{t('allOpenRequests.noteLabel')}</Text>
                           "{r.note}"
                         </Text>
                       </View>
@@ -270,7 +272,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                       <TouchableOpacity activeOpacity={0.85} onPress={() => handleInterest(r.id)}>
                         <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.interestBtn}>
                           <Ionicons name={isTeacher ? 'hand-right' : 'eye'} size={14} color="#fff" />
-                          <Text style={styles.interestBtnText}>{isTeacher ? 'Maraqlanıram' : 'Bax'}</Text>
+                          <Text style={styles.interestBtnText}>{isTeacher ? t('allOpenRequests.interested') : t('allOpenRequests.view')}</Text>
                         </LinearGradient>
                       </TouchableOpacity>
                     </View>
@@ -284,10 +286,10 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                   <View style={styles.ctaIconCircle}>
                     <Ionicons name="add" size={28} color={Colors.primary} />
                   </View>
-                  <Text style={styles.ctaTitle}>Siz də sorğu əlavə edin</Text>
-                  <Text style={styles.ctaSub}>Müəllimlərin sizi tapması üçün tələblərinizi qeyd edin.</Text>
+                  <Text style={styles.ctaTitle}>{t('allOpenRequests.ctaTitle')}</Text>
+                  <Text style={styles.ctaSub}>{t('allOpenRequests.ctaSub')}</Text>
                   <View style={styles.ctaBtn}>
-                    <Text style={styles.ctaBtnText}>Sorğu Yarat</Text>
+                    <Text style={styles.ctaBtnText}>{t('allOpenRequests.ctaBtn')}</Text>
                   </View>
                 </TouchableOpacity>
               )}

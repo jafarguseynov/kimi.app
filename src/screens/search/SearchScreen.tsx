@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 interface SearchResults {
   exams: { id: string; title: string; subject: string; difficulty: string }[];
@@ -26,17 +27,18 @@ interface SearchResults {
 
 type TabKey = 'all' | 'teachers' | 'exams' | 'questions' | 'calculators' | 'schools';
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'all', label: 'Hamısı' },
-  { key: 'teachers', label: 'Müəllimlər' },
-  { key: 'exams', label: 'İmtahanlar' },
-  { key: 'questions', label: 'Sorğular' },
-  { key: 'calculators', label: 'Kalkulyatorlar' },
-  { key: 'schools', label: 'Məktəblər' },
+const TABS: { key: TabKey; labelKey: string }[] = [
+  { key: 'all', labelKey: 'search.tabAll' },
+  { key: 'teachers', labelKey: 'search.tabTeachers' },
+  { key: 'exams', labelKey: 'search.tabExams' },
+  { key: 'questions', labelKey: 'search.tabQuestions' },
+  { key: 'calculators', labelKey: 'search.tabCalculators' },
+  { key: 'schools', labelKey: 'search.tabSchools' },
 ];
 
 export default function SearchScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
   const goTab = (tab: string, params?: any) => {
     const parent = navigation.getParent() as any;
     parent?.navigate(tab, params);
@@ -83,7 +85,7 @@ export default function SearchScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Ionicons name="search-outline" size={22} color={Colors.primary} />
-          <Text style={styles.headerTitle}>Axtarış</Text>
+          <Text style={styles.headerTitle}>{t('search.title')}</Text>
         </View>
         <View style={styles.headerAvatar}>
           <Ionicons name="person-outline" size={18} color={Colors.primary} />
@@ -96,7 +98,7 @@ export default function SearchScreen() {
           <Ionicons name="search-outline" size={20} color={Colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Nə axtarmaq istəyirsiniz?"
+            placeholder={t('search.placeholder')}
             placeholderTextColor={Colors.textMuted}
             value={query}
             onChangeText={handleChange}
@@ -113,7 +115,7 @@ export default function SearchScreen() {
         {!showResults && (
           <View style={styles.historyRow}>
             <Ionicons name="time-outline" size={15} color={Colors.textMuted} />
-            <Text style={styles.historyLabel}>Son axtarışlar:</Text>
+            <Text style={styles.historyLabel}>{t('search.recentSearches')}</Text>
             <TouchableOpacity onPress={() => handleChange('Riyaziyyat testləri')}>
               <Text style={styles.historyChip}>Riyaziyyat testləri</Text>
             </TouchableOpacity>
@@ -141,22 +143,22 @@ export default function SearchScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={[styles.tabText, activeTab === tab.key && styles.tabTextActive]}>
-                  {tab.label}
+                  {t(tab.labelKey)}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           <View style={styles.metaRow}>
-            <Text style={styles.metaCount}>Nəticələr ({filteredItems.length})</Text>
-            <Text style={styles.metaSort}>Sırala: Ən uyğun</Text>
+            <Text style={styles.metaCount}>{t('search.resultsCount', { count: filteredItems.length })}</Text>
+            <Text style={styles.metaSort}>{t('search.sortBest')}</Text>
           </View>
 
           {(isLoading || isFetching) ? (
             <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
           ) : filteredItems.length === 0 ? (
             <View style={styles.noResults}>
-              <Text style={styles.noResultsText}>"{debouncedQuery}" üçün nəticə tapılmadı</Text>
+              <Text style={styles.noResultsText}>{t('search.noResultsFor', { query: debouncedQuery })}</Text>
             </View>
           ) : (
             <FlatList
@@ -186,7 +188,7 @@ export default function SearchScreen() {
                           <Text style={[styles.resultBadgeText, {
                             color: isUser ? '#059669' : isExam ? Colors.secondary : Colors.textSecondary,
                           }]}>
-                            {isUser ? 'Müəllim' : isExam ? 'İmtahan' : 'Sorğu'}
+                            {isUser ? t('search.badgeTeacher') : isExam ? t('search.badgeExam') : t('search.badgeQuestion')}
                           </Text>
                         </View>
                       </View>
@@ -207,7 +209,7 @@ export default function SearchScreen() {
       ) : (
         /* ── Browse / empty state ── */
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.browseContent}>
-          <Text style={styles.sectionLabel}>KATEQORİYALAR</Text>
+          <Text style={styles.sectionLabel}>{t('search.categories')}</Text>
 
           {/* Wide featured card */}
           <TouchableOpacity
@@ -217,8 +219,8 @@ export default function SearchScreen() {
           >
             <View style={styles.bentoWideInner}>
               <View style={styles.bentoWideLeft}>
-                <Text style={styles.bentoWideTitle}>Müəllimlər</Text>
-                <Text style={styles.bentoWideSub}>Ən yaxşı mentorları tapın</Text>
+                <Text style={styles.bentoWideTitle}>{t('search.teachers')}</Text>
+                <Text style={styles.bentoWideSub}>{t('search.teachersSub')}</Text>
               </View>
               <View style={styles.bentoWideIcon}>
                 <Ionicons name="school-outline" size={30} color={Colors.primary} />
@@ -237,24 +239,24 @@ export default function SearchScreen() {
               >
                 <Ionicons name="document-text-outline" size={22} color="#fff" />
               </LinearGradient>
-              <Text style={styles.bentoCardTitle}>İmtahanlar</Text>
-              <Text style={styles.bentoCardSub}>Sınaq və testlər</Text>
+              <Text style={styles.bentoCardTitle}>{t('search.tabExams')}</Text>
+              <Text style={styles.bentoCardSub}>{t('search.examsSub')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85} onPress={() => goTab('Marketplace')}>
               <View style={[styles.bentoCardIcon, { backgroundColor: '#d1fae5' }]}>
                 <Ionicons name="chatbubbles-outline" size={22} color="#059669" />
               </View>
-              <Text style={styles.bentoCardTitle}>Sorğular</Text>
-              <Text style={styles.bentoCardSub}>İcma sualları</Text>
+              <Text style={styles.bentoCardTitle}>{t('search.tabQuestions')}</Text>
+              <Text style={styles.bentoCardSub}>{t('search.questionsSub')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.bentoCard} activeOpacity={0.85} onPress={() => goTab('Calculators')}>
               <View style={[styles.bentoCardIcon, { backgroundColor: '#e0e7ff' }]}>
                 <Ionicons name="calculator-outline" size={22} color="#4f46e5" />
               </View>
-              <Text style={styles.bentoCardTitle}>Kalkulyatorlar</Text>
-              <Text style={styles.bentoCardSub}>Bal hesablama</Text>
+              <Text style={styles.bentoCardTitle}>{t('search.tabCalculators')}</Text>
+              <Text style={styles.bentoCardSub}>{t('search.calculatorsSub')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -265,8 +267,8 @@ export default function SearchScreen() {
               <View style={[styles.bentoCardIcon, { backgroundColor: '#ffe4e6' }]}>
                 <Ionicons name="business-outline" size={22} color="#f43f5e" />
               </View>
-              <Text style={styles.bentoCardTitle}>Məktəblər</Text>
-              <Text style={styles.bentoCardSub}>Təhsil müəssisələri</Text>
+              <Text style={styles.bentoCardTitle}>{t('search.schools')}</Text>
+              <Text style={styles.bentoCardSub}>{t('search.schoolsSub')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -283,9 +285,9 @@ export default function SearchScreen() {
                 <Ionicons name="hardware-chip-outline" size={26} color="#fff" />
               </LinearGradient>
               <View style={styles.aiCardContent}>
-                <Text style={styles.aiCardTitle}>Məndən soruş</Text>
+                <Text style={styles.aiCardTitle}>{t('search.askMe')}</Text>
                 <Text style={styles.aiCardSub}>
-                  Axtardığınızı tapa bilmirsiniz? Məndən soruşun, sizə uyğun resursları dərhal təklif edim.
+                  {t('search.askMeSub')}
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.85}
@@ -298,7 +300,7 @@ export default function SearchScreen() {
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                   >
-                    <Text style={styles.aiBtnText}>Aİ İLƏ AXTAR</Text>
+                    <Text style={styles.aiBtnText}>{t('search.searchWithAi')}</Text>
                     <Ionicons name="flash" size={15} color="#fff" />
                   </LinearGradient>
                 </TouchableOpacity>

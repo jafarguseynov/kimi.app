@@ -7,6 +7,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -15,21 +16,22 @@ type Method = 'card' | 'apple' | 'google' | 'other';
 const METHODS: {
   id: Method;
   icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  sub: string;
+  labelKey: string;
+  subKey: string;
   selBg: string;
   selIcon: string;
   defBg: string;
   defIcon: string;
 }[] = [
-  { id: 'card', icon: 'card-outline', label: 'Bank kartı', sub: 'Visa, MasterCard, Maestro', selBg: Colors.primary, selIcon: '#fff', defBg: Colors.primaryLight, defIcon: Colors.primary },
-  { id: 'apple', icon: 'logo-apple', label: 'Apple Pay', sub: 'Sürətli və təhlükəsiz ödəniş', selBg: '#0F172A', selIcon: '#fff', defBg: Colors.surfaceContainer, defIcon: Colors.textPrimary },
-  { id: 'google', icon: 'logo-android', label: 'Google Pay', sub: 'Android cihazlar üçün uyğun', selBg: Colors.textPrimary, selIcon: '#fff', defBg: Colors.surfaceContainer, defIcon: Colors.textPrimary },
-  { id: 'other', icon: 'wallet-outline', label: 'Digər ödəniş üsulu', sub: 'Elektron pulqabı və terminallar', selBg: Colors.tertiary, selIcon: Colors.onTertiary, defBg: Colors.tertiaryContainer + '55', defIcon: Colors.tertiary },
+  { id: 'card', icon: 'card-outline', labelKey: 'pay.cardMethod', subKey: 'pay.cardMethodSub', selBg: Colors.primary, selIcon: '#fff', defBg: Colors.primaryLight, defIcon: Colors.primary },
+  { id: 'apple', icon: 'logo-apple', labelKey: 'pay.applePay', subKey: 'pay.applePaySub', selBg: '#0F172A', selIcon: '#fff', defBg: Colors.surfaceContainer, defIcon: Colors.textPrimary },
+  { id: 'google', icon: 'logo-android', labelKey: 'pay.googlePay', subKey: 'pay.googlePaySub', selBg: Colors.textPrimary, selIcon: '#fff', defBg: Colors.surfaceContainer, defIcon: Colors.textPrimary },
+  { id: 'other', icon: 'wallet-outline', labelKey: 'pay.otherMethod', subKey: 'pay.otherMethodSub', selBg: Colors.tertiary, selIcon: Colors.onTertiary, defBg: Colors.tertiaryContainer + '55', defIcon: Colors.tertiary },
 ];
 
 export default function PaymentMethodScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
   const route = useRoute();
   const params = (route.params ?? {}) as any;
   const [selected, setSelected] = useState<Method>('card');
@@ -40,7 +42,7 @@ export default function PaymentMethodScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ödəniş Üsulu</Text>
+        <Text style={styles.headerTitle}>{t('pay.methodHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -49,7 +51,7 @@ export default function PaymentMethodScreen() {
         <View style={styles.infoBanner}>
           <View style={styles.infoBannerAccent} />
           <Text style={styles.infoBannerText}>
-            Xoş gəldiniz! Təhlükəsiz ödəniş etmək üçün aşağıdakı üsullardan birini seçin. Bütün əməliyyatlar şifrələnmiş şəkildə qorunur.
+            {t('pay.methodInfo')}
           </Text>
         </View>
 
@@ -67,8 +69,8 @@ export default function PaymentMethodScreen() {
                 <Ionicons name={m.icon} size={22} color={active ? m.selIcon : m.defIcon} />
               </View>
               <View style={styles.methodInfo}>
-                <Text style={styles.methodLabel}>{m.label}</Text>
-                <Text style={styles.methodSub}>{m.sub}</Text>
+                <Text style={styles.methodLabel}>{t(m.labelKey)}</Text>
+                <Text style={styles.methodSub}>{t(m.subKey)}</Text>
               </View>
               <Ionicons
                 name="checkmark-circle"
@@ -83,10 +85,10 @@ export default function PaymentMethodScreen() {
         {/* Summary */}
         <View style={styles.summary}>
           <View>
-            <Text style={styles.summaryLabel}>Məbləğ</Text>
+            <Text style={styles.summaryLabel}>{t('pay.amount')}</Text>
             <Text style={styles.summaryAmount}>45.00 <Text style={styles.summaryCurrency}>AZN</Text></Text>
           </View>
-          <Text style={styles.summaryFee}>Xidmət haqqı: 0.00 AZN</Text>
+          <Text style={styles.summaryFee}>{t('pay.serviceFee')}</Text>
         </View>
       </ScrollView>
 
@@ -94,7 +96,7 @@ export default function PaymentMethodScreen() {
       <View style={styles.ctaWrap}>
         <TouchableOpacity onPress={() => navigation.navigate(Routes.CardPayment, params)} activeOpacity={0.9}>
           <LinearGradient colors={GRADIENT} style={styles.ctaBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.ctaBtnText}>Təsdiqlə</Text>
+            <Text style={styles.ctaBtnText}>{t('pay.confirm')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

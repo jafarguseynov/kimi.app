@@ -5,14 +5,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AVATAR = `https://api.dicebear.com/8.x/initials/png?seed=${encodeURIComponent('Aysel Məmmədova')}&backgroundColor=eef1f3&textColor=006190`;
 
-type StatItem = { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; suffix?: string };
+type StatItem = { icon: keyof typeof Ionicons.glyphMap; labelKey: string; value: string; suffix?: string };
 const STATS: StatItem[] = [
-  { icon: 'briefcase-outline', label: 'Təcrübə', value: '8 il' },
-  { icon: 'cash-outline', label: 'Qiymət', value: '30 ₼', suffix: '/saat' },
-  { icon: 'laptop-outline', label: 'Format', value: 'Hibrid' },
+  { icon: 'briefcase-outline', labelKey: 'teacherPremium.statExperience', value: '8 il' },
+  { icon: 'cash-outline', labelKey: 'teacherPremium.statPrice', value: '30 ₼', suffix: '/saat' },
+  { icon: 'laptop-outline', labelKey: 'teacherPremium.statFormat', value: 'Hibrid' },
 ];
 
 const SUBJECTS = [
@@ -24,6 +25,7 @@ const SUBJECTS = [
 
 export default function TeacherProfilePremiumScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -64,11 +66,11 @@ export default function TeacherProfilePremiumScreen() {
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={14} color="#F59E0B" />
               <Text style={styles.ratingValue}>4.9</Text>
-              <Text style={styles.ratingSub}>(124 rəy)</Text>
+              <Text style={styles.ratingSub}>{t('teacherPremium.reviews', { count: 124 })}</Text>
             </View>
             <View style={styles.superBadge}>
               <Ionicons name="school" size={14} color={Colors.primary} />
-              <Text style={styles.superBadgeText}>Super Müəllim</Text>
+              <Text style={styles.superBadgeText}>{t('teacherPremium.superTeacher')}</Text>
             </View>
           </View>
         </View>
@@ -76,11 +78,11 @@ export default function TeacherProfilePremiumScreen() {
         {/* Quick stats */}
         <View style={styles.statsGrid}>
           {STATS.map((s) => (
-            <View key={s.label} style={styles.statCard}>
+            <View key={s.labelKey} style={styles.statCard}>
               <View style={styles.statIconBubble}>
                 <Ionicons name={s.icon} size={18} color={Colors.primary} />
               </View>
-              <Text style={styles.statLabel}>{s.label}</Text>
+              <Text style={styles.statLabel}>{t(s.labelKey)}</Text>
               <Text style={styles.statValue}>
                 {s.value}
                 {s.suffix && <Text style={styles.statSuffix}>{s.suffix}</Text>}
@@ -93,13 +95,13 @@ export default function TeacherProfilePremiumScreen() {
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="person-circle-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Haqqımda</Text>
+            <Text style={styles.sectionTitle}>{t('teacherPremium.aboutTitle')}</Text>
           </View>
           <Text style={styles.bioText} numberOfLines={3}>
             Salam! Mən Aysel, 8 illik pedaqoji təcrübəyə malik Riyaziyyat və Məntiq müəllimiyəm. Şagirdlərimə riyaziyyatı sevdirmək və mürəkkəb mövzuları sadə yollarla izah etmək mənim əsas məqsədimdir. Hər bir şagirdin fərdi öyrənmə tərzinə uyğun yanaşma tətbiq edirəm.
           </Text>
           <TouchableOpacity hitSlop={6}>
-            <Text style={styles.readMore}>Daha çox oxu</Text>
+            <Text style={styles.readMore}>{t('teacherPremium.readMore')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -107,7 +109,7 @@ export default function TeacherProfilePremiumScreen() {
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="book-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Tədris fənləri</Text>
+            <Text style={styles.sectionTitle}>{t('teacherPremium.subjectsTitle')}</Text>
           </View>
           <View style={styles.chipWrap}>
             {SUBJECTS.map((s) => (
@@ -122,7 +124,7 @@ export default function TeacherProfilePremiumScreen() {
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <Ionicons name="library-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>Təhsil</Text>
+            <Text style={styles.sectionTitle}>{t('teacherPremium.educationTitle')}</Text>
           </View>
           <View style={styles.eduRow}>
             <View style={styles.eduIcon}>
@@ -143,7 +145,7 @@ export default function TeacherProfilePremiumScreen() {
       <View style={styles.bottomBar}>
         <TouchableOpacity style={styles.shareBtn} activeOpacity={0.85}>
           <Ionicons name="share-outline" size={18} color={Colors.textPrimary} />
-          <Text style={styles.shareBtnText}>Paylaş</Text>
+          <Text style={styles.shareBtnText}>{t('teacherPremium.share')}</Text>
         </TouchableOpacity>
         <TouchableOpacity activeOpacity={0.9} style={{ flex: 1 }}>
           <LinearGradient
@@ -152,7 +154,7 @@ export default function TeacherProfilePremiumScreen() {
             style={styles.editBtn}
           >
             <Ionicons name="create-outline" size={18} color="#fff" />
-            <Text style={styles.editBtnText}>Redaktə et</Text>
+            <Text style={styles.editBtnText}>{t('teacherPremium.edit')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>

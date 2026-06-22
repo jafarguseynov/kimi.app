@@ -7,12 +7,14 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const ERROR_GRADIENT: [string, string] = ['#b31b25', '#fb5151'];
 
 export default function PaymentFailedScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -20,7 +22,7 @@ export default function PaymentFailedScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="close" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Ödəniş Statusu</Text>
+        <Text style={styles.headerTitle}>{t('pay.statusHeader')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -43,9 +45,9 @@ export default function PaymentFailedScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>Ödəniş baş tutmadı</Text>
+        <Text style={styles.title}>{t('pay.paymentFailed')}</Text>
         <Text style={styles.sub}>
-          Təəssüf ki, əməliyyat zamanı xəta baş verdi. Zəhmət olmasa kart məlumatlarınızı yoxlayın və ya başqa ödəniş üsulundan istifadə edin.
+          {t('pay.paymentFailedSub')}
         </Text>
 
         {/* Reason card */}
@@ -54,15 +56,15 @@ export default function PaymentFailedScreen() {
             <Ionicons name="card" size={22} color={Colors.danger} />
           </View>
           <View style={styles.reasonInfo}>
-            <Text style={styles.reasonTitle}>Mümkün Səbəb</Text>
-            <Text style={styles.reasonSub}>Kifayət qədər vəsait yoxdur və ya kartın müddəti bitib.</Text>
+            <Text style={styles.reasonTitle}>{t('pay.possibleReason')}</Text>
+            <Text style={styles.reasonSub}>{t('pay.reasonSub')}</Text>
           </View>
         </View>
 
         <TouchableOpacity onPress={() => navigation.navigate(Routes.CardPayment)} activeOpacity={0.9} style={{ width: '100%' }}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="refresh-outline" size={20} color="#fff" />
-            <Text style={styles.primaryBtnText}>Yenidən cəhd et</Text>
+            <Text style={styles.primaryBtnText}>{t('pay.retry')}</Text>
           </LinearGradient>
         </TouchableOpacity>
 
@@ -72,11 +74,11 @@ export default function PaymentFailedScreen() {
           activeOpacity={0.85}
         >
           <Ionicons name="wallet-outline" size={18} color={Colors.textPrimary} />
-          <Text style={styles.secondaryBtnText}>Başqa üsul seç</Text>
+          <Text style={styles.secondaryBtnText}>{t('pay.chooseOther')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.supportLink} activeOpacity={0.7}>
-          <Text style={styles.supportText}>Müştəri xidmətləri ilə əlaqə</Text>
+          <Text style={styles.supportText}>{t('pay.contactSupport')}</Text>
           <Ionicons name="open-outline" size={14} color={Colors.primary} />
         </TouchableOpacity>
       </ScrollView>

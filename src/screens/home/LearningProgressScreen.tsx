@@ -6,20 +6,21 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const DAYS = [
-  { label: 'B.E', height: 0.3 },
-  { label: 'Ç.A', height: 0.55 },
-  { label: 'Ç',   height: 0.42 },
-  { label: 'C.A', height: 0.85 },
-  { label: 'C',   height: 0.62 },
-  { label: 'Ş',   height: 0.25 },
-  { label: 'B',   height: 0.72, today: true },
+  { labelKey: 'learnProgress.wdMon', height: 0.3 },
+  { labelKey: 'learnProgress.wdTue', height: 0.55 },
+  { labelKey: 'learnProgress.wdWed', height: 0.42 },
+  { labelKey: 'learnProgress.wdThu', height: 0.85 },
+  { labelKey: 'learnProgress.wdFri', height: 0.62 },
+  { labelKey: 'learnProgress.wdSat', height: 0.25 },
+  { labelKey: 'learnProgress.wdSun', height: 0.72, today: true },
 ];
 
-function CircularProgress({ pct, size = 192 }: { pct: number; size?: number }) {
+function CircularProgress({ pct, label, size = 192 }: { pct: number; label: string; size?: number }) {
   const strokeWidth = 14;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -43,7 +44,7 @@ function CircularProgress({ pct, size = 192 }: { pct: number; size?: number }) {
       }} />
       <View style={{ alignItems: 'center' }}>
         <Text style={styles.circleValue}>{pct}%</Text>
-        <Text style={styles.circleLabel}>TAMAMLANDI</Text>
+        <Text style={styles.circleLabel}>{label}</Text>
       </View>
     </View>
   );
@@ -51,6 +52,16 @@ function CircularProgress({ pct, size = 192 }: { pct: number; size?: number }) {
 
 export default function LearningProgressScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
+
+  const GRID = [
+    { icon: 'pie-chart' as const, titleKey: 'learnProgress.g1Title', subKey: 'learnProgress.g1Sub', route: Routes.PerformanceSummary },
+    { icon: 'bar-chart' as const, titleKey: 'learnProgress.g2Title', subKey: 'learnProgress.g2Sub', route: Routes.WeeklyReport },
+    { icon: 'git-network' as const, titleKey: 'learnProgress.g3Title', subKey: 'learnProgress.g3Sub', route: Routes.TopicProgress },
+    { icon: 'alert-circle' as const, titleKey: 'learnProgress.g4Title', subKey: 'learnProgress.g4Sub', route: Routes.WeakTopics },
+    { icon: 'refresh-circle' as const, titleKey: 'learnProgress.g5Title', subKey: 'learnProgress.g5Sub', route: Routes.ReviewTopics },
+    { icon: 'bulb' as const, titleKey: 'learnProgress.g6Title', subKey: 'learnProgress.g6Sub', route: Routes.ImprovementTips },
+  ];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -58,33 +69,33 @@ export default function LearningProgressScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Öyrənmə Tərəqqisi</Text>
+        <Text style={styles.headerTitle}>{t('learnProgress.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Page header */}
         <View>
-          <Text style={styles.pageTitle}>Proqresin</Text>
-          <Text style={styles.pageSub}>Böyük nəticələr kiçik addımlarla başlayır. Davam et!</Text>
+          <Text style={styles.pageTitle}>{t('learnProgress.pageTitle')}</Text>
+          <Text style={styles.pageSub}>{t('learnProgress.pageSub')}</Text>
         </View>
 
         {/* Hero progress card */}
         <View style={styles.heroCard}>
           <View style={styles.heroBlob} pointerEvents="none" />
           <View style={{ flex: 1, zIndex: 1 }}>
-            <Text style={styles.heroTitle}>Ümumi irəliləyiş</Text>
-            <Text style={styles.heroSub}>Bu modul üzrə hədəflərinizin böyük hissəsini tamamlamısınız.</Text>
+            <Text style={styles.heroTitle}>{t('learnProgress.heroTitle')}</Text>
+            <Text style={styles.heroSub}>{t('learnProgress.heroSub')}</Text>
           </View>
-          <CircularProgress pct={75} />
+          <CircularProgress pct={75} label={t('learnProgress.completed')} />
         </View>
 
         {/* Stats bento */}
         <View style={{ gap: 16 }}>
           <View style={styles.statCard}>
             <View>
-              <Text style={styles.statKicker}>BU GÜN</Text>
-              <Text style={styles.statValue}>3/5 tapşırıq</Text>
+              <Text style={styles.statKicker}>{t('learnProgress.today')}</Text>
+              <Text style={styles.statValue}>{t('learnProgress.todayTasks')}</Text>
             </View>
             <View style={[styles.statIcon, { backgroundColor: Colors.primary + '22' }]}>
               <Ionicons name="checkmark-done" size={22} color={Colors.primary} />
@@ -92,8 +103,8 @@ export default function LearningProgressScreen() {
           </View>
           <View style={styles.statCard}>
             <View>
-              <Text style={styles.statKicker}>BU HƏFTƏ</Text>
-              <Text style={styles.statValue}>20/30 tapşırıq</Text>
+              <Text style={styles.statKicker}>{t('learnProgress.thisWeek')}</Text>
+              <Text style={styles.statValue}>{t('learnProgress.weekTasks')}</Text>
             </View>
             <View style={[styles.statIcon, { backgroundColor: Colors.secondary + '22' }]}>
               <Ionicons name="calendar" size={22} color={Colors.textPrimary} />
@@ -104,15 +115,15 @@ export default function LearningProgressScreen() {
         {/* Chart */}
         <View style={styles.chartCard}>
           <View style={styles.chartHead}>
-            <Text style={styles.chartTitle}>Fəaliyyət (Son 7 gün)</Text>
+            <Text style={styles.chartTitle}>{t('learnProgress.chartTitle')}</Text>
             <View style={styles.legend}>
               <View style={styles.legendDot} />
-              <Text style={styles.legendText}>Tapşırıqlar</Text>
+              <Text style={styles.legendText}>{t('learnProgress.chartLegend')}</Text>
             </View>
           </View>
           <View style={styles.chart}>
             {DAYS.map((d) => (
-              <View key={d.label} style={styles.chartCol}>
+              <View key={d.labelKey} style={styles.chartCol}>
                 <View style={styles.chartBarTrack}>
                   <View
                     style={[
@@ -122,7 +133,7 @@ export default function LearningProgressScreen() {
                     ]}
                   />
                 </View>
-                <Text style={[styles.chartLabel, d.today && styles.chartLabelToday]}>{d.label}</Text>
+                <Text style={[styles.chartLabel, d.today && styles.chartLabelToday]}>{t(d.labelKey)}</Text>
               </View>
             ))}
           </View>
@@ -130,18 +141,11 @@ export default function LearningProgressScreen() {
 
         {/* Dərinə bax — 2×3 grid */}
         <View style={lpGridStyles.section}>
-          <Text style={lpGridStyles.title}>Dərinə bax</Text>
+          <Text style={lpGridStyles.title}>{t('learnProgress.deepDive')}</Text>
           <View style={lpGridStyles.grid}>
-            {[
-              { icon: 'pie-chart' as const, title: 'Performans', sub: 'Donut + insight', route: Routes.PerformanceSummary },
-              { icon: 'bar-chart' as const, title: 'Həftəlik Hesabat', sub: 'Sparkline', route: Routes.WeeklyReport },
-              { icon: 'git-network' as const, title: 'Mövzu', sub: 'İnkişaf yolu', route: Routes.TopicProgress },
-              { icon: 'alert-circle' as const, title: 'Zəif Mövzu', sub: 'AI analiz', route: Routes.WeakTopics },
-              { icon: 'refresh-circle' as const, title: 'Təkrar Test', sub: 'AI planı', route: Routes.ReviewTopics },
-              { icon: 'bulb' as const, title: 'AI Tövsiyə', sub: 'İnkişaf planı', route: Routes.ImprovementTips },
-            ].map((it) => (
+            {GRID.map((it) => (
               <TouchableOpacity
-                key={it.title}
+                key={it.titleKey}
                 style={lpGridStyles.card}
                 activeOpacity={0.85}
                 onPress={() => navigation.navigate(it.route as any)}
@@ -149,8 +153,8 @@ export default function LearningProgressScreen() {
                 <View style={lpGridStyles.iconWrap}>
                   <Ionicons name={it.icon} size={20} color={Colors.primary} />
                 </View>
-                <Text style={lpGridStyles.cardTitle}>{it.title}</Text>
-                <Text style={lpGridStyles.cardSub}>{it.sub}</Text>
+                <Text style={lpGridStyles.cardTitle}>{t(it.titleKey)}</Text>
+                <Text style={lpGridStyles.cardSub}>{t(it.subKey)}</Text>
               </TouchableOpacity>
             ))}
           </View>

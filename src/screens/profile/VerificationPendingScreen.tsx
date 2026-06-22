@@ -5,11 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function VerificationPendingScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -17,7 +19,7 @@ export default function VerificationPendingScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Verifikasiya</Text>
+        <Text style={styles.headerTitle}>{t('verificationPending.headerTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -34,12 +36,12 @@ export default function VerificationPendingScreen() {
           {/* Status badge */}
           <View style={styles.statusBadge}>
             <Ionicons name="sync-outline" size={16} color={Colors.primary} />
-            <Text style={styles.statusBadgeText}>Yoxlanılır</Text>
+            <Text style={styles.statusBadgeText}>{t('verificationPending.statusBadge')}</Text>
           </View>
 
-          <Text style={styles.heroTitle}>Sənədləriniz yoxlanılır</Text>
+          <Text style={styles.heroTitle}>{t('verificationPending.heroTitle')}</Text>
           <Text style={styles.heroSubtitle}>
-            Sənədləriniz süni intellekt və komandamız tərəfindən analiz edilir. Bu proses adətən 24 saat ərzində tamamlanır.
+            {t('verificationPending.heroSubtitle')}
           </Text>
         </View>
 
@@ -50,7 +52,7 @@ export default function VerificationPendingScreen() {
           </View>
           <View style={styles.stepsHeader}>
             <Ionicons name="time-outline" size={20} color={Colors.primary} />
-            <Text style={styles.stepsTitle}>Növbəti mərhələlər</Text>
+            <Text style={styles.stepsTitle}>{t('verificationPending.stepsTitle')}</Text>
           </View>
           <View style={styles.stepsList}>
             <View style={styles.stepItem}>
@@ -58,9 +60,9 @@ export default function VerificationPendingScreen() {
                 <Ionicons name="search-outline" size={20} color={Colors.primary} />
               </View>
               <View style={styles.stepBody}>
-                <Text style={styles.stepTitle}>Axtarışda görünmə</Text>
+                <Text style={styles.stepTitle}>{t('verificationPending.step1Title')}</Text>
                 <Text style={styles.stepSub}>
-                  Profiliniz təsdiqləndikdən sonra dərhal axtarış nəticələrində ön sıralarda yer alacaq.
+                  {t('verificationPending.step1Sub')}
                 </Text>
               </View>
             </View>
@@ -70,9 +72,9 @@ export default function VerificationPendingScreen() {
                 <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
               </View>
               <View style={styles.stepBody}>
-                <Text style={styles.stepTitle}>Mavi nişan</Text>
+                <Text style={styles.stepTitle}>{t('verificationPending.step2Title')}</Text>
                 <Text style={styles.stepSub}>
-                  Adınızın yanında "Təsdiqlənmiş profil" nişanı görünəcək və istifadəçi etibarı artacaq.
+                  {t('verificationPending.step2Sub')}
                 </Text>
               </View>
             </View>
@@ -83,7 +85,7 @@ export default function VerificationPendingScreen() {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
           <Text style={styles.infoText}>
-            Əlavə məlumata ehtiyac olarsa, qeydiyyatdan keçdiyiniz e-poçt ünvanına bildiriş göndəriləcək.
+            {t('verificationPending.infoText')}
           </Text>
         </View>
       </ScrollView>
@@ -92,7 +94,7 @@ export default function VerificationPendingScreen() {
       <View style={styles.footer}>
         <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate('HomeMain' as never)}>
           <LinearGradient colors={GRADIENT} style={styles.primaryBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.primaryBtnText}>Ana səhifəyə qayıt</Text>
+            <Text style={styles.primaryBtnText}>{t('verificationPending.backHome')}</Text>
             <Ionicons name="chevron-forward" size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>

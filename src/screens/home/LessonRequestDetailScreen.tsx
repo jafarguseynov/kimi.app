@@ -23,6 +23,7 @@ import {
   listOpenRequests,
   type PublicLessonRequest,
 } from '../../api/lessonRequest.api';
+import { useTranslation } from '../../i18n';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.LessonRequestDetail>;
@@ -31,11 +32,13 @@ type Props = {
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('az-AZ', { day: 'numeric', month: 'long', year: 'numeric' });
+const DATE_LOCALE: Record<string, string> = { az: 'az-AZ', ru: 'ru-RU', en: 'en-US' };
+function formatDate(iso: string, lang: string): string {
+  return new Date(iso).toLocaleDateString(DATE_LOCALE[lang] ?? 'az-AZ', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 export default function LessonRequestDetailScreen({ navigation, route }: Props) {
+  const { t, language } = useTranslation();
   const { requestId } = route.params;
   const user = useUserStore((s) => s.user);
   const isTeacher = user?.role === 'teacher';
@@ -51,26 +54,26 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
   const { mutate: doInterest, isPending: interestPending } = useMutation({
     mutationFn: () => expressInterest(requestId),
     onSuccess: () => {
-      Alert.alert('Uğurlu', 'Maraq bildirildi. Şagird sizinlə əlaqə saxlaya bilər.');
+      Alert.alert(t('lessonReqDetail.alertSuccessTitle'), t('lessonReqDetail.alertSuccessMsg'));
       qc.invalidateQueries({ queryKey: ['openLessonRequests'] });
       qc.invalidateQueries({ queryKey: ['myLessonRequests'] });
     },
     onError: (e: any) => {
       const msg = e?.response?.data?.message;
       if (msg === 'SUBSCRIPTION_REQUIRED' || e?.response?.status === 403) {
-        Alert.alert('Premium paket lazımdır', 'Açıq dərs sorğularıyla maraqlanmaq üçün abonə paketi alın.', [
-          { text: 'İmtina', style: 'cancel' },
-          { text: 'Paketi al', onPress: () => navigation.navigate(Routes.Plans) },
+        Alert.alert(t('lessonReqDetail.alertPremiumTitle'), t('lessonReqDetail.alertPremiumMsg'), [
+          { text: t('lessonReqDetail.cancel'), style: 'cancel' },
+          { text: t('lessonReqDetail.buyPlan'), onPress: () => navigation.navigate(Routes.Plans) },
         ]);
       } else {
-        Alert.alert('Xəta', msg || 'Əməliyyat alınmadı');
+        Alert.alert(t('lessonReqDetail.alertErrorTitle'), msg || t('lessonReqDetail.alertErrorMsg'));
       }
     },
   });
 
   const handleCta = () => {
     if (!isTeacher) {
-      Alert.alert('Müəllim hesabı tələb olunur', 'Yalnız müəllimlər sorğularla maraqlana bilər.');
+      Alert.alert(t('lessonReqDetail.alertTeacherTitle'), t('lessonReqDetail.alertTeacherMsg'));
       return;
     }
     doInterest();
@@ -93,7 +96,7 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
         <Header onBack={() => navigation.goBack()} />
         <View style={styles.centerLoad}>
           <Ionicons name="document-text-outline" size={42} color={Colors.textMuted} />
-          <Text style={styles.emptyText}>Sorğu tapılmadı</Text>
+          <Text style={styles.emptyText}>{t('lessonReqDetail.notFound')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -116,7 +119,7 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
           <Text style={styles.studentName}>{request.studentName}</Text>
           <View style={styles.dateRow}>
             <Ionicons name="calendar-outline" size={14} color={Colors.textSecondary} />
-            <Text style={styles.dateText}>İstək tarixi: {formatDate(request.createdAt)}</Text>
+            <Text style={styles.dateText}>{t('lessonReqDetail.requestDate', { date: formatDate(request.createdAt, language) })}</Text>
           </View>
         </View>
 
@@ -127,8 +130,8 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
               <Text style={styles.subjectPillText}>{request.subject}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.budgetLabel}>BÜDCƏ (SAATLIQ)</Text>
-              <Text style={styles.budgetValue}>razılaşma</Text>
+              <Text style={styles.budgetLabel}>{t('lessonReqDetail.budgetLabel')}</Text>
+              <Text style={styles.budgetValue}>{t('lessonReqDetail.budgetValue')}</Text>
             </View>
           </View>
 
@@ -136,10 +139,10 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Ionicons name="locate" size={20} color={Colors.primary} />
-              <Text style={styles.sectionTitle}>Öyrənmə Məqsədi</Text>
+              <Text style={styles.sectionTitle}>{t('lessonReqDetail.goalTitle')}</Text>
             </View>
             <Text style={styles.goalText}>
-              {request.topic || request.note || `${request.subject} dərsləri axtarıram.`}
+              {request.topic || request.note || t('lessonReqDetail.goalFallback', { subject: request.subject })}
             </Text>
             {!!request.note && !!request.topic && (
               <Text style={[styles.goalText, { marginTop: 8, color: Colors.textSecondary, fontSize: 14 }]}>
@@ -155,11 +158,11 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
                 <Ionicons name="time-outline" size={20} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bentoLabel}>DƏRS VAXTI</Text>
+                <Text style={styles.bentoLabel}>{t('lessonReqDetail.lessonTimeLabel')}</Text>
                 <Text style={styles.bentoValue}>
-                  {request.frequency ? `Həftədə ${request.frequency} dəfə` : 'Razılaşmaya görə'}
+                  {request.frequency ? t('lessonReqDetail.freqValue', { n: request.frequency }) : t('lessonReqDetail.byAgreement')}
                 </Text>
-                <Text style={styles.bentoSub}>Şagirdlə razılaşılır</Text>
+                <Text style={styles.bentoSub}>{t('lessonReqDetail.agreedWithStudent')}</Text>
               </View>
             </View>
             <View style={styles.bentoCard}>
@@ -167,8 +170,8 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
                 <Ionicons name="location-outline" size={20} color={Colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.bentoLabel}>FORMAT</Text>
-                <Text style={styles.bentoValue}>{request.format ?? 'Onlayn'}</Text>
+                <Text style={styles.bentoLabel}>{t('lessonReqDetail.formatLabel')}</Text>
+                <Text style={styles.bentoValue}>{request.format ?? t('lessonReqDetail.online')}</Text>
                 {!!request.grade && <Text style={styles.bentoSub}>{request.grade}</Text>}
               </View>
             </View>
@@ -177,22 +180,22 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
 
         {/* Interested teachers count */}
         <View style={styles.interestedHeader}>
-          <Text style={styles.interestedTitle}>Maraqlanan müəllimlər</Text>
-          <Text style={styles.interestedCount}>{request.interestedCount} nəfər</Text>
+          <Text style={styles.interestedTitle}>{t('lessonReqDetail.interestedTitle')}</Text>
+          <Text style={styles.interestedCount}>{t('lessonReqDetail.peopleCount', { n: request.interestedCount })}</Text>
         </View>
 
         {request.interestedCount === 0 ? (
           <View style={styles.interestedEmpty}>
             <Ionicons name="people-outline" size={32} color={Colors.textMuted} />
             <Text style={styles.interestedEmptyText}>
-              Hələ heç bir müəllim maraqlanmayıb. İlk olaraq sən maraqlana bilərsən!
+              {t('lessonReqDetail.emptyInterested')}
             </Text>
           </View>
         ) : (
           <View style={styles.interestedNoticeCard}>
             <Ionicons name="lock-closed-outline" size={16} color={Colors.textSecondary} />
             <Text style={styles.interestedNoticeText}>
-              {request.interestedCount} müəllim bu sorğu ilə maraqlanıb. Şagird hansı ilə davam edəcəyini seçəcək.
+              {t('lessonReqDetail.noticeText', { n: request.interestedCount })}
             </Text>
           </View>
         )}
@@ -207,7 +210,7 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
             ) : (
               <>
                 <Ionicons name="hand-right" size={20} color="#fff" />
-                <Text style={styles.ctaText}>Mən də maraqlanıram</Text>
+                <Text style={styles.ctaText}>{t('lessonReqDetail.ctaText')}</Text>
               </>
             )}
           </LinearGradient>
@@ -218,13 +221,14 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
 }
 
 function Header({ onBack }: { onBack: () => void }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.header}>
       <View style={styles.headerLeft}>
         <TouchableOpacity onPress={onBack} style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dərs İstəkləri</Text>
+        <Text style={styles.headerTitle}>{t('lessonReqDetail.headerTitle')}</Text>
       </View>
       <View style={styles.headerRight}>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>

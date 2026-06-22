@@ -6,6 +6,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -30,6 +31,7 @@ const HISTORY: DuelEntry[] = [
 
 export default function DuelHistoryScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   const stats = useMemo(() => {
     const wins = HISTORY.filter((h) => h.result === 'win').length;
@@ -45,7 +47,7 @@ export default function DuelHistoryScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Yarış Tarixçəsi</Text>
+        <Text style={styles.headerTitle}>{t('duel.histTitle')}</Text>
         <View style={styles.headerBtn} />
       </View>
 
@@ -54,8 +56,8 @@ export default function DuelHistoryScreen() {
         <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.heroLabel}>ÜMUMİ PERFORMANS</Text>
-              <Text style={styles.heroTitle}>Sənin Reytinqin</Text>
+              <Text style={styles.heroLabel}>{t('duel.overallPerf')}</Text>
+              <Text style={styles.heroTitle}>{t('duel.yourRating')}</Text>
             </View>
             <View style={styles.ratingCircle}>
               <Text style={styles.ratingValue}>{stats.winRate}<Text style={styles.ratingPct}>%</Text></Text>
@@ -63,11 +65,11 @@ export default function DuelHistoryScreen() {
           </View>
           <View style={styles.heroStats}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Ümumi Qələbə</Text>
+              <Text style={styles.heroStatLabel}>{t('duel.totalWins')}</Text>
               <Text style={styles.heroStatValue}>{stats.wins}</Text>
             </View>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Uduzma</Text>
+              <Text style={styles.heroStatLabel}>{t('duel.totalLosses')}</Text>
               <Text style={styles.heroStatValue}>{stats.losses}</Text>
             </View>
           </View>
@@ -75,9 +77,9 @@ export default function DuelHistoryScreen() {
 
         {/* List header */}
         <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Son Yarışlar</Text>
+          <Text style={styles.listTitle}>{t('duel.recentDuels')}</Text>
           <View style={styles.chip}>
-            <Text style={styles.chipText}>Bütün Tarixçə</Text>
+            <Text style={styles.chipText}>{t('duel.allHistory')}</Text>
           </View>
         </View>
 
@@ -101,7 +103,7 @@ export default function DuelHistoryScreen() {
                   </View>
                   <View style={[styles.badge, isWin ? styles.badgeWin : styles.badgeLoss]}>
                     <Text style={[styles.badgeText, { color: isWin ? Colors.success : Colors.danger }]}>
-                      {isWin ? 'Qələbə' : 'Məğlubiyyət'}
+                      {isWin ? t('duel.win') : t('duel.loss')}
                     </Text>
                   </View>
                 </View>
@@ -130,7 +132,7 @@ export default function DuelHistoryScreen() {
         >
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
             <Ionicons name="flash" size={18} color="#fff" />
-            <Text style={styles.ctaText}>Yeni yarış başlat</Text>
+            <Text style={styles.ctaText}>{t('duel.newDuel')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>

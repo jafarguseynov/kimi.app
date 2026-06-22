@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { useSettingsStore, AppLanguage } from '../../store/settings.store';
+import { useTranslation } from '../../i18n';
 
 type LangOption = { code: AppLanguage; label: string; flag: string };
 const LANGUAGES: LangOption[] = [
@@ -17,6 +18,7 @@ const LANGUAGES: LangOption[] = [
 export default function LanguageSelectScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { language, setLanguage } = useSettingsStore();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -24,7 +26,7 @@ export default function LanguageSelectScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Dil seçimi</Text>
+        <Text style={styles.headerTitle}>{t('language.title')}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -51,9 +53,7 @@ export default function LanguageSelectScreen() {
           })}
         </View>
 
-        <Text style={styles.note}>
-          Dil dəyişikliyi tətbiqin yeni versiyalarında tam mətnlər üçün tətbiq olunacaq.
-        </Text>
+        <Text style={styles.note}>{t('language.note')}</Text>
       </ScrollView>
     </SafeAreaView>
   );

@@ -5,56 +5,58 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 interface Tip {
   id: string;
-  title: string;
-  sub?: string;
-  badge?: string;
+  titleKey: string;
+  subKey?: string;
+  badgeKey?: string;
   badgeIcon?: keyof typeof Ionicons.glyphMap;
   icon: keyof typeof Ionicons.glyphMap;
   iconBg: string;
   iconColor: string;
-  cta: string;
+  ctaKey: string;
   primary?: boolean;
 }
 
 const TIPS: Tip[] = [
   {
     id: 't1',
-    title: 'Faiz mövzusunda 10 sual həll et',
-    badge: '+25% inkişaf',
+    titleKey: 'improvementTips.t1Title',
+    badgeKey: 'improvementTips.t1Badge',
     badgeIcon: 'trending-up',
     icon: 'flash',
     iconBg: '#DCFCE7',
     iconColor: '#16a34a',
-    cta: 'Başla',
+    ctaKey: 'improvementTips.t1Cta',
     primary: true,
   },
   {
     id: 't2',
-    title: 'Flashcard istifadə et',
-    sub: 'Yaddaşını möhkəmləndir',
+    titleKey: 'improvementTips.t2Title',
+    subKey: 'improvementTips.t2Sub',
     icon: 'albums',
     iconBg: '#DBEAFE',
     iconColor: '#2563eb',
-    cta: 'Məşq et',
+    ctaKey: 'improvementTips.t2Cta',
   },
   {
     id: 't3',
-    title: 'Gündə 15 dəqiqə çalış',
-    sub: 'Kiçik addımlarla hədəfə çat',
+    titleKey: 'improvementTips.t3Title',
+    subKey: 'improvementTips.t3Sub',
     icon: 'time',
     iconBg: '#FFEDD5',
     iconColor: '#ea580c',
-    cta: 'Plan qur',
+    ctaKey: 'improvementTips.t3Cta',
   },
 ];
 
 export default function ImprovementTipsScreen() {
   const navigation = useNavigation<any>();
+  const { t } = useTranslation();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -63,7 +65,7 @@ export default function ImprovementTipsScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Tövsiyələr</Text>
+          <Text style={styles.headerTitle}>{t('improvementTips.headerTitle')}</Text>
         </View>
         <TouchableOpacity style={styles.bellBtn} hitSlop={8}>
           <Ionicons name="notifications" size={18} color={Colors.primary} />
@@ -73,8 +75,8 @@ export default function ImprovementTipsScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Hero text */}
         <View style={{ gap: 8 }}>
-          <Text style={styles.h1}>Sənin üçün tövsiyələr</Text>
-          <Text style={styles.h1Sub}>AI analizinə görə sənə daha çox nəticə verəcək addımlar planlaşdırıldı.</Text>
+          <Text style={styles.h1}>{t('improvementTips.h1')}</Text>
+          <Text style={styles.h1Sub}>{t('improvementTips.h1Sub')}</Text>
         </View>
 
         {/* Main AI card */}
@@ -84,35 +86,33 @@ export default function ImprovementTipsScreen() {
             <Ionicons name="hardware-chip" size={28} color={Colors.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.aiTitle}>Ağıllı Təhlil Nəticəsi</Text>
-            <Text style={styles.aiSub}>
-              Sənin öyrənmə tempinə və zəif nöqtələrinə əsasən xüsusi inkişaf planı hazırladım. Aşağıdakı addımları izləyərək nəticələrini sürətlə artıra bilərsən.
-            </Text>
+            <Text style={styles.aiTitle}>{t('improvementTips.aiTitle')}</Text>
+            <Text style={styles.aiSub}>{t('improvementTips.aiSub')}</Text>
           </View>
         </View>
 
         {/* Tip cards */}
         <View style={{ gap: 16 }}>
-          {TIPS.map((t) => (
-            <View key={t.id} style={styles.tipCard}>
-              <View style={[styles.tipIcon, { backgroundColor: t.iconBg }]}>
-                <Ionicons name={t.icon} size={22} color={t.iconColor} />
+          {TIPS.map((tip) => (
+            <View key={tip.id} style={styles.tipCard}>
+              <View style={[styles.tipIcon, { backgroundColor: tip.iconBg }]}>
+                <Ionicons name={tip.icon} size={22} color={tip.iconColor} />
               </View>
               <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.tipTitle}>{t.title}</Text>
-                {t.sub && <Text style={styles.tipSub}>{t.sub}</Text>}
-                {t.badge && (
+                <Text style={styles.tipTitle}>{t(tip.titleKey)}</Text>
+                {tip.subKey && <Text style={styles.tipSub}>{t(tip.subKey)}</Text>}
+                {tip.badgeKey && (
                   <View style={styles.badgeRow}>
-                    {t.badgeIcon && <Ionicons name={t.badgeIcon} size={12} color="#15803d" />}
-                    <Text style={styles.badgeText}>{t.badge}</Text>
+                    {tip.badgeIcon && <Ionicons name={tip.badgeIcon} size={12} color="#15803d" />}
+                    <Text style={styles.badgeText}>{t(tip.badgeKey)}</Text>
                   </View>
                 )}
               </View>
               <TouchableOpacity
                 activeOpacity={0.9}
-                style={[styles.tipBtn, t.primary && styles.tipBtnPrimary]}
+                style={[styles.tipBtn, tip.primary && styles.tipBtnPrimary]}
               >
-                <Text style={[styles.tipBtnText, t.primary && styles.tipBtnTextPrimary]}>{t.cta}</Text>
+                <Text style={[styles.tipBtnText, tip.primary && styles.tipBtnTextPrimary]}>{t(tip.ctaKey)}</Text>
               </TouchableOpacity>
             </View>
           ))}
