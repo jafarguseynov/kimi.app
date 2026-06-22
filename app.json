@@ -46,7 +46,11 @@
         {
           "color": "#006190",
           "sounds": [
-            "./assets/sounds/kimi_notify.wav"
+            "./assets/sounds/kimi_notify.wav",
+            "./assets/sounds/kimi_ding.wav",
+            "./assets/sounds/kimi_chime.wav",
+            "./assets/sounds/kimi_pop.wav",
+            "./assets/sounds/kimi_soft.wav"
           ]
         }
       ],

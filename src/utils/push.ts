@@ -111,24 +111,39 @@ export async function requestAndRegister(): Promise<{ status: PushPermissionStat
   }
 }
 
-// kimi.az-a özəl bildiriş səsi (assets/sounds/kimi_notify.wav → app bundle).
-// Backend push payload-da `sound: 'kimi_notify.wav'` göndərir; Android-də səs
-// yalnız bu səslə qurulmuş kanal vasitəsilə işləyir.
-export const CUSTOM_SOUND = 'kimi_notify.wav';
+// kimi.az bildiriş səsləri (app bundle-a app.json `sounds` ilə yığılır).
+// Admin paneldən hansının aktiv olacağı seçilir; backend push payload-da
+// `sound: '<fayl>.wav'` göndərir. Android-də səs yalnız həmin səslə qurulmuş
+// kanal vasitəsilə işləyir — ona görə hər səs üçün ayrıca kanal yaradılır.
+// ⚠️ Bu siyahı app.json `sounds` massivi və admin dropdown ilə sinxron olmalıdır.
+export const NOTIFICATION_SOUNDS = [
+  'kimi_notify.wav',
+  'kimi_ding.wav',
+  'kimi_chime.wav',
+  'kimi_pop.wav',
+  'kimi_soft.wav',
+] as const;
 
-// Android bildiriş kanallarını qurur ('default' + özəl səsli 'kimi_default').
+// Səs faylı → Android kanal id-si (backend ExpoPushService ilə eyni qayda).
+export function soundChannelId(sound: string): string {
+  return 'snd_' + sound.replace(/\.[^.]+$/, '');
+}
+
+// Android bildiriş kanallarını qurur ('default' + hər səs üçün ayrıca səsli kanal).
 async function setupAndroidChannels(N: NotificationsModule) {
   await N.setNotificationChannelAsync('default', {
     name: 'Ümumi bildirişlər',
     importance: N.AndroidImportance.DEFAULT,
     lightColor: '#006190',
   }).catch(() => {});
-  await N.setNotificationChannelAsync('kimi_default', {
-    name: 'Kimi.az bildirişləri',
-    importance: N.AndroidImportance.HIGH,
-    lightColor: '#006190',
-    sound: CUSTOM_SOUND,
-  }).catch(() => {});
+  for (const sound of NOTIFICATION_SOUNDS) {
+    await N.setNotificationChannelAsync(soundChannelId(sound), {
+      name: `Kimi.az — ${sound.replace(/\.[^.]+$/, '')}`,
+      importance: N.AndroidImportance.HIGH,
+      lightColor: '#006190',
+      sound,
+    }).catch(() => {});
+  }
 }
 
 // App açılışında kanalları əvvəlcədən qur (icazədən asılı olmadan). Təhlükəsiz no-op.
