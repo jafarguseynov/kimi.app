@@ -314,10 +314,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  logoSection: { alignItems: 'center', marginBottom: 28, marginTop: 16 },
+  logoSection: { alignItems: 'center', marginBottom: 28, marginTop: 16, width: '100%' },
   logoImage: {
-    width: 380,
-    height: 205,
+    width: '100%',
+    maxWidth: 340,
+    aspectRatio: 380 / 205,
     marginBottom: 8,
   },
   logoSub: { fontSize: 14, color: Colors.textSecondary },
