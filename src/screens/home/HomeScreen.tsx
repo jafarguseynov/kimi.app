@@ -27,6 +27,7 @@ import { usePushStore } from '../../store/push.store';
 import { getPermissionStatus } from '../../utils/push';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import UpdateBanner from '../../components/UpdateBanner';
+import { LanguageFlagButton } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
 
 type Props = {
@@ -324,6 +325,7 @@ export default function HomeScreen({ navigation }: Props) {
           />
         </View>
         <View style={styles.topBarRight}>
+          <LanguageFlagButton />
           {!isTeacher && !isParent && (
             <TouchableOpacity
               style={styles.streakBadge}

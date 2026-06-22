@@ -24,6 +24,7 @@ import { getWallet } from '../../api/payment.api';
 import { getExamResults, getCertificates } from '../../api/certificate.api';
 import { UserStats } from '../../types/dashboard.types';
 import { Switch } from 'react-native';
+import { LanguageChips } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -154,6 +155,10 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
         </View>
         <Ionicons name="chevron-forward" size={20} color={Colors.tertiary} />
       </TouchableOpacity>
+
+      {/* Dil — birbaşa dəyiş */}
+      <Text style={styles.langSectionLabel}>{t('language.title')}</Text>
+      <LanguageChips />
 
       {/* Menu */}
       <View style={styles.menuCard}>
@@ -877,6 +882,7 @@ const styles = StyleSheet.create({
   aiCardSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 
   // ── Menu (student) ──
+  langSectionLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.5, marginBottom: -8, marginLeft: 4 },
   menuCard: {
     backgroundColor: Colors.surfaceLowest, borderRadius: 20, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
