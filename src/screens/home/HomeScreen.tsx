@@ -310,23 +310,6 @@ export default function HomeScreen({ navigation }: Props) {
       {/* ── Shared Top Bar ── */}
       <View style={styles.topBar}>
         <View style={styles.topBarLeft}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => (navigation as any).navigate(Routes.Profile)}
-          >
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.topAvatar} />
-            ) : (
-              <LinearGradient
-                colors={[Colors.gradientStart, Colors.gradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.topAvatar}
-              >
-                <Ionicons name="person" size={16} color="#fff" />
-              </LinearGradient>
-            )}
-          </TouchableOpacity>
           <Image
             source={require('../../../assets/logo.png')}
             style={styles.logoImage}
@@ -342,7 +325,7 @@ export default function HomeScreen({ navigation }: Props) {
               onPress={() => navigation.navigate(Routes.StreakDashboard)}
             >
               <Ionicons name="flame" size={15} color="#f97316" />
-              <Text style={styles.streakText} numberOfLines={1}>{t('home.streak', { n: stats?.streak ?? 0 })}</Text>
+              <Text style={styles.streakText} numberOfLines={1}>{stats?.streak ?? 0}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -1119,9 +1102,8 @@ const styles = StyleSheet.create({
   },
   logoImage: {
     flexShrink: 1,
-    width: rs(150),
-    height: rs(54),
-    marginLeft: 2,
+    width: rs(170),
+    height: rs(62),
   },
   topBarRight: { flexDirection: 'row', alignItems: 'center', gap: rs(8), flexShrink: 0 },
   streakBadge: {
