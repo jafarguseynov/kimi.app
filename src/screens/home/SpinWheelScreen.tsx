@@ -552,7 +552,8 @@ const styles = StyleSheet.create({
   },
   pinDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
 
-  // Statik kölgə dairəsi (fırlanmır) — Android elevation+rotate glitch-inin qarşısını alır.
+  // Statik ağ disk (fırlanmır) — bütün dairə/kölgə/kənar vizualı buradadır.
+  // Fırlanan layer şəffafdır, ona görə diskin görünüşü tam bu statik altlıqdan gəlir.
   wheelShadow: {
     position: 'absolute',
     bottom: 0,
@@ -561,24 +562,24 @@ const styles = StyleSheet.create({
     height: WHEEL_SIZE,
     borderRadius: WHEEL_SIZE / 2,
     backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.08,
     shadowRadius: 40,
     elevation: 6,
   },
-  // DİQQƏT: overflow:'hidden' qoymayın! Köhnə Android-də (A5 2017 = Android 7)
-  // overflow:hidden + borderRadius + rotate transform birlikdə olanda fırlanan
-  // view-un bütün uşaq elementləri (ikonlar, hub, xətlər) görünməz olur → çarx boş çıxır.
-  // Heç bir element onsuz da dairədən kənara çıxmır, ona görə clipping lazım deyil.
+  // KRİTİK: fırlanan layer-də borderRadius/borderWidth/overflow QOYMAYIN!
+  // Köhnə Android-də (A5 2017 = Android 7) borderRadius + rotate transform birlikdə
+  // olanda fırlanan view-un uşaq elementlərini qismən clip edir → seqmentlərin bir
+  // hissəsi (yarım çarx) görünməz olur. Layer tam şəffaf düz dördbucaqdır; bütün
+  // disk vizualı statik wheelShadow altlığından gəlir.
   wheel: {
     width: WHEEL_SIZE,
     height: WHEEL_SIZE,
-    borderRadius: WHEEL_SIZE / 2,
-    backgroundColor: '#fff',
-    borderWidth: 10,
-    borderColor: '#fff',
     position: 'relative',
+    backgroundColor: 'transparent',
   },
   wheelTint: {
     position: 'absolute',
@@ -587,14 +588,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
     opacity: 0.25,
   },
-  // En = WHEEL_SIZE - 2*border (20) ki, clipping olmadan da xətt diskin içində qalsın.
+  // Diametr boyu xətt — diskin içində qalması üçün hər kənardan 12px qısaldılıb və mərkəzlənib.
   dividerLine: {
     position: 'absolute',
-    width: WHEEL_SIZE - 20,
+    width: WHEEL_SIZE - 24,
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(0,0,0,0.09)',
     top: CENTER - StyleSheet.hairlineWidth / 2,
-    left: 0,
+    left: 12,
   },
   segItem: {
     position: 'absolute',
