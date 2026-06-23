@@ -71,15 +71,6 @@ const getItemPos = (angle: number) => {
   };
 };
 
-// Seqmentlər arası ayırıcı xətlərin bucaqları (diametr boyu xətt = 2 sərhəd). 180°-dən kiçik unikal sərhədlər.
-const dividerAngles = (n: number): number[] => {
-  if (n <= 1) return [];
-  const step = 360 / n;
-  const set = new Set<number>();
-  for (let i = 0; i < n; i++) set.add(Math.round((i * step) % 180));
-  return [...set];
-};
-
 export default function SpinWheelScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { coins, stars, history, addCoins, addStars, addHistoryEntry } = useSpinWheelStore();
@@ -323,12 +314,17 @@ export default function SpinWheelScreen({ navigation }: Props) {
             {/* Light aura tint */}
             <View style={styles.wheelTint} />
 
-            {/* Divider Lines — seqment sayına görə dinamik */}
-            {dividerAngles(segments.length).map((angle) => (
+            {/* Ayırıcı xətlər — hər seqment sərhədi üçün ayrıca radius (spoke).
+                Diametr yox, radius çəkirik ki, tək saylı seqmentlərdə də sektorlar
+                bərabər bölünsün (diametr yalnız cüt sayda düz işləyirdi → boşluqlar). */}
+            {segments.map((_, i) => (
               <View
-                key={angle}
-                style={[styles.dividerLine, { transform: [{ rotate: `${angle}deg` }] }]}
-              />
+                key={`spoke-${i}`}
+                pointerEvents="none"
+                style={[styles.spoke, { transform: [{ rotate: `${i * (360 / segments.length)}deg` }] }]}
+              >
+                <View style={styles.spokeLine} />
+              </View>
             ))}
 
             {/* Segment Icon + Label */}
@@ -588,14 +584,23 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight,
     opacity: 0.25,
   },
-  // Diametr boyu xətt — diskin içində qalması üçün hər kənardan 12px qısaldılıb və mərkəzlənib.
-  dividerLine: {
+  // Ayırıcı radius (spoke): tam ölçülü konteyner öz mərkəzi (= çarx mərkəzi) ətrafında
+  // fırlanır; içindəki xətt mərkəzdən yuxarı kənara doğru gedir. rotate=i*step ilə
+  // hər sərhədə yönəlir. Tək/cüt fərqi olmadan bərabər bölünür.
+  spoke: {
     position: 'absolute',
-    width: WHEEL_SIZE - 24,
-    height: StyleSheet.hairlineWidth,
+    top: 0,
+    left: 0,
+    width: WHEEL_SIZE,
+    height: WHEEL_SIZE,
+  },
+  spokeLine: {
+    position: 'absolute',
+    left: CENTER - StyleSheet.hairlineWidth / 2,
+    top: 14,
+    width: StyleSheet.hairlineWidth,
+    height: CENTER - 14,
     backgroundColor: 'rgba(0,0,0,0.09)',
-    top: CENTER - StyleSheet.hairlineWidth / 2,
-    left: 12,
   },
   segItem: {
     position: 'absolute',
