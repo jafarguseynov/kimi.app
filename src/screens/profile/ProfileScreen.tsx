@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,7 +18,8 @@ import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import { useLogout } from '../../hooks/useAuth';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { getUserStats } from '../../api/dashboard.api';
 import { getTeacherAnalytics, TeacherAnalytics, getTeachers, getMe } from '../../api/user.api';
 import { getWallet } from '../../api/payment.api';
@@ -48,6 +50,21 @@ const BASE_STUDENT_MENU = [
   { id: 'duels', icon: 'flash-outline', labelKey: 'profileScreen.menuDuels', subKey: '', tab: 'self' as MenuTab, route: Routes.DuelHistory },
   { id: 'referral', icon: 'share-social-outline', labelKey: 'profileScreen.menuReferral', subKey: 'profileScreen.menuReferralSub', tab: 'self' as MenuTab, route: Routes.Referral },
 ] as const;
+
+// Pull-to-refresh: profil sorğularını yenidən çək.
+function useProfileRefresh() {
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.invalidateQueries();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  return { refreshing, onRefresh };
+}
 
 function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, navigation }: {
   name: string;
@@ -88,9 +105,14 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
     : t('profileScreen.tierBronze');
   const streak = stats?.streak ?? 0;
   const rating = 1000 + Math.round((stats?.averageScore ?? 0) * 4);
+  const { refreshing, onRefresh } = useProfileRefresh();
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scroll}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+    >
       {/* Avatar */}
       <View style={styles.avatarSection}>
         <View style={styles.avatarWrap}>
@@ -251,9 +273,14 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
     { label: t('profileScreen.metricViews'), value: analytics?.profileViews?.toString() ?? '—', unit: '', primary: false },
     { label: t('profileScreen.metricQueries'), value: analytics?.activeQueries?.toString() ?? '—', unit: '', primary: true },
   ];
+  const { refreshing, onRefresh } = useProfileRefresh();
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scroll}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+    >
       {/* Avatar + rating */}
       <View style={styles.avatarSection}>
         <View style={styles.avatarWrap}>
@@ -481,9 +508,14 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
   const [notifExam, setNotifExam] = React.useState(true);
   const [notifLesson, setNotifLesson] = React.useState(true);
   const [notifMessages, setNotifMessages] = React.useState(false);
+  const { refreshing, onRefresh } = useProfileRefresh();
 
   return (
-    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.scroll}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+    >
       {/* Avatar */}
       <View style={styles.avatarSection}>
         <View style={styles.avatarWrap}>

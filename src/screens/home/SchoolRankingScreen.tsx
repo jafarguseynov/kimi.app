@@ -53,7 +53,7 @@ export default function SchoolRankingScreen() {
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
-            <Ionicons name="menu" size={24} color={Colors.primary} />
+            <Ionicons name="arrow-back" size={24} color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('schoolRanking.headerTitle')}</Text>
         </View>

@@ -189,11 +189,9 @@ export default function SpinWheelScreen({ navigation }: Props) {
       const isRarePlus = targetSeg.rarity !== 'common';
       const { newStreak, isBonusDay: hitBonus } = registerSpin(isRarePlus);
 
-      // Confetti for epic+ wins
-      if (targetSeg.rarity === 'epic' || targetSeg.rarity === 'legendary') {
-        setConfettiOn(true);
-        setTimeout(() => setConfettiOn(false), 3000);
-      }
+      // Confetti hər qalibiyyətdə — fişəng (aşağıdan yuxarı)
+      setConfettiOn(true);
+      setTimeout(() => setConfettiOn(false), 3200);
 
       const buttons: { text: string; onPress?: () => void; style?: 'cancel' | 'default' }[] = [
         { text: t('spin.awesome'), style: 'default' },
@@ -235,7 +233,7 @@ export default function SpinWheelScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Confetti active={confettiOn} onDone={() => setConfettiOn(false)} />
+      <Confetti active={confettiOn} origin="bottom" onDone={() => setConfettiOn(false)} />
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />

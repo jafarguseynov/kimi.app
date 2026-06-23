@@ -7,12 +7,13 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
@@ -214,6 +215,18 @@ export default function HomeScreen({ navigation }: Props) {
   });
   const openRequests: PublicLessonRequest[] = Array.isArray(openRequestsData) ? openRequestsData.slice(0, 5) : [];
 
+  // Pull-to-refresh: bütün ana səhifə sorğularını yenidən çək.
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await queryClient.invalidateQueries();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const pendingBookings = teacherBookings.filter((b) => b.status === 'pending').slice(0, 3);
   const confirmedBookings = teacherBookings.filter((b) => b.status === 'confirmed').slice(0, 3);
   const topStudents = leaderboard.slice(0, 3);
@@ -346,7 +359,11 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />}
+      >
         {/* Yeni versiya / OTA güncəlləmə banneri */}
         <UpdateBanner />
         {isTeacher ? (

@@ -111,8 +111,10 @@ export default function LeaderboardScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Avatar initial={initial(user?.name ?? 'S')} size={40} />
-          <Text style={styles.headerTitle}>Kimi.az</Text>
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8} style={styles.bellBtn}>
+            <Ionicons name="arrow-back" size={24} color={Colors.primary} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{t('home.student.topStudents')}</Text>
         </View>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           <TouchableOpacity
