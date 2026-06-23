@@ -216,6 +216,9 @@ export const en = {
       futureExams: 'Upcoming exams',
       recommendedTeachers: 'Recommended teachers',
     },
+    partners: {
+      title: 'Our partners',
+    },
     student: {
       heroTitle: 'Ready to test your knowledge?',
       heroSub: 'A new exam session awaits you. Start now and leave your rivals behind.',

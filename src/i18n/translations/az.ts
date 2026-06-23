@@ -217,6 +217,9 @@ export const az = {
       futureExams: 'Gələcək imtahanlar',
       recommendedTeachers: 'Tövsiyə olunan müəllimlər',
     },
+    partners: {
+      title: 'Tərəfdaşlarımız',
+    },
     student: {
       heroTitle: 'Biliklərini yoxlamağa hazırsan?',
       heroSub: 'Yeni imtahan sessiyası səni gözləyir. İndi başla və rəqibləri geridə qoy.',

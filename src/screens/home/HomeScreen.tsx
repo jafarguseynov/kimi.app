@@ -28,6 +28,8 @@ import { usePushStore } from '../../store/push.store';
 import { getPermissionStatus } from '../../utils/push';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import UpdateBanner from '../../components/UpdateBanner';
+import BannerSlider from '../../components/BannerSlider';
+import PartnersSection from '../../components/PartnersSection';
 import { LanguageFlagButton } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
 import { rs } from '../../utils/responsive';
@@ -366,6 +368,8 @@ export default function HomeScreen({ navigation }: Props) {
       >
         {/* Yeni versiya / OTA güncəlləmə banneri */}
         <UpdateBanner />
+        {/* Reklam bannerləri (admin idarəli slayder) */}
+        <BannerSlider placement="home" />
         {isTeacher ? (
           // ════════════════ TEACHER VIEW ════════════════
           <>
@@ -1089,6 +1093,9 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           </>
         )}
+
+        {/* Tərəfdaşlarımız (admin idarəli) */}
+        <PartnersSection />
       </ScrollView>
     </SafeAreaView>
   );
