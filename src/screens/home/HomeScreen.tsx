@@ -981,42 +981,71 @@ export default function HomeScreen({ navigation }: Props) {
                 const subject = tch.subjects?.[0] || t('home.student.variousSubjects');
                 const experience = (tch as any).experienceYears;
                 const avatarUrl = (tch as any).avatarUrl as string | undefined;
+                const goToTeacher = () => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherProfile, params: { teacher: tch } } as never);
                 return (
                   <TouchableOpacity
                     key={tch.id}
                     style={styles.teacherCardRich}
-                    activeOpacity={0.85}
-                    onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherProfile, params: { teacher: tch } } as never)}
+                    activeOpacity={0.9}
+                    onPress={goToTeacher}
                   >
-                    <View style={styles.teacherCardTop}>
+                    {/* Premium başlıq zolağı */}
+                    <LinearGradient
+                      colors={[Colors.gradientStart, Colors.gradientEnd]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.teacherCardBanner}
+                    >
+                      {hasRating && (
+                        <View style={styles.teacherRatingChip}>
+                          <Ionicons name="star" size={11} color="#f59e0b" />
+                          <Text style={styles.teacherRatingChipText}>{tch.rating!.toFixed(1)}</Text>
+                        </View>
+                      )}
+                    </LinearGradient>
+
+                    {/* Avatar (zolağın üstünə düşür) */}
+                    <View style={styles.teacherAvatarWrap}>
                       {avatarUrl ? (
-                        <Image source={{ uri: avatarUrl }} style={styles.teacherAvatarImg} />
+                        <Image source={{ uri: avatarUrl }} style={styles.teacherAvatarRichImg} />
                       ) : (
                         <LinearGradient
                           colors={[Colors.gradientStart, Colors.gradientEnd]}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
-                          style={styles.teacherAvatarImg}
+                          style={styles.teacherAvatarRichImg}
                         >
                           <Text style={styles.teacherAvatarInitial}>{initials}</Text>
                         </LinearGradient>
                       )}
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.teacherNameRich} numberOfLines={1}>{tch.name}</Text>
-                        <Text style={styles.teacherSubjectRich} numberOfLines={1}>
-                          {subject}{experience ? ` • ${t('home.student.expYears', { n: experience })}` : ''}
+                      <View style={styles.teacherVerifiedBadge}>
+                        <Ionicons name="checkmark" size={10} color="#fff" />
+                      </View>
+                    </View>
+
+                    <View style={styles.teacherCardBody}>
+                      <Text style={styles.teacherNameRich} numberOfLines={1}>{tch.name}</Text>
+                      <Text style={styles.teacherSubjectRich} numberOfLines={1}>
+                        {subject}{experience ? ` • ${t('home.student.expYears', { n: experience })}` : ''}
+                      </Text>
+                      <View style={styles.teacherStatsRow}>
+                        <Ionicons name="star" size={12} color="#f59e0b" />
+                        <Text style={styles.teacherStatsText}>
+                          {hasRating ? tch.rating!.toFixed(1) : t('home.student.newTeacher')}
                         </Text>
                       </View>
                     </View>
-                    <View style={styles.teacherCardBottom}>
-                      <View style={styles.ratingRow}>
-                        <Ionicons name="star" size={13} color="#f59e0b" />
-                        <Text style={styles.ratingText}>{hasRating ? tch.rating!.toFixed(1) : t('home.student.newTeacher')}</Text>
-                      </View>
-                      <View style={styles.teacherViewBtn}>
-                        <Text style={styles.teacherViewBtnText}>{t('home.student.viewProfile')}</Text>
-                      </View>
-                    </View>
+
+                    {/* Diqqətçəkən müraciət düyməsi */}
+                    <LinearGradient
+                      colors={[Colors.gradientStart, Colors.gradientEnd]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.teacherApplyBtn}
+                    >
+                      <Text style={styles.teacherApplyBtnText}>{t('home.student.applyTeacher')}</Text>
+                      <Ionicons name="arrow-forward" size={14} color="#fff" />
+                    </LinearGradient>
                   </TouchableOpacity>
                 );
               })}
@@ -1685,38 +1714,62 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingText: { fontSize: 11, fontWeight: '700', color: Colors.textPrimary },
 
-  // Rich teacher card (used on home)
+  // Rich teacher card (premium redesign — used on home)
   teacherCardRich: {
-    width: 240,
-    backgroundColor: Colors.surfaceLowest,
-    borderRadius: 16,
-    padding: 16,
-    gap: 14,
-    shadowColor: '#000',
+    width: 200,
+    backgroundColor: Colors.surface,
+    borderRadius: 20,
+    paddingBottom: 14,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: Colors.borderLight,
+    shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.04,
-    shadowRadius: 20,
-    elevation: 2,
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    elevation: 4,
   },
-  teacherCardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  teacherAvatarImg: {
-    width: 48, height: 48, borderRadius: 24,
+  teacherCardBanner: {
+    height: 56,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    alignItems: 'flex-end',
+  },
+  teacherRatingChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+  },
+  teacherRatingChipText: { fontSize: 11, fontWeight: '800', color: Colors.textPrimary },
+  teacherAvatarWrap: {
+    marginTop: -32, marginLeft: 16, marginBottom: 4,
+    width: 64, height: 64,
+  },
+  teacherAvatarRichImg: {
+    width: 64, height: 64, borderRadius: 32,
     backgroundColor: Colors.surfaceHigh,
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: Colors.surface,
   },
-  teacherAvatarRich: {
-    width: 48, height: 48, borderRadius: 24,
+  teacherVerifiedBadge: {
+    position: 'absolute', right: -2, bottom: 2,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#22c55e',
     alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: Colors.surface,
   },
-  teacherAvatarInitial: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  teacherNameRich: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  teacherSubjectRich: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
-  teacherCardBottom: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  teacherViewBtn: {
-    backgroundColor: Colors.primaryLight,
-    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
+  teacherAvatarInitial: { fontSize: 22, fontWeight: '800', color: '#fff' },
+  teacherCardBody: { paddingHorizontal: 16, gap: 2 },
+  teacherNameRich: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  teacherSubjectRich: { fontSize: 12, color: Colors.textMuted },
+  teacherStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  teacherStatsText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  teacherApplyBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    marginHorizontal: 16, marginTop: 12,
+    borderRadius: 12, paddingVertical: 10,
   },
-  teacherViewBtnText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
+  teacherApplyBtnText: { fontSize: 13, fontWeight: '800', color: '#fff' },
 
   // Empty state for teachers
   teachersEmpty: {

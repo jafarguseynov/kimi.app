@@ -6,28 +6,20 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { getSchoolRanking, SchoolRankEntry } from '../../api/school.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-
-type School = { rank: number; name: string; city: string; score: number };
-
-const SCHOOLS: School[] = [
-  { rank: 1, name: 'Bakı Müasir Təhsil Kompleksi', city: 'Bakı şəhəri', score: 94.2 },
-  { rank: 2, name: 'Kaspi Liseyi', city: 'Xətai r.', score: 91.8 },
-  { rank: 3, name: '216 saylı məktəb', city: 'Sabunçu r.', score: 89.5 },
-  { rank: 4, name: '160 saylı Bakı Fizika-Riyaziyyat Liseyi', city: 'Binəqədi r.', score: 87.1 },
-  { rank: 5, name: 'Azərbaycan Dövlət İqtisad Universiteti Liseyi', city: 'Nəsimi r.', score: 85.6 },
-  { rank: 6, name: '23 saylı orta məktəb', city: 'Sumqayıt', score: 83.9 },
-  { rank: 7, name: 'Gəncə Humanitar Liseyi', city: 'Gəncə', score: 82.4 },
-];
 
 const MEDAL_COLORS: Record<number, { icon: string; iconColor: string; numColor: string }> = {
   1: { icon: 'amber', iconColor: '#D97706', numColor: '#78350F' },
@@ -43,9 +35,21 @@ export default function SchoolRankingScreen() {
   const [activeTab, setActiveTab] = useState(0);
   const [search, setSearch] = useState('');
 
-  const filtered = search.trim()
-    ? SCHOOLS.filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
-    : SCHOOLS;
+  const { data: schools = [], isLoading, isRefetching, refetch } = useQuery({
+    queryKey: ['school-ranking'],
+    queryFn: () => getSchoolRanking(50),
+    staleTime: 60 * 1000,
+  });
+
+  // Tab-a görə sıralama: 0=Top (orta bal), 1=Aktiv (imtahan sayı), 2=Yüksək bal
+  const sorted = [...schools].sort((a, b) => {
+    if (activeTab === 1) return b.examCount - a.examCount;
+    return b.avgScore - a.avgScore;
+  }).map((s, i) => ({ ...s, displayRank: i + 1 }));
+
+  const filtered = (search.trim()
+    ? sorted.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()))
+    : sorted) as (SchoolRankEntry & { displayRank: number })[];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -62,7 +66,11 @@ export default function SchoolRankingScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} colors={[Colors.primary]} />}
+      >
         {/* Search */}
         <View style={styles.searchBar}>
           <Ionicons name="search" size={20} color={Colors.outline} style={styles.searchIcon} />
@@ -98,43 +106,50 @@ export default function SchoolRankingScreen() {
         </LinearGradient>
 
         {/* Ranking list */}
-        <View style={styles.list}>
-          {filtered.map((school) => {
-            const medal = MEDAL_COLORS[school.rank];
-            return (
-              <View key={school.rank} style={styles.schoolCard}>
-                {/* Medal / rank */}
-                {medal ? (
-                  <View style={styles.medalWrap}>
-                    <Ionicons
-                      name="ribbon"
-                      size={36}
-                      color={medal.iconColor}
-                    />
-                    <Text style={[styles.medalNum, { color: medal.numColor }]}>{school.rank}</Text>
-                  </View>
-                ) : (
-                  <View style={styles.rankNumWrap}>
-                    <Text style={styles.rankNum}>{school.rank}</Text>
-                  </View>
-                )}
+        {isLoading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 30 }} />
+        ) : filtered.length === 0 ? (
+          <View style={styles.emptyWrap}>
+            <Ionicons name="school-outline" size={40} color={Colors.outline} />
+            <Text style={styles.emptyText}>{t('schoolRanking.empty')}</Text>
+          </View>
+        ) : (
+          <View style={styles.list}>
+            {filtered.map((school) => {
+              const medal = MEDAL_COLORS[school.displayRank];
+              return (
+                <View key={school.id} style={styles.schoolCard}>
+                  {/* Medal / rank */}
+                  {medal ? (
+                    <View style={styles.medalWrap}>
+                      <Ionicons name="ribbon" size={36} color={medal.iconColor} />
+                      <Text style={[styles.medalNum, { color: medal.numColor }]}>{school.displayRank}</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.rankNumWrap}>
+                      <Text style={styles.rankNum}>{school.displayRank}</Text>
+                    </View>
+                  )}
 
-                <View style={styles.schoolInfo}>
-                  <Text style={styles.schoolName} numberOfLines={2}>{school.name}</Text>
-                  <View style={styles.cityRow}>
-                    <Ionicons name="location-outline" size={13} color={Colors.outline} />
-                    <Text style={styles.cityText}>{school.city}</Text>
+                  <View style={styles.schoolInfo}>
+                    <Text style={styles.schoolName} numberOfLines={2}>{school.name}</Text>
+                    <View style={styles.cityRow}>
+                      <Ionicons name="people-outline" size={13} color={Colors.outline} />
+                      <Text style={styles.cityText}>
+                        {t('schoolRanking.metaMembers', { n: school.members })} · {t('schoolRanking.metaExams', { n: school.examCount })}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.scoreCol}>
+                    <Text style={styles.scoreValue}>{school.avgScore}</Text>
+                    <Text style={styles.scoreLabel}>{t('schoolRanking.scoreLabel')}</Text>
                   </View>
                 </View>
-
-                <View style={styles.scoreCol}>
-                  <Text style={styles.scoreValue}>{school.score}</Text>
-                  <Text style={styles.scoreLabel}>{t('schoolRanking.scoreLabel')}</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -211,4 +226,7 @@ const styles = StyleSheet.create({
   scoreCol: { alignItems: 'flex-end' },
   scoreValue: { fontSize: 18, fontWeight: '800', color: Colors.primary },
   scoreLabel: { fontSize: 9, fontWeight: '600', color: Colors.textMuted, letterSpacing: 1, textTransform: 'uppercase', marginTop: 2 },
+
+  emptyWrap: { alignItems: 'center', gap: 10, paddingVertical: 50 },
+  emptyText: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 30 },
 });
