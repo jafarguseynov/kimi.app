@@ -36,7 +36,7 @@ export default function ExamResultScreen({ navigation, route }: Props) {
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
   const celebratedRef = useRef(false);
-  const [fallback, setFallback] = useState<{ score: number; total: number; percentage: number; examTitle: string; timeSpent: number; subject?: string; completedAt?: string } | null>(null);
+  const [fallback, setFallback] = useState<{ score: number; total: number; correct?: number; wrong?: number; unanswered?: number; percentage: number; examTitle: string; timeSpent: number; subject?: string; completedAt?: string } | null>(null);
 
   useEffect(() => {
     if (!fromHistory) return () => { resetExam(); };
@@ -81,7 +81,7 @@ export default function ExamResultScreen({ navigation, route }: Props) {
     (async () => {
       try {
         const r = await getExamResult(examId);
-        if (!cancelled) setFallback({ score: r.score, total: r.total, percentage: r.percentage, examTitle: r.examTitle, timeSpent: r.timeSpent, subject: r.subject, completedAt: r.completedAt });
+        if (!cancelled) setFallback({ score: r.score, total: r.total, correct: r.correct, wrong: r.wrong, unanswered: r.unanswered, percentage: r.percentage, examTitle: r.examTitle, timeSpent: r.timeSpent, subject: r.subject, completedAt: r.completedAt });
       } catch {}
     })();
     return () => { cancelled = true; };
@@ -89,9 +89,11 @@ export default function ExamResultScreen({ navigation, route }: Props) {
 
   // Submit nəticəsi öncə store-da (anlıq, dəqiq), sonra fallback API-dən gəlir
   const scorePercent = result?.percentage ?? fallback?.percentage ?? 0;
-  const correctCount = result?.score ?? fallback?.score ?? 0;
+  const correctCount = result?.correct ?? result?.score ?? fallback?.correct ?? fallback?.score ?? 0;
   const total = result?.total ?? fallback?.total ?? 0;
-  const wrongCount = Math.max(0, total - correctCount);
+  // Task 14 — boş buraxılan suallar SƏHV deyil, ayrıca sayılır.
+  const unansweredCount = result?.unanswered ?? fallback?.unanswered ?? 0;
+  const wrongCount = result?.wrong ?? fallback?.wrong ?? Math.max(0, total - correctCount - unansweredCount);
   const timeSpent = result?.timeSpent ?? fallback?.timeSpent ?? 0;
   // Subject — submit nəticəsində artıq gəlir (store), API fallback əlavə təhlükəsizlik
   const subjectRaw = result?.subject ?? fallback?.subject ?? '';
@@ -217,6 +219,16 @@ export default function ExamResultScreen({ navigation, route }: Props) {
               <Ionicons name="close-circle" size={22} color={Colors.danger} />
               <Text style={[styles.summaryStatValue, { color: Colors.danger }]}>{t('examResult.wrongN', { n: wrongCount })}</Text>
               <Text style={styles.summaryStatLabel}>{t('examResult.mistakes')} {examId ? '↗' : ''}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={examId ? 0.7 : 1}
+              style={[styles.summaryStatItem, styles.summaryStatItemMid]}
+              disabled={!examId}
+              onPress={() => examId && navigation.navigate(Routes.ExamReview, { examId, filter: 'unanswered' })}
+            >
+              <Ionicons name="remove-circle" size={22} color={Colors.warning} />
+              <Text style={[styles.summaryStatValue, { color: Colors.warning }]}>{t('examResult.unansweredN', { n: unansweredCount })}</Text>
+              <Text style={styles.summaryStatLabel}>{t('examResult.skipped')} {examId ? '↗' : ''}</Text>
             </TouchableOpacity>
             <View style={styles.summaryStatItem}>
               <Ionicons name="time-outline" size={22} color={Colors.textSecondary} />

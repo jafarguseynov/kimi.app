@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -50,6 +50,9 @@ export default function ExamSessionScreen({ navigation }: Props) {
   const { mutate, isPending } = useSubmitExam();
   const { mutate: mutateCollection, isPending: isPendingCollection } = useSubmitCollectionTest();
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Task 16 — son 5 dəqiqə xəbərdarlığı (bir dəfə)
+  const warned5Ref = useRef(false);
+  const [showFiveMin, setShowFiveMin] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const isLast = currentIndex === questions.length - 1;
@@ -109,6 +112,21 @@ export default function ExamSessionScreen({ navigation }: Props) {
     if (timeRemaining === 0) submit();
   }, [timeRemaining]);
 
+  // Task 16 — yalnız 5 dəqiqədən uzun imtahanlarda, son 5 dəqiqədə bir dəfə xəbərdarlıq
+  useEffect(() => {
+    if (
+      !warned5Ref.current &&
+      durationSeconds > 300 &&
+      timeRemaining > 0 &&
+      timeRemaining <= 300
+    ) {
+      warned5Ref.current = true;
+      hapticMedium();
+      setShowFiveMin(true);
+      setTimeout(() => setShowFiveMin(false), 4000);
+    }
+  }, [timeRemaining, durationSeconds]);
+
   if (!currentQuestion) return null;
 
   const selectedOptionId = answers[currentQuestion.id];
@@ -126,12 +144,24 @@ export default function ExamSessionScreen({ navigation }: Props) {
           <Ionicons name="close" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>{t('examSession.title')}</Text>
-        <View style={styles.timerBadge}>
-          <Text style={[styles.timerText, timeRemaining < 60 && { color: Colors.danger }]}>
+        <View style={[styles.timerBadge, timeRemaining <= 300 && timeRemaining > 60 && styles.timerBadgeWarn, timeRemaining <= 60 && styles.timerBadgeDanger]}>
+          <Text style={[
+            styles.timerText,
+            timeRemaining <= 300 && timeRemaining > 60 && { color: Colors.warning },
+            timeRemaining <= 60 && { color: Colors.danger },
+          ]}>
             {formatTime(timeRemaining)}
           </Text>
         </View>
       </View>
+
+      {/* Task 16 — son 5 dəqiqə xəbərdarlığı */}
+      {showFiveMin && (
+        <View style={styles.fiveMinBanner}>
+          <Ionicons name="alarm-outline" size={16} color="#fff" />
+          <Text style={styles.fiveMinBannerText}>{t('examSession.fiveMinWarning')}</Text>
+        </View>
+      )}
 
       {/* Progress Bar */}
       <View style={styles.progressTrack}>
@@ -264,7 +294,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
+  timerBadgeWarn: { backgroundColor: Colors.warningLight },
+  timerBadgeDanger: { backgroundColor: Colors.dangerLight },
   timerText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+
+  fiveMinBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.warning,
+    paddingVertical: 8, paddingHorizontal: 16,
+  },
+  fiveMinBannerText: { fontSize: 13, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
 
   progressTrack: {
     width: '100%',

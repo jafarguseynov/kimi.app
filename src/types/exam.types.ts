@@ -30,6 +30,10 @@ export interface ExamSession {
 export interface ExamResult {
   score: number;
   total: number;
+  correct?: number;
+  wrong?: number;
+  unanswered?: number;
+  answered?: number;
   percentage: number;
   timeSpent: number;
   examTitle?: string;

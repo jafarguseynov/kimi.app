@@ -7,11 +7,18 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { getExamReview, ExamReviewQuestion } from '../../api/certificate.api';
+import { getExamReview, getQuestionSolution, ExamReviewQuestion } from '../../api/certificate.api';
 import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamReview>;
-type Filter = 'all' | 'wrong' | 'correct';
+type Filter = 'all' | 'wrong' | 'correct' | 'unanswered';
+
+// Sualın statusunu müəyyən et (köhnə backend `status` göndərməsə də işləsin).
+function qStatus(q: ExamReviewQuestion): 'correct' | 'wrong' | 'unanswered' {
+  if (q.status) return q.status;
+  if (q.userOptionId == null) return 'unanswered';
+  return q.isCorrect ? 'correct' : 'wrong';
+}
 
 export default function ExamReviewScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
@@ -26,13 +33,14 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
 
   const questions = useMemo(() => {
     const all = data?.questions ?? [];
-    if (filter === 'wrong') return all.filter((q) => !q.isCorrect);
-    if (filter === 'correct') return all.filter((q) => q.isCorrect);
-    return all;
+    if (filter === 'all') return all;
+    return all.filter((q) => qStatus(q) === filter);
   }, [data, filter]);
 
-  const wrongCount = data?.questions.filter((q) => !q.isCorrect).length ?? 0;
-  const correctCount = data?.questions.filter((q) => q.isCorrect).length ?? 0;
+  const all = data?.questions ?? [];
+  const wrongCount = data?.wrong ?? all.filter((q) => qStatus(q) === 'wrong').length;
+  const correctCount = data?.correct ?? all.filter((q) => qStatus(q) === 'correct').length;
+  const unansweredCount = data?.unanswered ?? all.filter((q) => qStatus(q) === 'unanswered').length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -49,9 +57,10 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
       {/* Filter tabs */}
       <View style={styles.tabs}>
         {([
-          { id: 'wrong',   label: t('examReview.nWrong', { n: wrongCount }),   color: Colors.danger },
-          { id: 'correct', label: t('examReview.nCorrect', { n: correctCount }),  color: Colors.tertiary },
-          { id: 'all',     label: t('examReview.allCount', { n: data?.total ?? 0 }), color: Colors.primary },
+          { id: 'wrong',      label: t('examReview.nWrong', { n: wrongCount }),         color: Colors.danger },
+          { id: 'unanswered', label: t('examReview.nUnanswered', { n: unansweredCount }), color: Colors.warning ?? Colors.textMuted },
+          { id: 'correct',    label: t('examReview.nCorrect', { n: correctCount }),      color: Colors.tertiary },
+          { id: 'all',        label: t('examReview.allCount', { n: data?.total ?? 0 }),  color: Colors.primary },
         ] as { id: Filter; label: string; color: string }[]).map((t) => {
           const active = filter === t.id;
           return (
@@ -78,7 +87,10 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
         <View style={styles.center}>
           <Ionicons name="checkmark-circle-outline" size={42} color={Colors.tertiary} />
           <Text style={styles.emptyText}>
-            {filter === 'wrong' ? t('examReview.noWrong') : filter === 'correct' ? t('examReview.noCorrect') : t('examReview.noQuestions')}
+            {filter === 'wrong' ? t('examReview.noWrong')
+              : filter === 'correct' ? t('examReview.noCorrect')
+              : filter === 'unanswered' ? t('examReview.noUnanswered')
+              : t('examReview.noQuestions')}
           </Text>
         </View>
       ) : (
@@ -95,17 +107,49 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
 
 function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
   const { t } = useTranslation();
+  const status = qStatus(q);
+
+  // Task 15 — Həllini Gör: izah artıq review ilə gəlibsə onu istifadə et, yoxsa basıldıqda yüklə.
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const [explanation, setExplanation] = useState<string | null>(q.explanation ?? null);
+  const [optionExpl, setOptionExpl] = useState<Record<string, string> | null>(q.optionExplanations ?? null);
+
+  const toggleSolution = async () => {
+    if (open) { setOpen(false); return; }
+    setOpen(true);
+    if (explanation) return; // artıq yüklənib
+    setLoading(true);
+    setFailed(false);
+    try {
+      const sol = await getQuestionSolution(q.id);
+      setExplanation(sol.explanation);
+      setOptionExpl(sol.optionExplanations ?? null);
+    } catch {
+      setFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const badge =
+    status === 'correct'
+      ? { bg: Colors.tertiary + '20', color: Colors.tertiary, icon: 'checkmark-circle' as const, label: t('examReview.correct') }
+      : status === 'unanswered'
+        ? { bg: Colors.warning + '20', color: Colors.warning, icon: 'remove-circle' as const, label: t('examReview.unanswered') }
+        : { bg: Colors.danger + '20', color: Colors.danger, icon: 'close-circle' as const, label: t('examReview.wrong') };
+
+  const cardBorder =
+    status === 'correct' ? styles.qCardCorrect : status === 'unanswered' ? styles.qCardUnanswered : styles.qCardWrong;
+
   return (
-    <View style={[styles.qCard, q.isCorrect ? styles.qCardCorrect : styles.qCardWrong]}>
+    <View style={[styles.qCard, cardBorder]}>
       <View style={styles.qHeader}>
-        <View style={[styles.qBadge, { backgroundColor: q.isCorrect ? Colors.tertiary + '20' : Colors.danger + '20' }]}>
-          <Ionicons
-            name={q.isCorrect ? 'checkmark-circle' : 'close-circle'}
-            size={16}
-            color={q.isCorrect ? Colors.tertiary : Colors.danger}
-          />
-          <Text style={[styles.qBadgeText, { color: q.isCorrect ? Colors.tertiary : Colors.danger }]}>
-            {t('examReview.questionN', { n: index })} · {q.isCorrect ? t('examReview.correct') : t('examReview.wrong')}
+        <View style={[styles.qBadge, { backgroundColor: badge.bg }]}>
+          <Ionicons name={badge.icon} size={16} color={badge.color} />
+          <Text style={[styles.qBadgeText, { color: badge.color }]}>
+            {t('examReview.questionN', { n: index })} · {badge.label}
           </Text>
         </View>
       </View>
@@ -135,21 +179,53 @@ function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
             iconColor = Colors.danger;
           }
           return (
-            <View key={opt.id} style={[styles.optionRow, { backgroundColor: bgColor, borderColor }]}>
-              <View style={[styles.optionLetter, { borderColor }]}>
-                <Text style={[styles.optionLetterText, { color: textColor }]}>{opt.id.toUpperCase()}</Text>
+            <View key={opt.id}>
+              <View style={[styles.optionRow, { backgroundColor: bgColor, borderColor }]}>
+                <View style={[styles.optionLetter, { borderColor }]}>
+                  <Text style={[styles.optionLetterText, { color: textColor }]}>{opt.id.toUpperCase()}</Text>
+                </View>
+                <Text style={[styles.optionText, { color: textColor, fontWeight: isCorrect || isUser ? '700' : '500' }]}>
+                  {opt.text}
+                </Text>
+                {icon && <Ionicons name={icon} size={18} color={iconColor} />}
               </View>
-              <Text style={[styles.optionText, { color: textColor, fontWeight: isCorrect || isUser ? '700' : '500' }]}>
-                {opt.text}
-              </Text>
-              {icon && <Ionicons name={icon} size={18} color={iconColor} />}
+              {/* Variant izahı (yalnız həll açıq olduqda) */}
+              {open && optionExpl?.[opt.id] && (
+                <Text style={styles.optExplText}>{optionExpl[opt.id]}</Text>
+              )}
             </View>
           );
         })}
       </View>
 
-      {q.userOptionId == null && (
+      {status === 'unanswered' && (
         <Text style={styles.unansweredText}>{t('examReview.unanswered')}</Text>
+      )}
+
+      {/* Task 15 — Həllini Gör */}
+      <TouchableOpacity style={styles.solutionBtn} activeOpacity={0.85} onPress={toggleSolution}>
+        <Ionicons name={open ? 'chevron-up' : 'bulb-outline'} size={16} color={Colors.primary} />
+        <Text style={styles.solutionBtnText}>
+          {open ? t('examReview.hideSolution') : t('examReview.showSolution')}
+        </Text>
+      </TouchableOpacity>
+
+      {open && (
+        <View style={styles.solutionBox}>
+          {loading ? (
+            <View style={styles.solutionLoadingRow}>
+              <ActivityIndicator size="small" color={Colors.primary} />
+              <Text style={styles.solutionLoadingText}>{t('examReview.solutionLoading')}</Text>
+            </View>
+          ) : failed ? (
+            <Text style={styles.solutionFailedText}>{t('examReview.solutionFailed')}</Text>
+          ) : explanation ? (
+            <>
+              <Text style={styles.solutionTitle}>{t('examReview.solutionTitle')}</Text>
+              <Text style={styles.solutionText}>{explanation}</Text>
+            </>
+          ) : null}
+        </View>
       )}
     </View>
   );
@@ -194,6 +270,7 @@ const styles = StyleSheet.create({
   },
   qCardCorrect: { borderColor: Colors.tertiary + '40' },
   qCardWrong: { borderColor: Colors.danger + '40' },
+  qCardUnanswered: { borderColor: Colors.warning + '40' },
   qHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   qBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -219,4 +296,28 @@ const styles = StyleSheet.create({
     fontSize: 11, color: Colors.textMuted, fontStyle: 'italic',
     marginTop: 8, textAlign: 'center',
   },
+
+  optExplText: {
+    fontSize: 11, color: Colors.textSecondary, lineHeight: 16,
+    marginTop: 4, marginLeft: 40, marginBottom: 2,
+  },
+
+  solutionBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 12, alignSelf: 'flex-start',
+    paddingVertical: 8, paddingHorizontal: 12,
+    borderRadius: 999, backgroundColor: Colors.primary + '12',
+  },
+  solutionBtnText: { fontSize: 12, fontWeight: '800', color: Colors.primary },
+
+  solutionBox: {
+    marginTop: 10, padding: 12, borderRadius: 12,
+    backgroundColor: Colors.primary + '08',
+    borderWidth: 1, borderColor: Colors.primary + '20',
+  },
+  solutionLoadingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  solutionLoadingText: { fontSize: 12, color: Colors.textSecondary },
+  solutionFailedText: { fontSize: 12, color: Colors.danger },
+  solutionTitle: { fontSize: 12, fontWeight: '800', color: Colors.primary, marginBottom: 4 },
+  solutionText: { fontSize: 13, color: Colors.textPrimary, lineHeight: 19 },
 });

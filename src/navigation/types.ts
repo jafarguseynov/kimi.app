@@ -44,7 +44,7 @@ export type ExamStackParamList = {
   [Routes.ExamDetail]: { examId: string; title: string };
   [Routes.ExamSession]: undefined;
   [Routes.ExamResult]: { examId?: string } | undefined;
-  [Routes.ExamReview]: { examId: string; filter?: 'all' | 'wrong' | 'correct' };
+  [Routes.ExamReview]: { examId: string; filter?: 'all' | 'wrong' | 'correct' | 'unanswered' };
   [Routes.MonthlyExamDetail]: { examId: string; title: string };
   [Routes.LiveExamWaiting]: { examId: string; title: string };
   [Routes.LiveExamSession]: undefined;

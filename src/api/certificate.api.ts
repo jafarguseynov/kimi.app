@@ -20,6 +20,10 @@ export interface ExamResultRow {
   subject?: string;
   score: number;
   total: number;
+  correct?: number;
+  wrong?: number;
+  unanswered?: number;
+  answered?: number;
   percentage: number;
   timeSpent: number;
   completedAt: string;
@@ -37,6 +41,8 @@ export const getExamResults = (): Promise<ExamResultRow[]> =>
 export const getExamResult = (examId: string): Promise<ExamResultRow> =>
   client.get(`/exam/result/${examId}`).then(r => r.data);
 
+export type QuestionStatus = 'correct' | 'wrong' | 'unanswered';
+
 export interface ExamReviewQuestion {
   id: string;
   text: string;
@@ -44,6 +50,9 @@ export interface ExamReviewQuestion {
   correctOptionId: string;
   userOptionId: string | null;
   isCorrect: boolean;
+  status: QuestionStatus;
+  explanation?: string | null;
+  optionExplanations?: Record<string, string> | null;
 }
 
 export interface ExamReview {
@@ -52,8 +61,25 @@ export interface ExamReview {
   subject: string;
   score: number;
   total: number;
+  correct: number;
+  wrong: number;
+  unanswered: number;
+  answered: number;
   questions: ExamReviewQuestion[];
 }
 
 export const getExamReview = (examId: string): Promise<ExamReview> =>
   client.get(`/exam/result/${examId}/review`).then(r => r.data);
+
+// Task 15 — sualın həllini gör (AI ilə yaradılıb keşlənir, ilk dəfə bir az gözləmə ola bilər)
+export interface QuestionSolution {
+  questionId: string;
+  explanation: string;
+  optionExplanations: Record<string, string> | null;
+  correctOptionId: string;
+  cached?: boolean;
+  fallback?: boolean;
+}
+
+export const getQuestionSolution = (questionId: string): Promise<QuestionSolution> =>
+  client.get(`/exam/question/${questionId}/solution`, { timeout: 45000 }).then(r => r.data);
