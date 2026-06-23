@@ -1803,6 +1803,12 @@ export const ru = {
     register: 'Регистрация',
     errorTitle: 'Ошибка',
     loginError: 'Произошла ошибка при входе',
+    googleLogin: 'Войти через Google',
+    googleRegister: 'Регистрация через Google',
+    googleErrorTitle: 'Не удалось войти через Google',
+    googleErrorBody: 'Попробуйте снова или войдите другим способом.',
+    googleSoonTitle: 'Вход через Google',
+    googleSoonBody: 'Вход через Google скоро будет доступен.',
   },
   register: {
     logoSub: 'Образовательная платформа будущего',

@@ -1803,6 +1803,12 @@ export const en = {
     register: 'Register',
     errorTitle: 'Error',
     loginError: 'An error occurred while signing in',
+    googleLogin: 'Continue with Google',
+    googleRegister: 'Sign up with Google',
+    googleErrorTitle: 'Google sign-in failed',
+    googleErrorBody: 'Please try again or use another method.',
+    googleSoonTitle: 'Google sign-in',
+    googleSoonBody: 'Google sign-in will be available soon.',
   },
   register: {
     logoSub: 'The education platform of the future',

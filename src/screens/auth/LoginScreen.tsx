@@ -24,6 +24,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { loginSchema, LoginFormData } from '../../utils/validation';
 import { useLogin } from '../../hooks/useAuth';
+import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import Input from '../../components/common/Input';
 import { useTranslation } from '../../i18n';
 
@@ -43,6 +44,7 @@ export default function LoginScreen({ navigation }: Props) {
     resolver: zodResolver(loginSchema),
   });
   const { mutate, isPending } = useLogin();
+  const google = useGoogleSignIn();
 
   // Entrance animation
   const appear = useRef(new Animated.Value(0)).current;
@@ -163,11 +165,18 @@ export default function LoginScreen({ navigation }: Props) {
               <View style={styles.ssoRow}>
                 <TouchableOpacity
                   style={styles.ssoBtn}
-                  onPress={() => Alert.alert(t('login.comingSoon'), t('login.googleSoon'))}
+                  onPress={() => google.signIn()}
+                  disabled={google.loading}
                   activeOpacity={0.85}
                 >
-                  <Text style={styles.googleG}>G</Text>
-                  <Text style={styles.ssoBtnText}>Google</Text>
+                  {google.loading ? (
+                    <ActivityIndicator color="#4285F4" />
+                  ) : (
+                    <>
+                      <Text style={styles.googleG}>G</Text>
+                      <Text style={styles.ssoBtnText}>Google</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
 
                 <TouchableOpacity

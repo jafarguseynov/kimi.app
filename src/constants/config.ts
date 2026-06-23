@@ -12,3 +12,16 @@ export const APP_VERSION_URL = `${API_BASE_URL}/app-version`;
 
 export const QUERY_STALE_TIME = 1000 * 60 * 5; // 5 dəqiqə
 export const OTP_RESEND_SECONDS = 60;
+
+// ─── Google OAuth client ID-ləri ──────────────────────────────────────────
+// Google Cloud Console → APIs & Services → Credentials → OAuth client ID.
+// Boş qaldıqca Google girişi avtomatik gizlənir (düymə görünmür).
+// expoClientId/webClientId = "Web application" client; iosClientId = "iOS"; androidClientId = "Android".
+export const GOOGLE_AUTH = {
+  webClientId: '',     // məs: 'xxxx.apps.googleusercontent.com'
+  iosClientId: '',
+  androidClientId: '',
+};
+
+export const GOOGLE_AUTH_ENABLED =
+  !!(GOOGLE_AUTH.webClientId || GOOGLE_AUTH.iosClientId || GOOGLE_AUTH.androidClientId);

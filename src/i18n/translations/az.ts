@@ -1804,6 +1804,12 @@ export const az = {
     register: 'Qeydiyyat',
     errorTitle: 'Xəta',
     loginError: 'Giriş zamanı xəta baş verdi',
+    googleLogin: 'Google ilə daxil ol',
+    googleRegister: 'Google ilə qeydiyyatdan keç',
+    googleErrorTitle: 'Google girişi alınmadı',
+    googleErrorBody: 'Yenidən cəhd edin və ya başqa üsulla daxil olun.',
+    googleSoonTitle: 'Google girişi',
+    googleSoonBody: 'Google ilə giriş tezliklə aktiv olacaq.',
   },
   register: {
     logoSub: 'Gələcəyin təhsil platforması',

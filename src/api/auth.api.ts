@@ -15,6 +15,9 @@ export const loginUser = (data: LoginPayload) => {
   return apiClient.post<AuthResponse>('/auth/login', payload).then((r) => r.data);
 };
 
+export const googleAuth = (idToken: string, role?: 'student' | 'teacher' | 'parent') =>
+  apiClient.post<AuthResponse>('/auth/google', { idToken, role }).then((r) => r.data);
+
 export const requestOtp = (phone: string) =>
   apiClient.post<{ message: string; status: string }>('/auth/request-otp', { phone }).then((r) => r.data);
 

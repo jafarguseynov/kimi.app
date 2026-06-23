@@ -21,6 +21,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { registerSchema, RegisterFormData } from '../../utils/validation';
 import { useRegister } from '../../hooks/useAuth';
+import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import Input from '../../components/common/Input';
 import { UserRole } from '../../types/auth.types';
 import { useTranslation } from '../../i18n';
@@ -42,6 +43,7 @@ export default function RegisterScreen({ navigation }: Props) {
     defaultValues: { phone: '+994' },
   });
   const { mutate, isPending } = useRegister();
+  const google = useGoogleSignIn();
   const [role, setRole] = React.useState<Exclude<UserRole, 'admin'>>('student');
   const [grade, setGrade] = React.useState('');
   const [school, setSchool] = React.useState('');
@@ -274,6 +276,23 @@ export default function RegisterScreen({ navigation }: Props) {
                 )}
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Google ilə qeydiyyat */}
+            <TouchableOpacity
+              onPress={() => google.signIn(role)}
+              disabled={google.loading}
+              activeOpacity={0.85}
+              style={styles.googleBtn}
+            >
+              {google.loading ? (
+                <ActivityIndicator color="#4285F4" />
+              ) : (
+                <>
+                  <Text style={styles.googleG}>G</Text>
+                  <Text style={styles.googleBtnText}>{t('login.googleRegister')}</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
           {/* Divider + login link */}
@@ -423,6 +442,14 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   submitBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  googleBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 12, paddingVertical: 15, borderRadius: 999,
+    backgroundColor: Colors.white,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  googleG: { fontSize: 16, fontWeight: '800', color: '#4285F4' },
+  googleBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
 
   cardFooter: { marginTop: 20, alignItems: 'center', gap: 12 },
   dividerLine: {
