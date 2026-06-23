@@ -3,7 +3,7 @@
     "name": "kimi-az-mobile",
     "slug": "kimi-az-mobile",
     "scheme": "kimiaz",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,10 +22,12 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "az.kimi.mobile"
+      "bundleIdentifier": "com.jafarstudio.kimi",
+      "buildNumber": "100"
     },
     "android": {
-      "package": "az.kimi.mobile",
+      "package": "com.jafarstudio.kimi",
+      "versionCode": 100,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
