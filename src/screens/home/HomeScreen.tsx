@@ -1085,7 +1085,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 2,
+    paddingLeft: 0,
     paddingRight: rs(16),
     paddingVertical: 12,
     gap: 8,
@@ -1105,6 +1105,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     width: rs(170),
     height: rs(62),
+    marginLeft: -14,
   },
   topBarRight: { flexDirection: 'row', alignItems: 'center', gap: rs(8), flexShrink: 0 },
   streakBadge: {
