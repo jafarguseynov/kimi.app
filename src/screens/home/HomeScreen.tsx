@@ -1105,7 +1105,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     width: rs(170),
     height: rs(62),
-    marginLeft: -14,
+    marginLeft: -26,
   },
   topBarRight: { flexDirection: 'row', alignItems: 'center', gap: rs(8), flexShrink: 0 },
   streakBadge: {
