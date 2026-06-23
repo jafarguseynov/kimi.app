@@ -146,8 +146,16 @@ export default function SpinWheelScreen({ navigation }: Props) {
     const segIndex = Math.max(0, segments.findIndex((s) => s.id === result.reward.id));
     const targetSeg = segments[segIndex] ?? segments[0];
     const fullSpins = 6;
-    const finalAngle = 360 - targetSeg.angle;
-    const target = totalRotation.current + fullSpins * 360 + finalAngle;
+    // İstənilən DAYANMA bucağı (mod 360): hədəf seqmentin mərkəzi yuxarıdakı oxun
+    // altına gəlsin. finalAngle birbaşa toplanmamalıdır — yoxsa hər fırlanmada
+    // əvvəlki ofset üst-üstə yığılıb ox iki mükafat arasında qalır. Hazırkı
+    // mövqeyə (mod 360) görə yalnız LAZIMİ fərqi (delta) əlavə edirik ki, çarx
+    // həmişə düz seqment mərkəzində dayansın.
+    const finalAngle = (360 - targetSeg.angle) % 360;
+    const currentMod = ((totalRotation.current % 360) + 360) % 360;
+    let delta = finalAngle - currentMod;
+    if (delta < 0) delta += 360;
+    const target = totalRotation.current + fullSpins * 360 + delta;
     totalRotation.current = target;
 
     Animated.timing(rotation, {
