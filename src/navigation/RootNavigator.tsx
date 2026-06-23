@@ -8,6 +8,8 @@ import { useOnboardingStore } from '../store/onboarding.store';
 import { usePushStore } from '../store/push.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useFeatureFlagStore } from '../store/featureFlag.store';
+import { useSpinWheelStore } from '../store/spinWheel.store';
+import { useSpinStreakStore } from '../store/spinStreak.store';
 import { getToken } from '../utils/token';
 import { getMe } from '../api/user.api';
 import { Colors } from '../constants/colors';
@@ -22,6 +24,8 @@ export default function RootNavigator() {
   const hydrateOnboarding = useOnboardingStore((s) => s.hydrate);
   const hydratePush = usePushStore((s) => s.hydrate);
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
+  const hydrateSpinWheel = useSpinWheelStore((s) => s.hydrate);
+  const hydrateSpinStreak = useSpinStreakStore((s) => s.hydrate);
   const loadFlags = useFeatureFlagStore((s) => s.loadFlags);
   const [bootstrapping, setBootstrapping] = useState(true);
 
@@ -33,6 +37,8 @@ export default function RootNavigator() {
         hydrateOnboarding();
         hydratePush();
         hydrateSettings();
+        hydrateSpinWheel();
+        hydrateSpinStreak();
         const saved = await getToken();
         if (saved) {
           await setToken(saved);

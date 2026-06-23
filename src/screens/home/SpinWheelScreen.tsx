@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing, Alert, Share, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing, Alert, Share, Dimensions, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -13,6 +13,7 @@ import { hapticMedium, hapticHeavy, hapticSuccess, hapticLight } from '../../uti
 import { useSpinStreakStore, STREAK_BONUS_THRESHOLD } from '../../store/spinStreak.store';
 import { useSpinWheelStore } from '../../store/spinWheel.store';
 import { getSpinRewards, getSpinStatus, spinServer, SpinReward, SpinRarity } from '../../api/spin.api';
+import { getWallet } from '../../api/payment.api';
 import { useTranslation } from '../../i18n';
 
 type Props = { navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.SpinWheel> };
@@ -73,18 +74,21 @@ const getItemPos = (angle: number) => {
 
 export default function SpinWheelScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const { coins, stars, history, addCoins, addStars, addHistoryEntry } = useSpinWheelStore();
+  const { coins, stars, history, addCoins, addStars, addHistoryEntry, setCoins } = useSpinWheelStore();
 
   const [segments, setSegments] = useState<Segment[]>([]);
   const [spinsLeft, setSpinsLeft] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [lastReward, setLastReward] = useState<string>('—');
   const [confettiOn, setConfettiOn] = useState(false);
   const rotation = useRef(new Animated.Value(0)).current;
   const totalRotation = useRef(0);
 
-  // Backenddən seqmentlər + limit yüklə
+  // Backenddən seqmentlər + limit + REAL sikkə balansı yüklə.
+  // Sikkə serverdə saxlanılır (cüzdan) — header lokal yox, serverin dəqiq
+  // balansını göstərsin ki, başqa tətbiqə keçəndə/qayıdanda sıfırlanmasın.
   const load = useCallback(async () => {
     try {
       const [rewards, status] = await Promise.all([getSpinRewards(), getSpinStatus()]);
@@ -92,12 +96,25 @@ export default function SpinWheelScreen({ navigation }: Props) {
       setSpinsLeft(status.spinsLeft);
     } catch {
       // şəbəkə xətası — boş qalır, istifadəçi sonra yenidən cəhd edə bilər
+    }
+    try {
+      const wallet = await getWallet();
+      if (typeof wallet?.balance === 'number') setCoins(wallet.balance);
+    } catch {
+      // cüzdan alınmadı — persist olunmuş lokal balans qalır
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setCoins]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Aşağı-yuxarı sürüşdürmə ilə yenilə (səhifədən çıxmadan).
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }, [load]);
 
   // Ekrandan çıxarkən fırlanma səsini dayandır
   useEffect(() => () => { stopSpin(); }, []);
@@ -264,7 +281,13 @@ export default function SpinWheelScreen({ navigation }: Props) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.primary]} tintColor={Colors.primary} />
+        }
+      >
         {/* Hero */}
         <View style={styles.heroSection}>
           <View style={styles.heroBadge}>

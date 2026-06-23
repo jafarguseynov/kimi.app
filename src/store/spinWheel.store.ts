@@ -1,4 +1,7 @@
 import { create } from 'zustand';
+import * as SecureStore from 'expo-secure-store';
+
+const KEY = 'spin_wheel_v1';
 
 const todayKey = (d = new Date()) => {
   const y = d.getFullYear();
@@ -20,43 +23,87 @@ interface SpinWheelState {
   stars: number;
   history: HistoryEntry[];
   lastResetDate: string | null;
+  hydrated: boolean;
 
+  hydrate: () => Promise<void>;
   ensureDailyReset: () => void;
   decrementSpin: () => void;
   addCoins: (n: number) => void;
   addStars: (n: number) => void;
+  setCoins: (n: number) => void;
   spendCoins: (n: number) => boolean;
   grantExtraSpin: () => void;
   addHistoryEntry: (e: HistoryEntry) => void;
 }
 
+// Yalnız davamlı (qalıcı) sahələri yaddaşa yaz — qazanılan sikkə/XP və tarixçə
+// tətbiq arxa fonda öldürülsə belə itməsin.
+type Persisted = Pick<SpinWheelState, 'coins' | 'stars' | 'history' | 'lastResetDate'>;
+
+const persist = (s: SpinWheelState) => {
+  const data: Persisted = {
+    coins: s.coins,
+    stars: s.stars,
+    history: s.history.slice(0, 20),
+    lastResetDate: s.lastResetDate,
+  };
+  SecureStore.setItemAsync(KEY, JSON.stringify(data)).catch(() => {});
+};
+
 export const useSpinWheelStore = create<SpinWheelState>((set, get) => ({
   spinsLeft: 1,
   coins: 0,
-  stars: 1250,
+  stars: 0,
   history: [],
   lastResetDate: null,
+  hydrated: false,
+
+  hydrate: async () => {
+    try {
+      const raw = await SecureStore.getItemAsync(KEY);
+      if (raw) {
+        const d: Partial<Persisted> = JSON.parse(raw);
+        set({
+          coins: Number(d.coins) || 0,
+          stars: Number(d.stars) || 0,
+          history: Array.isArray(d.history) ? d.history : [],
+          lastResetDate: d.lastResetDate ?? null,
+          hydrated: true,
+        });
+        return;
+      }
+    } catch {}
+    set({ hydrated: true });
+  },
 
   ensureDailyReset: () => {
     const today = todayKey();
     const { lastResetDate } = get();
     if (lastResetDate !== today) {
       set({ spinsLeft: 1, lastResetDate: today });
+      persist(get());
     }
   },
 
   decrementSpin: () => set((s) => ({ spinsLeft: Math.max(0, s.spinsLeft - 1) })),
-  addCoins: (n) => set((s) => ({ coins: s.coins + n })),
-  addStars: (n) => set((s) => ({ stars: s.stars + n })),
+
+  addCoins: (n) => { set((s) => ({ coins: s.coins + n })); persist(get()); },
+  addStars: (n) => { set((s) => ({ stars: s.stars + n })); persist(get()); },
+
+  // Serverdəki real cüzdan balansını göstərmək üçün (load zamanı sinxronlaşdırılır).
+  setCoins: (n) => { set({ coins: Math.max(0, Math.floor(n)) }); persist(get()); },
 
   spendCoins: (n) => {
     if (get().coins < n) return false;
     set((s) => ({ coins: s.coins - n }));
+    persist(get());
     return true;
   },
 
   grantExtraSpin: () => set((s) => ({ spinsLeft: s.spinsLeft + 1 })),
 
-  addHistoryEntry: (e) =>
-    set((s) => ({ history: [e, ...s.history].slice(0, 20) })),
+  addHistoryEntry: (e) => {
+    set((s) => ({ history: [e, ...s.history].slice(0, 20) }));
+    persist(get());
+  },
 }));
