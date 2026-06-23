@@ -1,6 +1,4 @@
 import { useEffect, useState } from 'react';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { Alert } from 'react-native';
 import { googleAuth } from '../api/auth.api';
 import { useAuthStore } from '../store/auth.store';
@@ -9,21 +7,45 @@ import { useOnboardingStore } from '../store/onboarding.store';
 import { useTranslation } from '../i18n';
 import { GOOGLE_AUTH, GOOGLE_AUTH_ENABLED } from '../constants/config';
 
-// Brauzer sessiyasının düzgün bağlanması üçün (Expo tövsiyəsi).
-// ⚠️ expo-web-browser native moduldur — köhnə build-də (rebuild-dən əvvəl) yox ola
-// bilər; çökməsin deyə try/catch ilə qorunur.
-try {
-  WebBrowser.maybeCompleteAuthSession();
-} catch {}
-
 type Role = 'student' | 'teacher' | 'parent';
 
+// ⚠️ expo-web-browser / expo-auth-session / expo-crypto NATIVE modullardır.
+// Köhnə və ya rebuild olunmamış build-də (məs. iOS dev app) bu modullar binary-də
+// olmaya bilər — STATIK import isə yükləmə anında "Cannot find native module" ilə
+// bütün app-ı çökdürür. Ona görə dinamik (require) yükləyirik və yalnız client ID
+// varsa (GOOGLE_AUTH_ENABLED) və modul həqiqətən mövcuddursa aktivləşdiririk.
+let Google: any = null;
+let googleModuleReady = false;
+if (GOOGLE_AUTH_ENABLED) {
+  try {
+    const WebBrowser = require('expo-web-browser');
+    WebBrowser.maybeCompleteAuthSession();
+    Google = require('expo-auth-session/providers/google');
+    googleModuleReady = true;
+  } catch {
+    googleModuleReady = false;
+  }
+}
+
+const GOOGLE_READY = GOOGLE_AUTH_ENABLED && googleModuleReady;
+
 /**
- * Google ilə giriş/qeydiyyat. `enabled` false olduqda (client ID yoxdur)
- * düymələr gizlədilməlidir. `signIn(role?)` Google ekranını açır, idToken-i
- * backend-ə göndərib token+user saxlayır.
+ * Google modulu olmayanda (client ID yoxdur, yaxud native modul build-də yoxdur)
+ * istifadə olunan boş variant — heç bir native asılılığa toxunmur.
  */
-export function useGoogleSignIn() {
+function useGoogleDisabled() {
+  const { t } = useTranslation();
+  const signIn = async () => {
+    Alert.alert(t('login.googleSoonTitle'), t('login.googleSoonBody'));
+  };
+  return { signIn, loading: false, enabled: false };
+}
+
+/**
+ * Google modulu mövcud olduqda işləyən real variant.
+ * `signIn(role?)` Google ekranını açır, idToken-i backend-ə göndərib token+user saxlayır.
+ */
+function useGoogleEnabled() {
   const { setToken } = useAuthStore();
   const { setUser } = useUserStore();
   const { setPendingTeacherSetup } = useOnboardingStore();
@@ -61,7 +83,7 @@ export function useGoogleSignIn() {
   }, [response]);
 
   const signIn = async (role?: Role) => {
-    if (!GOOGLE_AUTH_ENABLED || !request) {
+    if (!request) {
       Alert.alert(t('login.googleSoonTitle'), t('login.googleSoonBody'));
       return;
     }
@@ -74,5 +96,9 @@ export function useGoogleSignIn() {
     }
   };
 
-  return { signIn, loading, enabled: GOOGLE_AUTH_ENABLED && !!request };
+  return { signIn, loading, enabled: !!request };
 }
+
+// Hangi variantın işləyəcəyi modul yüklənmə anında SABİTLƏNİR — beləcə React hook
+// sırası heç vaxt dəyişmir (şərti hook problemi olmur).
+export const useGoogleSignIn = GOOGLE_READY ? useGoogleEnabled : useGoogleDisabled;
