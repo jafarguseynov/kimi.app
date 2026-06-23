@@ -241,7 +241,6 @@ export default function SpinWheelScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Confetti active={confettiOn} origin="bottom" onDone={() => setConfettiOn(false)} />
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
@@ -459,6 +458,9 @@ export default function SpinWheelScreen({ navigation }: Props) {
           })}
         </View>
       </ScrollView>
+
+      {/* Confetti ən sonda — bütün məzmunun ÜSTÜNDƏ render olunsun (arxada qalmasın). */}
+      <Confetti active={confettiOn} origin="bottom" onDone={() => setConfettiOn(false)} />
     </SafeAreaView>
   );
 }
