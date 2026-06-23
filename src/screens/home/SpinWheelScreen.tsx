@@ -567,6 +567,10 @@ const styles = StyleSheet.create({
     shadowRadius: 40,
     elevation: 6,
   },
+  // DİQQƏT: overflow:'hidden' qoymayın! Köhnə Android-də (A5 2017 = Android 7)
+  // overflow:hidden + borderRadius + rotate transform birlikdə olanda fırlanan
+  // view-un bütün uşaq elementləri (ikonlar, hub, xətlər) görünməz olur → çarx boş çıxır.
+  // Heç bir element onsuz da dairədən kənara çıxmır, ona görə clipping lazım deyil.
   wheel: {
     width: WHEEL_SIZE,
     height: WHEEL_SIZE,
@@ -575,17 +579,18 @@ const styles = StyleSheet.create({
     borderWidth: 10,
     borderColor: '#fff',
     position: 'relative',
-    overflow: 'hidden',
   },
   wheelTint: {
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: WHEEL_SIZE / 2,
     backgroundColor: Colors.primaryLight,
     opacity: 0.25,
   },
+  // En = WHEEL_SIZE - 2*border (20) ki, clipping olmadan da xətt diskin içində qalsın.
   dividerLine: {
     position: 'absolute',
-    width: WHEEL_SIZE,
+    width: WHEEL_SIZE - 20,
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(0,0,0,0.09)',
     top: CENTER - StyleSheet.hairlineWidth / 2,
