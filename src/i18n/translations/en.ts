@@ -1024,6 +1024,8 @@ export const en = {
     purchasedBody: '"{{title}}" was added to your account.',
     owned: 'Owned',
     buy: 'Buy',
+    errorTitle: 'Error',
+    errorBody: 'Purchase could not be completed. Please try again.',
     tagPopular: 'Popular',
     tagBest: 'Best',
     s1Title: 'Streak protector',

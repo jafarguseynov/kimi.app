@@ -1025,6 +1025,8 @@ export const az = {
     purchasedBody: '"{{title}}" hesabına əlavə olundu.',
     owned: 'Sahibsən',
     buy: 'Al',
+    errorTitle: 'Xəta',
+    errorBody: 'Alış tamamlana bilmədi. Yenidən cəhd edin.',
     tagPopular: 'Populyar',
     tagBest: 'Ən yaxşı',
     s1Title: 'Streak qoruyucusu',

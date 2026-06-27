@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -7,6 +7,8 @@ import { useNavigation } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
 import { useSpinWheelStore } from '../../store/spinWheel.store';
+import { spendCoins as spendCoinsApi, getWallet } from '../../api/payment.api';
+import { buyExtraSpin } from '../../api/spin.api';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -34,11 +36,48 @@ const ITEMS: ShopItem[] = [
 export default function CoinShopScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const { coins, spendCoins, grantExtraSpin } = useSpinWheelStore();
-  const [owned, setOwned] = useState<Set<string>>(new Set());
+  const { coins, setCoins, grantExtraSpin, ownedShopItems, markShopItemOwned } = useSpinWheelStore();
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Açılışda real cüzdan balansını serverdən sinxronlaşdır (köhnə/lokal dəyər düzəlsin)
+  useEffect(() => {
+    getWallet()
+      .then((w) => setCoins(w.balance))
+      .catch(() => {});
+  }, []);
+
+  const doPurchase = async (item: ShopItem) => {
+    const itemTitle = t(item.titleKey);
+    setBusyId(item.id);
+    try {
+      if (item.id === 's2') {
+        // +1 Fırlatma — serverdə real bonus spin + cüzdandan xərc
+        const res = await buyExtraSpin();
+        setCoins(res.balance);
+        grantExtraSpin(); // anlıq lokal əks (server statusu növbəti yüklənmədə təsdiqləyir)
+      } else {
+        // Digər alışlar — cüzdandan real xərc, sonra "alınmış" kimi qeyd (persist)
+        const res = await spendCoinsApi(item.price, itemTitle);
+        setCoins(res.balance);
+        markShopItemOwned(item.id);
+      }
+      Alert.alert(t('coinShop.purchasedTitle'), t('coinShop.purchasedBody', { title: itemTitle }));
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      // Server balans yoxlaması: "Balans kifayət deyil"
+      if (e?.response?.status === 400) {
+        Alert.alert(t('coinShop.notEnoughTitle'), msg || t('coinShop.notEnoughBody', { n: Math.max(0, item.price - coins) }));
+      } else {
+        Alert.alert(t('coinShop.errorTitle'), msg || t('coinShop.errorBody'));
+      }
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const buy = (item: ShopItem) => {
-    if (owned.has(item.id)) return;
+    if (busyId) return;
+    if (ownedShopItems.includes(item.id)) return;
     const itemTitle = t(item.titleKey);
     if (coins < item.price) {
       Alert.alert(t('coinShop.notEnoughTitle'), t('coinShop.notEnoughBody', { n: item.price - coins }));
@@ -49,24 +88,7 @@ export default function CoinShopScreen() {
       t('coinShop.confirmBody', { title: itemTitle, price: item.price }),
       [
         { text: t('coinShop.cancel'), style: 'cancel' },
-        {
-          text: t('coinShop.yesBuy'),
-          onPress: () => {
-            const ok = spendCoins(item.price);
-            if (!ok) return;
-            // s2 = +1 Fırlatma is consumable: re-buyable, doesn't go to "owned"
-            if (item.id === 's2') {
-              grantExtraSpin();
-            } else {
-              setOwned((prev) => {
-                const next = new Set(prev);
-                next.add(item.id);
-                return next;
-              });
-            }
-            Alert.alert(t('coinShop.purchasedTitle'), t('coinShop.purchasedBody', { title: itemTitle }));
-          },
-        },
+        { text: t('coinShop.yesBuy'), onPress: () => { void doPurchase(item); } },
       ],
     );
   };
@@ -94,7 +116,8 @@ export default function CoinShopScreen() {
         </LinearGradient>
 
         {ITEMS.map((item) => {
-          const isOwned = owned.has(item.id);
+          const isOwned = ownedShopItems.includes(item.id);
+          const isBusy = busyId === item.id;
           const canAfford = coins >= item.price;
           return (
             <View key={item.id} style={styles.itemCard}>
@@ -124,9 +147,11 @@ export default function CoinShopScreen() {
                 ]}
                 activeOpacity={0.85}
                 onPress={() => buy(item)}
-                disabled={isOwned}
+                disabled={isOwned || isBusy}
               >
-                {isOwned ? (
+                {isBusy ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : isOwned ? (
                   <>
                     <Ionicons name="checkmark" size={14} color={Colors.primary} />
                     <Text style={styles.buyBtnOwnedText}>{t('coinShop.owned')}</Text>

@@ -29,6 +29,12 @@ export const topUp = async (amount: number): Promise<{ balance: number }> => {
   return res.data;
 };
 
+// Sikkə dükanı — cüzdandan real xərc (server atomik, balans yoxlanır)
+export const spendCoins = async (amount: number, description?: string): Promise<{ balance: number }> => {
+  const res = await client.post('/payment/spend', { amount, description });
+  return res.data;
+};
+
 export const withdraw = async (amount: number, reference?: string): Promise<{ balance: number }> => {
   const res = await client.post('/payment/withdraw', { amount, reference });
   return res.data;

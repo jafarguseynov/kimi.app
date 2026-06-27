@@ -23,6 +23,7 @@ interface SpinWheelState {
   stars: number;
   history: HistoryEntry[];
   lastResetDate: string | null;
+  ownedShopItems: string[];
   hydrated: boolean;
 
   hydrate: () => Promise<void>;
@@ -33,12 +34,13 @@ interface SpinWheelState {
   setCoins: (n: number) => void;
   spendCoins: (n: number) => boolean;
   grantExtraSpin: () => void;
+  markShopItemOwned: (id: string) => void;
   addHistoryEntry: (e: HistoryEntry) => void;
 }
 
 // Yalnız davamlı (qalıcı) sahələri yaddaşa yaz — qazanılan sikkə/XP və tarixçə
 // tətbiq arxa fonda öldürülsə belə itməsin.
-type Persisted = Pick<SpinWheelState, 'coins' | 'stars' | 'history' | 'lastResetDate'>;
+type Persisted = Pick<SpinWheelState, 'coins' | 'stars' | 'history' | 'lastResetDate' | 'ownedShopItems'>;
 
 const persist = (s: SpinWheelState) => {
   const data: Persisted = {
@@ -46,6 +48,7 @@ const persist = (s: SpinWheelState) => {
     stars: s.stars,
     history: s.history.slice(0, 20),
     lastResetDate: s.lastResetDate,
+    ownedShopItems: s.ownedShopItems,
   };
   SecureStore.setItemAsync(KEY, JSON.stringify(data)).catch(() => {});
 };
@@ -56,6 +59,7 @@ export const useSpinWheelStore = create<SpinWheelState>((set, get) => ({
   stars: 0,
   history: [],
   lastResetDate: null,
+  ownedShopItems: [],
   hydrated: false,
 
   hydrate: async () => {
@@ -68,6 +72,7 @@ export const useSpinWheelStore = create<SpinWheelState>((set, get) => ({
           stars: Number(d.stars) || 0,
           history: Array.isArray(d.history) ? d.history : [],
           lastResetDate: d.lastResetDate ?? null,
+          ownedShopItems: Array.isArray(d.ownedShopItems) ? d.ownedShopItems : [],
           hydrated: true,
         });
         return;
@@ -101,6 +106,11 @@ export const useSpinWheelStore = create<SpinWheelState>((set, get) => ({
   },
 
   grantExtraSpin: () => set((s) => ({ spinsLeft: s.spinsLeft + 1 })),
+
+  markShopItemOwned: (id) => {
+    set((s) => (s.ownedShopItems.includes(id) ? s : { ownedShopItems: [...s.ownedShopItems, id] }));
+    persist(get());
+  },
 
   addHistoryEntry: (e) => {
     set((s) => ({ history: [e, ...s.history].slice(0, 20) }));

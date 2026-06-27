@@ -47,3 +47,9 @@ export const spinServer = async (): Promise<SpinResultDto> => {
   const { data } = await client.post<SpinResultDto>('/spin');
   return data;
 };
+
+/** Sikkə ilə +1 fırlatma al — cüzdandan xərc + serverdə real bonus spin. */
+export const buyExtraSpin = async (): Promise<{ balance: number; price: number; status: SpinStatus }> => {
+  const { data } = await client.post('/spin/buy-extra');
+  return data;
+};

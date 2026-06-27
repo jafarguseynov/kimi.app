@@ -1024,6 +1024,8 @@ export const ru = {
     purchasedBody: '«{{title}}» добавлено на твой аккаунт.',
     owned: 'Куплено',
     buy: 'Купить',
+    errorTitle: 'Ошибка',
+    errorBody: 'Не удалось завершить покупку. Попробуйте ещё раз.',
     tagPopular: 'Популярное',
     tagBest: 'Лучшее',
     s1Title: 'Защита серии',
