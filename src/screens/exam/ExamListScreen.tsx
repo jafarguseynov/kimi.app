@@ -12,6 +12,7 @@ import { useExamList, useExamCollections } from '../../hooks/useExams';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getExamResults, ExamResultRow } from '../../api/certificate.api';
 import { getTopicStats } from '../../api/topicStats.api';
+import { getEntitlements } from '../../api/shop.api';
 import { useExamStore } from '../../store/exam.store';
 import { useExamGoalStore } from '../../store/examGoal.store';
 import { useTranslation } from '../../i18n';
@@ -183,6 +184,8 @@ export default function ExamListScreen({ navigation }: Props) {
   const { data: bankCollections = [] } = useExamCollections();
   const { data: results = [], refetch: refetchResults } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
   const { data: topicStats } = useQuery({ queryKey: ['topicStats'], queryFn: getTopicStats });
+  const { data: entitlements } = useQuery({ queryKey: ['entitlements'], queryFn: getEntitlements });
+  const premiumActive = !!entitlements?.premiumActive;
   const setSubmissionType = useExamStore((s) => s.setSubmissionType);
   const sessionId = useExamStore((s) => s.sessionId);
   const sessionQuestionsLen = useExamStore((s) => s.questions.length);
@@ -263,15 +266,26 @@ export default function ExamListScreen({ navigation }: Props) {
     setSubmissionType('monthly');
     navigation.navigate(Routes.MonthlyExamDetail, { examId: first.id, title: first.title });
   };
-  const openNational = () =>
-    Alert.alert(
-      t('examList.alertNationalTitle'),
-      t('examList.alertNationalMsg'),
-      [
-        { text: t('examList.later'), style: 'cancel' },
-        { text: t('examList.openPremium'), onPress: () => rootNav.navigate('Profile', { screen: Routes.Settings }) },
-      ],
-    );
+  const openNational = () => {
+    if (!premiumActive) {
+      Alert.alert(
+        t('examList.alertNationalTitle'),
+        t('examList.alertNationalMsg'),
+        [
+          { text: t('examList.later'), style: 'cancel' },
+          { text: t('examList.openPremium'), onPress: () => rootNav.navigate(Routes.Home, { screen: Routes.CoinShop }) },
+        ],
+      );
+      return;
+    }
+    const first = exams[0];
+    if (!first?.id) {
+      Alert.alert(t('examList.alertMonthlyTitle'), t('examList.alertNoExam'));
+      return;
+    }
+    setSubmissionType('national');
+    navigation.navigate(Routes.MonthlyExamDetail, { examId: first.id, title: t('examList.nationalRating') });
+  };
   const openHistory = () => navigation.navigate(Routes.ExamHistory);
   const openLiveLeaderboard = () => navigation.navigate(Routes.LiveLeaderboard);
   const openCertificates = () => navigation.navigate(Routes.CertificateList);
@@ -507,8 +521,10 @@ export default function ExamListScreen({ navigation }: Props) {
             <TouchableOpacity activeOpacity={0.85} onPress={openNational} style={intentStyles.actionRow}>
               <View style={{ flex: 1 }}>
                 <Text style={intentStyles.actionTitle}>{t('examList.nationalRating')}</Text>
-                <View style={styles.premiumPill}>
-                  <Text style={styles.premiumPillText}>{t('examList.premium')}</Text>
+                <View style={[styles.premiumPill, premiumActive && styles.premiumPillActive]}>
+                  <Text style={[styles.premiumPillText, premiumActive && styles.premiumPillTextActive]}>
+                    {premiumActive ? t('examList.premiumUnlocked') : t('examList.premium')}
+                  </Text>
                 </View>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
@@ -1026,6 +1042,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6,
   },
   premiumPillText: { fontSize: 9, fontWeight: '800', color: '#D97706', letterSpacing: 1 },
+  premiumPillActive: { backgroundColor: '#DCFCE7' },
+  premiumPillTextActive: { color: '#16A34A' },
 
   /* Line cards */
   bentoLine: {

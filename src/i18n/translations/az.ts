@@ -92,6 +92,7 @@ export const az = {
     next: 'Növbəti: {{label}}',
     nationalRating: 'Milli Reyting',
     premium: 'PREMIUM',
+    premiumUnlocked: 'AÇIQ',
     race: 'Yarış',
     raceSub: 'Real-vaxt rəqabət',
     liveExam: 'Canlı İmtahan',

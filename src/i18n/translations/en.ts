@@ -91,6 +91,7 @@ export const en = {
     next: 'Next: {{label}}',
     nationalRating: 'National Ranking',
     premium: 'PREMIUM',
+    premiumUnlocked: 'UNLOCKED',
     race: 'Race',
     raceSub: 'Real-time competition',
     liveExam: 'Live Exam',

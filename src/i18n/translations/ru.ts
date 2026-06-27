@@ -91,6 +91,7 @@ export const ru = {
     next: 'Далее: {{label}}',
     nationalRating: 'Нац. рейтинг',
     premium: 'ПРЕМИУМ',
+    premiumUnlocked: 'ОТКРЫТО',
     race: 'Состязание',
     raceSub: 'Соревнование в реальном времени',
     liveExam: 'Живой экзамен',
