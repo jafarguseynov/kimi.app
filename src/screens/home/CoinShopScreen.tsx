@@ -36,6 +36,22 @@ const ITEMS: ShopItem[] = [
   { id: 's6', icon: 'pricetag', iconColor: '#EC4899', bg: '#FCE7F3', titleKey: 'coinShop.s6Title', descKey: 'coinShop.s6Desc', price: 80, infoKey: 's6' },
 ];
 
+function PerkRow({ icon, color, label, status, on, last }: {
+  icon: keyof typeof import('@expo/vector-icons/Ionicons').default.glyphMap;
+  color: string; label: string; status: string; on: boolean; last?: boolean;
+}) {
+  return (
+    <View style={[styles.perkRow, !last && styles.perkRowBorder]}>
+      <Ionicons name={icon} size={18} color={color} />
+      <Text style={styles.perkLabel} numberOfLines={1}>{label}</Text>
+      <View style={[styles.perkStatusPill, { backgroundColor: on ? '#DCFCE7' : Colors.surfaceLow }]}>
+        <Ionicons name={on ? 'checkmark-circle' : 'remove-circle-outline'} size={13} color={on ? '#16A34A' : Colors.textMuted} />
+        <Text style={[styles.perkStatusText, { color: on ? '#16A34A' : Colors.textSecondary }]}>{status}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function CoinShopScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
@@ -130,23 +146,44 @@ export default function CoinShopScreen() {
           </View>
         </LinearGradient>
 
-        {/* Aktiv perk-lər (premium / xp booster) */}
-        {(ent?.premiumActive || ent?.xpBoostActive) && (
-          <View style={styles.activeRow}>
-            {ent?.premiumActive && (
-              <View style={[styles.activeChip, { backgroundColor: '#FEF9C3' }]}>
-                <Ionicons name="sparkles" size={13} color="#B45309" />
-                <Text style={styles.activeChipText}>{t('coinShop.premiumActive', { time: remainLabel(ent.premiumUntil) })}</Text>
-              </View>
-            )}
-            {ent?.xpBoostActive && (
-              <View style={[styles.activeChip, { backgroundColor: '#FEE2E2' }]}>
-                <Ionicons name="rocket" size={13} color="#B91C1C" />
-                <Text style={[styles.activeChipText, { color: '#B91C1C' }]}>{t('coinShop.xpBoostActive', { time: remainLabel(ent.xpBoostUntil) })}</Text>
-              </View>
-            )}
+        {/* Mənim imtiyazlarım — aldıqların və aktiv vəziyyət burada görünür */}
+        <View style={styles.perksCard}>
+          <View style={styles.perksHeader}>
+            <Ionicons name="ribbon" size={16} color={Colors.primary} />
+            <Text style={styles.perksTitle}>{t('coinShop.myPerks')}</Text>
           </View>
-        )}
+          <PerkRow
+            icon="sparkles" color="#B45309"
+            label={t('coinShop.s4Title')}
+            status={ent?.premiumActive ? t('coinShop.activeFor', { time: remainLabel(ent.premiumUntil) }) : t('coinShop.notActive')}
+            on={!!ent?.premiumActive}
+          />
+          <PerkRow
+            icon="rocket" color="#B91C1C"
+            label={t('coinShop.s5Title')}
+            status={ent?.xpBoostActive ? t('coinShop.activeFor', { time: remainLabel(ent.xpBoostUntil) }) : t('coinShop.notActive')}
+            on={!!ent?.xpBoostActive}
+          />
+          <PerkRow
+            icon="snow" color="#0EA5E9"
+            label={t('coinShop.s1Title')}
+            status={t('coinShop.freezeCount', { n: ent?.streakFreezes ?? 0 })}
+            on={(ent?.streakFreezes ?? 0) > 0}
+          />
+          <PerkRow
+            icon="happy" color="#A855F7"
+            label={t('coinShop.s3Title')}
+            status={ent?.ownedPacks?.includes('avatar') ? t('coinShop.owned') : t('coinShop.notOwned')}
+            on={!!ent?.ownedPacks?.includes('avatar')}
+          />
+          <PerkRow
+            icon="pricetag" color="#EC4899"
+            label={t('coinShop.s6Title')}
+            status={ent?.ownedPacks?.includes('sticker') ? t('coinShop.owned') : t('coinShop.notOwned')}
+            on={!!ent?.ownedPacks?.includes('sticker')}
+            last
+          />
+        </View>
 
         {ITEMS.map((item) => {
           const isOwned = !item.consumable && ownedShopItems.includes(item.id);
@@ -255,9 +292,14 @@ const styles = StyleSheet.create({
   bannerTitle: { fontSize: 14, fontWeight: '800', color: '#fff' },
   bannerSub: { fontSize: 11, color: 'rgba(255,255,255,0.85)', marginTop: 2 },
 
-  activeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  activeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 6 },
-  activeChipText: { fontSize: 11, fontWeight: '800', color: '#B45309' },
+  perksCard: { backgroundColor: '#fff', borderRadius: 16, borderWidth: 1, borderColor: Colors.borderLight, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 4 },
+  perksHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  perksTitle: { fontSize: 13, fontWeight: '900', color: Colors.textPrimary },
+  perkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10 },
+  perkRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  perkLabel: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  perkStatusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
+  perkStatusText: { fontSize: 11, fontWeight: '800' },
 
   infoBtn: { padding: 2, marginLeft: 2 },
 

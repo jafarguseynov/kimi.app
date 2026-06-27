@@ -24,6 +24,7 @@ import { getUserStats } from '../../api/dashboard.api';
 import { getTeacherAnalytics, TeacherAnalytics, getTeachers, getMe } from '../../api/user.api';
 import { avatarEmoji } from '../../constants/cosmetics';
 import { getWallet } from '../../api/payment.api';
+import { getEntitlements } from '../../api/shop.api';
 import { getExamResults, getCertificates } from '../../api/certificate.api';
 import { UserStats } from '../../types/dashboard.types';
 import { Switch } from 'react-native';
@@ -67,7 +68,7 @@ function useProfileRefresh() {
   return { refreshing, onRefresh };
 }
 
-function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, avatarId, navigation }: {
+function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, avatarId, premiumActive, navigation }: {
   name: string;
   subtitle?: string;
   logout: () => void;
@@ -75,6 +76,7 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
   walletBalance?: number;
   avatarUrl?: string;
   avatarId?: string | null;
+  premiumActive?: boolean;
   navigation: NativeStackNavigationProp<any>;
 }) {
   const { t } = useTranslation();
@@ -142,6 +144,12 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
           </View>
         </View>
         <Text style={[styles.userName, { marginTop: 18 }]}>{firstName}</Text>
+        {premiumActive && (
+          <View style={styles.premiumChip}>
+            <Ionicons name="sparkles" size={12} color="#B45309" />
+            <Text style={styles.premiumChipText}>{t('profileScreen.premiumBadge')}</Text>
+          </View>
+        )}
         {!!subtitle && <Text style={styles.userMeta}>{subtitle}</Text>}
 
         {/* XP progress */}
@@ -716,6 +724,7 @@ export default function ProfileScreen() {
 
   const { data: stats } = useQuery({ queryKey: ['user-stats'], queryFn: getUserStats, enabled: isStudent });
   const { data: wallet } = useQuery({ queryKey: ['wallet'], queryFn: getWallet, enabled: isStudent });
+  const { data: entitlements } = useQuery({ queryKey: ['entitlements'], queryFn: getEntitlements, enabled: isStudent });
   const { data: analytics } = useQuery({ queryKey: ['teacher-analytics'], queryFn: getTeacherAnalytics, enabled: isTeacher });
   // Tam profil (avatarUrl, subjects, bio...) serverdən təzələnir — store köhnə ola bilər.
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
@@ -770,6 +779,7 @@ export default function ProfileScreen() {
           walletBalance={wallet?.balance}
           avatarUrl={userAny?.avatarUrl}
           avatarId={userAny?.avatarId ?? userAny?.profile?.avatarId}
+          premiumActive={entitlements?.premiumActive}
           navigation={navigation}
         />
       )}
@@ -855,6 +865,11 @@ const styles = StyleSheet.create({
   },
   userName: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
   userMeta: { fontSize: 14, fontWeight: '500', color: Colors.textSecondary },
+  premiumChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'center',
+    backgroundColor: '#FEF9C3', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, marginTop: 8,
+  },
+  premiumChipText: { fontSize: 12, fontWeight: '900', color: '#B45309', letterSpacing: 0.3 },
 
   ratingPill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,

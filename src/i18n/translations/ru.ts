@@ -1042,6 +1042,11 @@ export const ru = {
     s6Desc: '12 новых стикеров',
     premiumActive: 'Премиум активен · {{time}}',
     xpBoostActive: 'XP Booster · {{time}}',
+    myPerks: 'Мои привилегии',
+    activeFor: 'Активно · {{time}}',
+    notActive: 'Не активно',
+    notOwned: 'Нет',
+    freezeCount: '{{n}} шт.',
     infoClose: 'Понятно',
     info: {
       s1What: 'Защита серии (streak) — сохраняет твою серию, даже если пропустишь день (защита на 1 день).',
@@ -2580,6 +2585,7 @@ export const ru = {
   },
   profileScreen: {
     headerTitle: 'Профиль',
+    premiumBadge: 'Премиум',
     defaultName: 'Пользователь',
     level: 'Уровень {{n}}',
     statStreak: 'Серия',

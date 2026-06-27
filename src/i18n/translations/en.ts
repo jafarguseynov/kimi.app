@@ -1042,6 +1042,11 @@ export const en = {
     s6Desc: '12 new stickers',
     premiumActive: 'Premium active · {{time}}',
     xpBoostActive: 'XP Booster · {{time}}',
+    myPerks: 'My perks',
+    activeFor: 'Active · {{time}}',
+    notActive: 'Not active',
+    notOwned: 'Not owned',
+    freezeCount: '{{n}} pcs',
     infoClose: 'Got it',
     info: {
       s1What: 'Streak protector — keeps your daily streak alive even if you skip a day (1-day shield).',
@@ -2580,6 +2585,7 @@ export const en = {
   },
   profileScreen: {
     headerTitle: 'Profile',
+    premiumBadge: 'Premium',
     defaultName: 'User',
     level: 'Level {{n}}',
     statStreak: 'Streak',

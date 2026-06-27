@@ -1043,6 +1043,11 @@ export const az = {
     s6Desc: '12 yeni stiker',
     premiumActive: 'Premium aktiv · {{time}}',
     xpBoostActive: 'XP Booster · {{time}}',
+    myPerks: 'Mənim imtiyazlarım',
+    activeFor: 'Aktiv · {{time}}',
+    notActive: 'Aktiv deyil',
+    notOwned: 'Yoxdur',
+    freezeCount: '{{n}} ədəd',
     infoClose: 'Anladım',
     info: {
       s1What: 'Streak (gündəlik seriya) qoruyucusu — bir gün imtahan həll etməsən belə seriyan qırılmır (1 günlük müdafiə).',
@@ -2581,6 +2586,7 @@ export const az = {
   },
   profileScreen: {
     headerTitle: 'Profil',
+    premiumBadge: 'Premium',
     defaultName: 'İstifadəçi',
     level: 'Level {{n}}',
     statStreak: 'Streak',
