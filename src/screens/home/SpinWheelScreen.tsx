@@ -74,7 +74,7 @@ const getItemPos = (angle: number) => {
 
 export default function SpinWheelScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const { coins, stars, history, addCoins, addStars, addHistoryEntry, setCoins } = useSpinWheelStore();
+  const { coins, stars, history, addCoins, addStars, addHistoryEntry, setCoins, setStars } = useSpinWheelStore();
 
   const [segments, setSegments] = useState<Segment[]>([]);
   const [spinsLeft, setSpinsLeft] = useState(0);
@@ -94,6 +94,8 @@ export default function SpinWheelScreen({ navigation }: Props) {
       const [rewards, status] = await Promise.all([getSpinRewards(), getSpinStatus()]);
       setSegments(buildSegments(rewards));
       setSpinsLeft(status.spinsLeft);
+      // Server XP-ni göstər (cihazlar arası sinxron) — lokal yox, serverin dəqiq dəyəri
+      if (typeof status.xp === 'number') setStars(status.xp);
     } catch {
       // şəbəkə xətası — boş qalır, istifadəçi sonra yenidən cəhd edə bilər
     }
@@ -105,7 +107,7 @@ export default function SpinWheelScreen({ navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [setCoins]);
+  }, [setCoins, setStars]);
 
   useEffect(() => { load(); }, [load]);
 

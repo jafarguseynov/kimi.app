@@ -20,6 +20,7 @@ export interface SpinStatus {
   spinsLeft: number;
   maxDaily: number;
   bonusSpins: number;
+  xp?: number; // server XP (cihazlar arası sinxron)
 }
 
 export interface SpinResultDto {

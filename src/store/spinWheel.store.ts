@@ -32,6 +32,7 @@ interface SpinWheelState {
   addCoins: (n: number) => void;
   addStars: (n: number) => void;
   setCoins: (n: number) => void;
+  setStars: (n: number) => void;
   spendCoins: (n: number) => boolean;
   grantExtraSpin: () => void;
   markShopItemOwned: (id: string) => void;
@@ -97,6 +98,9 @@ export const useSpinWheelStore = create<SpinWheelState>((set, get) => ({
 
   // Serverdəki real cüzdan balansını göstərmək üçün (load zamanı sinxronlaşdırılır).
   setCoins: (n) => { set({ coins: Math.max(0, Math.floor(n)) }); persist(get()); },
+
+  // Serverdəki real XP balansı (load zamanı sinxron — cihazlar arası eyni).
+  setStars: (n) => { set({ stars: Math.max(0, Math.floor(n)) }); persist(get()); },
 
   spendCoins: (n) => {
     if (get().coins < n) return false;
