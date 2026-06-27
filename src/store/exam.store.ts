@@ -3,6 +3,12 @@ import { Question, ExamResult } from '../types/exam.types';
 
 export type ExamSubmissionType = 'practice' | 'monthly' | 'national' | 'live';
 
+export interface ExamMeta {
+  subject: string;
+  difficulty: string; // 'easy' | 'medium' | 'hard' | digər
+  title: string;
+}
+
 interface ExamState {
   sessionId: string | null;
   examId: string | null;
@@ -15,8 +21,9 @@ interface ExamState {
   durationSeconds: number;
   result: ExamResult | null;
   submissionType: ExamSubmissionType | null;
+  examMeta: ExamMeta | null;
 
-  setSession: (sessionId: string, examId: string, questions: Question[], durationSeconds: number) => void;
+  setSession: (sessionId: string, examId: string, questions: Question[], durationSeconds: number, meta?: ExamMeta | null) => void;
   setCollectionId: (collectionId: string | null) => void;
   setSubmissionType: (type: ExamSubmissionType | null) => void;
   setAnswer: (questionId: string, optionId: string) => void;
@@ -38,10 +45,11 @@ export const useExamStore = create<ExamState>((set) => ({
   durationSeconds: 0,
   result: null,
   submissionType: null,
+  examMeta: null,
 
   // Yeni sessiya başlayanda collectionId-ni təmizlə (adi imtahan bank endpoint-inə getməsin)
-  setSession: (sessionId, examId, questions, durationSeconds) =>
-    set({ sessionId, examId, collectionId: null, questions, timeRemaining: durationSeconds, durationSeconds, currentIndex: 0, answers: {} }),
+  setSession: (sessionId, examId, questions, durationSeconds, meta = null) =>
+    set({ sessionId, examId, collectionId: null, questions, timeRemaining: durationSeconds, durationSeconds, currentIndex: 0, answers: {}, examMeta: meta }),
 
   setCollectionId: (collectionId) => set({ collectionId }),
 
@@ -61,5 +69,5 @@ export const useExamStore = create<ExamState>((set) => ({
 
   setResult: (result) => set({ result }),
 
-  resetExam: () => set({ sessionId: null, examId: null, collectionId: null, questions: [], currentIndex: 0, answers: {}, timeRemaining: 0, durationSeconds: 0, result: null, submissionType: null }),
+  resetExam: () => set({ sessionId: null, examId: null, collectionId: null, questions: [], currentIndex: 0, answers: {}, timeRemaining: 0, durationSeconds: 0, result: null, submissionType: null, examMeta: null }),
 }));

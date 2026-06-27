@@ -41,7 +41,11 @@ export const useStartExam = () => {
     mutationFn: (examId: string) => startExam(examId),
     onSuccess: (data) => {
       const durationSeconds = data.exam.duration * 60;
-      setSession(data.sessionId, data.exam.id, data.questions, durationSeconds);
+      setSession(data.sessionId, data.exam.id, data.questions, durationSeconds, {
+        subject: data.exam.subject,
+        difficulty: data.exam.difficulty,
+        title: data.exam.title,
+      });
     },
   });
 };
@@ -72,7 +76,11 @@ export const useStartCollectionTest = () => {
   return useMutation({
     mutationFn: (id: string) => startCollectionTest(id),
     onSuccess: (data, id) => {
-      setSession(data.sessionId, data.exam.id, data.questions, data.exam.duration * 60);
+      setSession(data.sessionId, data.exam.id, data.questions, data.exam.duration * 60, {
+        subject: data.exam.subject,
+        difficulty: data.exam.difficulty,
+        title: data.exam.title,
+      });
       setCollectionId(id);
     },
   });

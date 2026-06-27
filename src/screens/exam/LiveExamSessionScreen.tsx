@@ -19,22 +19,22 @@ import { useExamStore } from '../../store/exam.store';
 import { useSubmitExam } from '../../hooks/useExams';
 import { formatTime } from '../../utils/formatters';
 import { useTranslation } from '../../i18n';
+import { useQuery } from '@tanstack/react-query';
+import { getExamLeaderboard, ExamRankEntry } from '../../api/leaderboard.api';
+import { getSpinStatus } from '../../api/spin.api';
 
 type Props = { navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.LiveExamSession> };
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-const LIVE_FEED: { id: string; name: string; actionKey: 'answered' | 'joined' | 'mistook'; live: boolean }[] = [
-  { id: '1', name: 'Sənan', actionKey: 'answered', live: true },
-  { id: '2', name: 'Aytən', actionKey: 'joined', live: false },
-  { id: '3', name: 'Murad', actionKey: 'mistook', live: false },
-];
+// Podium üçün top-3-ü vizual sıraya düz: [2-ci, 1-ci, 3-cü]
+const orderPodium = (rows: ExamRankEntry[]) => {
+  const top = rows.slice(0, 3);
+  const byRank = (r: number) => top.find((x) => x.rank === r);
+  return [byRank(2), byRank(1), byRank(3)].filter(Boolean) as ExamRankEntry[];
+};
 
-const PODIUM: { rank: 1 | 2 | 3; name: string; xp: number; initials: string }[] = [
-  { rank: 2, name: 'Leyla', xp: 890, initials: 'L' },
-  { rank: 1, name: 'Cəfər', xp: 945, initials: 'C' },
-  { rank: 3, name: 'Murad', xp: 820, initials: 'M' },
-];
+const initialsOf = (name: string) => (name?.trim()?.[0] ?? '?').toUpperCase();
 
 export default function LiveExamSessionScreen({ navigation }: Props) {
   const {
@@ -45,6 +45,7 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
     durationSeconds,
     examId,
     submissionType,
+    examMeta,
     setAnswer,
     nextQuestion,
     previousQuestion,
@@ -57,6 +58,25 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
   const currentQuestion = questions[currentIndex];
   const isLast = currentIndex === questions.length - 1;
   const progress = questions.length > 0 ? (currentIndex + 1) / questions.length : 0;
+
+  // Bu imtahanın REAL reytinqi (saxta podium əvəzinə)
+  const { data: leaderboard = [] } = useQuery({
+    queryKey: ['examLeaderboard', examId],
+    queryFn: () => getExamLeaderboard(examId as string),
+    enabled: !!examId,
+    refetchInterval: 15000,
+  });
+  const podium = orderPodium(leaderboard);
+
+  // İstifadəçinin REAL XP-i (cihazlar arası sinxron server dəyəri)
+  const { data: spinStatus } = useQuery({ queryKey: ['spinStatus'], queryFn: getSpinStatus });
+  const myXp = spinStatus?.xp ?? 0;
+
+  // Başlıq üçün real subject + çətinlik (sualın bloku varsa onu üstün tut)
+  const diffLabel = examMeta?.difficulty
+    ? t(`liveSess.diff_${examMeta.difficulty}` as any, { defaultValue: examMeta.difficulty.toUpperCase() })
+    : '';
+  const subjectLabel = currentQuestion?.section || examMeta?.subject || examMeta?.title || t('liveSess.examFallback');
 
   const submit = () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -145,13 +165,15 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
         {/* Progress Section */}
         <View style={styles.progressSection}>
           <View style={styles.progressMeta}>
-            <View>
-              <Text style={styles.progressSubject}>{t('liveSess.subject')} • {t('liveSess.questionN', { n: currentIndex + 1, total: questions.length })}</Text>
-              <Text style={styles.progressChapter}>{t('liveSess.chapter')}</Text>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={styles.progressSubject}>{t('liveSess.questionN', { n: currentIndex + 1, total: questions.length })}</Text>
+              <Text style={styles.progressChapter} numberOfLines={1}>{subjectLabel}</Text>
             </View>
-            <View style={styles.difficultyBadge}>
-              <Text style={styles.difficultyText}>{t('liveSess.difficulty')}</Text>
-            </View>
+            {!!diffLabel && (
+              <View style={styles.difficultyBadge}>
+                <Text style={styles.difficultyText}>{diffLabel}</Text>
+              </View>
+            )}
           </View>
           <View style={styles.progressTrack}>
             <LinearGradient
@@ -172,55 +194,45 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
               <Text style={styles.podiumLiveText}>{t('liveSess.live')}</Text>
             </View>
           </View>
-          <View style={styles.podiumRow}>
-            {PODIUM.map((p) => {
-              const isFirst = p.rank === 1;
-              const barHeight = p.rank === 1 ? 60 : p.rank === 2 ? 46 : 38;
-              return (
-                <View key={p.rank} style={[styles.podiumCol, isFirst && styles.podiumColFirst]}>
-                  {isFirst && (
-                    <Ionicons name="trophy" size={22} color="#FFD700" style={{ marginBottom: 4 }} />
-                  )}
-                  <View style={[styles.podiumAvatar, isFirst && styles.podiumAvatarFirst]}>
-                    <Text style={[styles.podiumAvatarText, isFirst && { color: '#fff' }]}>{p.initials}</Text>
-                  </View>
-                  <Text style={[styles.podiumName, isFirst && styles.podiumNameFirst]}>{p.name}</Text>
-                  <Text style={[styles.podiumXp, isFirst && styles.podiumXpFirst]}>{p.xp} XP</Text>
-                  {isFirst ? (
-                    <LinearGradient
-                      colors={[Colors.gradientStart, Colors.gradientEnd]}
-                      style={[styles.podiumBar, { height: barHeight }]}
-                      start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    >
-                      <Text style={styles.podiumBarTextFirst}>{p.rank}</Text>
-                    </LinearGradient>
-                  ) : (
-                    <View style={[styles.podiumBar, styles.podiumBarMuted, { height: barHeight }]}>
-                      <Text style={styles.podiumBarText}>{p.rank}</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Live Feed */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.feedScroll}
-        >
-          {LIVE_FEED.map((item, i) => (
-            <View key={item.id} style={[styles.feedPill, i > 0 && { opacity: i === 1 ? 0.8 : 0.6 }]}>
-              {item.live && <View style={styles.liveDot} />}
-              <Text style={styles.feedText}>
-                <Text style={styles.feedBold}>{item.name}</Text>
-                {' ' + t(`liveSess.${item.actionKey}`)}
-              </Text>
+          {podium.length === 0 ? (
+            <View style={styles.podiumEmpty}>
+              <Ionicons name="trophy-outline" size={26} color={Colors.textMuted} />
+              <Text style={styles.podiumEmptyText}>{t('liveSess.noLeadersYet')}</Text>
             </View>
-          ))}
-        </ScrollView>
+          ) : (
+            <View style={styles.podiumRow}>
+              {podium.map((p) => {
+                const isFirst = p.rank === 1;
+                const barHeight = p.rank === 1 ? 60 : p.rank === 2 ? 46 : 38;
+                return (
+                  <View key={p.userId} style={[styles.podiumCol, isFirst && styles.podiumColFirst]}>
+                    {isFirst && (
+                      <Ionicons name="trophy" size={22} color="#FFD700" style={{ marginBottom: 4 }} />
+                    )}
+                    <View style={[styles.podiumAvatar, isFirst && styles.podiumAvatarFirst]}>
+                      <Text style={[styles.podiumAvatarText, isFirst && { color: '#fff' }]}>{initialsOf(p.name)}</Text>
+                    </View>
+                    <Text style={[styles.podiumName, isFirst && styles.podiumNameFirst]} numberOfLines={1}>{p.name}</Text>
+                    <Text style={[styles.podiumXp, isFirst && styles.podiumXpFirst]}>{p.percentage}%</Text>
+                    {isFirst ? (
+                      <LinearGradient
+                        colors={[Colors.gradientStart, Colors.gradientEnd]}
+                        style={[styles.podiumBar, { height: barHeight }]}
+                        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                      >
+                        <Text style={styles.podiumBarTextFirst}>{p.rank}</Text>
+                      </LinearGradient>
+                    ) : (
+                      <View style={[styles.podiumBar, styles.podiumBarMuted, { height: barHeight }]}>
+                        <Text style={styles.podiumBarText}>{p.rank}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
+        </View>
 
         {/* Question Card */}
         <View style={styles.questionCard}>
@@ -258,23 +270,7 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
           })}
         </View>
 
-        {/* Kimi Hint */}
-        <View style={styles.hintCard}>
-          <View style={styles.hintIconBox}>
-            <Ionicons name="bulb-outline" size={20} color={Colors.tertiary} />
-          </View>
-          <View style={styles.hintBody}>
-            <Text style={styles.hintLabel}>{t('liveSess.kimiHelp')}</Text>
-            <Text style={styles.hintText}>
-              {t('liveSess.hintText')}
-            </Text>
-          </View>
-          <View style={styles.hintBgIcon}>
-            <Ionicons name="hardware-chip-outline" size={56} color={Colors.tertiary} />
-          </View>
-        </View>
-
-        {/* Ranking Indicator */}
+        {/* Real məlumat zolağı — iştirakçı sayı + sənin XP-n */}
         <View style={styles.rankingBar}>
           <View style={styles.rankingLeft}>
             <LinearGradient
@@ -283,16 +279,16 @@ export default function LiveExamSessionScreen({ navigation }: Props) {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <Text style={styles.rankNum}>42</Text>
+              <Ionicons name="people" size={18} color="#fff" />
             </LinearGradient>
             <View>
-              <Text style={styles.rankMeta}>{t('liveSess.yourPlace')}</Text>
-              <Text style={styles.rankText}>{t('liveSess.placeText', { n: 42 })}</Text>
+              <Text style={styles.rankMeta}>{t('liveSess.participants')}</Text>
+              <Text style={styles.rankText}>{t('liveSess.participantsCount', { n: leaderboard.length })}</Text>
             </View>
           </View>
           <View style={styles.xpBadge}>
             <Ionicons name="star" size={12} color="#FFD700" />
-            <Text style={styles.xpText}>1,240 XP</Text>
+            <Text style={styles.xpText}>{myXp} XP</Text>
           </View>
         </View>
       </ScrollView>
@@ -427,6 +423,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 10, borderTopRightRadius: 10,
     marginTop: 2,
   },
+  podiumEmpty: {
+    alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: Colors.surfaceLow, borderRadius: 16, paddingVertical: 22, paddingHorizontal: 16,
+  },
+  podiumEmptyText: { fontSize: 12, fontWeight: '600', color: Colors.textMuted, textAlign: 'center' },
   podiumBarMuted: { backgroundColor: 'rgba(255,255,255,0.6)' },
   podiumBarText: { fontSize: 18, fontWeight: '900', color: Colors.textMuted },
   podiumBarTextFirst: { fontSize: 22, fontWeight: '900', color: '#fff' },
