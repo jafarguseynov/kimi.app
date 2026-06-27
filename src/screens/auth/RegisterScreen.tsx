@@ -9,6 +9,7 @@ import {
   Alert,
   Platform,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -35,6 +36,13 @@ const ROLE_OPTIONS: { id: Exclude<UserRole, 'admin'>; labelKey: string; icon: ke
 ];
 
 const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif', 'Abituriyent'];
+
+// Loqo ölçüsü: dar ekranda kiçilir, 340dp-də dayanır. Sabit ədədi en/hündürlük
+// işlədilir — `width:'100%' + maxWidth + aspectRatio` kombinasiyası ScrollView
+// (alignItems:'center') içində Yoga layout döngüsü yaradıb ekranı dondururdu.
+const LOGO_RATIO = 380 / 205;
+const LOGO_W = Math.min(340, Dimensions.get('window').width - 40);
+const LOGO_H = Math.round(LOGO_W / LOGO_RATIO);
 
 export default function RegisterScreen({ navigation }: Props) {
   const { t } = useTranslation();
@@ -335,9 +343,8 @@ const styles = StyleSheet.create({
 
   logoSection: { alignItems: 'center', marginBottom: 28, marginTop: 16, width: '100%' },
   logoImage: {
-    width: '100%',
-    maxWidth: 340,
-    aspectRatio: 380 / 205,
+    width: LOGO_W,
+    height: LOGO_H,
     marginBottom: 8,
   },
   logoSub: { fontSize: 14, color: Colors.textSecondary },
