@@ -63,7 +63,7 @@ export default function CoinShopScreen() {
         // s1/s3/s4/s5/s6 — serverdə perk redeem (xərc + premium/xpboost/kosmetik effekt)
         const res = await redeemPerk(item.id);
         setCoins(res.balance);
-        setEnt({ premiumUntil: res.premiumUntil, premiumActive: res.premiumActive, xpBoostUntil: res.xpBoostUntil, xpBoostActive: res.xpBoostActive });
+        setEnt(res);
         if (!item.consumable) markShopItemOwned(item.id); // yalnız kalıcı (avatar/stiker) "Sahibsən"
       }
       Alert.alert(t('coinShop.purchasedTitle'), t('coinShop.purchasedBody', { title: itemTitle }));

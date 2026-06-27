@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,6 +24,8 @@ import { useAuthStore } from '../../store/auth.store';
 import { useUserStore } from '../../store/user.store';
 import MessageBubble from '../../components/chat/MessageBubble';
 import { Colors } from '../../constants/colors';
+import { STICKERS } from '../../constants/cosmetics';
+import { getEntitlements } from '../../api/shop.api';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -39,11 +42,17 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const { token } = useAuthStore();
   const { messages, setMessages, addMessage } = useChatStore();
   const [text, setText] = useState('');
+  const [showStickers, setShowStickers] = useState(false);
+  const [ownsStickerPack, setOwnsStickerPack] = useState(false);
   const listRef = useRef<FlatList>(null);
 
   useEffect(() => {
     setMessages([]);
   }, [chatId]);
+
+  useEffect(() => {
+    getEntitlements().then((e) => setOwnsStickerPack(e.ownedPacks?.includes('sticker') ?? false)).catch(() => {});
+  }, []);
 
   const { isLoading } = useQuery({
     queryKey: ['messages', chatId],
@@ -80,6 +89,15 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     if (!text.trim()) return;
     socketService.sendMessage(chatId, text.trim());
     setText('');
+  };
+
+  const sendSticker = (emoji: string, premium: boolean) => {
+    if (premium && !ownsStickerPack) {
+      Alert.alert(t('chat.stickerLockedTitle'), t('chat.stickerLockedBody'));
+      return;
+    }
+    socketService.sendMessage(chatId, emoji, 'sticker');
+    setShowStickers(false);
   };
 
   const initial = name?.[0]?.toUpperCase() ?? '?';
@@ -126,12 +144,38 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
             renderItem={({ item }) => (
               <MessageBubble
                 content={item.content}
+                type={item.type}
                 isOwn={item.sender.id === user?.id}
                 senderName={item.sender.name}
                 time={new Date(item.createdAt).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}
               />
             )}
           />
+        )}
+
+        {/* Stiker seçici panel */}
+        {showStickers && (
+          <View style={styles.stickerPanel}>
+            <View style={styles.stickerGrid}>
+              {STICKERS.map((s) => {
+                const locked = s.premium && !ownsStickerPack;
+                return (
+                  <TouchableOpacity
+                    key={s.id}
+                    style={[styles.stickerCell, locked && { opacity: 0.5 }]}
+                    activeOpacity={0.7}
+                    onPress={() => sendSticker(s.emoji, s.premium)}
+                  >
+                    <Text style={{ fontSize: 30 }}>{s.emoji}</Text>
+                    {locked && (
+                      <View style={styles.stickerLock}><Ionicons name="lock-closed" size={9} color="#fff" /></View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {!ownsStickerPack && <Text style={styles.stickerHint}>{t('chat.stickerHint')}</Text>}
+          </View>
         )}
 
         {/* Input bar */}
@@ -155,8 +199,8 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               multiline
               maxLength={1000}
             />
-            <TouchableOpacity activeOpacity={0.7}>
-              <Ionicons name="happy-outline" size={22} color={Colors.textSecondary} />
+            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowStickers((v) => !v)}>
+              <Ionicons name={showStickers ? 'happy' : 'happy-outline'} size={22} color={showStickers ? Colors.primary : Colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -210,6 +254,20 @@ const styles = StyleSheet.create({
   },
   datePillText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8 },
 
+  stickerPanel: {
+    backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: Colors.borderLight,
+    paddingVertical: 12, paddingHorizontal: 12,
+  },
+  stickerGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 },
+  stickerCell: {
+    width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.surfaceLow,
+  },
+  stickerLock: {
+    position: 'absolute', top: 3, right: 3, width: 15, height: 15, borderRadius: 8,
+    backgroundColor: '#6B7280', alignItems: 'center', justifyContent: 'center',
+  },
+  stickerHint: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center', marginTop: 10 },
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
     paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12,

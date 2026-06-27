@@ -5,7 +5,16 @@ export interface Entitlements {
   premiumActive: boolean;
   xpBoostUntil: string | null;
   xpBoostActive: boolean;
+  ownedPacks: string[];
+  avatarId: string | null;
+  streakFreezes: number;
 }
+
+// Preset avatar seç (premium avatar üçün "avatar" paketi lazımdır)
+export const selectAvatar = async (avatarId: string): Promise<{ avatarId: string }> => {
+  const res = await client.post('/shop/avatar', { avatarId });
+  return res.data;
+};
 
 export interface RedeemResult extends Entitlements {
   balance: number;

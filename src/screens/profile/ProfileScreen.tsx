@@ -22,6 +22,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { getUserStats } from '../../api/dashboard.api';
 import { getTeacherAnalytics, TeacherAnalytics, getTeachers, getMe } from '../../api/user.api';
+import { avatarEmoji } from '../../constants/cosmetics';
 import { getWallet } from '../../api/payment.api';
 import { getExamResults, getCertificates } from '../../api/certificate.api';
 import { UserStats } from '../../types/dashboard.types';
@@ -66,18 +67,20 @@ function useProfileRefresh() {
   return { refreshing, onRefresh };
 }
 
-function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, navigation }: {
+function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, avatarId, navigation }: {
   name: string;
   subtitle?: string;
   logout: () => void;
   stats?: UserStats;
   walletBalance?: number;
   avatarUrl?: string;
+  avatarId?: string | null;
   navigation: NativeStackNavigationProp<any>;
 }) {
   const { t } = useTranslation();
   const { subscription: subVisible, payments: payVisible } = useMonetization();
   const initial = name?.[0]?.toUpperCase() ?? '?';
+  const emoji = avatarEmoji(avatarId);
   const firstName = name.split(' ')[0];
 
   // Monetizasiya bağlıdırsa balans (payments) və abunə (subscription) menyu sətirlərini gizlət.
@@ -116,7 +119,11 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
       {/* Avatar */}
       <View style={styles.avatarSection}>
         <View style={styles.avatarWrap}>
-          {avatarUrl ? (
+          {emoji ? (
+            <LinearGradient colors={GRADIENT} style={styles.bigAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={{ fontSize: 44 }}>{emoji}</Text>
+            </LinearGradient>
+          ) : avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={styles.bigAvatar} />
           ) : (
             <LinearGradient colors={GRADIENT} style={styles.bigAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
@@ -762,6 +769,7 @@ export default function ProfileScreen() {
           stats={stats}
           walletBalance={wallet?.balance}
           avatarUrl={userAny?.avatarUrl}
+          avatarId={userAny?.avatarId ?? userAny?.profile?.avatarId}
           navigation={navigation}
         />
       )}

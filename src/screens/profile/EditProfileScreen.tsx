@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, KeyboardAvoidingView, Platform, Switch,
-  ActivityIndicator, Image,
+  ActivityIndicator, Image, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,6 +17,8 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { getMe, updateUser } from '../../api/user.api';
 import { getSpecializations } from '../../api/specialization.api';
 import { uploadImageOrFallback } from '../../api/media.api';
+import { selectAvatar, getEntitlements } from '../../api/shop.api';
+import { AVATARS, avatarEmoji } from '../../constants/cosmetics';
 import { useUserStore } from '../../store/user.store';
 import LocationSchoolPicker from '../../components/common/LocationSchoolPicker';
 import LocationPicker from '../../components/common/LocationPicker';
@@ -63,6 +65,25 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const [avatarUri, setAvatarUri] = useState<string | undefined>(userAny?.avatarUrl);
   // Yeni seçilmiş lokal şəkil yaddaşa basılanda yüklənməlidir.
   const [avatarDirty, setAvatarDirty] = useState(false);
+  // Preset emoji avatar
+  const [avatarId, setAvatarId] = useState<string | null>(userAny?.avatarId ?? null);
+  const [avatarModal, setAvatarModal] = useState(false);
+  const [ownsAvatarPack, setOwnsAvatarPack] = useState(false);
+
+  const onPickAvatar = async (id: string, premium: boolean) => {
+    if (premium && !ownsAvatarPack) {
+      Alert.alert(t('editProfile.avatarLockedTitle'), t('editProfile.avatarLockedBody'));
+      return;
+    }
+    try {
+      await selectAvatar(id);
+      setAvatarId(id);
+      setAvatarModal(false);
+      if (user) setUser({ ...(user as any), avatarId: id });
+    } catch (e: any) {
+      Alert.alert(t('editProfile.avatarLockedTitle'), e?.response?.data?.message || t('editProfile.avatarLockedBody'));
+    }
+  };
 
   const pickImage = async (fromCamera: boolean) => {
     const perm = fromCamera
@@ -79,6 +100,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       const uri = result.assets[0].uri;
       setAvatarUri(uri);
       setAvatarDirty(true);
+      setAvatarId(null); // şəkil seçildi → emoji avatarı kənarlaşdır (şəkil göstərilsin)
       if (user) setUser({ ...(user as any), avatarUrl: uri });
     }
   };
@@ -90,6 +112,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       [
         { text: t('editProfile.camera'), onPress: () => pickImage(true) },
         { text: t('editProfile.gallery'), onPress: () => pickImage(false) },
+        { text: t('editProfile.chooseAvatar'), onPress: () => setAvatarModal(true) },
         { text: t('editProfile.cancel'), style: 'cancel' },
       ],
       { cancelable: true }
@@ -139,6 +162,8 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       const meAny = me as any;
       if (meAny.birthDate) setBirthDate(meAny.birthDate);
       if (meAny.avatarUrl) setAvatarUri(meAny.avatarUrl);
+      if (meAny.avatarId) setAvatarId(meAny.avatarId);
+      else if (meAny.profile?.avatarId) setAvatarId(meAny.profile.avatarId);
       if (meAny.city) setCity(meAny.city);
       if (meAny.areaNames?.length) setAreas(meAny.areaNames);
       else if (meAny.areaName) setAreas([meAny.areaName]);
@@ -154,6 +179,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       if (meAny.introVideoUrl) setIntroVideoUrl(meAny.introVideoUrl);
       if (typeof meAny.offersFreeDemo === 'boolean') setOffersFreeDemo(meAny.offersFreeDemo);
     }).catch(() => {});
+    getEntitlements().then((e) => setOwnsAvatarPack(e.ownedPacks?.includes('avatar') ?? false)).catch(() => {});
   }, []);
 
   const { mutate: save, isPending: isSaving } = useMutation({
@@ -245,7 +271,9 @@ export default function EditProfileScreen({ navigation, route }: Props) {
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               >
                 <View style={styles.avatarInner}>
-                  {avatarUri ? (
+                  {avatarId ? (
+                    <Text style={{ fontSize: 52 }}>{avatarEmoji(avatarId)}</Text>
+                  ) : avatarUri ? (
                     <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
                   ) : (
                     <Ionicons name="person" size={52} color={Colors.primary} />
@@ -263,6 +291,38 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               <Text style={styles.changePhotoText}>{t('editProfile.changePhoto')}</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Avatar (emoji) seçici modal */}
+          <Modal visible={avatarModal} transparent animationType="slide" onRequestClose={() => setAvatarModal(false)}>
+            <TouchableOpacity style={avStyles.overlay} activeOpacity={1} onPress={() => setAvatarModal(false)}>
+              <View style={avStyles.sheet} onStartShouldSetResponder={() => true}>
+                <Text style={avStyles.title}>{t('editProfile.chooseAvatar')}</Text>
+                <View style={avStyles.grid}>
+                  {AVATARS.map((a) => {
+                    const locked = a.premium && !ownsAvatarPack;
+                    const selected = avatarId === a.id;
+                    return (
+                      <TouchableOpacity
+                        key={a.id}
+                        style={[avStyles.cell, selected && avStyles.cellSel, locked && avStyles.cellLocked]}
+                        activeOpacity={0.8}
+                        onPress={() => onPickAvatar(a.id, a.premium)}
+                      >
+                        <Text style={{ fontSize: 34 }}>{a.emoji}</Text>
+                        {locked && (
+                          <View style={avStyles.lockBadge}><Ionicons name="lock-closed" size={11} color="#fff" /></View>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {!ownsAvatarPack && <Text style={avStyles.hint}>{t('editProfile.avatarPackHint')}</Text>}
+                <TouchableOpacity style={avStyles.closeBtn} onPress={() => setAvatarModal(false)} activeOpacity={0.85}>
+                  <Text style={avStyles.closeText}>{t('editProfile.cancel')}</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableOpacity>
+          </Modal>
 
           {role === 'teacher' ? (
             <TeacherForm
@@ -1141,4 +1201,24 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight,
   },
   inputIconRightPos: { position: 'absolute', right: 14, zIndex: 1 },
+});
+
+const avStyles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 },
+  title: { fontSize: 16, fontWeight: '900', color: Colors.textPrimary, textAlign: 'center', marginBottom: 16 },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 12 },
+  cell: {
+    width: 62, height: 62, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.surfaceLow, borderWidth: 2, borderColor: 'transparent',
+  },
+  cellSel: { borderColor: Colors.primary, backgroundColor: Colors.primary + '12' },
+  cellLocked: { opacity: 0.55 },
+  lockBadge: {
+    position: 'absolute', top: 4, right: 4, width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#6B7280', alignItems: 'center', justifyContent: 'center',
+  },
+  hint: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', marginTop: 14, lineHeight: 17 },
+  closeBtn: { marginTop: 18, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 28 },
+  closeText: { fontSize: 14, fontWeight: '800', color: Colors.textSecondary },
 });

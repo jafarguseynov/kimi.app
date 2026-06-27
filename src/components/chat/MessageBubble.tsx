@@ -7,9 +7,22 @@ interface Props {
   isOwn: boolean;
   senderName: string;
   time: string;
+  type?: string;
 }
 
-export default function MessageBubble({ content, isOwn, senderName, time }: Props) {
+export default function MessageBubble({ content, isOwn, senderName, time, type }: Props) {
+  // Stiker — fon olmadan böyük emoji
+  if (type === 'sticker') {
+    return (
+      <View style={[styles.row, isOwn && styles.rowOwn]}>
+        <View style={styles.stickerWrap}>
+          {!isOwn && <Text style={styles.sender}>{senderName}</Text>}
+          <Text style={styles.sticker}>{content}</Text>
+          <Text style={[styles.time, isOwn && { textAlign: 'right' }]}>{time}</Text>
+        </View>
+      </View>
+    );
+  }
   return (
     <View style={[styles.row, isOwn && styles.rowOwn]}>
       <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
@@ -44,4 +57,6 @@ const styles = StyleSheet.create({
   contentOwn: { color: '#fff' },
   time: { fontSize: 11, color: Colors.textMuted, marginTop: 4, textAlign: 'right' },
   timeOwn: { color: 'rgba(255,255,255,0.7)' },
+  stickerWrap: { maxWidth: '60%', paddingHorizontal: 4 },
+  sticker: { fontSize: 56, lineHeight: 64 },
 });

@@ -34,8 +34,8 @@ class SocketService {
     this.socket?.emit('leaveChat', chatId);
   }
 
-  sendMessage(chatId: string, content: string) {
-    this.socket?.emit('sendMessage', { chatId, content });
+  sendMessage(chatId: string, content: string, type: 'text' | 'sticker' = 'text') {
+    this.socket?.emit('sendMessage', { chatId, content, type });
   }
 
   onNewMessage(callback: (msg: any) => void) {
