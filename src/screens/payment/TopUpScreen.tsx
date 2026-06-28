@@ -15,6 +15,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { topUp } from '../../api/payment.api';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { PAYMENTS_ENABLED } from '../../config/iap';
+import PaymentUnavailable from '../../components/PaymentUnavailable';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const TOPUP_AMOUNT = 5;
@@ -22,6 +24,8 @@ const TOPUP_AMOUNT = 5;
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function TopUpScreen({ navigation }: Props) {
+  // App Store 3.1.1: iOS-da real-pul balans artırımı açılmır.
+  if (!PAYMENTS_ENABLED) return <PaymentUnavailable />;
   const { t } = useTranslation();
   const qc = useQueryClient();
 

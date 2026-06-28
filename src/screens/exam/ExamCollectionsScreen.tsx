@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import { useExamCollections, useStartCollectionTest } from '../../hooks/useExams';
 import { ExamCollectionCard } from '../../api/examCollection.api';
 import { useTranslation } from '../../i18n';
@@ -38,7 +39,7 @@ export default function ExamCollectionsScreen() {
           { text: t('examCollections.decline'), style: 'cancel' },
           {
             text: t('examCollections.plans'),
-            onPress: () => (navigation.getParent() as any)?.navigate(Routes.Home, { screen: Routes.Plans, initial: false }),
+            onPress: () => (navigation.getParent() as any)?.navigate(Routes.Home, { screen: PREMIUM_ENTRY_ROUTE, initial: false }),
           },
         ],
       );

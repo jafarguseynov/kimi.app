@@ -18,6 +18,7 @@ import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
+import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import { getUserStats } from '../../api/dashboard.api';
 import { getTeachers, getTeacherAnalytics, ensureProfileReminder, getMe } from '../../api/user.api';
 import { getGlobalLeaderboard } from '../../api/leaderboard.api';
@@ -311,7 +312,7 @@ export default function HomeScreen({ navigation }: Props) {
           t('home.interest.premiumMsg'),
           [
             { text: t('home.interest.decline'), style: 'cancel' },
-            { text: t('home.interest.buyPlan'), onPress: () => navigation.navigate(Routes.Plans) },
+            { text: t('home.interest.buyPlan'), onPress: () => navigation.navigate(PREMIUM_ENTRY_ROUTE) },
           ],
         );
       } else {

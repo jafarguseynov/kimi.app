@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getStudentBookings, getTeacherBookings, confirmBooking, cancelBooking, Booking } from '../../api/booking.api';
 import { getOrCreateChat } from '../../api/chat.api';
@@ -86,7 +87,7 @@ export default function BookingHistoryScreen() {
   const subscribed = subStatus?.active ?? false;
 
   const goToPlans = () => {
-    (navigation.getParent() as any)?.navigate(Routes.Home, { screen: Routes.Plans, initial: false });
+    (navigation.getParent() as any)?.navigate(Routes.Home, { screen: PREMIUM_ENTRY_ROUTE, initial: false });
   };
 
   const { mutate: doConfirm, isPending: confirming } = useMutation({

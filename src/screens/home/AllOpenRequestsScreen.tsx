@@ -19,6 +19,7 @@ import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
+import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import {
   listOpenRequests,
   expressInterest,
@@ -93,7 +94,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
       if (msg === 'SUBSCRIPTION_REQUIRED' || e?.response?.status === 403) {
         Alert.alert(t('allOpenRequests.alertPremiumTitle'), t('allOpenRequests.alertPremiumMsg'), [
           { text: t('allOpenRequests.cancel'), style: 'cancel' },
-          { text: t('allOpenRequests.buyPlan'), onPress: () => navigation.navigate(Routes.Plans) },
+          { text: t('allOpenRequests.buyPlan'), onPress: () => navigation.navigate(PREMIUM_ENTRY_ROUTE) },
         ]);
       } else {
         Alert.alert(t('allOpenRequests.alertErrorTitle'), msg || t('allOpenRequests.alertErrorMsg'));

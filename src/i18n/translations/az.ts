@@ -3939,6 +3939,10 @@ export const az = {
     annualSub: 'İllik abunəlik',
     goPremium: 'Premium-a keç',
     premiumDisclaimer: 'Abunəlik hər ay avtomatik yenilənir. İstənilən vaxt ləğv edilə bilər.',
+    // iOS (App Store) — ödəniş bu platformada əlçatan deyil
+    iosUnavailableTitle: 'Bu platformada əlçatan deyil',
+    iosUnavailableBody: 'Premium funksiyası hazırda bu platformada satın alına bilmir. Premium imkanlar barədə tətbiqdəki Premium bölməsindən məlumat ala bilərsiniz.',
+    iosInfoNote: 'Premium imkanlar barədə məlumat. Satınalma hazırda bu platformada mövcud deyil.',
     // SubscriptionRenew
     renewHeader: 'Abunəliyi Yenilə',
     renewMascot: 'Biliyinə sərmayə qoymaq ən yaxşı seçimdir!',

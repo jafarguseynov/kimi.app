@@ -8,6 +8,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { PAYMENTS_ENABLED } from '../../config/iap';
+import PaymentUnavailable from '../../components/PaymentUnavailable';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -39,6 +41,8 @@ function Cell({ cell, tone, t }: { cell: FeatureCell; tone: 'primary' | 'dark'; 
 }
 
 export default function PlanCompareScreen() {
+  // App Store 3.1.1: iOS-da qiymət müqayisəsi / satınalma açılmır.
+  if (!PAYMENTS_ENABLED) return <PaymentUnavailable />;
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
 

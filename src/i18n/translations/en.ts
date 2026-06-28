@@ -3883,6 +3883,10 @@ export const en = {
     annualSub: 'Annual subscription',
     goPremium: 'Go Premium',
     premiumDisclaimer: 'The subscription renews automatically each month. It can be cancelled anytime.',
+    // iOS (App Store) — purchases unavailable on this platform
+    iosUnavailableTitle: 'Not available on this platform',
+    iosUnavailableBody: 'Premium cannot be purchased on this platform right now. You can still learn about Premium features in the Premium section of the app.',
+    iosInfoNote: 'Information about Premium features. Purchasing is not available on this platform right now.',
     renewHeader: 'Renew Subscription',
     renewMascot: 'Investing in your knowledge is the best choice!',
     currentPackage: 'Current Package',

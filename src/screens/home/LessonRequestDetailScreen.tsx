@@ -16,6 +16,7 @@ import { RouteProp } from '@react-navigation/native';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import { HomeStackParamList } from '../../navigation/types';
 import { useUserStore } from '../../store/user.store';
 import {
@@ -63,7 +64,7 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
       if (msg === 'SUBSCRIPTION_REQUIRED' || e?.response?.status === 403) {
         Alert.alert(t('lessonReqDetail.alertPremiumTitle'), t('lessonReqDetail.alertPremiumMsg'), [
           { text: t('lessonReqDetail.cancel'), style: 'cancel' },
-          { text: t('lessonReqDetail.buyPlan'), onPress: () => navigation.navigate(Routes.Plans) },
+          { text: t('lessonReqDetail.buyPlan'), onPress: () => navigation.navigate(PREMIUM_ENTRY_ROUTE) },
         ]);
       } else {
         Alert.alert(t('lessonReqDetail.alertErrorTitle'), msg || t('lessonReqDetail.alertErrorMsg'));

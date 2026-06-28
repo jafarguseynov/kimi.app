@@ -20,6 +20,7 @@ import { Colors } from '../../constants/colors';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { PAYMENTS_ENABLED } from '../../config/iap';
 
 type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -114,13 +115,16 @@ export default function WalletScreen() {
                     <Text style={styles.heroAmount}>{balance.toFixed(2)}</Text>
                     <Text style={styles.heroCurrency}>AZN</Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.withdrawBtn}
-                    onPress={() => navigation.navigate(Routes.TopUp)}
-                    activeOpacity={0.9}
-                  >
-                    <Text style={styles.withdrawBtnText}>{t('pay.withdrawFunds')}</Text>
-                  </TouchableOpacity>
+                  {/* App Store 3.1.1: iOS-da real-pul balans artırımı düyməsi göstərilmir. */}
+                  {PAYMENTS_ENABLED && (
+                    <TouchableOpacity
+                      style={styles.withdrawBtn}
+                      onPress={() => navigation.navigate(Routes.TopUp)}
+                      activeOpacity={0.9}
+                    >
+                      <Text style={styles.withdrawBtnText}>{t('pay.withdrawFunds')}</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               </LinearGradient>
 

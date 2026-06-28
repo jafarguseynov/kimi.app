@@ -15,6 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import { useUserStore } from '../../store/user.store';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import { useLogout } from '../../hooks/useAuth';
@@ -44,7 +45,7 @@ const BASE_STUDENT_MENU = [
   { id: 'history', icon: 'time-outline', labelKey: 'profileScreen.menuHistory', subKey: 'profileScreen.menuHistorySub', tab: 'self' as MenuTab, route: Routes.ExamHistory },
   { id: 'questions', icon: 'help-circle-outline', labelKey: 'profileScreen.menuQuestions', subKey: 'profileScreen.menuQuestionsSub', tab: 'self' as MenuTab, route: Routes.Achievements },
   { id: 'balance', icon: 'wallet-outline', labelKey: 'profileScreen.menuBalance', subKey: '', tab: 'self' as MenuTab, route: Routes.Wallet },
-  { id: 'subscription', icon: 'diamond-outline', labelKey: 'profileScreen.menuSubscription', subKey: 'profileScreen.menuSubscriptionSub', tab: 'home' as MenuTab, route: Routes.Plans },
+  { id: 'subscription', icon: 'diamond-outline', labelKey: 'profileScreen.menuSubscription', subKey: 'profileScreen.menuSubscriptionSub', tab: 'home' as MenuTab, route: PREMIUM_ENTRY_ROUTE },
   { id: 'goals', icon: 'flag-outline', labelKey: 'profileScreen.menuGoals', subKey: 'profileScreen.menuGoalsSub', tab: 'home' as MenuTab, route: Routes.DailyMissions },
   { id: 'medals', icon: 'trophy-outline', labelKey: 'profileScreen.menuMedals', subKey: '', tab: 'self' as MenuTab, route: Routes.Achievements },
   { id: 'certs', icon: 'ribbon-outline', labelKey: 'profileScreen.menuCerts', subKey: '', tab: 'self' as MenuTab, route: Routes.CertificateList },
@@ -274,7 +275,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
   navigation: NativeStackNavigationProp<any>;
 }) {
   const { t } = useTranslation();
-  const { withdrawals: withdrawVisible } = useMonetization();
+  const { withdrawals: withdrawVisible, subscription: subVisible } = useMonetization();
   const initial = name?.[0]?.toUpperCase() ?? '?';
   const teacherSubjects = subjects?.length ? subjects : [];
   const teacherBio = bio ?? '';
@@ -407,6 +408,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
         <Text style={styles.sectionTitle}>{t('profileScreen.teacherDevTitle')}</Text>
         <View style={progStyles.list}>
           {[
+            { key: 'subscription', icon: 'diamond' as const, title: t('profileScreen.menuSubscription'), sub: t('profileScreen.menuSubscriptionSub'), route: PREMIUM_ENTRY_ROUTE },
             { key: 'class', icon: 'people-circle' as const, title: t('profileScreen.progClassTitle'), sub: t('profileScreen.progClassSub'), route: Routes.TeacherClass, local: true },
             { key: 'students', icon: 'people' as const, title: t('profileScreen.progStudentsTitle'), sub: t('profileScreen.progStudentsSub'), route: Routes.TeacherStudents, local: true },
             { key: 'gradeCalc', icon: 'calculator' as const, title: t('profileScreen.progGradeCalcTitle'), sub: t('profileScreen.progGradeCalcSub'), route: Routes.ClassGradeCalc, local: true },
@@ -417,7 +419,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
             { key: 'verified', icon: 'checkmark-done' as const, title: t('profileScreen.progVerifiedTitle'), sub: t('profileScreen.progVerifiedSub'), route: Routes.VerifiedTeacher },
             { key: 'top', icon: 'trophy' as const, title: t('profileScreen.progTopTitle'), sub: t('profileScreen.progTopSub'), route: Routes.TopTeachersLeaderboard },
             { key: 'premium', icon: 'person-circle' as const, title: t('profileScreen.progPremiumTitle'), sub: t('profileScreen.progPremiumSub'), route: Routes.TeacherProfilePremium },
-          ].map((it) => (
+          ].filter((it) => it.key !== 'subscription' || subVisible).map((it) => (
             <TouchableOpacity
               key={it.key}
               style={progStyles.row}

@@ -7,6 +7,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
+import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import { Colors } from '../../constants/colors';
 import { useExamList, useExamCollections } from '../../hooks/useExams';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -273,7 +274,7 @@ export default function ExamListScreen({ navigation }: Props) {
         t('examList.alertNationalMsg'),
         [
           { text: t('examList.later'), style: 'cancel' },
-          { text: t('examList.openPremium'), onPress: () => rootNav.navigate(Routes.Home, { screen: Routes.CoinShop }) },
+          { text: t('examList.openPremium'), onPress: () => rootNav.navigate(Routes.Home, { screen: PREMIUM_ENTRY_ROUTE }) },
         ],
       );
       return;

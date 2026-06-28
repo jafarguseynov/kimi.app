@@ -14,6 +14,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { PAYMENTS_ENABLED } from '../../config/iap';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -71,33 +72,47 @@ export default function PremiumBenefitsScreen() {
           ))}
         </View>
 
-        {/* Pricing summary */}
-        <View style={styles.pricingCard}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.pricingLabel}>{t('pay.planSelection')}</Text>
-            <Text style={styles.pricingPlan}>{t('pay.annualSub')}</Text>
+        {/* Pricing summary — yalnız ödəniş aktiv platformalarda (Android/Web).
+            iOS-da App Store 3.1.1 səbəbi ilə qiymət göstərilmir. */}
+        {PAYMENTS_ENABLED && (
+          <View style={styles.pricingCard}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pricingLabel}>{t('pay.planSelection')}</Text>
+              <Text style={styles.pricingPlan}>{t('pay.annualSub')}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.pricingPrice}>₼4.99</Text>
+              <Text style={styles.pricingUnit}>{t('pay.perMonth')}</Text>
+            </View>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.pricingPrice}>₼4.99</Text>
-            <Text style={styles.pricingUnit}>{t('pay.perMonth')}</Text>
+        )}
+
+        {/* iOS-da satınalma yoxdur — yalnız-məlumat qeydi */}
+        {!PAYMENTS_ENABLED && (
+          <View style={styles.infoNote}>
+            <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
+            <Text style={styles.infoNoteText}>{t('pay.iosInfoNote')}</Text>
           </View>
-        </View>
+        )}
 
         <View style={{ height: 12 }} />
       </ScrollView>
 
-      {/* Fixed bottom CTA */}
-      <View style={styles.bottomBar}>
-        <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.PaymentMethod)}>
-          <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
-            <Ionicons name="ribbon" size={20} color="#fff" />
-            <Text style={styles.ctaBtnText}>{t('pay.goPremium')}</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-        <Text style={styles.disclaimer}>
-          {t('pay.premiumDisclaimer')}
-        </Text>
-      </View>
+      {/* Fixed bottom CTA — yalnız ödəniş aktiv platformalarda göstərilir.
+          iOS-da satınalma düyməsi / qiymət təşviqi olmamalıdır. */}
+      {PAYMENTS_ENABLED && (
+        <View style={styles.bottomBar}>
+          <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.PaymentMethod)}>
+            <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.ctaBtn}>
+              <Ionicons name="ribbon" size={20} color="#fff" />
+              <Text style={styles.ctaBtnText}>{t('pay.goPremium')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <Text style={styles.disclaimer}>
+            {t('pay.premiumDisclaimer')}
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -155,6 +170,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
     borderWidth: 1, borderColor: Colors.primary + '33',
   },
+  /* iOS info note (satınalma yoxdur) */
+  infoNote: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: Colors.primary + '0D', borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: Colors.primary + '22',
+  },
+  infoNoteText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20, fontWeight: '500' },
+
   pricingLabel: { fontSize: 10, fontWeight: '800', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 },
   pricingPlan: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
   pricingPrice: { fontSize: 24, fontWeight: '900', color: Colors.primary, letterSpacing: -0.5 },

@@ -23,14 +23,14 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jafarstudio.kimi",
-      "buildNumber": "101",
+      "buildNumber": "103",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.jafarstudio.kimi",
-      "versionCode": 101,
+      "versionCode": 104,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

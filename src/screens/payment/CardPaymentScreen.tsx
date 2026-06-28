@@ -12,16 +12,20 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
-import { subscribeTeacher } from '../../api/subscription.api';
+import { subscribeTeacher, subscribeByPlan } from '../../api/subscription.api';
 import { useTranslation } from '../../i18n';
+import { PAYMENTS_ENABLED } from '../../config/iap';
+import PaymentUnavailable from '../../components/PaymentUnavailable';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function CardPaymentScreen() {
+  // App Store 3.1.1: iOS-da kart/ödəniş ekranı açılmır.
+  if (!PAYMENTS_ENABLED) return <PaymentUnavailable />;
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
   const route = useRoute();
-  const params = (route.params ?? {}) as { amount?: number; months?: number; isTeacherSub?: boolean; planName?: string };
+  const params = (route.params ?? {}) as { amount?: number; months?: number; isTeacherSub?: boolean; planName?: string; planKey?: string };
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -31,9 +35,12 @@ export default function CardPaymentScreen() {
   const amountLabel = params.amount != null ? `${Number(params.amount).toFixed(2)} ` : '45.00 ';
 
   const { mutate: activateSub, isPending: activating } = useMutation({
-    mutationFn: () => subscribeTeacher(params.months ?? 1),
+    // Paket key-i varsa onunla abunə ol (müəllim & şagird üçün eyni axın, qiymət/müddət serverdə);
+    // əks halda köhnə müəllim months-əsaslı axın (məs. abunəlik yeniləmə).
+    mutationFn: () => (params.planKey ? subscribeByPlan(params.planKey) : subscribeTeacher(params.months ?? 1)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptionStatus'] });
+      queryClient.invalidateQueries({ queryKey: ['entitlements'] });
       queryClient.invalidateQueries({ queryKey: ['teacherAnalytics'] });
       queryClient.invalidateQueries({ queryKey: ['me'] });
       navigation.navigate(Routes.PaymentSuccess, params);
@@ -45,8 +52,8 @@ export default function CardPaymentScreen() {
 
   const onPay = () => {
     if (activating) return;
-    // Müəllim abunəlik paketidirsə real olaraq aktivləşdir; əks halda (şagird) mock axın.
-    if (params.isTeacherSub) activateSub();
+    // Paket key-i və ya müəllim abunəliyidirsə real olaraq aktivləşdir; əks halda mock axın.
+    if (params.planKey || params.isTeacherSub) activateSub();
     else navigation.navigate(Routes.PaymentSuccess, params);
   };
 

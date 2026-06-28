@@ -19,6 +19,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MarketplaceStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
+import { PAYMENTS_ENABLED } from '../../config/iap';
 import { Colors } from '../../constants/colors';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { createQuestion } from '../../api/marketplace.api';
@@ -308,23 +309,26 @@ export default function AskQuestionScreen({ navigation }: Props) {
                   <Text style={styles.balanceDisplayLabel}>{t('marketplace.currentBalance')}</Text>
                   <Text style={styles.balanceDisplayValue}>{balance.toFixed(2)} ₼</Text>
                 </View>
-                <TouchableOpacity
-                  style={{ width: '100%' }}
-                  activeOpacity={0.9}
-                  onPress={() => {
-                    setShowBalanceModal(false);
-                    navigation.navigate(Routes.TopUp as never);
-                  }}
-                >
-                  <LinearGradient
-                    colors={[Colors.gradientStart, Colors.gradientEnd]}
-                    style={styles.modalPrimaryBtn}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
+                {/* App Store 3.1.1: iOS-da real-pul balans artırımı düyməsi göstərilmir. */}
+                {PAYMENTS_ENABLED && (
+                  <TouchableOpacity
+                    style={{ width: '100%' }}
+                    activeOpacity={0.9}
+                    onPress={() => {
+                      setShowBalanceModal(false);
+                      navigation.navigate(Routes.TopUp as never);
+                    }}
                   >
-                    <Text style={styles.modalPrimaryBtnText}>{t('marketplace.topUp')}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                    <LinearGradient
+                      colors={[Colors.gradientStart, Colors.gradientEnd]}
+                      style={styles.modalPrimaryBtn}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.modalPrimaryBtnText}>{t('marketplace.topUp')}</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
                   style={styles.modalSecondaryBtn}
                   onPress={() => setShowBalanceModal(false)}

@@ -8,6 +8,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { PAYMENTS_ENABLED } from '../../config/iap';
+import PaymentUnavailable from '../../components/PaymentUnavailable';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -27,6 +29,8 @@ const OPTIONS: RenewOption[] = [
 ];
 
 export default function SubscriptionRenewScreen() {
+  // App Store 3.1.1: iOS-da abunəlik yeniləmə / qiymət açılmır.
+  if (!PAYMENTS_ENABLED) return <PaymentUnavailable />;
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
   const [selected, setSelected] = useState<RenewOption['id']>('6mo');

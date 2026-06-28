@@ -1,96 +1,27 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
+import { getPlans, SubscriptionPlan } from '../../api/subscription.api';
+import { PAYMENTS_ENABLED } from '../../config/iap';
+import PaymentUnavailable from '../../components/PaymentUnavailable';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type RoleTab = 'teacher' | 'student';
 
-type Plan = {
-  id: string;
-  badgeKey: string;
-  badgeTone: 'primary' | 'tertiary';
-  titleKey: string;
-  price: number;
-  perMonthKey: string;
-  featuresKey: string;
-  highlight?: boolean;
-  ribbonKey?: string;
-};
-
-const TEACHER_PLANS: Plan[] = [
-  {
-    id: 't-3',
-    badgeKey: 'pay.badgeStandard',
-    badgeTone: 'primary',
-    titleKey: 'pay.planT3Title',
-    price: 75,
-    perMonthKey: 'pay.planT3PerMonth',
-    featuresKey: 'pay.planT3Features',
-  },
-  {
-    id: 't-6',
-    badgeKey: 'pay.badgeMostSelected',
-    badgeTone: 'primary',
-    titleKey: 'pay.planT6Title',
-    price: 99,
-    perMonthKey: 'pay.planT6PerMonth',
-    featuresKey: 'pay.planT6Features',
-    highlight: true,
-    ribbonKey: 'pay.ribbonRecommended',
-  },
-  {
-    id: 't-12',
-    badgeKey: 'pay.badgeBestValue',
-    badgeTone: 'tertiary',
-    titleKey: 'pay.planT12Title',
-    price: 145,
-    perMonthKey: 'pay.planT12PerMonth',
-    featuresKey: 'pay.planT12Features',
-  },
-];
-
-const STUDENT_PLANS: Plan[] = [
-  {
-    id: 's-1',
-    badgeKey: 'pay.badgeStarter',
-    badgeTone: 'primary',
-    titleKey: 'pay.planS1Title',
-    price: 9,
-    perMonthKey: 'pay.planS1PerMonth',
-    featuresKey: 'pay.planS1Features',
-  },
-  {
-    id: 's-3',
-    badgeKey: 'pay.badgeMostSelected',
-    badgeTone: 'primary',
-    titleKey: 'pay.planS3Title',
-    price: 22,
-    perMonthKey: 'pay.planS3PerMonth',
-    featuresKey: 'pay.planS3Features',
-    highlight: true,
-    ribbonKey: 'pay.ribbonRecommended',
-  },
-  {
-    id: 's-12',
-    badgeKey: 'pay.badgeBestValue',
-    badgeTone: 'tertiary',
-    titleKey: 'pay.planS12Title',
-    price: 65,
-    perMonthKey: 'pay.planS12PerMonth',
-    featuresKey: 'pay.planS12Features',
-  },
-];
-
 export default function PlansScreen() {
+  // App Store 3.1.1: iOS-da qiymətli paket siyahısı / satınalma açılmır
+  // (giriş nöqtələri onsuz da PremiumBenefits-ə yönəlir — bu defense-in-depth).
+  if (!PAYMENTS_ENABLED) return <PaymentUnavailable />;
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
@@ -98,15 +29,23 @@ export default function PlansScreen() {
   // plans, students/parents only see student plans (no cross-role browsing).
   const tab: RoleTab = user?.role === 'teacher' ? 'teacher' : 'student';
 
-  const plans = tab === 'teacher' ? TEACHER_PLANS : STUDENT_PLANS;
+  // Paketlər admin paneldən idarə olunur (backend-driven). Audience-ə görə süzülür.
+  const { data: allPlans = [], isLoading } = useQuery({ queryKey: ['subscription-plans'], queryFn: getPlans });
+  const plans = React.useMemo(
+    () =>
+      allPlans
+        .filter((p) => p.isActive && (p.audience === 'all' || p.audience === tab))
+        .sort((a, b) => a.sortOrder - b.sortOrder || a.price - b.price),
+    [allPlans, tab],
+  );
 
-  const selectPlan = (plan: Plan) => {
-    // Plan id formatı "t-6" / "s-12" → ay sayını verir
-    const months = Number(plan.id.split('-')[1]) || 1;
+  const selectPlan = (plan: SubscriptionPlan) => {
+    const months = Math.max(1, Math.round(plan.durationDays / 30));
     navigation.navigate(Routes.PaymentMethod, {
       planId: plan.id,
-      planName: t(plan.titleKey),
-      amount: plan.price,
+      planKey: plan.key,
+      planName: plan.name,
+      amount: Number(plan.price),
       months,
       isTeacherSub: tab === 'teacher',
     });
@@ -144,58 +83,68 @@ export default function PlansScreen() {
         </View>
 
         {/* Plans */}
-        <View style={{ gap: 18 }}>
-          {plans.map((p) => (
-            <View
-              key={p.id}
-              style={[styles.planCard, p.highlight && styles.planCardHighlight]}
-            >
-              {p.ribbonKey && (
-                <View style={styles.ribbon}>
-                  <Text style={styles.ribbonText}>{t(p.ribbonKey)}</Text>
-                </View>
-              )}
+        {isLoading ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator color={Colors.primary} />
+            <Text style={styles.stateText}>{t('common.loading')}</Text>
+          </View>
+        ) : plans.length === 0 ? (
+          <View style={styles.stateBox}>
+            <Ionicons name="pricetags-outline" size={36} color={Colors.textSecondary} />
+            <Text style={styles.stateText}>{t('common.empty')}</Text>
+          </View>
+        ) : (
+          <View style={{ gap: 18 }}>
+            {plans.map((p) => {
+              const highlight = !!p.badge;
+              return (
+                <View
+                  key={p.id}
+                  style={[styles.planCard, highlight && styles.planCardHighlight]}
+                >
+                  {!!p.badge && (
+                    <View style={styles.ribbon}>
+                      <Text style={styles.ribbonText}>{p.badge}</Text>
+                    </View>
+                  )}
 
-              <View style={[
-                styles.planBadge,
-                p.badgeTone === 'tertiary' && styles.planBadgeTertiary,
-              ]}>
-                <Text style={[
-                  styles.planBadgeText,
-                  p.badgeTone === 'tertiary' && styles.planBadgeTextTertiary,
-                ]}>{t(p.badgeKey)}</Text>
-              </View>
+                  <Text style={styles.planTitle}>{p.name}</Text>
 
-              <Text style={styles.planTitle}>{t(p.titleKey)}</Text>
-
-              <View style={styles.priceRow}>
-                <Text style={styles.priceNum}>{p.price}</Text>
-                <Text style={styles.priceCurrency}>AZN</Text>
-              </View>
-              <Text style={styles.pricePerMonth}>{t(p.perMonthKey)}</Text>
-
-              <View style={styles.featuresList}>
-                {t(p.featuresKey).split('|').map((f) => (
-                  <View key={f} style={styles.featureRow}>
-                    <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
-                    <Text style={[styles.featureText, p.highlight && styles.featureTextHighlight]}>{f}</Text>
+                  <View style={styles.priceRow}>
+                    {p.oldPrice != null && (
+                      <Text style={styles.priceOld}>{Number(p.oldPrice)}</Text>
+                    )}
+                    <Text style={styles.priceNum}>{Number(p.price)}</Text>
+                    <Text style={styles.priceCurrency}>AZN</Text>
                   </View>
-                ))}
-              </View>
+                  {!!p.description && <Text style={styles.pricePerMonth}>{p.description}</Text>}
 
-              <View style={{ gap: 8, marginTop: 18 }}>
-                <TouchableOpacity activeOpacity={0.9} onPress={() => selectPlan(p)}>
-                  <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
-                    <Text style={styles.primaryBtnText}>{t('pay.selectPackage')}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.ghostBtn} activeOpacity={0.7} onPress={() => navigation.navigate(Routes.PremiumBenefits)}>
-                  <Text style={styles.ghostBtnText}>{t('pay.moreDetails')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </View>
+                  {(p.features ?? []).length > 0 && (
+                    <View style={styles.featuresList}>
+                      {(p.features ?? []).map((f) => (
+                        <View key={f} style={styles.featureRow}>
+                          <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
+                          <Text style={[styles.featureText, highlight && styles.featureTextHighlight]}>{f}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  <View style={{ gap: 8, marginTop: 18 }}>
+                    <TouchableOpacity activeOpacity={0.9} onPress={() => selectPlan(p)}>
+                      <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+                        <Text style={styles.primaryBtnText}>{t('pay.selectPackage')}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.ghostBtn} activeOpacity={0.7} onPress={() => navigation.navigate(Routes.PremiumBenefits)}>
+                      <Text style={styles.ghostBtnText}>{t('pay.moreDetails')}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <View style={{ height: 16 }} />
       </ScrollView>
@@ -278,6 +227,7 @@ const styles = StyleSheet.create({
   planTitle: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.4 },
 
   priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 14 },
+  priceOld: { fontSize: 18, fontWeight: '600', color: Colors.textSecondary, textDecorationLine: 'line-through' },
   priceNum: { fontSize: 40, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -1 },
   priceCurrency: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary },
   pricePerMonth: { fontSize: 12, color: Colors.textSecondary, marginTop: 4, fontWeight: '500' },
@@ -293,6 +243,11 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 4,
   },
   primaryBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+
+  /* Loading / empty */
+  stateBox: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 48 },
+  stateText: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
+
   ghostBtn: { height: 44, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
   ghostBtnText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
