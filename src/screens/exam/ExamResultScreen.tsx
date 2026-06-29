@@ -27,7 +27,7 @@ function formatTime(seconds: number): string {
 
 export default function ExamResultScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { result, examId: storeExamId, resetExam } = useExamStore();
+  const { result, pending, examId: storeExamId, resetExam } = useExamStore();
   const user = useUserStore((s) => s.user);
   const paramExamId = route.params?.examId;
   const examId = paramExamId ?? storeExamId;
@@ -148,6 +148,30 @@ export default function ExamResultScreen({ navigation, route }: Props) {
   const handleShare = () => {
     Share.share({ message: t('examResult.shareMsg', { correct: correctCount, total }) });
   };
+
+  // Offline-da təqdim edilib, nəticə hələ hesablanmayıb → gözləmə ekranı.
+  if (pending && !result && !fromHistory) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.pendingWrap}>
+          <View style={styles.pendingIcon}>
+            <Ionicons name="cloud-offline-outline" size={48} color={Colors.primary} />
+          </View>
+          <Text style={styles.pendingTitle}>{t('examResult.pendingTitle')}</Text>
+          <Text style={styles.pendingSub}>{t('examResult.pendingSub')}</Text>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => { resetExam(); navigation.popToTop(); }}
+            style={{ marginTop: 24, borderRadius: 999, overflow: 'hidden' }}
+          >
+            <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.pendingBtn}>
+              <Text style={styles.pendingBtnText}>{t('examResult.pendingClose')}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -356,6 +380,15 @@ export default function ExamResultScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  pendingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, gap: 12 },
+  pendingIcon: {
+    width: 96, height: 96, borderRadius: 48, backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 8,
+  },
+  pendingTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center' },
+  pendingSub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 21 },
+  pendingBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 999 },
+  pendingBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

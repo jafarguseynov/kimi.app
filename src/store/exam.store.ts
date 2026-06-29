@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Question, ExamResult } from '../types/exam.types';
 
 export type ExamSubmissionType = 'practice' | 'monthly' | 'national' | 'live';
@@ -19,7 +21,12 @@ interface ExamState {
   answers: Record<string, string>;
   timeRemaining: number;
   durationSeconds: number;
+  // Wall-clock timer üçün: imtahanın başlandığı an (epoch ms). Elektrik/internet
+  // kəsilib açılsa belə qalan vaxt buradan dəqiq hesablanır.
+  startedAt: number | null;
   result: ExamResult | null;
+  // Offline-da submit edilib, nəticə (bal) internet qayıdanda hesablanacaq.
+  pending: boolean;
   submissionType: ExamSubmissionType | null;
   examMeta: ExamMeta | null;
 
@@ -30,44 +37,96 @@ interface ExamState {
   nextQuestion: () => void;
   previousQuestion: () => void;
   decrementTimer: () => void;
+  recomputeTimer: () => void;
   setResult: (result: ExamResult) => void;
+  setPending: (pending: boolean) => void;
   resetExam: () => void;
 }
 
-export const useExamStore = create<ExamState>((set) => ({
-  sessionId: null,
-  examId: null,
-  collectionId: null,
-  questions: [],
-  currentIndex: 0,
-  answers: {},
-  timeRemaining: 0,
-  durationSeconds: 0,
-  result: null,
-  submissionType: null,
-  examMeta: null,
+export const useExamStore = create<ExamState>()(
+  persist(
+    (set, get) => ({
+      sessionId: null,
+      examId: null,
+      collectionId: null,
+      questions: [],
+      currentIndex: 0,
+      answers: {},
+      timeRemaining: 0,
+      durationSeconds: 0,
+      startedAt: null,
+      result: null,
+      pending: false,
+      submissionType: null,
+      examMeta: null,
 
-  // Yeni sessiya başlayanda collectionId-ni təmizlə (adi imtahan bank endpoint-inə getməsin)
-  setSession: (sessionId, examId, questions, durationSeconds, meta = null) =>
-    set({ sessionId, examId, collectionId: null, questions, timeRemaining: durationSeconds, durationSeconds, currentIndex: 0, answers: {}, examMeta: meta }),
+      // Yeni sessiya başlayanda collectionId-ni təmizlə (adi imtahan bank endpoint-inə getməsin)
+      setSession: (sessionId, examId, questions, durationSeconds, meta = null) =>
+        set({
+          sessionId, examId, collectionId: null, questions,
+          timeRemaining: durationSeconds, durationSeconds,
+          startedAt: Date.now(), currentIndex: 0, answers: {},
+          result: null, pending: false, examMeta: meta,
+        }),
 
-  setCollectionId: (collectionId) => set({ collectionId }),
+      setCollectionId: (collectionId) => set({ collectionId }),
 
-  setSubmissionType: (type) => set({ submissionType: type }),
+      setSubmissionType: (type) => set({ submissionType: type }),
 
-  setAnswer: (questionId, optionId) =>
-    set((state) => ({ answers: { ...state.answers, [questionId]: optionId } })),
+      setAnswer: (questionId, optionId) =>
+        set((state) => ({ answers: { ...state.answers, [questionId]: optionId } })),
 
-  nextQuestion: () =>
-    set((state) => ({ currentIndex: state.currentIndex + 1 })),
+      nextQuestion: () =>
+        set((state) => ({ currentIndex: state.currentIndex + 1 })),
 
-  previousQuestion: () =>
-    set((state) => ({ currentIndex: Math.max(0, state.currentIndex - 1) })),
+      previousQuestion: () =>
+        set((state) => ({ currentIndex: Math.max(0, state.currentIndex - 1) })),
 
-  decrementTimer: () =>
-    set((state) => ({ timeRemaining: Math.max(0, state.timeRemaining - 1) })),
+      decrementTimer: () =>
+        set((state) => ({ timeRemaining: Math.max(0, state.timeRemaining - 1) })),
 
-  setResult: (result) => set({ result }),
+      // Wall-clock: qalan vaxtı startedAt-dan yenidən hesabla (resume/açılış üçün).
+      recomputeTimer: () =>
+        set((state) => {
+          if (!state.startedAt || !state.durationSeconds) return {};
+          const elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+          return { timeRemaining: Math.max(0, state.durationSeconds - elapsed) };
+        }),
 
-  resetExam: () => set({ sessionId: null, examId: null, collectionId: null, questions: [], currentIndex: 0, answers: {}, timeRemaining: 0, durationSeconds: 0, result: null, submissionType: null, examMeta: null }),
-}));
+      setResult: (result) => set({ result, pending: false }),
+
+      setPending: (pending) => set({ pending }),
+
+      resetExam: () => set({
+        sessionId: null, examId: null, collectionId: null, questions: [],
+        currentIndex: 0, answers: {}, timeRemaining: 0, durationSeconds: 0,
+        startedAt: null, result: null, pending: false, submissionType: null, examMeta: null,
+      }),
+    }),
+    {
+      name: 'offline:exam-session',
+      storage: createJSONStorage(() => AsyncStorage),
+      // Yalnız gedişatı saxla — nəticəni yox. timeRemaining startedAt-dan bərpa olunur.
+      partialize: (s) => ({
+        sessionId: s.sessionId,
+        examId: s.examId,
+        collectionId: s.collectionId,
+        questions: s.questions,
+        currentIndex: s.currentIndex,
+        answers: s.answers,
+        durationSeconds: s.durationSeconds,
+        startedAt: s.startedAt,
+        submissionType: s.submissionType,
+        examMeta: s.examMeta,
+      }),
+    },
+  ),
+);
+
+/** Bərpa oluna bilən (bitməmiş) imtahan varmı? */
+export function hasResumableExam(): boolean {
+  const s = useExamStore.getState();
+  if (!s.examId || s.questions.length === 0 || !s.startedAt || !s.durationSeconds) return false;
+  const elapsed = Math.floor((Date.now() - s.startedAt) / 1000);
+  return s.durationSeconds - elapsed > 0;
+}

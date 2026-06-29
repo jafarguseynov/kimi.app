@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
-import { Text, TextInput } from 'react-native';
+import { Text, TextInput, Alert } from 'react-native';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -11,6 +11,10 @@ import {
   ensureNotificationChannels,
   addNotificationResponseListener,
 } from './src/utils/push';
+import { useTranslation } from './src/i18n';
+import { useExamStore, hasResumableExam } from './src/store/exam.store';
+import { startNetWatcher, setOnReconnect } from './src/services/offline/netStatus';
+import { flushQueue, setOnResultReady } from './src/services/offline/examQueue';
 
 // Responsivlik: cihazın sistem şrift böyütməsini məhdudlaşdır. Samsung A5 kimi
 // telefonlarda böyük sistem şrifti bütün yazıları daşıdırdı (imtahan ekrana sığmırdı).
@@ -24,6 +28,57 @@ const queryClient = new QueryClient();
 
 // Bildirişə toxunulduqda naviqasiya üçün ref.
 export const navigationRef = createNavigationContainerRef();
+
+/**
+ * Offline imtahan idarəetməsi (provider-lərin içində — tərcümə üçün):
+ * - şəbəkə izləyicisi + reconnect-də submit növbəsini boşalt
+ * - növbə nəticəsi gələndə store-a yaz + istifadəçiyə bildir
+ * - açılışda bitməmiş imtahan varsa "davam et?" soruş
+ */
+function OfflineBootstrap() {
+  const { t } = useTranslation();
+  useEffect(() => {
+    startNetWatcher();
+    setOnReconnect(() => { flushQueue(); });
+    setOnResultReady((result) => {
+      useExamStore.getState().setResult(result);
+      Alert.alert(
+        t('examResult.syncedTitle'),
+        t('examResult.syncedBody', { score: result?.score ?? 0, total: result?.total ?? 0 }),
+      );
+    });
+    // Açılışda gözləyən submitləri göndərməyə çalış.
+    flushQueue();
+
+    const tryResume = () => {
+      if (!hasResumableExam()) return;
+      Alert.alert(
+        t('examSession.resumeTitle'),
+        t('examSession.resumeBody'),
+        [
+          { text: t('examSession.resumeDiscard'), style: 'destructive', onPress: () => useExamStore.getState().resetExam() },
+          {
+            text: t('examSession.resumeContinue'),
+            onPress: () => {
+              if (navigationRef.isReady()) {
+                (navigationRef as any).navigate('Exams', { screen: Routes.ExamSession });
+              }
+            },
+          },
+        ],
+      );
+    };
+
+    // Persist rehydration tamamlandıqdan sonra resume soruş.
+    if (useExamStore.persist.hasHydrated()) {
+      const id = setTimeout(tryResume, 700);
+      return () => clearTimeout(id);
+    }
+    const unsub = useExamStore.persist.onFinishHydration(() => setTimeout(tryResume, 700));
+    return () => { unsub?.(); };
+  }, []);
+  return null;
+}
 
 export default function App() {
   useEffect(() => {
@@ -61,6 +116,7 @@ export default function App() {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <NavigationContainer ref={navigationRef}>
+            <OfflineBootstrap />
             <RootNavigator />
           </NavigationContainer>
         </QueryClientProvider>

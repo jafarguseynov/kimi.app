@@ -15,8 +15,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import { AppState } from 'react-native';
 import { useExamStore } from '../../store/exam.store';
 import { useSubmitExam, useSubmitCollectionTest } from '../../hooks/useExams';
+import { isOnlineNow } from '../../services/offline/netStatus';
+import { enqueueExam } from '../../services/offline/examQueue';
 import { formatTime } from '../../utils/formatters';
 import { hapticLight, hapticMedium, hapticSelection } from '../../utils/haptics';
 import { rf, rs } from '../../utils/responsive';
@@ -40,12 +43,16 @@ export default function ExamSessionScreen({ navigation }: Props) {
     timeRemaining,
     durationSeconds,
     examId,
+    sessionId,
     collectionId,
     submissionType,
+    examMeta,
     setAnswer,
     nextQuestion,
     previousQuestion,
     decrementTimer,
+    recomputeTimer,
+    setPending,
   } = useExamStore();
   const { mutate, isPending } = useSubmitExam();
   const { mutate: mutateCollection, isPending: isPendingCollection } = useSubmitCollectionTest();
@@ -60,7 +67,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
   const progress = questions.length > 0 ? (currentIndex + 1) / questions.length : 0;
   const questionLabel = t('examSession.questionLabel', { n: String(currentIndex + 1).padStart(2, '0') });
 
-  const submit = () => {
+  const submit = async () => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (!examId) {
       Alert.alert(t('examSession.errorTitle'), t('examSession.noSession'));
@@ -68,8 +75,48 @@ export default function ExamSessionScreen({ navigation }: Props) {
       return;
     }
     const timeSpent = Math.max(0, durationSeconds - timeRemaining);
+
+    // Offline (internet/elektrik kəsilməsi) → cavabları diskə yaz, nəticə gözləmə.
+    if (!isOnlineNow()) {
+      await enqueueExam({
+        localId: sessionId ?? `${examId}-${Date.now()}`,
+        kind: collectionId ? 'collection' : 'exam',
+        examId,
+        collectionId: collectionId ?? undefined,
+        questionIds: collectionId ? questions.map((q) => q.id) : undefined,
+        answers,
+        timeSpent,
+        type: submissionType ?? undefined,
+        title: examMeta?.title,
+        queuedAt: Date.now(),
+      });
+      setPending(true);
+      navigation.replace(Routes.ExamResult);
+      return;
+    }
+
     const onSuccess = () => navigation.replace(Routes.ExamResult);
     const onError = (err: any) => {
+      // Şəbəkə xətasıdırsa (timeout/bağlantı) → offline kimi davran, növbəyə yaz.
+      const isNetworkErr = !err?.response;
+      if (isNetworkErr) {
+        enqueueExam({
+          localId: sessionId ?? `${examId}-${Date.now()}`,
+          kind: collectionId ? 'collection' : 'exam',
+          examId,
+          collectionId: collectionId ?? undefined,
+          questionIds: collectionId ? questions.map((q) => q.id) : undefined,
+          answers,
+          timeSpent,
+          type: submissionType ?? undefined,
+          title: examMeta?.title,
+          queuedAt: Date.now(),
+        }).then(() => {
+          setPending(true);
+          navigation.replace(Routes.ExamResult);
+        });
+        return;
+      }
       Alert.alert(t('examSession.errorTitle'), err?.response?.data?.message ?? t('examSession.saveFailed'));
     };
     if (collectionId) {
@@ -102,10 +149,19 @@ export default function ExamSessionScreen({ navigation }: Props) {
   };
 
   useEffect(() => {
+    // Wall-clock: açılışda qalan vaxtı startedAt-dan dəqiq hesabla (resume/sönmə üçün).
+    recomputeTimer();
     timerRef.current = setInterval(() => {
       decrementTimer();
     }, 1000);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    // Tətbiq fona keçib qayıdanda da vaxtı real saata görə düzəlt.
+    const sub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') recomputeTimer();
+    });
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      sub.remove();
+    };
   }, []);
 
   useEffect(() => {
