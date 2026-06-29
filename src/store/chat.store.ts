@@ -22,6 +22,7 @@ export const useChatStore = create<ChatState>((set) => ({
   activeChatId: null,
   setActiveChatId: (id) => set({ activeChatId: id }),
   setMessages: (messages) => set({ messages }),
-  addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
+  addMessage: (msg) =>
+    set((s) => (s.messages.some((m) => m.id === msg.id) ? s : { messages: [...s.messages, msg] })),
   clearChat: () => set({ messages: [], activeChatId: null }),
 }));

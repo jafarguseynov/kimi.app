@@ -15,3 +15,7 @@ export const getOrCreateChat = (userId2: string): Promise<ChatSummary> =>
 
 export const getMessages = (chatId: string) =>
   client.get(`/chat/${chatId}/messages`).then((r) => r.data);
+
+// REST fallback — socket bağlantısı qurulmasa belə mesaj göndərir.
+export const sendChatMessage = (chatId: string, content: string, type: 'text' | 'sticker' = 'text') =>
+  client.post(`/chat/${chatId}/messages`, { content, type }).then((r) => r.data);

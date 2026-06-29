@@ -2765,6 +2765,8 @@ export const az = {
     inputPlaceholder: 'Mesaj yaz...',
     stickerLockedTitle: 'Kilidli stiker',
     stickerLockedBody: 'Bu stikeri açmaq üçün Sikkə dükanından "Stiker paketi" al.',
+    sendFailedTitle: 'Mesaj göndərilmədi',
+    sendFailedBody: 'İnternet bağlantını yoxla və yenidən cəhd et.',
     stickerHint: 'Daha çox stiker üçün Sikkə dükanından "Stiker paketi" al.',
   },
 

@@ -18,6 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import client from '../../api/client';
+import { sendChatMessage } from '../../api/chat.api';
 import { socketService } from '../../services/socket.service';
 import { useChatStore } from '../../store/chat.store';
 import { useAuthStore } from '../../store/auth.store';
@@ -85,10 +86,24 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     }
   }, [messages.length]);
 
+  // Mesajı REST ilə göndərir (socket upgrade bloklansa belə işləyir);
+  // serverdən qayıdan mesaj store-a əlavə olunur (dedup id-ə görə → socket echo dublikat yaratmır).
+  const deliver = async (content: string, type: 'text' | 'sticker' = 'text') => {
+    try {
+      const saved = await sendChatMessage(chatId, content, type);
+      if (saved?.id) addMessage(saved);
+    } catch {
+      // REST uğursuzdursa socket ilə cəhd et (offline/keçici xəta)
+      socketService.sendMessage(chatId, content, type);
+      Alert.alert(t('chat.sendFailedTitle'), t('chat.sendFailedBody'));
+    }
+  };
+
   const send = () => {
-    if (!text.trim()) return;
-    socketService.sendMessage(chatId, text.trim());
+    const content = text.trim();
+    if (!content) return;
     setText('');
+    deliver(content, 'text');
   };
 
   const sendSticker = (emoji: string, premium: boolean) => {
@@ -96,8 +111,8 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       Alert.alert(t('chat.stickerLockedTitle'), t('chat.stickerLockedBody'));
       return;
     }
-    socketService.sendMessage(chatId, emoji, 'sticker');
     setShowStickers(false);
+    deliver(emoji, 'sticker');
   };
 
   const initial = name?.[0]?.toUpperCase() ?? '?';

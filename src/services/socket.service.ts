@@ -10,7 +10,8 @@ class SocketService {
     const baseUrl = API_BASE_URL.replace('/api', '');
     this.socket = io(`${baseUrl}/chat`, {
       auth: { token },
-      transports: ['websocket'],
+      // websocket üstün tutulur, lakin proxy upgrade-i bloklayarsa polling-ə düşür
+      transports: ['websocket', 'polling'],
       autoConnect: true,
     });
 

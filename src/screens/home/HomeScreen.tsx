@@ -418,8 +418,11 @@ export default function HomeScreen({ navigation }: Props) {
                         parent?.navigate(Routes.Profile, { screen: Routes.EditProfile });
                         break;
                       case 'requests':
-                      case 'lessonRequest':
                         parent?.navigate('Booking', { screen: Routes.BookingHistory });
+                        break;
+                      case 'lessonRequest':
+                        // "Tələblər" → açıq dərs sorğuları siyahısı (Home stack daxilində)
+                        navigation.navigate(Routes.AllOpenRequests);
                         break;
                       case 'chat':
                         parent?.navigate('Chat');

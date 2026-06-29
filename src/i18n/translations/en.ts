@@ -2764,6 +2764,8 @@ export const en = {
     inputPlaceholder: 'Write a message...',
     stickerLockedTitle: 'Locked sticker',
     stickerLockedBody: 'To unlock this sticker, buy the "Sticker pack" in the Coin Shop.',
+    sendFailedTitle: 'Message not sent',
+    sendFailedBody: 'Check your internet connection and try again.',
     stickerHint: 'Buy the "Sticker pack" in the Coin Shop for more stickers.',
   },
 
