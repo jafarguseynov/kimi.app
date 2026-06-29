@@ -209,10 +209,10 @@ export default function InterestedTeachersScreen() {
                         if (parent?.navigate) {
                           parent.navigate('Chat', {
                             screen: Routes.ChatRoom,
-                            params: { chatId: chat.id, name: teacher.name },
+                            params: { chatId: chat.id, name: teacher.name, userId: teacher.id },
                           });
                         } else {
-                          navigation.navigate(Routes.ChatRoom as any, { chatId: chat.id, name: teacher.name });
+                          navigation.navigate(Routes.ChatRoom as any, { chatId: chat.id, name: teacher.name, userId: teacher.id });
                         }
                       } catch (e: any) {
                         Alert.alert(t('booking.errorTitle'), e?.response?.data?.message || t('booking.chatOpenFailed'));

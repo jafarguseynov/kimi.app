@@ -262,7 +262,7 @@ export default function BookingHistoryScreen() {
                         if (parent?.navigate) {
                           parent.navigate('Chat', {
                             screen: Routes.ChatRoom,
-                            params: { chatId: chat.id, name: personName },
+                            params: { chatId: chat.id, name: personName, userId: otherUserId },
                           });
                         }
                       } catch (e: any) {

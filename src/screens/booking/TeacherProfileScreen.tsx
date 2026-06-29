@@ -421,7 +421,7 @@ export default function TeacherProfileScreen() {
               const parent = navigation.getParent() as any;
               parent?.navigate('Chat', {
                 screen: Routes.ChatRoom,
-                params: { chatId: chat.id, name: teacher?.name ?? t('booking.defaultTeacher') },
+                params: { chatId: chat.id, name: teacher?.name ?? t('booking.defaultTeacher'), userId: teacherId },
               });
             } catch (e: any) {
               Alert.alert(t('booking.errorTitle'), e?.response?.data?.message || t('booking.chatOpenFailed'));

@@ -119,6 +119,7 @@ export default function ChatListScreen({ navigation }: Props) {
                   navigation.navigate(Routes.ChatRoom, {
                     chatId: item.id,
                     name: other.name,
+                    userId: other.id,
                   })
                 }
                 activeOpacity={0.8}

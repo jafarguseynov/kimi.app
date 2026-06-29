@@ -2767,6 +2767,11 @@ export const az = {
     stickerLockedBody: 'Bu stikeri açmaq üçün Sikkə dükanından "Stiker paketi" al.',
     sendFailedTitle: 'Mesaj göndərilmədi',
     sendFailedBody: 'İnternet bağlantını yoxla və yenidən cəhd et.',
+    offline: 'Oflayn',
+    lastSeenNow: 'son görülmə: indicə',
+    lastSeenMin: 'son görülmə: {{n}} dəq əvvəl',
+    lastSeenHour: 'son görülmə: {{n}} saat əvvəl',
+    lastSeenDate: 'son görülmə: {{date}}',
     stickerHint: 'Daha çox stiker üçün Sikkə dükanından "Stiker paketi" al.',
   },
 

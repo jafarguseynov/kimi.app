@@ -2766,6 +2766,11 @@ export const en = {
     stickerLockedBody: 'To unlock this sticker, buy the "Sticker pack" in the Coin Shop.',
     sendFailedTitle: 'Message not sent',
     sendFailedBody: 'Check your internet connection and try again.',
+    offline: 'Offline',
+    lastSeenNow: 'last seen just now',
+    lastSeenMin: 'last seen {{n}} min ago',
+    lastSeenHour: 'last seen {{n}}h ago',
+    lastSeenDate: 'last seen {{date}}',
     stickerHint: 'Buy the "Sticker pack" in the Coin Shop for more stickers.',
   },
 

@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import client from '../../api/client';
-import { sendChatMessage } from '../../api/chat.api';
+import { sendChatMessage, markChatRead } from '../../api/chat.api';
 import { socketService } from '../../services/socket.service';
 import { useChatStore } from '../../store/chat.store';
 import { useAuthStore } from '../../store/auth.store';
@@ -37,15 +37,19 @@ type Props = {
 };
 
 export default function ChatRoomScreen({ navigation, route }: Props) {
-  const { chatId, name } = route.params as { chatId: string; name: string };
+  const { chatId, name, userId: paramUserId } = route.params as { chatId: string; name: string; userId?: string };
   const { t } = useTranslation();
   const { user } = useUserStore();
   const { token } = useAuthStore();
-  const { messages, setMessages, addMessage } = useChatStore();
+  const { messages, setMessages, addMessage, markReadBy } = useChatStore();
   const [text, setText] = useState('');
   const [showStickers, setShowStickers] = useState(false);
   const [ownsStickerPack, setOwnsStickerPack] = useState(false);
+  const [presence, setPresence] = useState<{ online: boolean; lastSeenAt: string | null }>({ online: false, lastSeenAt: null });
   const listRef = useRef<FlatList>(null);
+
+  // Qarşı tərəfin id-si: route param-dan, yoxsa mesajlardan (göndərəni biz olmayan) götür.
+  const counterpartId = paramUserId ?? messages.find((m) => m.sender.id !== user?.id)?.sender.id ?? null;
 
   useEffect(() => {
     setMessages([]);
@@ -68,17 +72,40 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     if (!token) return;
     socketService.connect(token);
     socketService.joinChat(chatId);
+
     const handler = (msg: any) => {
       if (msg?.chatId && msg.chatId !== chatId) return;
       if (msg?.chat?.id && msg.chat.id !== chatId) return;
       addMessage(msg);
+      // Bu söhbəti aktiv izləyirik → gələn mesajı dərhal "oxundu" işarələ.
+      if (msg?.sender?.id && msg.sender.id !== user?.id) socketService.markRead(chatId);
     };
     socketService.onNewMessage(handler);
+
+    // Oxu qəbzi: qarşı tərəf bu söhbəti oxuyanda öz mesajlarımı "görüldü" et.
+    const readHandler = (p: { chatId: string; readerId: string }) => {
+      if (p.chatId === chatId) markReadBy(p.readerId);
+    };
+    socketService.onMessagesRead(readHandler);
+
+    // Presence: qarşı tərəfin onlayn/son görülmə statusu.
+    const presenceHandler = (p: { userId: string; online: boolean; lastSeenAt: string | null }) => {
+      if (counterpartId && p.userId === counterpartId) setPresence({ online: p.online, lastSeenAt: p.lastSeenAt });
+    };
+    socketService.onPresence(presenceHandler);
+    if (counterpartId) socketService.subscribePresence(counterpartId);
+
+    // Söhbət açılanda oxu qəbzi (socket + REST fallback).
+    socketService.markRead(chatId);
+    markChatRead(chatId);
+
     return () => {
       socketService.offNewMessage(handler);
+      socketService.offMessagesRead(readHandler);
+      socketService.offPresence(presenceHandler);
       socketService.leaveChat(chatId);
     };
-  }, [chatId, token]);
+  }, [chatId, token, counterpartId]);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -117,6 +144,19 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
 
   const initial = name?.[0]?.toUpperCase() ?? '?';
 
+  // "Onlayn" / "son görülmə ..." mətni
+  const presenceLabel = (() => {
+    if (presence.online) return t('chat.online');
+    if (!presence.lastSeenAt) return t('chat.offline');
+    const diffMin = Math.floor((Date.now() - new Date(presence.lastSeenAt).getTime()) / 60000);
+    if (diffMin < 1) return t('chat.lastSeenNow');
+    if (diffMin < 60) return t('chat.lastSeenMin', { n: diffMin });
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return t('chat.lastSeenHour', { n: diffH });
+    const time = new Date(presence.lastSeenAt).toLocaleDateString('az-AZ', { day: '2-digit', month: '2-digit' });
+    return t('chat.lastSeenDate', { date: time });
+  })();
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -130,11 +170,11 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               <LinearGradient colors={GRADIENT} style={styles.headerAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
                 <Text style={styles.headerAvatarInitial}>{initial}</Text>
               </LinearGradient>
-              <View style={styles.onlineDot} />
+              {presence.online && <View style={styles.onlineDot} />}
             </View>
             <View>
               <Text style={styles.headerName}>{name}</Text>
-              <Text style={styles.headerStatus}>{t('chat.online')}</Text>
+              <Text style={[styles.headerStatus, !presence.online && styles.headerStatusOffline]}>{presenceLabel}</Text>
             </View>
           </View>
           <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
@@ -163,6 +203,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
                 isOwn={item.sender.id === user?.id}
                 senderName={item.sender.name}
                 time={new Date(item.createdAt).toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' })}
+                isRead={item.isRead}
               />
             )}
           />
@@ -259,6 +300,7 @@ const styles = StyleSheet.create({
   },
   headerName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
   headerStatus: { fontSize: 12, fontWeight: '600', color: Colors.primary, marginTop: 1 },
+  headerStatusOffline: { color: Colors.textSecondary },
 
   msgList: { paddingVertical: 16, paddingHorizontal: 4 },
 

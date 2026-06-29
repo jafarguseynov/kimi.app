@@ -19,3 +19,7 @@ export const getMessages = (chatId: string) =>
 // REST fallback — socket bağlantısı qurulmasa belə mesaj göndərir.
 export const sendChatMessage = (chatId: string, content: string, type: 'text' | 'sticker' = 'text') =>
   client.post(`/chat/${chatId}/messages`, { content, type }).then((r) => r.data);
+
+// REST fallback — oxu qəbzi (görüldü).
+export const markChatRead = (chatId: string) =>
+  client.post(`/chat/${chatId}/read`).then((r) => r.data).catch(() => null);
