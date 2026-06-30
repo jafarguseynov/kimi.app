@@ -126,6 +126,7 @@ export default function TeacherProfileScreen() {
       teacherId,
       teacherName: teacher?.name,
       teacherSubject: booking.subject ?? teacher?.subjects?.[0],
+      teacherAvatarUrl: teacher?.avatarUrl,
     });
   };
 

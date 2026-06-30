@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,8 +19,9 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { submitReview } from '../../api/booking.api';
+import { getTeacherById } from '../../api/user.api';
 import { useTranslation } from '../../i18n';
 
 // Etiket açarları (dəyişməz identifikator) → tərcümə render zamanı
@@ -37,8 +39,16 @@ const AVATAR_GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradient
 export default function LeaveReviewScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
-  const route = useRoute<RouteProp<{ params: { teacherId?: string; teacherName?: string; teacherSubject?: string; bookingId?: string } }, 'params'>>();
-  const { teacherName = t('booking.defaultTeacher'), teacherSubject = t('booking.defaultTeacher'), teacherId = '', bookingId = '' } = route.params ?? {};
+  const route = useRoute<RouteProp<{ params: { teacherId?: string; teacherName?: string; teacherSubject?: string; bookingId?: string; teacherAvatarUrl?: string } }, 'params'>>();
+  const { teacherName = t('booking.defaultTeacher'), teacherSubject = t('booking.defaultTeacher'), teacherId = '', bookingId = '', teacherAvatarUrl } = route.params ?? {};
+
+  // Şəkil: çağıran ekran ötürübsə onu, yoxsa id ilə serverdən gətir.
+  const { data: fetchedTeacher } = useQuery({
+    queryKey: ['teacherById', teacherId],
+    queryFn: () => getTeacherById(teacherId),
+    enabled: !!teacherId && !teacherAvatarUrl,
+  });
+  const avatarUrl = teacherAvatarUrl ?? fetchedTeacher?.avatarUrl ?? null;
 
   const TAGS = TAG_KEYS.map((k) => t(`booking.${k}`));
 
@@ -91,14 +101,18 @@ export default function LeaveReviewScreen() {
           {/* Teacher info */}
           <View style={styles.teacherSection}>
             <View style={styles.avatarWrap}>
-              <LinearGradient
-                colors={AVATAR_GRADIENT}
-                style={styles.avatar}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <Text style={styles.avatarInitial}>{initial}</Text>
-              </LinearGradient>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} resizeMode="cover" />
+              ) : (
+                <LinearGradient
+                  colors={AVATAR_GRADIENT}
+                  style={styles.avatar}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <Text style={styles.avatarInitial}>{initial}</Text>
+                </LinearGradient>
+              )}
               <View style={styles.verifiedBadge}>
                 <Ionicons name="checkmark-circle" size={16} color="#fff" />
               </View>

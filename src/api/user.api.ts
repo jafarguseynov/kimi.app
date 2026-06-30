@@ -36,6 +36,12 @@ export const getTeachers = (params?: { limit?: number; subject?: string; q?: str
 export const getTeacherAnalytics = () =>
   apiClient.get<TeacherAnalytics>('/user/teacher/analytics').then((r) => r.data);
 
+// Tək müəllimi id ilə gətir (avatar + ad + profil) — rəy ekranında şəkil üçün.
+export const getTeacherById = (id: string) =>
+  apiClient.get<{ id: string; name?: string; avatarUrl?: string | null }>(`/user/teacher/${id}`)
+    .then((r) => r.data)
+    .catch(() => null);
+
 // Müəllim profilinə baxış qeyd et — hər açılışda +1.
 export const recordTeacherView = (teacherId: string) =>
   apiClient.post<{ profileViews?: number }>(`/user/teacher/${teacherId}/view`, {}).then((r) => r.data).catch(() => null);
