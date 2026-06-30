@@ -2970,6 +2970,7 @@ export const en = {
     sendReview: 'Send review',
     cancel: 'Cancel',
     reviewFailed: 'Review not sent. Please try again.',
+    reviewNoticeTitle: '🔴 Notice',
     needBooking: 'Info',
     needBookingMsg: 'A completed booking is required to write a review.',
     reviewDetailHeader: 'Review Details',

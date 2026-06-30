@@ -67,7 +67,7 @@ export default function LeaveReviewScreen() {
     onSuccess: () => navigation.navigate(Routes.ReviewSuccess, { teacherId, teacherName }),
     onError: (err: any) => {
       const reason = err?.response?.data?.message;
-      Alert.alert(t('booking.errorTitle'), reason ? `${reason}` : t('booking.reviewFailed'));
+      Alert.alert(t('booking.reviewNoticeTitle'), reason ? `${reason}` : t('booking.reviewFailed'));
     },
   });
 

@@ -2977,6 +2977,7 @@ export const az = {
     sendReview: 'Rəyi göndər',
     cancel: 'Ləğv et',
     reviewFailed: 'Rəy göndərilmədi. Yenidən cəhd edin.',
+    reviewNoticeTitle: '🔴 Diqqət',
     needBooking: 'Məlumat',
     needBookingMsg: 'Rəy yazmaq üçün tamamlanmış rezervasiya lazımdır.',
     // ReviewDetail

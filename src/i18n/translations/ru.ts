@@ -2970,6 +2970,7 @@ export const ru = {
     sendReview: 'Отправить отзыв',
     cancel: 'Отмена',
     reviewFailed: 'Отзыв не отправлен. Попробуйте снова.',
+    reviewNoticeTitle: '🔴 Внимание',
     needBooking: 'Информация',
     needBookingMsg: 'Для отзыва нужна завершённая бронь.',
     reviewDetailHeader: 'Детали отзыва',
