@@ -2952,8 +2952,8 @@ export const az = {
     sendOrder: 'Sifariş Göndər',
     noTeacherSelected: 'Müəllim seçilməyib',
     back: 'Geri',
-    successTitle: 'Uğurlu!',
-    orderSent: 'Sifarişiniz göndərildi. Müəllim təsdiqləyəcək.',
+    successTitle: '✅ Uğurlu!',
+    orderSent: 'Dərs sorğunuz göndərildi. Müəllim təsdiqləyəcək.',
     errorTitle: 'Xəta',
     orderFailed: 'Sifariş göndərilə bilmədi',
     // LeaveReview
