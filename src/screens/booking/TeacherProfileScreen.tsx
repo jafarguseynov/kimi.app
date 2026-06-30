@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Dimensions,
   Alert,
   Image,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -82,22 +83,33 @@ export default function TeacherProfileScreen() {
     }
   }, [teacher?.id]);
 
-  const { data: slotsData, isLoading } = useQuery<TeacherSlot[]>({
+  const { data: slotsData, isLoading, refetch: refetchSlots } = useQuery<TeacherSlot[]>({
     queryKey: ['teacherSlots', teacherId],
     queryFn: () => getTeacherSlots(teacherId as string).catch(() => [] as TeacherSlot[]),
     enabled: !!teacherId,
   });
 
-  const { data: reviewsData } = useQuery<Review[]>({
+  const { data: reviewsData, refetch: refetchReviews } = useQuery<Review[]>({
     queryKey: ['teacherReviews', teacherId],
     queryFn: () => getTeacherReviews(teacherId as string).catch(() => [] as Review[]),
     enabled: !!teacherId,
   });
 
-  const { data: myBookings = [] } = useQuery({
+  const { data: myBookings = [], refetch: refetchBookings } = useQuery({
     queryKey: ['myBookings'],
     queryFn: () => getStudentBookings().catch(() => []),
   });
+
+  // Aşağı çək-yenilə: rəyləri/reytinqi, vaxtları və sifarişləri yenidən yüklə.
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchSlots(), refetchReviews(), refetchBookings()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchSlots, refetchReviews, refetchBookings]);
 
   const handleWriteReview = () => {
     if (!teacherId) return;
@@ -179,6 +191,9 @@ export default function TeacherProfileScreen() {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary} colors={[Colors.primary]} />
+        }
       >
         {/* Hero */}
         <View style={styles.heroSection}>
