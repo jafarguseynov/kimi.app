@@ -219,10 +219,16 @@ export default function TeacherProfileScreen() {
               <Text style={styles.heroName}>{teacher?.name ?? t('booking.defaultTeacher')}</Text>
               <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
             </View>
-            <View style={styles.ratingPill}>
-              <Ionicons name="star" size={16} color="#F59E0B" />
-              <Text style={styles.ratingVal}>{avgRating.toFixed(1)}</Text>
-              <Text style={styles.ratingCount}>{t('teacherProfile.ratingCountReal', { n: reviewCount })}</Text>
+            <View style={styles.ratingRow}>
+              <View style={styles.ratingPill}>
+                <Ionicons name="star" size={16} color="#F59E0B" />
+                <Text style={styles.ratingVal}>{avgRating.toFixed(1)}</Text>
+                <Text style={styles.ratingCount}>{t('teacherProfile.ratingCountReal', { n: reviewCount })}</Text>
+              </View>
+              <View style={styles.viewsInline}>
+                <Ionicons name="eye-outline" size={14} color={Colors.textSecondary} />
+                <Text style={styles.viewsInlineText}>{viewsCount}</Text>
+              </View>
             </View>
           </View>
         </View>
@@ -260,13 +266,6 @@ export default function TeacherProfileScreen() {
               <Text style={styles.statMeta}>{t('teacherProfile.metaArea')}</Text>
               <Text style={styles.statVal} numberOfLines={2}>{areaLabel}</Text>
             </View>
-          </View>
-          <View style={styles.statCard}>
-            <View style={styles.statIconBox}>
-              <Ionicons name="eye-outline" size={20} color={Colors.primary} />
-            </View>
-            <Text style={styles.statMeta}>{t('teacherProfile.metaViews')}</Text>
-            <Text style={styles.statVal}>{viewsCount}</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statIconBox}>
@@ -509,6 +508,7 @@ const styles = StyleSheet.create({
   heroInfo: { alignItems: 'center', gap: 10 },
   heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   heroName: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ratingPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: Colors.surface, borderRadius: 999,
@@ -519,6 +519,9 @@ const styles = StyleSheet.create({
   },
   ratingVal: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
   ratingCount: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
+  // Reytinqin yanında balaca görüldü sayı.
+  viewsInline: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  viewsInlineText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, width: '100%' },
   statCard: {
