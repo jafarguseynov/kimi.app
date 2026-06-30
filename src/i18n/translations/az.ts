@@ -3046,6 +3046,7 @@ export const az = {
   teacherList: {
     title: 'Müəllim Tap',
     searchPlaceholder: 'Müəllim axtar...',
+    newTeacher: 'Yeni',
     all: 'Hamısı',
     favorites: 'Sevimlilərim',
     clearAll: 'Hamısını təmizlə',

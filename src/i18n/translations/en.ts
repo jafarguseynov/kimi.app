@@ -3036,6 +3036,7 @@ export const en = {
   teacherList: {
     title: 'Find a Teacher',
     searchPlaceholder: 'Search teacher...',
+    newTeacher: 'New',
     all: 'All',
     favorites: 'Favorites',
     clearAll: 'Clear all',

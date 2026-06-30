@@ -43,6 +43,7 @@ interface Teacher {
   age?: number;
   isFeatured?: boolean;
   profileViews?: number; // real profil baxış sayı (backend)
+  ratingCount?: number;  // real rəy sayı (backend)
 }
 
 const CITY_SUGGESTIONS = [
@@ -215,8 +216,9 @@ export default function TeacherListScreen() {
       ? item.subjects.slice(0, 2).join(' • ')
       : t('teacherList.generalSpecialist');
     const price = typeof item.hourlyRate === 'number' && item.hourlyRate > 0 ? item.hourlyRate : 15;
-    const ratingText = typeof item.rating === 'number' && item.rating > 0 ? item.rating.toFixed(1) : '—';
-    const reviewCount = item.reviewCount ?? (45 + ((index * 13) % 180));
+    // Real reytinq + real rəy sayı. Rəy yoxdursa "Yeni" göstər (tire/saxta rəqəm yox).
+    const hasRating = typeof item.rating === 'number' && item.rating > 0;
+    const reviewCount = item.ratingCount ?? 0;
     // Real profil baxış sayı (backend). 1000+ olduqda "1.2k" kimi, az olduqda tam rəqəm.
     const views = item.profileViews ?? 0;
     const viewsLabel = views >= 1000 ? `${(views / 1000).toFixed(1)}k` : String(views);
@@ -281,8 +283,14 @@ export default function TeacherListScreen() {
         <View style={styles.metricsRow}>
           <View style={styles.metricItem}>
             <Ionicons name="star" size={13} color="#F59E0B" />
-            <Text style={styles.metricStrong}>{ratingText}</Text>
-            <Text style={styles.metricMuted}>({reviewCount})</Text>
+            {hasRating ? (
+              <>
+                <Text style={styles.metricStrong}>{item.rating!.toFixed(1)}</Text>
+                <Text style={styles.metricMuted}>({reviewCount})</Text>
+              </>
+            ) : (
+              <Text style={styles.metricMuted}>{t('teacherList.newTeacher')}</Text>
+            )}
           </View>
           <View style={styles.metricItem}>
             <Ionicons name="eye-outline" size={13} color={Colors.textMuted} />

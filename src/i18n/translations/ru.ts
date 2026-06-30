@@ -3036,6 +3036,7 @@ export const ru = {
   teacherList: {
     title: 'Найти учителя',
     searchPlaceholder: 'Поиск учителя...',
+    newTeacher: 'Новый',
     all: 'Все',
     favorites: 'Избранные',
     clearAll: 'Очистить всё',
