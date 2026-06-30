@@ -3106,7 +3106,7 @@ export const en = {
     metaAge: 'AGE',
     ageValue: '{{age}} yrs',
     subjectsLabel: 'SUBJECTS',
-    bioLabel: 'BIOGRAPHY',
+    bioLabel: 'ABOUT ME',
     bioText: 'A mathematics specialist, I\'ve helped 500+ students prepare for exams. In my lessons I apply an individual approach to each student and explain complex topics in the simplest language.',
     availableHours: 'AVAILABLE HOURS',
     currentWeek: 'Current week',

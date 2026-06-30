@@ -3116,7 +3116,7 @@ export const az = {
     metaAge: 'YAŞ',
     ageValue: '{{age}} yaş',
     subjectsLabel: 'FƏNLƏR',
-    bioLabel: 'BİOQRAFİYA',
+    bioLabel: 'HAQQIMDA',
     bioText: 'Riyaziyyat üzrə mütəxəssis, 500+ şagirdə qəbul hazırlığında kömək etmişəm. Dərslərimdə hər bir tələbəyə fərdi yanaşma tətbiq edirəm və mürəkkəb mövzuları ən sadə dillə izah edirəm.',
     availableHours: 'MÖVCUD SAATLAR',
     currentWeek: 'Cari həftə',
