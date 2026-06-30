@@ -18,6 +18,20 @@ export interface Question {
   options: QuestionOption[];
   order: number;
   section?: string; // çoxfənnli sınaqda sualın fənni (blok başlığı)
+  // Düzgün cavab — OFFLINE bitəndə balı dərhal cihazda hesablamaq üçün.
+  // Rəsmi nəticə yenə də serverdə hesablanır; bu yalnız anlıq göstərmə üçündür.
+  correctOptionId?: string;
+}
+
+// Offline yerli baxış (review) — internet yoxdursa nəticə detalını göstərmək üçün.
+export interface LocalReviewItem {
+  questionId: string;
+  text: string;
+  options: QuestionOption[];
+  correctOptionId: string | null;
+  yourOptionId: string | null;
+  isCorrect: boolean;
+  section?: string;
 }
 
 export interface ExamSession {

@@ -20,6 +20,7 @@ import { useExamStore } from '../../store/exam.store';
 import { useSubmitExam, useSubmitCollectionTest } from '../../hooks/useExams';
 import { isOnlineNow } from '../../services/offline/netStatus';
 import { enqueueExam } from '../../services/offline/examQueue';
+import { gradeLocally, saveLocalReview } from '../../services/offline/grade';
 import { formatTime } from '../../utils/formatters';
 import { hapticLight, hapticMedium, hapticSelection } from '../../utils/haptics';
 import { rf, rs } from '../../utils/responsive';
@@ -52,7 +53,7 @@ export default function ExamSessionScreen({ navigation }: Props) {
     previousQuestion,
     decrementTimer,
     recomputeTimer,
-    setPending,
+    setResult,
   } = useExamStore();
   const { mutate, isPending } = useSubmitExam();
   const { mutate: mutateCollection, isPending: isPendingCollection } = useSubmitCollectionTest();
@@ -76,9 +77,21 @@ export default function ExamSessionScreen({ navigation }: Props) {
     }
     const timeSpent = Math.max(0, durationSeconds - timeRemaining);
 
-    // İmtahanı offline növbəyə yaz → "nəticə gözlənilir" ekranı (imtahan ITMİR).
-    const queueOffline = async () => {
-      await enqueueExam({
+    // 1) DƏRHAL yerli nəticə — online/offline fərq etməz. İstifadəçi internet
+    //    gözləmir; bal cihazda hesablanır (server `correctOptionId` göndərib).
+    const { result, review } = gradeLocally(questions, answers, {
+      examTitle: examMeta?.title,
+      subject: examMeta?.subject,
+      timeSpent,
+    });
+    setResult(result);
+    saveLocalReview(examId, review).catch(() => {});
+    navigation.replace(Routes.ExamResult);
+
+    // 2) Arxa planda serverə yaz (rəsmi qeyd: liderlik · sertifikat · analitika).
+    //    Offline və ya xəta olarsa növbəyə yazılır → internet qayıdanda avtomatik sinxron.
+    const queueForSync = () => {
+      enqueueExam({
         localId: sessionId ?? `${examId}-${Date.now()}`,
         kind: collectionId ? 'collection' : 'exam',
         examId,
@@ -90,36 +103,25 @@ export default function ExamSessionScreen({ navigation }: Props) {
         title: examMeta?.title,
         queuedAt: Date.now(),
       }).catch(() => {});
-      setPending(true);
-      navigation.replace(Routes.ExamResult);
     };
 
-    // Offline (internet/elektrik kəsilməsi) → birbaşa növbəyə.
     if (!isOnlineNow()) {
-      await queueOffline();
+      queueForSync();
       return;
     }
-
-    const onSuccess = () => navigation.replace(Routes.ExamResult);
-    const onError = (err: any) => {
-      // Keçici xəta (şəbəkə yoxdur / timeout / server 5xx) → imtahanı itirmə, növbəyə yaz.
+    const onSyncError = (err: any) => {
       const status = err?.response?.status;
       const transient = !err?.response || err?.code === 'ECONNABORTED' || (typeof status === 'number' && status >= 500);
-      if (transient) {
-        queueOffline();
-        return;
-      }
-      // Yalnız həqiqi müştəri xətasında (4xx) bildiriş göstər.
-      Alert.alert(t('examSession.errorTitle'), err?.response?.data?.message ?? t('examSession.saveFailed'));
+      if (transient) queueForSync(); // şəbəkə/server xətası → sonra təkrar sinxron
+      // 4xx-də nəticə artıq göstərilib; sakitcə keç (istifadəçini narahat etmə).
     };
     if (collectionId) {
-      // İmtahan Bankı testi — bank endpoint-inə təqdim et
       mutateCollection(
         { id: collectionId, questionIds: questions.map((q) => q.id), answers, timeSpent },
-        { onSuccess, onError },
+        { onError: onSyncError },
       );
     } else {
-      mutate({ examId, answers, timeSpent, type: submissionType ?? undefined }, { onSuccess, onError });
+      mutate({ examId, answers, timeSpent, type: submissionType ?? undefined }, { onError: onSyncError });
     }
   };
 

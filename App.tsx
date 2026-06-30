@@ -40,12 +40,10 @@ function OfflineBootstrap() {
   useEffect(() => {
     // Onlayn qayıdanda (axios interceptor) → növbəni boşalt.
     setOnReconnect(() => { flushQueue(); });
+    // Nəticə artıq imtahan bitəndə YERLİ göstərilir; növbə yalnız serverə rəsmi
+    // qeyd üçündür. Sinxron tamamlananda sakitcə server nəticəsi ilə yenilə (popup yox).
     setOnResultReady((result) => {
-      useExamStore.getState().setResult(result);
-      Alert.alert(
-        t('examResult.syncedTitle'),
-        t('examResult.syncedBody', { score: result?.score ?? 0, total: result?.total ?? 0 }),
-      );
+      if (useExamStore.getState().examId) useExamStore.getState().setResult(result);
     });
     // Açılışda və hər dəfə tətbiq önə gələndə gözləyən submitləri göndərməyə çalış.
     flushQueue();

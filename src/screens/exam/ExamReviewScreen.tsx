@@ -7,8 +7,39 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { getExamReview, getQuestionSolution, ExamReviewQuestion } from '../../api/certificate.api';
+import { getExamReview, getQuestionSolution, ExamReviewQuestion, ExamReview } from '../../api/certificate.api';
+import { getLocalReview } from '../../services/offline/grade';
 import { useTranslation } from '../../i18n';
+
+// Offline yerli baxışı server formatına çevir (internet yoxdursa göstərmək üçün).
+async function loadReview(examId: string): Promise<ExamReview> {
+  try {
+    return await getExamReview(examId);
+  } catch (e) {
+    const local = await getLocalReview(examId);
+    if (!local || local.length === 0) throw e;
+    let correct = 0, wrong = 0, unanswered = 0;
+    const questions: ExamReviewQuestion[] = local.map((r) => {
+      const status: 'correct' | 'wrong' | 'unanswered' =
+        r.yourOptionId == null ? 'unanswered' : r.isCorrect ? 'correct' : 'wrong';
+      if (status === 'correct') correct += 1; else if (status === 'wrong') wrong += 1; else unanswered += 1;
+      return {
+        id: r.questionId,
+        text: r.text,
+        options: r.options,
+        correctOptionId: r.correctOptionId ?? '',
+        userOptionId: r.yourOptionId,
+        isCorrect: r.isCorrect,
+        status,
+      };
+    });
+    return {
+      examId, examTitle: '', subject: '',
+      score: correct, total: local.length, correct, wrong, unanswered,
+      answered: correct + wrong, questions,
+    };
+  }
+}
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamReview>;
 type Filter = 'all' | 'wrong' | 'correct' | 'unanswered';
@@ -30,7 +61,7 @@ export default function ExamReviewScreen({ route, navigation }: Props) {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['exam-review', examId],
-    queryFn: () => getExamReview(examId),
+    queryFn: () => loadReview(examId),
     retry: false,
   });
 
