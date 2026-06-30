@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { isOnlineNow } from '../../services/offline/netStatus';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
@@ -152,8 +153,14 @@ function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
 
   const toggleSolution = async () => {
     if (open) { setOpen(false); return; }
+    if (explanation) { setOpen(true); return; } // artıq yüklənib (offline da göstər)
+    // İzah AI ilə internet üzərindən hazırlanır. Offline isə bildiriş göstər;
+    // istifadəçi internet qoşulanda yenidən toxunduqda təkrar yoxlanılacaq.
+    if (!isOnlineNow()) {
+      Alert.alert(t('examReview.solutionOfflineTitle'), t('examReview.solutionOffline'));
+      return;
+    }
     setOpen(true);
-    if (explanation) return; // artıq yüklənib
     setLoading(true);
     setFailed(false);
     try {
@@ -161,7 +168,13 @@ function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
       setExplanation(sol.explanation);
       setOptionExpl(sol.optionExplanations ?? null);
     } catch {
-      setFailed(true);
+      // Cəhd zamanı internet kəsildisə → offline bildiriş, paneli bağla (sonra təkrar cəhd).
+      if (!isOnlineNow()) {
+        setOpen(false);
+        Alert.alert(t('examReview.solutionOfflineTitle'), t('examReview.solutionOffline'));
+      } else {
+        setFailed(true);
+      }
     } finally {
       setLoading(false);
     }

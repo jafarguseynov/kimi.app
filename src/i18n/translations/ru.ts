@@ -414,6 +414,8 @@ export const ru = {
     hideSolution: 'Скрыть решение',
     solutionLoading: 'Готовим объяснение…',
     solutionFailed: 'Не удалось загрузить объяснение',
+    solutionOfflineTitle: 'Нет интернета',
+    solutionOffline: 'Объяснение готовит ИИ через интернет. Когда подключитесь к интернету, нажмите на этот вопрос снова, чтобы загрузить объяснение.',
     solutionTitle: 'Решение',
   },
   examResult: {

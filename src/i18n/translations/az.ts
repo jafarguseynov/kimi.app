@@ -415,6 +415,8 @@ export const az = {
     hideSolution: 'Həlli gizlət',
     solutionLoading: 'İzah hazırlanır…',
     solutionFailed: 'İzah yüklənə bilmədi',
+    solutionOfflineTitle: 'İnternet yoxdur',
+    solutionOffline: 'Həll izahı süni intellektlə internet üzərindən hazırlanır. İnternet qoşulanda bu suala yenidən toxunub izahı yoxlayın.',
     solutionTitle: 'Həll',
   },
   examResult: {
