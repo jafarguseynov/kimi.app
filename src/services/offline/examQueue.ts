@@ -73,9 +73,15 @@ export async function flushQueue(): Promise<void> {
         q = q.filter((x) => x.localId !== item.localId);
         await writeQueue(q);
         onResultReady?.(result, item);
-      } catch {
-        // şəbəkə hələ də problemlidir — sonrakı reconnect-də yenidən cəhd
-        break;
+      } catch (err: any) {
+        const status = err?.response?.status;
+        // Şəbəkə xətası / server 5xx → keçici, sonra yenidən cəhd (növbədə qalır).
+        if (!err?.response || (typeof status === 'number' && status >= 500)) {
+          break;
+        }
+        // Daimi müştəri xətası (4xx, məs. sessiya/exam tapılmadı) → sonsuz təkrar olmasın, çıxar.
+        q = q.filter((x) => x.localId !== item.localId);
+        await writeQueue(q);
       }
     }
   } finally {

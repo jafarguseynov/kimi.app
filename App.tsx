@@ -52,6 +52,9 @@ function OfflineBootstrap() {
     const appStateSub = AppState.addEventListener('change', (s) => {
       if (s === 'active') flushQueue();
     });
+    // Dövri yoxlama: tətbiq açıq ikən internet qayıdanda nəticə avtomatik gəlsin
+    // (NetInfo yoxdur → hər 8 saniyədə gözləyən submitləri təkrar cəhd et; növbə boşdursa ucuz).
+    const flushTimer = setInterval(() => { flushQueue(); }, 8000);
 
     const tryResume = () => {
       if (!hasResumableExam()) return;
@@ -75,10 +78,10 @@ function OfflineBootstrap() {
     // Persist rehydration tamamlandıqdan sonra resume soruş.
     if (useExamStore.persist.hasHydrated()) {
       const id = setTimeout(tryResume, 700);
-      return () => { clearTimeout(id); appStateSub.remove(); };
+      return () => { clearTimeout(id); appStateSub.remove(); clearInterval(flushTimer); };
     }
     const unsub = useExamStore.persist.onFinishHydration(() => setTimeout(tryResume, 700));
-    return () => { unsub?.(); appStateSub.remove(); };
+    return () => { unsub?.(); appStateSub.remove(); clearInterval(flushTimer); };
   }, []);
   return null;
 }
