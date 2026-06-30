@@ -233,46 +233,54 @@ export default function TeacherProfileScreen() {
           </View>
         </View>
 
-        {/* Stats grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
+        {/* Açar göstəricilər — təcrübə + qiymət (vurğulu) */}
+        <View style={styles.statsTop}>
+          <View style={styles.highlightCard}>
             <View style={styles.statIconBox}>
               <Ionicons name="time-outline" size={20} color={Colors.primary} />
             </View>
             <Text style={styles.statMeta}>{t('teacherProfile.metaExperience')}</Text>
             <Text style={styles.statVal}>{t('teacherProfile.expValue')}</Text>
           </View>
-          <View style={styles.statCard}>
+          <View style={styles.highlightCard}>
             <View style={styles.statIconBox}>
               <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
             </View>
             <Text style={styles.statMeta}>{t('teacherProfile.metaPrice')}</Text>
             <Text style={styles.statVal}>{t('teacherProfile.priceValue', { rate: teacher?.hourlyRate ?? 15 })}</Text>
           </View>
-          <View style={[styles.statCard, styles.statCardWide]}>
-            <View style={styles.statIconBox}>
-              <Ionicons name="laptop-outline" size={20} color={Colors.primary} />
+        </View>
+
+        {/* Detallar — vahid səliqəli kart (format · ərazi · yaş) */}
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconBox}>
+              <Ionicons name="laptop-outline" size={18} color={Colors.primary} />
             </View>
-            <View>
-              <Text style={styles.statMeta}>{t('teacherProfile.metaFormat')}</Text>
-              <Text style={styles.statVal}>{t('teacherProfile.formatValue')}</Text>
-            </View>
-          </View>
-          <View style={[styles.statCard, styles.statCardWide]}>
-            <View style={styles.statIconBox}>
-              <Ionicons name="location-outline" size={20} color={Colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.statMeta}>{t('teacherProfile.metaArea')}</Text>
-              <Text style={styles.statVal} numberOfLines={2}>{areaLabel}</Text>
+            <View style={styles.infoTextWrap}>
+              <Text style={styles.infoMeta}>{t('teacherProfile.metaFormat')}</Text>
+              <Text style={styles.infoVal}>{t('teacherProfile.formatValue')}</Text>
             </View>
           </View>
-          <View style={styles.statCard}>
-            <View style={styles.statIconBox}>
-              <Ionicons name="person-outline" size={20} color={Colors.primary} />
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconBox}>
+              <Ionicons name="location-outline" size={18} color={Colors.primary} />
             </View>
-            <Text style={styles.statMeta}>{t('teacherProfile.metaAge')}</Text>
-            <Text style={styles.statVal}>{teacher?.age != null ? t('teacherProfile.ageValue', { age: teacher.age }) : t('teacherProfile.notSpecified')}</Text>
+            <View style={styles.infoTextWrap}>
+              <Text style={styles.infoMeta}>{t('teacherProfile.metaArea')}</Text>
+              <Text style={styles.infoVal} numberOfLines={2}>{areaLabel}</Text>
+            </View>
+          </View>
+          <View style={styles.infoDivider} />
+          <View style={styles.infoRow}>
+            <View style={styles.infoIconBox}>
+              <Ionicons name="person-outline" size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.infoTextWrap}>
+              <Text style={styles.infoMeta}>{t('teacherProfile.metaAge')}</Text>
+              <Text style={styles.infoVal}>{teacher?.age != null ? t('teacherProfile.ageValue', { age: teacher.age }) : t('teacherProfile.notSpecified')}</Text>
+            </View>
           </View>
         </View>
 
@@ -541,6 +549,34 @@ const styles = StyleSheet.create({
   },
   statMeta: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.5 },
   statVal: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+
+  // ─── Yenilənmiş səliqəli dizayn ───
+  statsTop: { flexDirection: 'row', gap: 12, width: '100%' },
+  highlightCard: {
+    flex: 1,
+    backgroundColor: Colors.surface, borderRadius: 20, padding: 16, gap: 8,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  infoCard: {
+    width: '100%', marginTop: 12,
+    backgroundColor: Colors.surface, borderRadius: 20,
+    paddingHorizontal: 16,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  infoIconBox: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  infoTextWrap: { flex: 1, gap: 3 },
+  infoMeta: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 },
+  infoVal: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, lineHeight: 20 },
+  infoDivider: { height: 1, backgroundColor: Colors.borderLight, marginLeft: 52 },
 
   section: { width: '100%', gap: 12 },
   sectionLabel: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 2, paddingHorizontal: 4 },
