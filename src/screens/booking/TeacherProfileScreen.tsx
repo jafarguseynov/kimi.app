@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -56,6 +56,8 @@ export default function TeacherProfileScreen() {
   const teacherId: string | undefined = teacher?.id;
   const pushRecent = useRecentTeachersStore((s) => s.push);
   const queryClient = useQueryClient();
+  // Profil baxış sayı — açılışda server +1 edib qaytarır (canlı göstərmək üçün).
+  const [liveViews, setLiveViews] = useState<number | null>(null);
 
   useEffect(() => {
     if (teacher?.id && teacher?.name) {
@@ -73,7 +75,8 @@ export default function TeacherProfileScreen() {
     // Hər açılışda profil baxışını qeyd et (+1) → sonra siyahını yenilə ki,
     // kartdakı baxış sayı dərhal artmış görünsün.
     if (teacher?.id) {
-      recordTeacherView(teacher.id).then(() => {
+      recordTeacherView(teacher.id).then((res) => {
+        if (res?.profileViews != null) setLiveViews(res.profileViews);
         queryClient.invalidateQueries({ queryKey: ['teachers'] });
       });
     }
@@ -128,6 +131,12 @@ export default function TeacherProfileScreen() {
   const topReviews = reviews.slice(0, 2);
   const initial = teacher?.name?.[0]?.toUpperCase() ?? '?';
   const subject = teacher?.subjects?.[0] ?? 'Riyaziyyat';
+  // Fəaliyyət ərazisi (harda dərs deyir) — çox ərazi varsa hamısını birləşdir.
+  const areaLabel = (Array.isArray(teacher?.areaNames) && teacher.areaNames.length)
+    ? teacher.areaNames.join(', ')
+    : (teacher?.areaName || teacher?.city || t('teacherProfile.notSpecified'));
+  // Profil baxış sayı (canlı: açılışda +1 olunmuş dəyər, yoxsa siyahıdan gələn).
+  const viewsCount = liveViews ?? teacher?.profileViews ?? 0;
   const DATE_FALLBACK_DAY = t('teacherProfile.dayFallback');
 
   if (!teacher) {
@@ -196,8 +205,8 @@ export default function TeacherProfileScreen() {
             </View>
             <View style={styles.ratingPill}>
               <Ionicons name="star" size={16} color="#F59E0B" />
-              <Text style={styles.ratingVal}>{teacher?.rating?.toFixed(1) ?? '4.9'}</Text>
-              <Text style={styles.ratingCount}>{t('teacherProfile.ratingCountDemo')}</Text>
+              <Text style={styles.ratingVal}>{avgRating.toFixed(1)}</Text>
+              <Text style={styles.ratingCount}>{t('teacherProfile.ratingCountReal', { n: reviewCount })}</Text>
             </View>
           </View>
         </View>
@@ -227,12 +236,21 @@ export default function TeacherProfileScreen() {
               <Text style={styles.statVal}>{t('teacherProfile.formatValue')}</Text>
             </View>
           </View>
-          <View style={styles.statCard}>
+          <View style={[styles.statCard, styles.statCardWide]}>
             <View style={styles.statIconBox}>
               <Ionicons name="location-outline" size={20} color={Colors.primary} />
             </View>
-            <Text style={styles.statMeta}>{t('teacherProfile.metaCity')}</Text>
-            <Text style={styles.statVal}>{teacher?.city ?? t('teacherProfile.notSpecified')}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.statMeta}>{t('teacherProfile.metaArea')}</Text>
+              <Text style={styles.statVal} numberOfLines={2}>{areaLabel}</Text>
+            </View>
+          </View>
+          <View style={styles.statCard}>
+            <View style={styles.statIconBox}>
+              <Ionicons name="eye-outline" size={20} color={Colors.primary} />
+            </View>
+            <Text style={styles.statMeta}>{t('teacherProfile.metaViews')}</Text>
+            <Text style={styles.statVal}>{viewsCount}</Text>
           </View>
           <View style={styles.statCard}>
             <View style={styles.statIconBox}>
