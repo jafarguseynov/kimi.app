@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import React, { useEffect } from 'react';
-import { Text, TextInput, Alert } from 'react-native';
+import { Text, TextInput, Alert, AppState } from 'react-native';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,7 +13,7 @@ import {
 } from './src/utils/push';
 import { useTranslation } from './src/i18n';
 import { useExamStore, hasResumableExam } from './src/store/exam.store';
-import { startNetWatcher, setOnReconnect } from './src/services/offline/netStatus';
+import { setOnReconnect } from './src/services/offline/netStatus';
 import { flushQueue, setOnResultReady } from './src/services/offline/examQueue';
 
 // Responsivlik: cihazın sistem şrift böyütməsini məhdudlaşdır. Samsung A5 kimi
@@ -38,7 +38,7 @@ export const navigationRef = createNavigationContainerRef();
 function OfflineBootstrap() {
   const { t } = useTranslation();
   useEffect(() => {
-    startNetWatcher();
+    // Onlayn qayıdanda (axios interceptor) → növbəni boşalt.
     setOnReconnect(() => { flushQueue(); });
     setOnResultReady((result) => {
       useExamStore.getState().setResult(result);
@@ -47,8 +47,11 @@ function OfflineBootstrap() {
         t('examResult.syncedBody', { score: result?.score ?? 0, total: result?.total ?? 0 }),
       );
     });
-    // Açılışda gözləyən submitləri göndərməyə çalış.
+    // Açılışda və hər dəfə tətbiq önə gələndə gözləyən submitləri göndərməyə çalış.
     flushQueue();
+    const appStateSub = AppState.addEventListener('change', (s) => {
+      if (s === 'active') flushQueue();
+    });
 
     const tryResume = () => {
       if (!hasResumableExam()) return;
@@ -72,10 +75,10 @@ function OfflineBootstrap() {
     // Persist rehydration tamamlandıqdan sonra resume soruş.
     if (useExamStore.persist.hasHydrated()) {
       const id = setTimeout(tryResume, 700);
-      return () => clearTimeout(id);
+      return () => { clearTimeout(id); appStateSub.remove(); };
     }
     const unsub = useExamStore.persist.onFinishHydration(() => setTimeout(tryResume, 700));
-    return () => { unsub?.(); };
+    return () => { unsub?.(); appStateSub.remove(); };
   }, []);
   return null;
 }

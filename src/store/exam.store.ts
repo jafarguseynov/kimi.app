@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { secureChunkStorage, STORAGE_KEYS } from '../services/offline/storage';
 import { Question, ExamResult } from '../types/exam.types';
 
 export type ExamSubmissionType = 'practice' | 'monthly' | 'national' | 'live';
@@ -104,8 +104,8 @@ export const useExamStore = create<ExamState>()(
       }),
     }),
     {
-      name: 'offline:exam-session',
-      storage: createJSONStorage(() => AsyncStorage),
+      name: STORAGE_KEYS.examSession,
+      storage: createJSONStorage(() => secureChunkStorage),
       // Yalnız gedişatı saxla — nəticəni yox. timeRemaining startedAt-dan bərpa olunur.
       partialize: (s) => ({
         sessionId: s.sessionId,
