@@ -13,6 +13,9 @@ import { useTranslation } from '../../i18n';
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamReview>;
 type Filter = 'all' | 'wrong' | 'correct' | 'unanswered';
 
+// Variant hərfi mövqeyə görə (imtahan ekranı ilə eyni) — A,B,C,D ardıcıl.
+const REVIEW_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
 // Sualın statusunu müəyyən et (köhnə backend `status` göndərməsə də işləsin).
 function qStatus(q: ExamReviewQuestion): 'correct' | 'wrong' | 'unanswered' {
   if (q.status) return q.status;
@@ -157,9 +160,11 @@ function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
       <Text style={styles.qText}>{q.text}</Text>
 
       <View style={{ gap: 8, marginTop: 12 }}>
-        {q.options.map((opt) => {
+        {q.options.map((opt, oIndex) => {
           const isUser = q.userOptionId === opt.id;
           const isCorrect = q.correctOptionId === opt.id;
+          // Hərf MÖVQEYƏ görədir (A,B,C,D ardıcıl) — id-yə görə yox, imtahan ekranı ilə eyni.
+          const letter = REVIEW_LETTERS[oIndex] ?? opt.id.toUpperCase();
           let bgColor = Colors.surfaceLow;
           let borderColor = Colors.borderLight;
           let textColor = Colors.textPrimary;
@@ -182,7 +187,7 @@ function QuestionCard({ q, index }: { q: ExamReviewQuestion; index: number }) {
             <View key={opt.id}>
               <View style={[styles.optionRow, { backgroundColor: bgColor, borderColor }]}>
                 <View style={[styles.optionLetter, { borderColor }]}>
-                  <Text style={[styles.optionLetterText, { color: textColor }]}>{opt.id.toUpperCase()}</Text>
+                  <Text style={[styles.optionLetterText, { color: textColor }]}>{letter}</Text>
                 </View>
                 <Text style={[styles.optionText, { color: textColor, fontWeight: isCorrect || isUser ? '700' : '500' }]}>
                   {opt.text}
