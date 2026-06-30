@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import { APP_VERSION_URL } from '../constants/config';
+import { useExamStore } from '../store/exam.store';
 
 // expo-updates native modulu (ExpoUpdates) yalnız EAS build-də mövcuddur.
 // Dev / run:ios build-ində olmaya bilər — statik import açılışda crash verir,
@@ -67,7 +68,18 @@ export function useAppUpdate() {
         const check = await Updates.checkForUpdateAsync();
         if (check.isAvailable) {
           await Updates.fetchUpdateAsync();
-          if (!cancelled) setOtaReady(true);
+          if (cancelled) return;
+          // Yeni bundle endi. İstifadəçi köhnə versiyada "ilişib qalmasın" deyə
+          // TƏHLÜKƏSİZ andda DƏRHAL tətbiq et (banner tıklaması gözləmədən).
+          // Aktiv/bitməmiş imtahan və ya gözləyən offline nəticə varsa reload ETMƏ
+          // (gedişat itməsin) → banner göstər, istifadəçi özü uyğun anda tətbiq etsin.
+          const s = useExamStore.getState();
+          const busy = (!!s.examId && s.questions.length > 0) || s.pending;
+          if (!busy && Updates?.reloadAsync) {
+            await Updates.reloadAsync(); // tətbiq dərhal yeni koda keçir
+            return;
+          }
+          setOtaReady(true);
         }
       } catch {
         // sükutla keç — update mexanizmi UX-i bloklamamalıdır
