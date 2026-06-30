@@ -13,6 +13,7 @@ export interface Teacher {
   isFeatured?: boolean;
   isVerified?: boolean;
   offersFreeDemo?: boolean;
+  profileViews?: number; // real profil baxış sayı (backend)
 }
 
 export interface TeacherAnalytics {

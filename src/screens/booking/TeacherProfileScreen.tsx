@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getTeacherSlots, getTeacherReviews, getStudentBookings, TeacherSlot, Review } from '../../api/booking.api';
@@ -55,6 +55,7 @@ export default function TeacherProfileScreen() {
   const teacher = route.params?.teacher;
   const teacherId: string | undefined = teacher?.id;
   const pushRecent = useRecentTeachersStore((s) => s.push);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (teacher?.id && teacher?.name) {
@@ -69,8 +70,13 @@ export default function TeacherProfileScreen() {
         isVerified: teacher.isVerified,
       });
     }
-    // Hər açılışda profil baxışını qeyd et (+1).
-    if (teacher?.id) recordTeacherView(teacher.id);
+    // Hər açılışda profil baxışını qeyd et (+1) → sonra siyahını yenilə ki,
+    // kartdakı baxış sayı dərhal artmış görünsün.
+    if (teacher?.id) {
+      recordTeacherView(teacher.id).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['teachers'] });
+      });
+    }
   }, [teacher?.id]);
 
   const { data: slotsData, isLoading } = useQuery<TeacherSlot[]>({

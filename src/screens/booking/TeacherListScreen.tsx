@@ -42,6 +42,7 @@ interface Teacher {
   gender?: 'male' | 'female';
   age?: number;
   isFeatured?: boolean;
+  profileViews?: number; // real profil baxış sayı (backend)
 }
 
 const CITY_SUGGESTIONS = [
@@ -216,7 +217,9 @@ export default function TeacherListScreen() {
     const price = typeof item.hourlyRate === 'number' && item.hourlyRate > 0 ? item.hourlyRate : 15;
     const ratingText = typeof item.rating === 'number' && item.rating > 0 ? item.rating.toFixed(1) : '—';
     const reviewCount = item.reviewCount ?? (45 + ((index * 13) % 180));
-    const viewsCount = (((index * 91) % 30) / 10 + 0.5).toFixed(1);
+    // Real profil baxış sayı (backend). 1000+ olduqda "1.2k" kimi, az olduqda tam rəqəm.
+    const views = item.profileViews ?? 0;
+    const viewsLabel = views >= 1000 ? `${(views / 1000).toFixed(1)}k` : String(views);
     const cityLabel = item.city ?? 'Bakı';
     const showOnline = item.isOnline || item.format === 'online';
     const showInPerson = !showOnline && item.format === 'in-person';
@@ -283,7 +286,7 @@ export default function TeacherListScreen() {
           </View>
           <View style={styles.metricItem}>
             <Ionicons name="eye-outline" size={13} color={Colors.textMuted} />
-            <Text style={styles.metricMuted}>{viewsCount}k</Text>
+            <Text style={styles.metricMuted}>{viewsLabel}</Text>
           </View>
         </View>
 
