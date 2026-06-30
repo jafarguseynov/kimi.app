@@ -76,8 +76,8 @@ export default function ExamSessionScreen({ navigation }: Props) {
     }
     const timeSpent = Math.max(0, durationSeconds - timeRemaining);
 
-    // Offline (internet/elektrik kəsilməsi) → cavabları diskə yaz, nəticə gözləmə.
-    if (!isOnlineNow()) {
+    // İmtahanı offline növbəyə yaz → "nəticə gözlənilir" ekranı (imtahan ITMİR).
+    const queueOffline = async () => {
       await enqueueExam({
         localId: sessionId ?? `${examId}-${Date.now()}`,
         kind: collectionId ? 'collection' : 'exam',
@@ -89,34 +89,27 @@ export default function ExamSessionScreen({ navigation }: Props) {
         type: submissionType ?? undefined,
         title: examMeta?.title,
         queuedAt: Date.now(),
-      });
+      }).catch(() => {});
       setPending(true);
       navigation.replace(Routes.ExamResult);
+    };
+
+    // Offline (internet/elektrik kəsilməsi) → birbaşa növbəyə.
+    if (!isOnlineNow()) {
+      await queueOffline();
       return;
     }
 
     const onSuccess = () => navigation.replace(Routes.ExamResult);
     const onError = (err: any) => {
-      // Şəbəkə xətasıdırsa (timeout/bağlantı) → offline kimi davran, növbəyə yaz.
-      const isNetworkErr = !err?.response;
-      if (isNetworkErr) {
-        enqueueExam({
-          localId: sessionId ?? `${examId}-${Date.now()}`,
-          kind: collectionId ? 'collection' : 'exam',
-          examId,
-          collectionId: collectionId ?? undefined,
-          questionIds: collectionId ? questions.map((q) => q.id) : undefined,
-          answers,
-          timeSpent,
-          type: submissionType ?? undefined,
-          title: examMeta?.title,
-          queuedAt: Date.now(),
-        }).then(() => {
-          setPending(true);
-          navigation.replace(Routes.ExamResult);
-        });
+      // Keçici xəta (şəbəkə yoxdur / timeout / server 5xx) → imtahanı itirmə, növbəyə yaz.
+      const status = err?.response?.status;
+      const transient = !err?.response || err?.code === 'ECONNABORTED' || (typeof status === 'number' && status >= 500);
+      if (transient) {
+        queueOffline();
         return;
       }
+      // Yalnız həqiqi müştəri xətasında (4xx) bildiriş göstər.
       Alert.alert(t('examSession.errorTitle'), err?.response?.data?.message ?? t('examSession.saveFailed'));
     };
     if (collectionId) {
