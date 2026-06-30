@@ -4,10 +4,27 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import Constants from 'expo-constants';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 
+// expo-updates yalnız real build-də var → təhlükəsiz require.
+let Updates: any = null;
+try { Updates = require('expo-updates'); } catch { Updates = null; }
+
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+// Cari işləyən bundle göstəricisi (diaqnoz üçün): tarix + qısa id, yoxdursa "embedded".
+function otaInfo(): string {
+  try {
+    if (Updates?.createdAt) {
+      const d = new Date(Updates.createdAt);
+      const id = (Updates.updateId || '').slice(0, 6);
+      return `OTA ${d.getDate()}.${d.getMonth() + 1} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}${id ? ` · ${id}` : ''}`;
+    }
+  } catch { /* ignore */ }
+  return 'embedded';
+}
 
 type FeatureIcon = 'school-outline' | 'sparkles-outline' | 'bar-chart-outline' | 'people-outline';
 type LinkIcon = 'document-text-outline' | 'shield-outline' | 'mail-outline' | 'star-outline';
@@ -52,7 +69,7 @@ export default function AboutAppScreen() {
           </LinearGradient>
           <Text style={styles.heroAppName}>Kimi.az</Text>
           <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>v1.0.0 (100)</Text>
+            <Text style={styles.versionText}>v{Constants.expoConfig?.version ?? '1.1.2'} · {otaInfo()}</Text>
           </View>
           <Text style={styles.heroTagline}>{t('aboutApp.tagline')}</Text>
         </View>
