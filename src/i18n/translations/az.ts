@@ -3099,6 +3099,14 @@ export const az = {
 
   teacherProfile: {
     header: 'Müəllim Profili',
+    menuShare: 'Profili paylaş',
+    menuReport: 'Şikayət et',
+    shareMsg: '{{name}} ({{subject}}) — kimi.az tətbiqində müəllim profilinə bax.',
+    reportConfirmTitle: 'Müəllimi şikayət et',
+    reportConfirmMsg: 'Bu müəllim profilini qaydalara zidd hesab edirsiniz? Şikayətiniz moderatorlara göndəriləcək.',
+    reportDoneTitle: 'Şikayət',
+    reportDoneMsg: 'Şikayətiniz qeydə alındı. Moderatorlar yoxlayacaq. Təşəkkürlər.',
+    reportFailed: 'Şikayət göndərilmədi. Yenidən cəhd edin.',
     notFound: 'Müəllim məlumatı tapılmadı',
     notFoundSub: 'Müəllim siyahısından bir müəllim seçin',
     ratingCountDemo: '(120 rəy)',

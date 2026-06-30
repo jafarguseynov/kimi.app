@@ -3089,6 +3089,14 @@ export const ru = {
 
   teacherProfile: {
     header: 'Профиль учителя',
+    menuShare: 'Поделиться профилем',
+    menuReport: 'Пожаловаться',
+    shareMsg: '{{name}} ({{subject}}) — посмотрите профиль учителя в приложении kimi.az.',
+    reportConfirmTitle: 'Пожаловаться на учителя',
+    reportConfirmMsg: 'Считаете этот профиль учителя неприемлемым? Ваша жалоба будет отправлена модераторам.',
+    reportDoneTitle: 'Жалоба',
+    reportDoneMsg: 'Ваша жалоба принята. Модераторы её рассмотрят. Спасибо.',
+    reportFailed: 'Жалоба не отправлена. Попробуйте снова.',
     notFound: 'Данные учителя не найдены',
     notFoundSub: 'Выберите учителя из списка',
     ratingCountDemo: '(120 отзывов)',

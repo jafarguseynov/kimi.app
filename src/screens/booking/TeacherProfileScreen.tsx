@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   RefreshControl,
+  Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +20,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { getTeacherSlots, getTeacherReviews, getStudentBookings, TeacherSlot, Review } from '../../api/booking.api';
 import { getOrCreateChat } from '../../api/chat.api';
-import { recordTeacherView } from '../../api/user.api';
+import { recordTeacherView, reportContent } from '../../api/user.api';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
@@ -130,6 +131,45 @@ export default function TeacherProfileScreen() {
     });
   };
 
+  // Profili paylaş.
+  const handleShareProfile = () => {
+    Share.share({
+      message: t('teacherProfile.shareMsg', {
+        name: teacher?.name ?? t('booking.defaultTeacher'),
+        subject: teacher?.subjects?.[0] ?? '',
+      }),
+    }).catch(() => {});
+  };
+
+  // Müəllimi şikayət et (moderation).
+  const handleReport = () => {
+    if (!teacherId) return;
+    Alert.alert(t('teacherProfile.reportConfirmTitle'), t('teacherProfile.reportConfirmMsg'), [
+      { text: t('booking.cancel'), style: 'cancel' },
+      {
+        text: t('teacherProfile.menuReport'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await reportContent({ targetId: teacherId, targetType: 'user', reason: 'teacher_profile' });
+            Alert.alert(t('teacherProfile.reportDoneTitle'), t('teacherProfile.reportDoneMsg'));
+          } catch (e: any) {
+            Alert.alert(t('teacherProfile.reportDoneTitle'), e?.response?.data?.message ?? t('teacherProfile.reportFailed'));
+          }
+        },
+      },
+    ]);
+  };
+
+  // Üç nöqtə menyusu.
+  const handleMenu = () => {
+    Alert.alert(teacher?.name ?? t('teacherProfile.header'), undefined, [
+      { text: t('teacherProfile.menuShare'), onPress: handleShareProfile },
+      { text: t('teacherProfile.menuReport'), style: 'destructive', onPress: handleReport },
+      { text: t('booking.cancel'), style: 'cancel' },
+    ]);
+  };
+
   const slots: TeacherSlot[] = Array.isArray(slotsData) ? slotsData : [];
   const reviews: Review[] = Array.isArray(reviewsData) ? reviewsData : [];
   const displaySlots = slots.slice(0, 4);
@@ -183,7 +223,7 @@ export default function TeacherProfileScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('teacherProfile.header')}</Text>
-        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
+        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={handleMenu}>
           <Ionicons name="ellipsis-vertical" size={22} color={Colors.primary} />
         </TouchableOpacity>
       </View>

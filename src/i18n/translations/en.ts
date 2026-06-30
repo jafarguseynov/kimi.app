@@ -3089,6 +3089,14 @@ export const en = {
 
   teacherProfile: {
     header: 'Teacher Profile',
+    menuShare: 'Share profile',
+    menuReport: 'Report',
+    shareMsg: '{{name}} ({{subject}}) — check out this teacher on the kimi.az app.',
+    reportConfirmTitle: 'Report teacher',
+    reportConfirmMsg: 'Do you find this teacher profile inappropriate? Your report will be sent to moderators.',
+    reportDoneTitle: 'Report',
+    reportDoneMsg: 'Your report has been received. Moderators will review it. Thank you.',
+    reportFailed: 'Report not sent. Please try again.',
     notFound: 'Teacher info not found',
     notFoundSub: 'Pick a teacher from the list',
     ratingCountDemo: '(120 reviews)',

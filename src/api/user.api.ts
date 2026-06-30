@@ -42,6 +42,10 @@ export const getTeacherById = (id: string) =>
     .then((r) => r.data)
     .catch(() => null);
 
+// Məzmun/istifadəçi şikayəti (moderation) — POST /report.
+export const reportContent = (data: { targetId: string; targetType: string; reason: string }) =>
+  apiClient.post('/report', data).then((r) => r.data);
+
 // Müəllim profilinə baxış qeyd et — hər açılışda +1.
 export const recordTeacherView = (teacherId: string) =>
   apiClient.post<{ profileViews?: number }>(`/user/teacher/${teacherId}/view`, {}).then((r) => r.data).catch(() => null);
