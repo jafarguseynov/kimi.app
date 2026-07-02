@@ -31,6 +31,8 @@ import { UserStats } from '../../types/dashboard.types';
 import { Switch } from 'react-native';
 import { LanguageChips } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
+import { useBadges } from '../../hooks/useBadges';
+import UnreadDot from '../../components/common/UnreadDot';
 import { useMonetization } from '../../store/featureFlag.store';
 import { rs } from '../../utils/responsive';
 
@@ -95,6 +97,7 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
 
   const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
   const { data: certs = [] } = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
+  const badges = useBadges();
 
   const totalXp = React.useMemo(() => {
     const examXp = results.reduce((s, r) => s + r.score * 10, 0);
@@ -232,6 +235,9 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
           >
             <View style={styles.menuIconBox}>
               <Ionicons name={item.icon} size={20} color={Colors.primary} />
+              {item.id === 'certs' && badges.certificates > 0 && (
+                <UnreadDot count={1} style={{ position: 'absolute', top: -3, right: -3 }} />
+              )}
             </View>
             <View style={styles.menuItemBody}>
               <Text style={styles.menuItemLabel}>{t(item.labelKey)}</Text>
@@ -276,6 +282,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
 }) {
   const { t } = useTranslation();
   const { withdrawals: withdrawVisible, subscription: subVisible } = useMonetization();
+  const badges = useBadges();
   const initial = name?.[0]?.toUpperCase() ?? '?';
   const teacherSubjects = subjects?.length ? subjects : [];
   const teacherBio = bio ?? '';
@@ -439,6 +446,9 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
             >
               <View style={progStyles.iconWrap}>
                 <Ionicons name={it.icon} size={20} color={Colors.primary} />
+                {it.key === 'students' && badges.students > 0 && (
+                  <UnreadDot count={1} style={{ position: 'absolute', top: -3, right: -3 }} />
+                )}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={progStyles.rowTitle}>{it.title}</Text>

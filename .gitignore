@@ -18,6 +18,13 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# Firebase Admin SDK / FCM service-account keys — SİRR, HEÇ VAXT commit etmə.
+# (google-services.json Android client config-dir və commit oluna bilər — bura daxil deyil.)
+*firebase-adminsdk*.json
+*service-account*.json
+service-account*.json
+google-service-account*.json
+
 # Metro
 .metro-health-check*
 
@@ -29,6 +36,9 @@ yarn-error.*
 # macOS
 .DS_Store
 *.pem
+# İstisna: Let's Encrypt kök sertifikatları APK-ya daxil olmalıdır (köhnə Android TLS fix)
+!certs/isrg_root_x1.pem
+!certs/isrg_root_x2.pem
 
 # local env files
 .env*.local

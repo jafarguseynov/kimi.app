@@ -17,6 +17,8 @@ import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useLogout } from '../../hooks/useAuth';
 import { useSettingsStore } from '../../store/settings.store';
+import { requestAndRegister } from '../../utils/push';
+import { savePushToken } from '../../api/notification.api';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -27,6 +29,22 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const logout = useLogout();
   const { pushEnabled, emailEnabled, setPushEnabled, setEmailEnabled, language } = useSettingsStore();
+
+  // Bildiriş açarı: söndürüləndə server tokeni silinir (push getməz), yandırılanda
+  // icazə istənir + token yenidən qeyd olunur. Beləcə "söndürsə push gəlməsin" işləyir.
+  const onTogglePush = async (value: boolean) => {
+    setPushEnabled(value);
+    try {
+      if (value) {
+        const { token } = await requestAndRegister();
+        await savePushToken(token ?? null);
+      } else {
+        await savePushToken(null);
+      }
+    } catch {
+      /* şəbəkə xətası — dəyər lokal saxlanılır, sonra sinxronlaşacaq */
+    }
+  };
 
   const name = user?.name ?? t('profileSettings.defaultName');
   const initial = name[0]?.toUpperCase() ?? '?';
@@ -96,7 +114,7 @@ export default function SettingsScreen() {
             </View>
             <Switch
               value={pushEnabled}
-              onValueChange={setPushEnabled}
+              onValueChange={onTogglePush}
               trackColor={{ false: Colors.surfaceContainer, true: Colors.primary }}
               thumbColor="#fff"
             />

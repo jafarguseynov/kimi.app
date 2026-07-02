@@ -10,6 +10,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { getCertificates, type Certificate } from '../../api/certificate.api';
 import { useTranslation } from '../../i18n';
+import { useMarkBadgeSeen } from '../../hooks/useBadges';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const PAGE_SIZE = 6;
@@ -36,6 +37,7 @@ function recent30Count(certs: Certificate[]) {
 
 export default function CertificateListScreen({ navigation }: Props) {
   const { t } = useTranslation();
+  const markSeen = useMarkBadgeSeen();
   const [certs, setCerts] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,7 +61,8 @@ export default function CertificateListScreen({ navigation }: Props) {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, []),
+      markSeen('certificates');
+    }, [markSeen]),
   );
 
   const newCount = recent30Count(certs);

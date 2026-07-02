@@ -164,7 +164,7 @@ export default function LearningGroupDetailScreen() {
       {/* Body */}
       {tab === 'chat' && (
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
         >

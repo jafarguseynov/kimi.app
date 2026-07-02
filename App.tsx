@@ -10,7 +10,11 @@ import { Routes } from './src/constants/routes';
 import {
   ensureNotificationChannels,
   addNotificationResponseListener,
+  refreshTokenIfGranted,
 } from './src/utils/push';
+import { savePushToken } from './src/api/notification.api';
+import { useAuthStore } from './src/store/auth.store';
+import { useSettingsStore } from './src/store/settings.store';
 import { useTranslation } from './src/i18n';
 import { useExamStore, hasResumableExam } from './src/store/exam.store';
 import { setOnReconnect } from './src/services/offline/netStatus';
@@ -85,6 +89,27 @@ function OfflineBootstrap() {
 }
 
 export default function App() {
+  const authToken = useAuthStore((s) => s.token);
+
+  // Daxil olmuş istifadəçi üçün push tokenini hər açılışda səssiz yenilə (dialoq açmadan).
+  // Beləcə onboarding-i push əlavə olunmadan keçən köhnə istifadəçilər və tokeni rotasiya
+  // olanlar da serverdə güncəl qalır. İstifadəçi bildirişi söndürübsə (pushEnabled=false)
+  // token göndərmirik → push getmir.
+  useEffect(() => {
+    if (!authToken) return;
+    let cancelled = false;
+    (async () => {
+      // settings hydrate bitməmişsə pushEnabled default true-dur; söndürülübsə yenilə etmə.
+      const st = useSettingsStore.getState();
+      if (st.hydrated && st.pushEnabled === false) return;
+      const token = await refreshTokenIfGranted();
+      if (!cancelled && token) {
+        savePushToken(token).catch(() => {});
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [authToken]);
+
   useEffect(() => {
     // Özəl səsli Android kanalını əvvəlcədən qur.
     ensureNotificationChannels();
@@ -95,7 +120,19 @@ export default function App() {
       try {
         switch (data?.type) {
           case 'chat_message':
-            navigationRef.navigate(Routes.ChatList as never);
+            // Birbaşa həmin söhbəti aç (chatId varsa); yoxdursa siyahıya keç.
+            if (data?.chatId) {
+              (navigationRef as any).navigate('Chat', {
+                screen: Routes.ChatRoom,
+                params: {
+                  chatId: data.chatId,
+                  name: data.senderName || '',
+                  userId: data.senderId,
+                },
+              });
+            } else {
+              navigationRef.navigate(Routes.ChatList as never);
+            }
             break;
           case 'lesson_request_interest':
             navigationRef.navigate(Routes.MyRequests as never);

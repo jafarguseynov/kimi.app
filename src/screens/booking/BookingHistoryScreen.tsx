@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
@@ -24,6 +24,7 @@ import { getSubscriptionStatus } from '../../api/subscription.api';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
 import { useMonetization } from '../../store/featureFlag.store';
+import { useMarkBadgeSeen } from '../../hooks/useBadges';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -71,6 +72,13 @@ export default function BookingHistoryScreen() {
   const { user } = useUserStore();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const isTeacher = user?.role === 'teacher';
+  const markSeen = useMarkBadgeSeen();
+
+  useFocusEffect(
+    useCallback(() => {
+      markSeen('requests');
+    }, [markSeen]),
+  );
 
   const queryClient = useQueryClient();
 

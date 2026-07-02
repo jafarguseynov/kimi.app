@@ -34,6 +34,8 @@ import PartnersSection from '../../components/PartnersSection';
 import { LanguageFlagButton } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
 import { rs } from '../../utils/responsive';
+import { useBadges } from '../../hooks/useBadges';
+import UnreadDot from '../../components/common/UnreadDot';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.HomeMain>;
@@ -203,6 +205,7 @@ export default function HomeScreen({ navigation }: Props) {
 
   // Profil məlumatını (avatarUrl daxil) serverdən təzələ — header avatarı üçün.
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
+  const badges = useBadges();
   useEffect(() => {
     if (me) setUser({ ...(user as any), ...(me as any) });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -435,6 +438,10 @@ export default function HomeScreen({ navigation }: Props) {
                 >
                   <View style={styles.quickActionIcon}>
                     <Ionicons name={a.icon} size={22} color={Colors.primary} />
+                    {((a.target === 'chat' && badges.messages > 0) ||
+                      ((a.target === 'requests' || a.target === 'lessonRequest') && badges.requests > 0)) && (
+                      <UnreadDot count={1} style={{ position: 'absolute', top: -2, right: -2 }} />
+                    )}
                   </View>
                   <Text style={styles.quickActionLabel}>{t(a.labelKey)}</Text>
                 </TouchableOpacity>
@@ -771,6 +778,9 @@ export default function HomeScreen({ navigation }: Props) {
               >
                 <View style={[styles.quickItemIcon, { backgroundColor: '#e0e7ff' }]}>
                   <Ionicons name="chatbubbles-outline" size={24} color="#4f46e5" />
+                  {badges.messages > 0 && (
+                    <UnreadDot count={1} style={{ position: 'absolute', top: -2, right: -2 }} />
+                  )}
                 </View>
                 <Text style={styles.quickItemLabel}>{t('home.student.qMessage')}</Text>
               </TouchableOpacity>

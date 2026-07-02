@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,12 +12,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { formatDate } from '../../utils/formatters';
 import { useTranslation } from '../../i18n';
+import UnreadDot from '../../components/common/UnreadDot';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -28,18 +30,32 @@ interface ChatItem {
   participant1: { id: string; name: string };
   participant2: { id: string; name: string };
   createdAt: string;
+  unreadCount?: number;
+  online?: boolean;
+  lastSeenAt?: string | null;
+  lastMessage?: { content: string; type: string; createdAt: string; mine: boolean } | null;
 }
 
 export default function ChatListScreen({ navigation }: Props) {
   const { user } = useUserStore();
   const { t } = useTranslation();
-  const { data: chats = [], isLoading } = useQuery<ChatItem[]>({
+  const { data: chats = [], isLoading, refetch } = useQuery<ChatItem[]>({
     queryKey: ['chats'],
     queryFn: async () => {
       const res = await client.get('/chat');
       return res.data;
     },
+    // Online statusu + oxunmamış sayı təzə qalsın.
+    refetchInterval: 20000,
+    staleTime: 5000,
   });
+
+  // Söhbətdən qayıdanda siyahını yenilə (oxunmuşlar itsin).
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   const getOther = (chat: ChatItem) =>
     chat.participant1.id === user?.id ? chat.participant2 : chat.participant1;
@@ -112,6 +128,15 @@ export default function ChatListScreen({ navigation }: Props) {
           renderItem={({ item }) => {
             const other = getOther(item);
             const initial = other.name[0]?.toUpperCase() ?? '?';
+            const unread = item.unreadCount ?? 0;
+            const hasUnread = unread > 0;
+            const preview = item.lastMessage
+              ? (item.lastMessage.type === 'sticker' ? '🎨 Stiker' : item.lastMessage.content)
+              : null;
+            const previewText = preview
+              ? (item.lastMessage?.mine ? `${t('chat.youPrefix')} ${preview}` : preview)
+              : formatDate(item.createdAt);
+            const stamp = item.lastMessage ? formatDate(item.lastMessage.createdAt) : formatDate(item.createdAt);
             return (
               <TouchableOpacity
                 style={styles.chatItem}
@@ -124,14 +149,24 @@ export default function ChatListScreen({ navigation }: Props) {
                 }
                 activeOpacity={0.8}
               >
-                <LinearGradient colors={GRADIENT} style={styles.avatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                  <Text style={styles.avatarText}>{initial}</Text>
-                </LinearGradient>
-                <View style={styles.info}>
-                  <Text style={styles.name}>{other.name}</Text>
-                  <Text style={styles.date}>{formatDate(item.createdAt)}</Text>
+                <View style={styles.avatarWrap}>
+                  <LinearGradient colors={GRADIENT} style={styles.avatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                    <Text style={styles.avatarText}>{initial}</Text>
+                  </LinearGradient>
+                  {item.online && <View style={styles.onlineDot} />}
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
+                <View style={styles.info}>
+                  <View style={styles.nameRow}>
+                    <Text style={[styles.name, hasUnread && styles.nameUnread]} numberOfLines={1}>{other.name}</Text>
+                    <Text style={styles.stamp}>{stamp}</Text>
+                  </View>
+                  <View style={styles.previewRow}>
+                    <Text style={[styles.preview, hasUnread && styles.previewUnread]} numberOfLines={1}>
+                      {previewText}
+                    </Text>
+                    <UnreadDot count={unread} showCount style={{ marginLeft: 8 }} />
+                  </View>
+                </View>
               </TouchableOpacity>
             );
           }}
@@ -167,10 +202,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 14,
     backgroundColor: Colors.surfaceLowest,
   },
-  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  avatarWrap: { width: 52, height: 52, flexShrink: 0 },
+  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  info: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
+  onlineDot: {
+    position: 'absolute', right: 0, bottom: 0,
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: '#22C55E', borderWidth: 2.5, borderColor: '#fff',
+  },
+  info: { flex: 1, gap: 3 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  name: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary, flexShrink: 1 },
+  nameUnread: { fontWeight: '800' },
+  stamp: { fontSize: 12, color: Colors.textMuted, flexShrink: 0 },
+  previewRow: { flexDirection: 'row', alignItems: 'center' },
+  preview: { flex: 1, fontSize: 13, color: Colors.textMuted },
+  previewUnread: { color: Colors.textPrimary, fontWeight: '700' },
   date: { fontSize: 13, color: Colors.textMuted, marginTop: 2 },
   sep: { height: 1, backgroundColor: Colors.borderLight, marginLeft: 86 },
 

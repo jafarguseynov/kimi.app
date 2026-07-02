@@ -4,6 +4,7 @@ import * as SecureStore from 'expo-secure-store';
 export type AppLanguage = 'az' | 'en' | 'ru';
 
 const LANG_KEY = 'app_language';
+const PUSH_KEY = 'push_enabled';
 
 interface SettingsState {
   language: AppLanguage;
@@ -25,20 +26,26 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   emailEnabled: false,
   notificationPrefs: {},
   hydrate: async () => {
+    let language: AppLanguage | null = null;
+    let pushEnabled = true;
     try {
       const raw = await SecureStore.getItemAsync(LANG_KEY);
-      if (raw === 'az' || raw === 'en' || raw === 'ru') {
-        set({ language: raw, hydrated: true });
-        return;
-      }
+      if (raw === 'az' || raw === 'en' || raw === 'ru') language = raw;
     } catch {}
-    set({ hydrated: true });
+    try {
+      const rawPush = await SecureStore.getItemAsync(PUSH_KEY);
+      if (rawPush === '0') pushEnabled = false;
+    } catch {}
+    set({ ...(language ? { language } : {}), pushEnabled, hydrated: true });
   },
   setLanguage: (language) => {
     set({ language });
     SecureStore.setItemAsync(LANG_KEY, language).catch(() => {});
   },
-  setPushEnabled: (pushEnabled) => set({ pushEnabled }),
+  setPushEnabled: (pushEnabled) => {
+    set({ pushEnabled });
+    SecureStore.setItemAsync(PUSH_KEY, pushEnabled ? '1' : '0').catch(() => {});
+  },
   setEmailEnabled: (emailEnabled) => set({ emailEnabled }),
   setNotificationPrefs: (notificationPrefs) => set({ notificationPrefs }),
 }));

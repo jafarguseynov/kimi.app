@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { getTeacherStudents, TeacherStudent } from '../../api/user.api';
 import { useTranslation } from '../../i18n';
+import { useMarkBadgeSeen } from '../../hooks/useBadges';
 
 function getInitials(name: string): string {
   return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
@@ -25,7 +26,14 @@ function scoreColor(avg: number | null): string {
 export default function TeacherStudentsScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const markSeen = useMarkBadgeSeen();
   const [refreshing, setRefreshing] = useState(false);
+
+  useFocusEffect(
+    useCallback(() => {
+      markSeen('students');
+    }, [markSeen]),
+  );
 
   const { data: students = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['teacherStudents'],

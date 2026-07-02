@@ -69,7 +69,7 @@ export default function LoginScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView
@@ -216,8 +216,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
+    paddingTop: 14,
+    paddingBottom: 20,
   },
 
   aura1: {
@@ -240,32 +240,32 @@ const styles = StyleSheet.create({
   },
 
   logoImage: {
-    width: 260,
-    height: 120,
-    marginBottom: 20,
+    width: 200,
+    height: 92,
+    marginBottom: 12,
   },
 
-  headline: { alignItems: 'center', marginBottom: 18 },
+  headline: { alignItems: 'center', marginBottom: 10 },
   title: {
-    fontSize: 26,
+    fontSize: 23,
     fontWeight: '800',
     color: Colors.textPrimary,
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
   },
 
   features: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    marginBottom: 28,
+    marginBottom: 16,
   },
   featurePill: {
     flexDirection: 'row',
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 18,
+    paddingVertical: 15,
     borderRadius: 999,
     shadowColor: Colors.primary,
     shadowOffset: { width: 0, height: 10 },
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginVertical: 18,
+    marginVertical: 12,
   },
   dividerLine: { flex: 1, height: 1, backgroundColor: Colors.surfaceHigh },
   dividerText: {
@@ -315,7 +315,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 16,
+    paddingVertical: 13,
     backgroundColor: Colors.white,
     borderRadius: 999,
     borderWidth: 1,
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   googleG: { fontSize: 16, fontWeight: '800', color: '#4285F4' },
   ssoBtnText: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
 
-  footer: { marginTop: 28 },
+  footer: { marginTop: 16 },
   footerText: {
     textAlign: 'center',
     color: Colors.textSecondary,

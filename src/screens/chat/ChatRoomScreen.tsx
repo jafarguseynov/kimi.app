@@ -14,12 +14,14 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import client from '../../api/client';
-import { sendChatMessage, markChatRead } from '../../api/chat.api';
+import { sendChatMessage, markChatRead, getChatPresence } from '../../api/chat.api';
+import { reportContent } from '../../api/user.api';
 import { socketService } from '../../services/socket.service';
+import { setActiveChatId } from '../../utils/push';
 import { useChatStore } from '../../store/chat.store';
 import { useAuthStore } from '../../store/auth.store';
 import { useUserStore } from '../../store/user.store';
@@ -41,12 +43,31 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { user } = useUserStore();
   const { token } = useAuthStore();
+  const queryClient = useQueryClient();
   const { messages, setMessages, addMessage, markReadBy } = useChatStore();
   const [text, setText] = useState('');
   const [showStickers, setShowStickers] = useState(false);
   const [ownsStickerPack, setOwnsStickerPack] = useState(false);
   const [presence, setPresence] = useState<{ online: boolean; lastSeenAt: string | null }>({ online: false, lastSeenAt: null });
   const listRef = useRef<FlatList>(null);
+
+  // Bu söhbət açıq ikən onun ön-plan push bildirişini sus (WhatsApp kimi — mesaj onsuz da ekranda).
+  useEffect(() => {
+    setActiveChatId(chatId);
+    return () => setActiveChatId(null);
+  }, [chatId]);
+
+  // REST presence — socket qurulmasa belə online statusu düzgün göstərilir (20s-də bir yenilənir).
+  const { data: presenceRest } = useQuery({
+    queryKey: ['presence', chatId],
+    queryFn: () => getChatPresence(chatId),
+    enabled: !!chatId,
+    refetchInterval: 20000,
+    staleTime: 5000,
+  });
+  useEffect(() => {
+    if (presenceRest) setPresence({ online: !!presenceRest.online, lastSeenAt: presenceRest.lastSeenAt ?? null });
+  }, [presenceRest]);
 
   // Qarşı tərəfin id-si: route param-dan, yoxsa mesajlardan (göndərəni biz olmayan) götür.
   const counterpartId = paramUserId ?? messages.find((m) => m.sender.id !== user?.id)?.sender.id ?? null;
@@ -59,13 +80,35 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     getEntitlements().then((e) => setOwnsStickerPack(e.ownedPacks?.includes('sticker') ?? false)).catch(() => {});
   }, []);
 
+  // Mesajları 3 saniyədə bir çək (real-time — socket işləməsə də yeni mesajlar
+  // çatdan çıxmadan görünür). Yalnız dəyişiklik olanda store-u yeniləyirik.
   const { isLoading } = useQuery({
     queryKey: ['messages', chatId],
     queryFn: async () => {
       const res = await client.get(`/chat/${chatId}/messages`);
-      setMessages(res.data);
-      return res.data;
+      const server = res.data as any[];
+      const current = useChatStore.getState().messages;
+      // Dəyişiklik: yeni mesaj (uzunluq/son-id) VƏ YA oxu qəbzi (isRead sayı) fərqlənəndə.
+      // isRead dəyişikliyini də tuturuq ki, qarşı tərəf oxuyanda ✓✓ (görüldü) real-time düşsün.
+      const readSig = (arr: any[]) => arr.reduce((n, m) => n + (m?.isRead ? 1 : 0), 0);
+      const changed =
+        server.length !== current.length ||
+        (server.length > 0 && server[server.length - 1]?.id !== current[current.length - 1]?.id) ||
+        readSig(server) !== readSig(current);
+      if (changed) {
+        setMessages(server);
+        const last = server[server.length - 1];
+        // Yeni gələn (mənim olmayan) mesaj → dərhal oxundu + nöqtəni yenilə.
+        if (last && last.sender?.id !== user?.id) {
+          socketService.markRead(chatId);
+          markChatRead(chatId);
+          queryClient.invalidateQueries({ queryKey: ['badges'] });
+        }
+      }
+      return server;
     },
+    refetchInterval: 1500,
+    refetchIntervalInBackground: false,
   });
 
   useEffect(() => {
@@ -98,6 +141,8 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     // Söhbət açılanda oxu qəbzi (socket + REST fallback).
     socketService.markRead(chatId);
     markChatRead(chatId);
+    // Aqreqat mesaj nöqtəsini yenilə (oxundu → say azalsın).
+    queryClient.invalidateQueries({ queryKey: ['badges'] });
 
     return () => {
       socketService.offNewMessage(handler);
@@ -157,8 +202,25 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     return t('chat.lastSeenDate', { date: time });
   })();
 
+  const handleReport = async () => {
+    if (!counterpartId) return;
+    try {
+      await reportContent({ targetId: counterpartId, targetType: 'user', reason: 'chat' });
+      Alert.alert(t('chat.reportDoneTitle'), t('chat.reportDoneMsg'));
+    } catch {
+      Alert.alert(t('booking.reviewNoticeTitle'), t('chat.reportFailed'));
+    }
+  };
+
+  const handleMenu = () => {
+    Alert.alert(name, undefined, [
+      { text: t('chat.menuReport'), style: 'destructive', onPress: handleReport },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  };
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
@@ -177,7 +239,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               <Text style={[styles.headerStatus, !presence.online && styles.headerStatusOffline]}>{presenceLabel}</Text>
             </View>
           </View>
-          <TouchableOpacity activeOpacity={0.7} hitSlop={8}>
+          <TouchableOpacity activeOpacity={0.7} hitSlop={8} onPress={handleMenu}>
             <Ionicons name="ellipsis-vertical" size={22} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>

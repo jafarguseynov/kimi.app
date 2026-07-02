@@ -19,6 +19,13 @@ type NotificationsModule = typeof import('expo-notifications');
 let _mod: NotificationsModule | null | undefined;
 let _handlerSet = false;
 
+// Hazırda açıq olan chat otağının id-si (fokusda). WhatsApp kimi: istifadəçi məhz həmin
+// söhbətə baxırsa, o söhbətin ön-plan bildirişini göstərmə (mesaj onsuz da ekrandadır).
+let _activeChatId: string | null = null;
+export function setActiveChatId(chatId: string | null) {
+  _activeChatId = chatId;
+}
+
 // Modulu yalnız çağırıldıqda və yalnız Expo Go-dan kənarda yüklə.
 function getMod(): NotificationsModule | null {
   if (_mod !== undefined) return _mod;
@@ -36,12 +43,19 @@ function getMod(): NotificationsModule | null {
     _handlerSet = true;
     try {
       _mod.setNotificationHandler({
-        handleNotification: async () => ({
-          shouldShowBanner: true,
-          shouldShowList: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-        }),
+        handleNotification: async (notification: any) => {
+          // Ön-plan davranışı: bildiriş banner + səs (WhatsApp kimi telefon ekranında).
+          const data = notification?.request?.content?.data ?? {};
+          // İstifadəçi məhz həmin söhbətə baxırsa — o çatın bildirişini sus (mesaj görünür).
+          const muteThisChat =
+            data?.type === 'chat_message' && !!_activeChatId && data?.chatId === _activeChatId;
+          return {
+            shouldShowBanner: !muteThisChat,
+            shouldShowList: true,
+            shouldPlaySound: !muteThisChat,
+            shouldSetBadge: false,
+          };
+        },
       });
     } catch {
       /* handler qurula bilmədi — kritik deyil */
@@ -111,6 +125,25 @@ export async function requestAndRegister(): Promise<{ status: PushPermissionStat
   }
 }
 
+// Səssiz token yeniləmə (OS dialoqu AÇMADAN). Yalnız icazə ARTIQ verilibsə token qaytarır.
+// Hər tətbiq açılışında çağırılır ki, tokeni rotasiya olan və ya onboarding-i push əlavə
+// olunmadan keçən köhnə istifadəçilər üçün də token serverdə güncəl qalsın.
+export async function refreshTokenIfGranted(): Promise<string | null> {
+  try {
+    const N = getMod();
+    if (!N || !isRealDevice()) return null;
+    if (Platform.OS === 'android') await setupAndroidChannels(N);
+    const { status } = await N.getPermissionsAsync();
+    if (status !== 'granted') return null;
+    const res = projectId
+      ? await N.getExpoPushTokenAsync({ projectId })
+      : await N.getExpoPushTokenAsync();
+    return res.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // kimi.az bildiriş səsləri (app bundle-a app.json `sounds` ilə yığılır).
 // Admin paneldən hansının aktiv olacağı seçilir; backend push payload-da
 // `sound: '<fayl>.wav'` göndərir. Android-də səs yalnız həmin səslə qurulmuş
@@ -130,18 +163,32 @@ export function soundChannelId(sound: string): string {
 }
 
 // Android bildiriş kanallarını qurur ('default' + hər səs üçün ayrıca səsli kanal).
+// WhatsApp kimi titrəmə ritmi (ms): gözlə, titrə, gözlə, titrə.
+const VIBRATION_PATTERN = [0, 250, 250, 250];
+
 async function setupAndroidChannels(N: NotificationsModule) {
+  // Əsas kanal: sistem səsi + HIGH importance (kilid ekranı/heads-up banner) + vibrasiya.
+  // Backend `sound` göndərməyəndə və ya 'default' olanda push bu kanala düşür (ExpoPushService).
   await N.setNotificationChannelAsync('default', {
     name: 'Ümumi bildirişlər',
-    importance: N.AndroidImportance.DEFAULT,
+    importance: N.AndroidImportance.HIGH,
+    sound: 'default',
+    vibrationPattern: VIBRATION_PATTERN,
+    enableVibrate: true,
+    showBadge: true,
     lightColor: '#006190',
+    lockscreenVisibility: N.AndroidNotificationVisibility.PUBLIC,
   }).catch(() => {});
   for (const sound of NOTIFICATION_SOUNDS) {
     await N.setNotificationChannelAsync(soundChannelId(sound), {
       name: `Kimi.az — ${sound.replace(/\.[^.]+$/, '')}`,
       importance: N.AndroidImportance.HIGH,
-      lightColor: '#006190',
       sound,
+      vibrationPattern: VIBRATION_PATTERN,
+      enableVibrate: true,
+      showBadge: true,
+      lightColor: '#006190',
+      lockscreenVisibility: N.AndroidNotificationVisibility.PUBLIC,
     }).catch(() => {});
   }
 }

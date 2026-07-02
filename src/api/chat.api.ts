@@ -23,3 +23,12 @@ export const sendChatMessage = (chatId: string, content: string, type: 'text' | 
 // REST fallback — oxu qəbzi (görüldü).
 export const markChatRead = (chatId: string) =>
   client.post(`/chat/${chatId}/read`).then((r) => r.data).catch(() => null);
+
+// REST presence — qarşı tərəfin online + son görülmə (socket-siz etibarlı).
+export const getChatPresence = (
+  chatId: string,
+): Promise<{ online: boolean; lastSeenAt: string | null }> =>
+  client
+    .get(`/chat/${chatId}/presence`)
+    .then((r) => r.data)
+    .catch(() => ({ online: false, lastSeenAt: null }));

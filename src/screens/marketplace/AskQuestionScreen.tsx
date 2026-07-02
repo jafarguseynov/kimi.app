@@ -119,7 +119,7 @@ export default function AskQuestionScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
