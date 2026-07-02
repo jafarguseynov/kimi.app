@@ -5,6 +5,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
+  Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -66,11 +69,38 @@ export default function NotificationPrimingScreen() {
     if (navigation.canGoBack()) navigation.goBack();
   };
 
+  // Aqressiv OEM-lər (Samsung/Xiaomi) tətbiqi arxa planda yatızdırıb bildirişi
+  // gecikdirir. İcazə verildikdən sonra bir dəfə batareya optimizasiyasını söndürməyi
+  // təklif et + tətbiq ayarlarına yönləndir (Linking.openSettings — native modul lazım deyil).
+  const promptBatteryThenFinish = () => {
+    if (Platform.OS !== 'android') {
+      finish();
+      return;
+    }
+    Alert.alert(
+      t('onboarding.batteryTitle'),
+      t('onboarding.batteryBody'),
+      [
+        { text: t('onboarding.batteryLater'), style: 'cancel', onPress: finish },
+        {
+          text: t('onboarding.batteryOpen'),
+          onPress: () => {
+            Linking.openSettings().catch(() => {});
+            finish();
+          },
+        },
+      ],
+      { cancelable: false },
+    );
+  };
+
   const onAllow = async () => {
     if (loading) return;
     setLoading(true);
+    let granted = false;
     try {
-      const { token } = await requestAndRegister();
+      const { status, token } = await requestAndRegister();
+      granted = status === 'granted';
       if (token) {
         try {
           await savePushToken(token);
@@ -80,6 +110,11 @@ export default function NotificationPrimingScreen() {
       }
     } finally {
       setLoading(false);
+    }
+    // Yalnız icazə verildisə batareya ipucunu göstər; əks halda birbaşa bitir.
+    if (granted) {
+      promptBatteryThenFinish();
+    } else {
       finish();
     }
   };
