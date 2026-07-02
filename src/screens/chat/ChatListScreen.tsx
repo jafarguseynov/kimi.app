@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,10 +26,16 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
+interface ChatParticipant {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+}
+
 interface ChatItem {
   id: string;
-  participant1: { id: string; name: string };
-  participant2: { id: string; name: string };
+  participant1: ChatParticipant;
+  participant2: ChatParticipant;
   createdAt: string;
   unreadCount?: number;
   online?: boolean;
@@ -145,14 +152,19 @@ export default function ChatListScreen({ navigation }: Props) {
                     chatId: item.id,
                     name: other.name,
                     userId: other.id,
+                    avatarUrl: other.avatarUrl ?? null,
                   })
                 }
                 activeOpacity={0.8}
               >
                 <View style={styles.avatarWrap}>
-                  <LinearGradient colors={GRADIENT} style={styles.avatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                    <Text style={styles.avatarText}>{initial}</Text>
-                  </LinearGradient>
+                  {other.avatarUrl ? (
+                    <Image source={{ uri: other.avatarUrl }} style={styles.avatar} />
+                  ) : (
+                    <LinearGradient colors={GRADIENT} style={styles.avatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                      <Text style={styles.avatarText}>{initial}</Text>
+                    </LinearGradient>
+                  )}
                   {item.online && <View style={styles.onlineDot} />}
                 </View>
                 <View style={styles.info}>

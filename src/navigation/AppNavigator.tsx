@@ -63,7 +63,19 @@ export default function AppNavigator() {
         })}
       />
       <Tab.Screen name={Routes.AIMentor} component={AIMentorScreen} options={{ tabBarLabel: t('nav.ai') }} />
-      <Tab.Screen name="Booking" component={BookingNavigator} options={{ tabBarLabel: t('nav.teachers') }} />
+      <Tab.Screen
+        name="Booking"
+        component={BookingNavigator}
+        options={{ tabBarLabel: t('nav.teachers') }}
+        listeners={({ navigation }) => ({
+          // Müəllimlər tabına basanda həmişə müəllim siyahısının kökünə qayıt —
+          // əvvəlki "Dərs Müraciətləri" kimi ekranda yapışıb qalmasın.
+          tabPress: (e) => {
+            e.preventDefault();
+            (navigation as any).navigate('Booking', { screen: Routes.TeacherList });
+          },
+        })}
+      />
       <Tab.Screen
         name={Routes.Profile}
         component={ProfileNavigator}

@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -39,12 +40,17 @@ type Props = {
 };
 
 export default function ChatRoomScreen({ navigation, route }: Props) {
-  const { chatId, name, userId: paramUserId } = route.params as { chatId: string; name: string; userId?: string };
+  const { chatId, name, userId: paramUserId, avatarUrl: paramAvatarUrl } = route.params as {
+    chatId: string;
+    name: string;
+    userId?: string;
+    avatarUrl?: string | null;
+  };
   const { t } = useTranslation();
   const { user } = useUserStore();
   const { token } = useAuthStore();
   const queryClient = useQueryClient();
-  const { messages, setMessages, addMessage, markReadBy } = useChatStore();
+  const { messages, setMessages, addMessage, replaceMessage, removeMessage, markReadBy } = useChatStore();
   const [text, setText] = useState('');
   const [showStickers, setShowStickers] = useState(false);
   const [ownsStickerPack, setOwnsStickerPack] = useState(false);
@@ -72,6 +78,13 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   // Qarşı tərəfin id-si: route param-dan, yoxsa mesajlardan (göndərəni biz olmayan) götür.
   const counterpartId = paramUserId ?? messages.find((m) => m.sender.id !== user?.id)?.sender.id ?? null;
 
+  // Qarşı tərəfin profil şəkli: siyahıdan gələn param, yoxsa mesajın sender obyektindən
+  // (getMessages tam sender qaytarır — push tap-ından açılanda param olmaya bilər).
+  const counterpartAvatar =
+    paramAvatarUrl ??
+    (messages.find((m) => m.sender.id === counterpartId) as any)?.sender?.avatarUrl ??
+    null;
+
   useEffect(() => {
     setMessages([]);
   }, [chatId]);
@@ -88,15 +101,24 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       const res = await client.get(`/chat/${chatId}/messages`);
       const server = res.data as any[];
       const current = useChatStore.getState().messages;
+      // Optimistik (pending) mesajları ayır — poll onları silməməlidir (göndəriş
+      // gedişatında ekrandan itməsin). Müqayisəni yalnız real mesajlara görə aparırıq.
+      const pending = current.filter((m) => (m as any).pending);
+      const real = current.filter((m) => !(m as any).pending);
       // Dəyişiklik: yeni mesaj (uzunluq/son-id) VƏ YA oxu qəbzi (isRead sayı) fərqlənəndə.
       // isRead dəyişikliyini də tuturuq ki, qarşı tərəf oxuyanda ✓✓ (görüldü) real-time düşsün.
       const readSig = (arr: any[]) => arr.reduce((n, m) => n + (m?.isRead ? 1 : 0), 0);
       const changed =
-        server.length !== current.length ||
-        (server.length > 0 && server[server.length - 1]?.id !== current[current.length - 1]?.id) ||
-        readSig(server) !== readSig(current);
+        server.length !== real.length ||
+        (server.length > 0 && server[server.length - 1]?.id !== real[real.length - 1]?.id) ||
+        readSig(server) !== readSig(real);
       if (changed) {
-        setMessages(server);
+        // Serverdə artıq eyni məzmunlu mesaj varsa uyğun pending-i at (dublikat olmasın);
+        // yoxdursa pending-i sonda saxla ki, cavab gələnə qədər görünsün.
+        const stillPending = pending.filter(
+          (p) => !server.some((sv) => sv.content === p.content && sv.sender?.id === p.sender?.id),
+        );
+        setMessages([...server, ...stillPending]);
         const last = server[server.length - 1];
         // Yeni gələn (mənim olmayan) mesaj → dərhal oxundu + nöqtəni yenilə.
         if (last && last.sender?.id !== user?.id) {
@@ -152,21 +174,50 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     };
   }, [chatId, token, counterpartId]);
 
+  // Yeni mesaj gələndə (öz göndərdiyim və ya qarşı tərəfdən) animasiya ilə sona sürüş.
   useEffect(() => {
     if (messages.length > 0) {
       listRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages.length]);
 
-  // Mesajı REST ilə göndərir (socket upgrade bloklansa belə işləyir);
-  // serverdən qayıdan mesaj store-a əlavə olunur (dedup id-ə görə → socket echo dublikat yaratmır).
+  // Çat açılanda dərhal ən son mesaja (sona) tullan. `messages.length` effekti tək başına
+  // etibarsızdır — FlatList elementləri hələ ölçülməyib scrollToEnd sona çatmır. Kontent
+  // ölçüsü dəyişəndə (ilk yüklənmə + hər yeni mesaj) animasiyasız sona sürüşdürürük.
+  const didInitialScroll = useRef(false);
+  const onListContentSizeChange = () => {
+    if (messages.length === 0) return;
+    listRef.current?.scrollToEnd({ animated: didInitialScroll.current });
+    didInitialScroll.current = true;
+  };
+  // Çat dəyişəndə ilk-scroll bayrağını sıfırla (yeni söhbət yenidən sona tullansın).
+  useEffect(() => {
+    didInitialScroll.current = false;
+  }, [chatId]);
+
+  // Mesajı OPTİMİSTİK göndərir: dərhal ekranda göstər, sonra serverlə uzlaşdır.
+  // Köhnə/yavaş cihazlarda POST serverə çatıb mesajı yazır, amma cavab gec gəlir —
+  // optimistik göstərmə "getmədi" qavrayışını aradan qaldırır. Dublikat-yaradan socket
+  // fallback-i çıxarıldı (REST əsas yoldur; 1.5s poll onsuz da real vəziyyəti uzlaşdırır).
   const deliver = async (content: string, type: 'text' | 'sticker' = 'text') => {
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    addMessage({
+      id: tempId,
+      content,
+      type: type as any,
+      sender: { id: user?.id ?? '', name: user?.name ?? '' },
+      createdAt: new Date().toISOString(),
+      isRead: false,
+      pending: true,
+    } as any);
     try {
       const saved = await sendChatMessage(chatId, content, type);
-      if (saved?.id) addMessage(saved);
+      // Uğur: müvəqqətini real mesajla əvəz et (poll artıq gətiribsə dublikat olmur).
+      if (saved?.id) replaceMessage(tempId, saved as any);
+      else removeMessage(tempId); // server null qaytardı → poll uzlaşdıracaq
     } catch {
-      // REST uğursuzdursa socket ilə cəhd et (offline/keçici xəta)
-      socketService.sendMessage(chatId, content, type);
+      // Həqiqətən alınmadı: müvəqqətini sil (poll əslində yazılıbsa real mesajı gətirər).
+      removeMessage(tempId);
       Alert.alert(t('chat.sendFailedTitle'), t('chat.sendFailedBody'));
     }
   };
@@ -229,9 +280,13 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
             </TouchableOpacity>
             <View style={styles.headerAvatarWrap}>
-              <LinearGradient colors={GRADIENT} style={styles.headerAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-                <Text style={styles.headerAvatarInitial}>{initial}</Text>
-              </LinearGradient>
+              {counterpartAvatar ? (
+                <Image source={{ uri: counterpartAvatar }} style={styles.headerAvatar} />
+              ) : (
+                <LinearGradient colors={GRADIENT} style={styles.headerAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                  <Text style={styles.headerAvatarInitial}>{initial}</Text>
+                </LinearGradient>
+              )}
               {presence.online && <View style={styles.onlineDot} />}
             </View>
             <View>
@@ -252,6 +307,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
             ref={listRef}
             data={messages}
             keyExtractor={(m) => m.id}
+            onContentSizeChange={onListContentSizeChange}
             contentContainerStyle={styles.msgList}
             ListHeaderComponent={
               <View style={styles.datePill}>
