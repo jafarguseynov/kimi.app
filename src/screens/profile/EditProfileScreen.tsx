@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, KeyboardAvoidingView, Platform, Switch,
@@ -183,11 +183,6 @@ export default function EditProfileScreen({ navigation, route }: Props) {
     getEntitlements().then((e) => setOwnsAvatarPack(e.ownedPacks?.includes('avatar') ?? false)).catch(() => {});
   }, []);
 
-  // Yaddaş prosesi gedərkən təkrar "goBack" olmasın deyə tək dəfəlik keçid qoruyucusu.
-  // (Yuxarı + aşağı "Yadda saxla" düymələri və ya cəld ikiqat toxunuş əks halda
-  //  bir neçə dəfə goBack() çağırıb istifadəçini gözlənilməz ekrana atırdı.)
-  const navigatedRef = useRef(false);
-
   const { mutate: save, isPending: isSaving } = useMutation({
     mutationFn: async () => {
       const data: any = { name: [firstName, lastName].filter(Boolean).join(' ') };
@@ -225,14 +220,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       return updateUser(data);
     },
     onSuccess: (updated) => {
-      // Store-u serverdən qayıdan dəyərlərlə yenilə ki, geri qayıdanda dolu görünsün.
+      // Store-u serverdən qayıdan dəyərlərlə yenilə (form dolu qalsın).
       if (updated) setUser({ ...(user as any), ...(updated as any) });
       Alert.alert(t('editProfile.savedTitle'), t('editProfile.savedBody'));
-      // Yalnız bir dəfə geri qayıt (təkrar mutasiyalar bir neçə goBack etməsin).
-      if (!navigatedRef.current) {
-        navigatedRef.current = true;
-        navigation.goBack();
-      }
+      // İstifadəçi redaktə səhifəsində QALIR — avtomatik geri qayıtma yoxdur.
+      // (İstəsə geri düyməsi ilə çıxar; təkrar redaktə + saxlama sərbəst işləyir.)
     },
     onError: () => Alert.alert(t('editProfile.errorTitle'), t('editProfile.errorBody')),
   });
@@ -252,8 +244,8 @@ export default function EditProfileScreen({ navigation, route }: Props) {
     setInterests((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
 
   const handleSave = () => {
-    // Yaddaş gedərkən və ya artıq geri qayıtdıqdan sonra təkrar çağırışı blokla.
-    if (isSaving || navigatedRef.current) return;
+    // Yalnız yaddaş prosesi gedərkən təkrar çağırışı blokla (ikiqat toxunuş).
+    if (isSaving) return;
     save();
   };
 

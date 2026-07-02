@@ -280,7 +280,9 @@ export default function TeacherProfileScreen() {
               <Ionicons name="time-outline" size={20} color={Colors.primary} />
             </View>
             <Text style={styles.statMeta}>{t('teacherProfile.metaExperience')}</Text>
-            <Text style={styles.statVal}>{t('teacherProfile.expValue')}</Text>
+            <Text style={styles.statVal}>
+              {teacher?.experienceYears > 0 ? `${teacher.experienceYears} ${t('editProfile.yearUnit')}` : t('teacherProfile.expValue')}
+            </Text>
           </View>
           <View style={styles.highlightCard}>
             <View style={styles.statIconBox}>
@@ -340,7 +342,7 @@ export default function TeacherProfileScreen() {
         <View style={styles.bioCard}>
           <Text style={styles.sectionLabel}>{t('teacherProfile.bioLabel')}</Text>
           <Text style={styles.bioText}>
-            {t('teacherProfile.bioText')}
+            {teacher?.bio?.trim() ? teacher.bio : t('teacherProfile.bioText')}
           </Text>
           <View style={styles.bioWatermark} pointerEvents="none">
             <Ionicons name="school-outline" size={80} color={Colors.textPrimary} style={{ opacity: 0.03 }} />

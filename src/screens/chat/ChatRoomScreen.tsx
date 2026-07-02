@@ -28,6 +28,7 @@ import { useAuthStore } from '../../store/auth.store';
 import { useUserStore } from '../../store/user.store';
 import MessageBubble from '../../components/chat/MessageBubble';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { STICKERS } from '../../constants/cosmetics';
 import { getEntitlements } from '../../api/shop.api';
 import { useTranslation } from '../../i18n';
@@ -56,6 +57,14 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const [ownsStickerPack, setOwnsStickerPack] = useState(false);
   const [presence, setPresence] = useState<{ online: boolean; lastSeenAt: string | null }>({ online: false, lastSeenAt: null });
   const listRef = useRef<FlatList>(null);
+
+  // Geri düyməsi həmişə söhbətlər siyahısına aparsın. Söhbət başqa ekrandan
+  // (məs. müəllim profilindən) birbaşa açılıbsa, yığında ChatList olmaya bilər —
+  // belə halda sadə goBack() bütün tabı bağlayıb ana səhifəyə atır.
+  const handleBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.replace(Routes.ChatList);
+  };
 
   // Bu söhbət açıq ikən onun ön-plan push bildirişini sus (WhatsApp kimi — mesaj onsuz da ekranda).
   useEffect(() => {
@@ -174,19 +183,23 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     };
   }, [chatId, token, counterpartId]);
 
-  // Yeni mesaj gələndə (öz göndərdiyim və ya qarşı tərəfdən) animasiya ilə sona sürüş.
+  // Çat açılanda dərhal ən son mesaja (sona) tullan. `messages.length` effekti tək başına
+  // etibarsızdır — FlatList elementləri hələ ölçülməyib scrollToEnd sona çatmır. Kontent
+  // ölçüsü dəyişəndə (ilk yüklənmə + hər yeni mesaj) sona sürüşdürürük.
+  const didInitialScroll = useRef(false);
+
+  // Yalnız ilk yüklənmədən SONRA gələn yeni mesaj animasiya ilə sürüşsün.
+  // İlk açılışda animasiya "yuxarıdan-aşağı sürüşmə" effekti yaradırdı — onu kəsirik ki,
+  // söhbət birbaşa son mesajın olduğu yerdə görünsün.
   useEffect(() => {
-    if (messages.length > 0) {
+    if (messages.length > 0 && didInitialScroll.current) {
       listRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages.length]);
 
-  // Çat açılanda dərhal ən son mesaja (sona) tullan. `messages.length` effekti tək başına
-  // etibarsızdır — FlatList elementləri hələ ölçülməyib scrollToEnd sona çatmır. Kontent
-  // ölçüsü dəyişəndə (ilk yüklənmə + hər yeni mesaj) animasiyasız sona sürüşdürürük.
-  const didInitialScroll = useRef(false);
   const onListContentSizeChange = () => {
     if (messages.length === 0) return;
+    // İlk dəfə animasiyasız (dərhal) sona tullan, sonrakılar üçün animasiyalı.
     listRef.current?.scrollToEnd({ animated: didInitialScroll.current });
     didInitialScroll.current = true;
   };
@@ -276,7 +289,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+            <TouchableOpacity onPress={handleBack} activeOpacity={0.7} hitSlop={8}>
               <Ionicons name="arrow-back" size={22} color={Colors.textPrimary} />
             </TouchableOpacity>
             <View style={styles.headerAvatarWrap}>
