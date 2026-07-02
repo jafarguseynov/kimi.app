@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, KeyboardAvoidingView, Platform, Switch,
@@ -154,33 +154,39 @@ export default function EditProfileScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     getMe().then((me) => {
-      const parts = me.name.split(' ');
+      // Serverdən gələn dəyərlər həmişə tətbiq olunur (köhnə store dəyəri "yanlış"
+      // görünməsin). undefined sahələr üçün nəzarətli input-lara boş/default verilir.
+      const meAny = me as any;
+      const parts = (me.name ?? '').split(' ');
       setFirstName(parts[0] ?? '');
       setLastName(parts.slice(1).join(' ') ?? '');
       setPhone(me.phone ?? '');
       setEmail(me.email ?? '');
-      const meAny = me as any;
-      if (meAny.birthDate) setBirthDate(meAny.birthDate);
+      setBirthDate(meAny.birthDate ?? '');
       if (meAny.avatarUrl) setAvatarUri(meAny.avatarUrl);
       if (meAny.avatarId) setAvatarId(meAny.avatarId);
       else if (meAny.profile?.avatarId) setAvatarId(meAny.profile.avatarId);
-      if (meAny.city) setCity(meAny.city);
-      if (meAny.areaNames?.length) setAreas(meAny.areaNames);
-      else if (meAny.areaName) setAreas([meAny.areaName]);
-      if (meAny.lessonFormats?.length) setLessonFormats(meAny.lessonFormats);
-      if (meAny.school) setSchool(meAny.school);
+      setCity(meAny.city ?? meAny.areaName ?? '');
+      setAreas(meAny.areaNames?.length ? meAny.areaNames : (meAny.areaName ? [meAny.areaName] : []));
+      setLessonFormats(meAny.lessonFormats?.length ? meAny.lessonFormats : ['online']);
+      setSchool(meAny.school ?? '');
       if (meAny.grade) setGrade(meAny.grade);
       if (meAny.goal) setGoal(meAny.goal);
-      if (meAny.bio) setBio(meAny.bio);
-      if (meAny.subjects?.length) setSelectedSubjects(meAny.subjects);
-      if (meAny.hourlyRate) setPrice(meAny.hourlyRate.toString());
-      if (meAny.headline) setHeadline(meAny.headline);
-      if (meAny.experienceYears) setExperienceYears(meAny.experienceYears.toString());
-      if (meAny.introVideoUrl) setIntroVideoUrl(meAny.introVideoUrl);
-      if (typeof meAny.offersFreeDemo === 'boolean') setOffersFreeDemo(meAny.offersFreeDemo);
+      setBio(meAny.bio ?? '');
+      setSelectedSubjects(meAny.subjects ?? []);
+      setPrice(meAny.hourlyRate != null ? String(meAny.hourlyRate) : '');
+      setHeadline(meAny.headline ?? '');
+      setExperienceYears(meAny.experienceYears != null ? String(meAny.experienceYears) : '');
+      setIntroVideoUrl(meAny.introVideoUrl ?? '');
+      setOffersFreeDemo(!!meAny.offersFreeDemo);
     }).catch(() => {});
     getEntitlements().then((e) => setOwnsAvatarPack(e.ownedPacks?.includes('avatar') ?? false)).catch(() => {});
   }, []);
+
+  // Yaddaş prosesi gedərkən təkrar "goBack" olmasın deyə tək dəfəlik keçid qoruyucusu.
+  // (Yuxarı + aşağı "Yadda saxla" düymələri və ya cəld ikiqat toxunuş əks halda
+  //  bir neçə dəfə goBack() çağırıb istifadəçini gözlənilməz ekrana atırdı.)
+  const navigatedRef = useRef(false);
 
   const { mutate: save, isPending: isSaving } = useMutation({
     mutationFn: async () => {
@@ -222,7 +228,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       // Store-u serverdən qayıdan dəyərlərlə yenilə ki, geri qayıdanda dolu görünsün.
       if (updated) setUser({ ...(user as any), ...(updated as any) });
       Alert.alert(t('editProfile.savedTitle'), t('editProfile.savedBody'));
-      navigation.goBack();
+      // Yalnız bir dəfə geri qayıt (təkrar mutasiyalar bir neçə goBack etməsin).
+      if (!navigatedRef.current) {
+        navigatedRef.current = true;
+        navigation.goBack();
+      }
     },
     onError: () => Alert.alert(t('editProfile.errorTitle'), t('editProfile.errorBody')),
   });
@@ -241,7 +251,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const toggleInterest = (s: string) =>
     setInterests((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
 
-  const handleSave = () => save();
+  const handleSave = () => {
+    // Yaddaş gedərkən və ya artıq geri qayıtdıqdan sonra təkrar çağırışı blokla.
+    if (isSaving || navigatedRef.current) return;
+    save();
+  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -255,8 +269,8 @@ export default function EditProfileScreen({ navigation, route }: Props) {
             <Text style={styles.headerTitle}>{t('editProfile.headerTitle')}</Text>
           </View>
           {role !== 'parent' ? (
-            <TouchableOpacity onPress={handleSave} activeOpacity={0.7} hitSlop={8}>
-              <Text style={styles.saveTopBtn}>{t('editProfile.save')}</Text>
+            <TouchableOpacity onPress={handleSave} activeOpacity={0.7} hitSlop={8} disabled={isSaving}>
+              <Text style={[styles.saveTopBtn, isSaving && { opacity: 0.5 }]}>{t('editProfile.save')}</Text>
             </TouchableOpacity>
           ) : <View style={{ width: 80 }} />}
         </View>

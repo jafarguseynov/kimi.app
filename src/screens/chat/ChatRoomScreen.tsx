@@ -305,6 +305,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
         ) : (
           <FlatList
             ref={listRef}
+            style={styles.msgFlex}
             data={messages}
             keyExtractor={(m) => m.id}
             onContentSizeChange={onListContentSizeChange}
@@ -420,7 +421,9 @@ const styles = StyleSheet.create({
   headerStatus: { fontSize: 12, fontWeight: '600', color: Colors.primary, marginTop: 1 },
   headerStatusOffline: { color: Colors.textSecondary },
 
-  msgList: { paddingVertical: 16, paddingHorizontal: 4 },
+  msgFlex: { flex: 1 },
+  // Alt boşluq: son mesaj input barın arxasında yarımçıq qalmasın (scrollToEnd sonu tam açsın).
+  msgList: { paddingTop: 16, paddingBottom: 24, paddingHorizontal: 4 },
 
   datePill: {
     alignSelf: 'center', marginBottom: 16,

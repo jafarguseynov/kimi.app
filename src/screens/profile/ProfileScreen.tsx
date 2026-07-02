@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -272,12 +273,24 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
 
 // ─── Teacher ──────────────────────────────────────────────────────────────────
 
-function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, navigation }: {
+function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, details, navigation }: {
   name: string; logout: () => void;
   analytics?: TeacherAnalytics;
   subjects?: string[];
   bio?: string;
   avatarUrl?: string;
+  details?: {
+    headline?: string;
+    experienceYears?: number;
+    hourlyRate?: number;
+    areaNames?: string[];
+    areaName?: string;
+    lessonFormats?: string[];
+    introVideoUrl?: string;
+    offersFreeDemo?: boolean;
+    phone?: string;
+    email?: string;
+  };
   navigation: NativeStackNavigationProp<any>;
 }) {
   const { t } = useTranslation();
@@ -286,6 +299,16 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
   const initial = name?.[0]?.toUpperCase() ?? '?';
   const teacherSubjects = subjects?.length ? subjects : [];
   const teacherBio = bio ?? '';
+
+  const d = details ?? {};
+  const teacherAreas = (d.areaNames?.length ? d.areaNames : (d.areaName ? [d.areaName] : [])).filter(Boolean);
+  const formatLabel = (f: string) =>
+    f === 'online' ? t('editProfile.formatOnline') : f === 'home' ? t('editProfile.formatHome') : f === 'course' ? t('editProfile.formatCourse') : f;
+  const teacherFormats = (d.lessonFormats ?? []).map(formatLabel);
+  const hasExperience = d.experienceYears != null && d.experienceYears > 0;
+  const hasPrice = d.hourlyRate != null && d.hourlyRate > 0;
+  const hasDetails = !!d.headline || hasExperience || hasPrice || teacherAreas.length > 0 || teacherFormats.length > 0 || d.offersFreeDemo || !!d.introVideoUrl;
+  const openIntro = () => { if (d.introVideoUrl) Linking.openURL(d.introVideoUrl).catch(() => {}); };
 
   // Profil gücü (tamamlama) — ortaq hook (backend ilə eyni 6 element)
   const { pct: trustPct, nextStep } = useTeacherProfileCompletion();
@@ -470,6 +493,59 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, naviga
                 <Text style={styles.chipText}>{s}</Text>
               </View>
             ))}
+          </View>
+        </View>
+      )}
+
+      {/* Profil məlumatları (redaktədə doldurulan sahələr) */}
+      {hasDetails && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('profileScreen.detailsTitle')}</Text>
+          <View style={styles.bioCard}>
+            {!!d.headline && <Text style={detailStyles.headline}>{d.headline}</Text>}
+
+            {hasExperience && (
+              <View style={detailStyles.row}>
+                <Ionicons name="briefcase-outline" size={18} color={Colors.primary} />
+                <Text style={detailStyles.label}>{t('teacherProfile.metaExperience')}</Text>
+                <Text style={detailStyles.value}>{d.experienceYears} {t('editProfile.yearUnit')}</Text>
+              </View>
+            )}
+            {hasPrice && (
+              <View style={detailStyles.row}>
+                <Ionicons name="pricetag-outline" size={18} color={Colors.primary} />
+                <Text style={detailStyles.label}>{t('editProfile.lessonPrice')}</Text>
+                <Text style={detailStyles.value}>{t('teacherProfile.priceValue', { rate: d.hourlyRate ?? 0 })}</Text>
+              </View>
+            )}
+            {teacherAreas.length > 0 && (
+              <View style={detailStyles.row}>
+                <Ionicons name="location-outline" size={18} color={Colors.primary} />
+                <Text style={detailStyles.label}>{t('editProfile.teachingAreas')}</Text>
+                <Text style={detailStyles.value} numberOfLines={2}>{teacherAreas.join(', ')}</Text>
+              </View>
+            )}
+            {teacherFormats.length > 0 && (
+              <View style={detailStyles.row}>
+                <Ionicons name="easel-outline" size={18} color={Colors.primary} />
+                <Text style={detailStyles.label}>{t('editProfile.lessonFormatShort')}</Text>
+                <Text style={detailStyles.value}>{teacherFormats.join(', ')}</Text>
+              </View>
+            )}
+            {d.offersFreeDemo && (
+              <View style={detailStyles.row}>
+                <Ionicons name="gift-outline" size={18} color={Colors.primary} />
+                <Text style={detailStyles.label}>{t('editProfile.freeDemo')}</Text>
+                <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
+              </View>
+            )}
+            {!!d.introVideoUrl && (
+              <TouchableOpacity style={detailStyles.row} activeOpacity={0.7} onPress={openIntro}>
+                <Ionicons name="logo-youtube" size={18} color="#e11d48" />
+                <Text style={detailStyles.label}>{t('editProfile.introVideo')}</Text>
+                <Ionicons name="open-outline" size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
@@ -772,7 +848,27 @@ export default function ProfileScreen() {
       </View>
 
       {isTeacher ? (
-        <TeacherView name={name} logout={logout} analytics={analytics} subjects={userAny?.subjects} bio={userAny?.bio} avatarUrl={userAny?.avatarUrl} navigation={navigation} />
+        <TeacherView
+          name={name}
+          logout={logout}
+          analytics={analytics}
+          subjects={userAny?.subjects}
+          bio={userAny?.bio}
+          avatarUrl={userAny?.avatarUrl}
+          details={{
+            headline: userAny?.headline,
+            experienceYears: userAny?.experienceYears,
+            hourlyRate: userAny?.hourlyRate,
+            areaNames: userAny?.areaNames,
+            areaName: userAny?.areaName,
+            lessonFormats: userAny?.lessonFormats,
+            introVideoUrl: userAny?.introVideoUrl,
+            offersFreeDemo: userAny?.offersFreeDemo,
+            phone: userAny?.phone,
+            email: userAny?.email,
+          }}
+          navigation={navigation}
+        />
       ) : user?.role === 'parent' ? (
         <ParentView
           name={name}
@@ -834,6 +930,19 @@ const trustStyles = StyleSheet.create({
   barFill: { height: 8, borderRadius: 4, backgroundColor: Colors.primary },
   nextRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   nextText: { flex: 1, fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
+});
+
+const detailStyles = StyleSheet.create({
+  headline: {
+    fontSize: 14, fontWeight: '700', color: Colors.textPrimary, lineHeight: 20,
+    marginBottom: 4,
+  },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.borderLight,
+  },
+  label: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  value: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textAlign: 'right' },
 });
 
 const styles = StyleSheet.create({
