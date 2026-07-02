@@ -45,6 +45,13 @@ export default function TeacherDashboardScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate('Home'))}
+            activeOpacity={0.7}
+            hitSlop={8}
+          >
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
           <View style={styles.avatarCircle}>
             <Ionicons name="person" size={20} color={Colors.primary} />
           </View>

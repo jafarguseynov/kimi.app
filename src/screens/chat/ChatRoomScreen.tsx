@@ -7,6 +7,7 @@ import {
   TextInput,
   TouchableOpacity,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ActivityIndicator,
   Alert,
@@ -203,6 +204,19 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     listRef.current?.scrollToEnd({ animated: didInitialScroll.current });
     didInitialScroll.current = true;
   };
+
+  // Klaviatura açılanda son mesaj input barının/klaviaturanın arxasında gizlənməsin —
+  // siyahını sona sürüşdür ki, yazarkən sonuncu mesaj görünən qalsın.
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const sub = Keyboard.addListener(showEvt, () => {
+      if (messages.length > 0) {
+        // Klaviatura animasiyası bitəndən sonra sona sürüşməsi daha etibarlıdır.
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+      }
+    });
+    return () => sub.remove();
+  }, [messages.length]);
   // Çat dəyişəndə ilk-scroll bayrağını sıfırla (yeni söhbət yenidən sona tullansın).
   useEffect(() => {
     didInitialScroll.current = false;
