@@ -63,7 +63,10 @@ function NotifCard({ item, onRead }: { item: NotificationItem; onRead: (id: stri
 export default function NotificationScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { data: notifications = [], isLoading } = useNotifications();
+  const { data: rawNotifications = [], isLoading } = useNotifications();
+  // Çat mesajlarını feed-dən çıxar (başlıq "💬 ..."). Söhbətlər yalnız Mesajlar
+  // bölməsində olmalıdır; backend artıq yenilərini saxlamır, bu köhnələri də gizlədir.
+  const notifications = rawNotifications.filter((n) => !(n.title ?? '').startsWith('💬'));
   const { mutate: markRead } = useMarkRead();
   const { mutate: markAll } = useMarkAllRead();
 

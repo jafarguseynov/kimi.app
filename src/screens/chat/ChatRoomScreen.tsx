@@ -189,14 +189,22 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   // ölçüsü dəyişəndə (ilk yüklənmə + hər yeni mesaj) sona sürüşdürürük.
   const didInitialScroll = useRef(false);
 
-  // Yalnız ilk yüklənmədən SONRA gələn yeni mesaj animasiya ilə sürüşsün.
+  // Son mesajın id-si dəyişəndə sona sürüş. Yalnız `messages.length` etibarsızdır:
+  // göndərdikdən ~1.5s sonra poll optimistik mesajı (müvəqqəti id) serverin real
+  // mesajı ilə əvəz edir — uzunluq eyni qalır, amma sonuncu id dəyişir, FlatList
+  // elementi yenidən qurulur və mövqe "alta düşür". Son id-yə baxaraq yenidən sürüşürük.
+  const lastMsgId = messages.length > 0 ? messages[messages.length - 1].id : null;
+  // Yalnız ilk yüklənmədən SONRA gələn/dəyişən mesaj animasiya ilə sürüşsün.
   // İlk açılışda animasiya "yuxarıdan-aşağı sürüşmə" effekti yaradırdı — onu kəsirik ki,
   // söhbət birbaşa son mesajın olduğu yerdə görünsün.
   useEffect(() => {
-    if (messages.length > 0 && didInitialScroll.current) {
+    if (lastMsgId && didInitialScroll.current) {
+      // Dərhal + qısa gecikmə ilə: element yenidən qurulub ölçüləndən sonra da sonda qalsın.
       listRef.current?.scrollToEnd({ animated: true });
+      const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 120);
+      return () => clearTimeout(id);
     }
-  }, [messages.length]);
+  }, [lastMsgId, messages.length]);
 
   const onListContentSizeChange = () => {
     if (messages.length === 0) return;

@@ -249,13 +249,22 @@ export default function EditProfileScreen({ navigation, route }: Props) {
     save();
   };
 
+  // Geri qayıdış həmişə profil əsas səhifəsinə aparsın. EditProfile ana səhifədən
+  // birbaşa açılanda (navigate('Profile', { screen: EditProfile })) yığında altda
+  // ProfileHome olmaya bilər — belə halda sadə goBack() tabı dəyişib "başqa səhifəyə"
+  // atır. Yığında geri gediləcək ekran yoxdursa Profil əsas səhifəsinə keçirik.
+  const handleBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else (navigation.getParent() as any)?.navigate(Routes.Profile, { screen: Routes.ProfileHome });
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <SafeAreaView style={styles.container} edges={['top']}>
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerLeft}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+            <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7} hitSlop={8}>
               <Ionicons name="arrow-back" size={22} color={Colors.primary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{t('editProfile.headerTitle')}</Text>
@@ -355,7 +364,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               notifLessons={notifLessons} setNotifLessons={setNotifLessons}
               notifUpdates={notifUpdates} setNotifUpdates={setNotifUpdates}
               onSave={handleSave}
-              onCancel={() => navigation.goBack()}
+              onCancel={handleBack}
             />
           ) : (
             <StudentForm
@@ -388,7 +397,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
                   {isSaving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>{t('editProfile.save')}</Text>}
                 </LinearGradient>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
+              <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={handleBack}>
                 <Text style={styles.cancelBtnText}>{t('editProfile.cancel')}</Text>
               </TouchableOpacity>
             </View>
