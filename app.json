@@ -31,7 +31,7 @@
     "android": {
       "package": "com.jafarstudio.kimi",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 109,
+      "versionCode": 110,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -52,6 +52,7 @@
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
           "color": "#006190",
           "sounds": [
             "./assets/sounds/kimi_notify.wav",
