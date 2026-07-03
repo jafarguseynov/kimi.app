@@ -485,7 +485,7 @@ export default function HomeScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.calcCard}
               activeOpacity={0.9}
-              onPress={() => (navigation.getParent() as any)?.navigate(Routes.Profile, { screen: Routes.ClassGradeCalc })}
+              onPress={() => navigation.navigate(Routes.ClassGradeCalc)}
             >
               <LinearGradient
                 colors={[Colors.gradientStart, Colors.gradientEnd]}

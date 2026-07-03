@@ -79,6 +79,7 @@ import TeacherProfilePremiumScreen from '../screens/profile/TeacherProfilePremiu
 import FriendsLeaderboardScreen from '../screens/social/FriendsLeaderboardScreen';
 import InviteFriendsScreen from '../screens/social/InviteFriendsScreen';
 import NotificationPrimingScreen from '../screens/onboarding/NotificationPrimingScreen';
+import ClassGradeCalculatorScreen from '../screens/calculators/ClassGradeCalculatorScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -162,6 +163,8 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.FriendsLeaderboard} component={FriendsLeaderboardScreen} />
       <Stack.Screen name={Routes.InviteFriends} component={InviteFriendsScreen} />
       <Stack.Screen name={Routes.NotificationPriming} component={NotificationPrimingScreen} options={{ presentation: 'modal' }} />
+      {/* Home-dan açılan sinif qiymət kalkulyatoru — Home stack-də ki, geri Home-a qayıtsın */}
+      <Stack.Screen name={Routes.ClassGradeCalc} component={ClassGradeCalculatorScreen} />
     </Stack.Navigator>
   );
 }

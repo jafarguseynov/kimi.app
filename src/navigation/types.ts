@@ -135,6 +135,7 @@ export type HomeStackParamList = {
   [Routes.Notifications]: undefined;
   [Routes.Settings]: undefined;
   [Routes.EditProfile]: { role?: 'teacher' | 'student' | 'parent' } | undefined;
+  [Routes.ClassGradeCalc]: undefined;
   [Routes.NotificationSettings]: undefined;
   [Routes.SmartFeed]: undefined;
   [Routes.StreakProtection]: { currentStreak?: number } | undefined;
