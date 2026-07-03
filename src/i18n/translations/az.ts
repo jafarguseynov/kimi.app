@@ -1517,6 +1517,7 @@ export const az = {
     viewProfile: 'Profilə bax',
   },
   myRequests: {
+    noteLabel: 'Qeydim',
     headerTitle: 'Dərs İstəkləri',
     heroKicker: 'MƏNİM PANELİM',
     heroTitle: 'İstəklərim',

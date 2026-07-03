@@ -1516,6 +1516,7 @@ export const ru = {
     viewProfile: 'Открыть профиль',
   },
   myRequests: {
+    noteLabel: 'Моя заметка',
     headerTitle: 'Запросы на уроки',
     heroKicker: 'МОЯ ПАНЕЛЬ',
     heroTitle: 'Мои запросы',

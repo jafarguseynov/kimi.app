@@ -1516,6 +1516,7 @@ export const en = {
     viewProfile: 'View profile',
   },
   myRequests: {
+    noteLabel: 'My note',
     headerTitle: 'Lesson Requests',
     heroKicker: 'MY DASHBOARD',
     heroTitle: 'My Requests',

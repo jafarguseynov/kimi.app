@@ -77,7 +77,8 @@ export default function LessonRequestScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
       >
         {/* Header */}
         <View style={styles.header}>
@@ -97,7 +98,12 @@ export default function LessonRequestScreen() {
           </View>
         </View>
 
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+        >
           {/* Kimi mascot banner */}
           <View style={styles.mascotBanner}>
             <View style={styles.mascotText}>
@@ -261,7 +267,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 40 },
+  scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 220 },
 
   mascotBanner: {
     backgroundColor: Colors.primary + '18',

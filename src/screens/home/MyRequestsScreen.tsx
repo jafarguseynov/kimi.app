@@ -179,6 +179,13 @@ export default function MyRequestsScreen({ navigation }: Props) {
                   </Text>
                 )}
 
+                {!!r.note && (
+                  <View style={styles.noteBox}>
+                    <Text style={styles.noteLabel}>{t('myRequests.noteLabel')}</Text>
+                    <Text style={styles.noteText}>{r.note}</Text>
+                  </View>
+                )}
+
                 {/* Meta chips */}
                 <View style={styles.chipsRow}>
                   <View style={styles.chipMuted}>
@@ -318,6 +325,12 @@ const styles = StyleSheet.create({
   statusPillText: { fontSize: 9, fontWeight: '800', letterSpacing: 1 },
 
   cardMeta: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, fontStyle: 'italic' },
+  noteBox: {
+    backgroundColor: Colors.surfaceLow, borderRadius: 12, padding: 12, gap: 4,
+    borderLeftWidth: 3, borderLeftColor: Colors.primary,
+  },
+  noteLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
+  noteText: { fontSize: 13, color: Colors.textPrimary, lineHeight: 18 },
 
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipMuted: {

@@ -33,6 +33,7 @@ export interface MyLessonRequest {
   subject: string;
   grade?: string;
   topic?: string;
+  note?: string;
   status: string;
   interestedCount: number;
   interestedTeachers: { id: string; name: string }[];
