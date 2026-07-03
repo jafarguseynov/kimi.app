@@ -3027,6 +3027,7 @@ export const en = {
     lockSub: 'Accept student requests and earn →',
     noRequests: 'No requests found',
     noSubjectSpecified: 'No subject specified',
+    noteLabel: "Student's note",
     duration: 'Duration',
     minutes: 'min',
     accepting: 'Accepting...',

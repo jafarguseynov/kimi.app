@@ -3027,6 +3027,7 @@ export const ru = {
     lockSub: 'Принимай запросы учеников и зарабатывай →',
     noRequests: 'Запросы не найдены',
     noSubjectSpecified: 'Предмет не указан',
+    noteLabel: 'Заметка ученика',
     duration: 'Длительность',
     minutes: 'мин',
     accepting: 'Принимается...',

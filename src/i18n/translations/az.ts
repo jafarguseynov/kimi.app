@@ -3037,6 +3037,7 @@ export const az = {
     lockSub: 'Şagird müraciətlərini qəbul et və gəlir əldə et →',
     noRequests: 'Müraciət tapılmadı',
     noSubjectSpecified: 'Fənn göstərilməyib',
+    noteLabel: 'Şagirdin qeydi',
     duration: 'Müddət',
     minutes: 'dəq',
     accepting: 'Qəbul edilir...',

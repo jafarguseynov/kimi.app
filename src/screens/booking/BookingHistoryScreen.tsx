@@ -234,6 +234,13 @@ export default function BookingHistoryScreen() {
                   </View>
                 )}
 
+                {!!item.note && (
+                  <View style={styles.noteBox}>
+                    <Text style={styles.noteLabel}>{t('booking.noteLabel')}</Text>
+                    <Text style={styles.noteText}>{item.note}</Text>
+                  </View>
+                )}
+
                 {isTeacher && status === 'pending' && (
                   <View style={styles.actionRow}>
                     <TouchableOpacity
@@ -379,6 +386,13 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
   infoValueRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   infoValue: { fontSize: 13, fontWeight: '500', color: Colors.textPrimary },
+
+  noteBox: {
+    backgroundColor: Colors.surfaceLow, borderRadius: 14, padding: 12, gap: 4,
+    borderLeftWidth: 3, borderLeftColor: Colors.primary,
+  },
+  noteLabel: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1 },
+  noteText: { fontSize: 13, color: Colors.textPrimary, lineHeight: 18 },
 
   joinBtn: {
     backgroundColor: Colors.primary, borderRadius: 999,
