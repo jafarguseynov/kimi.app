@@ -418,7 +418,10 @@ export default function HomeScreen({ navigation }: Props) {
                     const parent = navigation.getParent() as any;
                     switch (a.target) {
                       case 'editProfile':
-                        parent?.navigate(Routes.Profile, { screen: Routes.EditProfile });
+                        // Home stack-in ÖZ EditProfile ekranını aç (HomeNavigator-da qeydiyyatdadır)
+                        // ki, geri düyməsi Home-a qayıtsın. Cross-tab (Profile) keçid EditProfile-i
+                        // Profile tabında "initial route" edir → geri Profil səhifəsinə atırdı.
+                        navigation.navigate(Routes.EditProfile);
                         break;
                       case 'requests':
                         parent?.navigate('Booking', { screen: Routes.BookingHistory });
