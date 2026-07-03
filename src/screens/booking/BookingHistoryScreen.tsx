@@ -195,7 +195,7 @@ export default function BookingHistoryScreen() {
               ? (item.student?.name ?? t('booking.defaultStudent'))
               : (item.teacher?.name ?? t('booking.defaultTeacher'));
             const initials = getInitials(personName);
-            const showInfo = status === 'pending' || status === 'confirmed';
+            const showInfo = status === 'pending' || status === 'confirmed' || status === 'cancelled';
 
             return (
               <View key={item.id} style={[styles.card, status === 'cancelled' && styles.cardDim]}>
