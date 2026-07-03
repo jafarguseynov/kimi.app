@@ -194,22 +194,23 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   // mesajı ilə əvəz edir — uzunluq eyni qalır, amma sonuncu id dəyişir, FlatList
   // elementi yenidən qurulur və mövqe "alta düşür". Son id-yə baxaraq yenidən sürüşürük.
   const lastMsgId = messages.length > 0 ? messages[messages.length - 1].id : null;
-  // Yalnız ilk yüklənmədən SONRA gələn/dəyişən mesaj animasiya ilə sürüşsün.
-  // İlk açılışda animasiya "yuxarıdan-aşağı sürüşmə" effekti yaradırdı — onu kəsirik ki,
-  // söhbət birbaşa son mesajın olduğu yerdə görünsün.
+  // Son mesaj dəyişəndə (göndərmə, optimistik→real əvəzləmə, gələn mesaj) sona sürüş.
+  // MÜHÜM: sürüşmə ANİMASİYASIZ (instant) edilir. Əvvəl animasiyalı idi və bir neçə
+  // sürüşmə (send + kontent ölçüsü + poll əvəzləməsi) üst-üstə düşüb mesajı 1-2 saniyə
+  // "aşağı-yuxarı" tərpədirdi. İnstant sürüşmə birbaşa sona yapışdırır — titrəmə olmur.
   useEffect(() => {
     if (lastMsgId && didInitialScroll.current) {
-      // Dərhal + qısa gecikmə ilə: element yenidən qurulub ölçüləndən sonra da sonda qalsın.
-      listRef.current?.scrollToEnd({ animated: true });
-      const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 120);
+      listRef.current?.scrollToEnd({ animated: false });
+      // Element yenidən qurulub ölçüləndən sonra da sonda qalsın (yenə instant).
+      const id = setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 120);
       return () => clearTimeout(id);
     }
   }, [lastMsgId, messages.length]);
 
   const onListContentSizeChange = () => {
     if (messages.length === 0) return;
-    // İlk dəfə animasiyasız (dərhal) sona tullan, sonrakılar üçün animasiyalı.
-    listRef.current?.scrollToEnd({ animated: didInitialScroll.current });
+    // Həmişə animasiyasız (dərhal) sona tullan — titrəmə/sıçrama olmasın.
+    listRef.current?.scrollToEnd({ animated: false });
     didInitialScroll.current = true;
   };
 
@@ -219,8 +220,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const sub = Keyboard.addListener(showEvt, () => {
       if (messages.length > 0) {
-        // Klaviatura animasiyası bitəndən sonra sona sürüşməsi daha etibarlıdır.
-        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50);
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 50);
       }
     });
     return () => sub.remove();
