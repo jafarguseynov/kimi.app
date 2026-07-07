@@ -163,7 +163,7 @@ export default function ClassGradeCalculatorScreen() {
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('calc.classHeader')}</Text>
-          <Text style={styles.brand}>Kimi.az</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
@@ -380,7 +380,6 @@ const styles = StyleSheet.create({
   },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3, flex: 1, textAlign: 'center' },
-  brand: { fontSize: 14, fontWeight: '800', color: Colors.primaryDim, letterSpacing: -0.3, width: 56, textAlign: 'right' },
 
   scroll: { padding: 20, gap: 16, paddingBottom: 48 },
 

@@ -23,6 +23,7 @@ import { useUserStore } from '../../store/user.store';
 import LocationSchoolPicker from '../../components/common/LocationSchoolPicker';
 import LocationPicker from '../../components/common/LocationPicker';
 import SubjectMultiPicker from '../../components/common/SubjectMultiPicker';
+import SuccessOverlay from '../../components/common/SuccessOverlay';
 import { useTranslation } from '../../i18n';
 
 type Props = {
@@ -68,6 +69,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   // Preset emoji avatar
   const [avatarId, setAvatarId] = useState<string | null>(userAny?.avatarId ?? null);
   const [avatarModal, setAvatarModal] = useState(false);
+  const [savedVisible, setSavedVisible] = useState(false);
   const [ownsAvatarPack, setOwnsAvatarPack] = useState(false);
 
   const onPickAvatar = async (id: string, premium: boolean) => {
@@ -222,7 +224,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
     onSuccess: (updated) => {
       // Store-u serverdən qayıdan dəyərlərlə yenilə (form dolu qalsın).
       if (updated) setUser({ ...(user as any), ...(updated as any) });
-      Alert.alert(t('editProfile.savedTitle'), t('editProfile.savedBody'));
+      setSavedVisible(true);
       // İstifadəçi redaktə səhifəsində QALIR — avtomatik geri qayıtma yoxdur.
       // (İstəsə geri düyməsi ilə çıxar; təkrar redaktə + saxlama sərbəst işləyir.)
     },
@@ -403,6 +405,13 @@ export default function EditProfileScreen({ navigation, route }: Props) {
             </View>
           )}
         </ScrollView>
+
+        <SuccessOverlay
+          visible={savedVisible}
+          title={t('editProfile.savedTitle')}
+          message={t('editProfile.savedBody')}
+          onClose={() => setSavedVisible(false)}
+        />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

@@ -21,8 +21,8 @@ import { MarketplaceStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { PAYMENTS_ENABLED } from '../../config/iap';
 import { Colors } from '../../constants/colors';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { createQuestion } from '../../api/marketplace.api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createQuestion, getMarketConfig } from '../../api/marketplace.api';
 import { getWallet } from '../../api/payment.api';
 import { useTranslation } from '../../i18n';
 
@@ -43,9 +43,12 @@ export default function AskQuestionScreen({ navigation }: Props) {
   const dot2Anim = useRef(new Animated.Value(0.2)).current;
   const dot3Anim = useRef(new Animated.Value(0.2)).current;
 
+  const qc = useQueryClient();
   const { data: wallet } = useQuery({ queryKey: ['wallet'], queryFn: getWallet });
   const balance = wallet?.balance ?? 0;
-  const price = urgent ? 1.0 : 0.5;
+  // Qiymətlər admin paneldən idarə olunur; yüklənməyibsə köhnə defaultlar.
+  const { data: marketCfg } = useQuery({ queryKey: ['market-config'], queryFn: getMarketConfig, staleTime: 1000 * 60 * 10 });
+  const price = urgent ? (marketCfg?.urgentPrice ?? 1.0) : (marketCfg?.questionPrice ?? 0.5);
 
   const { mutate: submit, isPending } = useMutation({
     mutationFn: () => createQuestion({
@@ -53,11 +56,22 @@ export default function AskQuestionScreen({ navigation }: Props) {
       body: text.trim(),
       subject: subject ?? 'general',
       price,
+      urgent,
     }),
     onSuccess: (q) => {
+      // Sualın qiyməti balansdan tutulur — cüzdanı yenilə.
+      qc.invalidateQueries({ queryKey: ['wallet'] });
       navigation.navigate(Routes.AISolution, { question: text.trim(), questionId: q.id });
     },
-    onError: () => Alert.alert(t('marketplace.errorTitle'), t('marketplace.submitFail')),
+    onError: (e: any) => {
+      const msg = e?.response?.data?.message;
+      // Server balans çatışmazlığı qaytarıbsa "balans artır" modalını göstər.
+      if (typeof msg === 'string' && msg.toLowerCase().includes('balans')) {
+        setShowBalanceModal(true);
+        return;
+      }
+      Alert.alert(t('marketplace.errorTitle'), msg || t('marketplace.submitFail'));
+    },
   });
 
   useEffect(() => {

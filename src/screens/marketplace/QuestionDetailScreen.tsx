@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,8 @@ import {
   Platform,
   Modal,
   Pressable,
+  Image,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,7 +21,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
-import { getQuestion, createAnswer, acceptAnswer, MarketAnswer } from '../../api/marketplace.api';
+import * as ImagePicker from 'expo-image-picker';
+import { getQuestion, createAnswer, acceptAnswer, getAiAnswer, MarketAnswer } from '../../api/marketplace.api';
+import { uploadMediaStrict } from '../../api/media.api';
 import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { formatDate } from '../../utils/formatters';
@@ -41,6 +45,9 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
   const [tab, setTab] = useState<TabKey>('answers');
   const [answerText, setAnswerText] = useState('');
   const [showWriteAnswer, setShowWriteAnswer] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [attachedVideo, setAttachedVideo] = useState<string | null>(null);
+  const [viewerImage, setViewerImage] = useState<string | null>(null);
 
   const [rateModalOpen, setRateModalOpen] = useState(false);
   const [pendingAnswerId, setPendingAnswerId] = useState<string | null>(null);
@@ -52,12 +59,37 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
     queryFn: () => getQuestion(questionId),
   });
 
+  // AI izahı yalnız tab açılanda yüklənir; backend nəticəni keşləyir.
+  const {
+    data: aiData,
+    isLoading: aiLoading,
+    isError: aiError,
+    refetch: refetchAi,
+  } = useQuery({
+    queryKey: ['question-ai', questionId],
+    queryFn: () => getAiAnswer(questionId),
+    enabled: tab === 'ai',
+    staleTime: Infinity,
+    retry: false,
+  });
+
   const { mutate: submitAnswer, isPending: isSubmitting } = useMutation({
-    mutationFn: () => createAnswer(questionId, answerText),
+    mutationFn: async () => {
+      // Əvvəl qoşmaları yüklə, sonra cavabı URL-lərlə birlikdə göndər.
+      const imageUrl = attachedImage ? await uploadMediaStrict(attachedImage) : undefined;
+      const videoUrl = attachedVideo ? await uploadMediaStrict(attachedVideo) : undefined;
+      return createAnswer(questionId, answerText.trim(), { imageUrl, videoUrl });
+    },
     onSuccess: () => {
       setAnswerText('');
+      setAttachedImage(null);
+      setAttachedVideo(null);
       setShowWriteAnswer(false);
       qc.invalidateQueries({ queryKey: ['question', questionId] });
+    },
+    onError: (e: any) => {
+      const serverMsg = e?.response?.data?.message;
+      Alert.alert(t('marketplace.errorTitle'), serverMsg || t('marketplace.uploadFailed'));
     },
   });
 
@@ -67,11 +99,40 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
   });
 
   const handleSubmitAnswer = () => {
-    if (answerText.trim().length < 10) {
+    // Şəkil/video qoşulubsa qısa mətn də kifayətdir.
+    const hasAttachment = !!attachedImage || !!attachedVideo;
+    if (answerText.trim().length < 10 && !hasAttachment) {
       Alert.alert(t('marketplace.errorTitle'), t('marketplace.answerTooShort'));
       return;
     }
     submitAnswer();
+  };
+
+  // İkiqat toxunuşda pəncərənin üst-üstə açılmasının qarşısını alır —
+  // iOS-da stack olmuş picker "X bağlamır" təəssüratı yaradır.
+  const pickingRef = useRef(false);
+  const pickMedia = async (kind: 'image' | 'video') => {
+    if (pickingRef.current) return;
+    pickingRef.current = true;
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert(t('marketplace.errorTitle'), t('marketplace.galleryPermission'));
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: kind === 'image' ? ['images'] : ['videos'],
+        quality: 0.7,
+        // pageSheet rejimində X düyməsi bəzən pəncərəni bağlamır (iOS bug) —
+        // tam ekran təqdimat bu problemi aradan qaldırır.
+        presentationStyle: ImagePicker.UIImagePickerPresentationStyle.FULL_SCREEN,
+      });
+      if (res.canceled || !res.assets?.[0]) return;
+      if (kind === 'image') setAttachedImage(res.assets[0].uri);
+      else setAttachedVideo(res.assets[0].uri);
+    } finally {
+      pickingRef.current = false;
+    }
   };
 
   const openRateModal = (answerId: string) => {
@@ -194,7 +255,24 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                         </View>
                       )}
                     </View>
-                    <Text style={styles.answerBody} numberOfLines={3}>"{a.body}"</Text>
+                    {!!a.body && <Text style={styles.answerBody} numberOfLines={3}>"{a.body}"</Text>}
+                    {!!a.imageUrl && (
+                      <TouchableOpacity activeOpacity={0.9} onPress={() => setViewerImage(a.imageUrl!)}>
+                        <Image source={{ uri: a.imageUrl }} style={styles.answerImage} resizeMode="cover" />
+                      </TouchableOpacity>
+                    )}
+                    {!!a.videoUrl && (
+                      <TouchableOpacity activeOpacity={0.85} onPress={() => Linking.openURL(a.videoUrl!)}>
+                        <LinearGradient
+                          colors={[Colors.gradientStart, Colors.gradientEnd]}
+                          style={styles.answerVideoBtn}
+                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                        >
+                          <Ionicons name="play-circle" size={20} color="#fff" />
+                          <Text style={styles.answerVideoText}>{t('marketplace.watchVideo')}</Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
                     {isOwner && !question.isResolved && (
                       <TouchableOpacity
                         activeOpacity={0.85}
@@ -236,6 +314,42 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                     multiline
                     textAlignVertical="top"
                   />
+
+                  {/* Qoşma önizləmələri */}
+                  {(attachedImage || attachedVideo) && (
+                    <View style={styles.attachPreviewRow}>
+                      {attachedImage && (
+                        <View style={styles.attachThumbWrap}>
+                          <Image source={{ uri: attachedImage }} style={styles.attachThumb} />
+                          <TouchableOpacity style={styles.attachRemove} onPress={() => setAttachedImage(null)} hitSlop={8}>
+                            <Ionicons name="close" size={12} color="#fff" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      {attachedVideo && (
+                        <View style={styles.attachVideoChip}>
+                          <Ionicons name="videocam" size={16} color={Colors.primary} />
+                          <Text style={styles.attachVideoText}>{t('marketplace.videoSelected')}</Text>
+                          <TouchableOpacity onPress={() => setAttachedVideo(null)} hitSlop={8}>
+                            <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {/* Şəkil / video qoşma düymələri */}
+                  <View style={styles.attachRow}>
+                    <TouchableOpacity style={styles.attachBtn} activeOpacity={0.8} onPress={() => pickMedia('image')}>
+                      <Ionicons name="image-outline" size={18} color={Colors.primary} />
+                      <Text style={styles.attachBtnText}>{t('marketplace.attachImage')}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.attachBtn} activeOpacity={0.8} onPress={() => pickMedia('video')}>
+                      <Ionicons name="videocam-outline" size={18} color={Colors.primary} />
+                      <Text style={styles.attachBtnText}>{t('marketplace.attachVideo')}</Text>
+                    </TouchableOpacity>
+                  </View>
+
                   <TouchableOpacity
                     style={{ width: '100%' }}
                     activeOpacity={0.85}
@@ -267,9 +381,22 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 </LinearGradient>
                 <Text style={styles.aiTitle}>Kimi AI</Text>
               </View>
-              <Text style={styles.aiBody}>
-                {t('marketplace.aiAnalyzing2')}
-              </Text>
+              {aiLoading ? (
+                <View style={styles.aiLoadingWrap}>
+                  <ActivityIndicator color={Colors.primary} />
+                  <Text style={styles.aiBody}>{t('marketplace.aiAnalyzing2')}</Text>
+                </View>
+              ) : aiError || !aiData?.answer ? (
+                <View style={styles.aiLoadingWrap}>
+                  <Text style={styles.aiBody}>{t('marketplace.aiUnavailable')}</Text>
+                  <TouchableOpacity style={styles.aiRetryBtn} activeOpacity={0.85} onPress={() => refetchAi()}>
+                    <Ionicons name="refresh" size={15} color={Colors.primary} />
+                    <Text style={styles.aiRetryText}>{t('marketplace.aiRetry')}</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={styles.aiBody}>{aiData.answer}</Text>
+              )}
             </View>
           )}
         </ScrollView>
@@ -355,6 +482,24 @@ export default function QuestionDetailScreen({ navigation, route }: Props) {
                 <Text style={styles.rateLaterText}>{t('marketplace.later')}</Text>
               </TouchableOpacity>
             </Pressable>
+          </Pressable>
+        </Modal>
+
+        {/* Tam ekran şəkil baxışı */}
+        <Modal
+          visible={!!viewerImage}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setViewerImage(null)}
+          statusBarTranslucent
+        >
+          <Pressable style={styles.viewerBackdrop} onPress={() => setViewerImage(null)}>
+            {!!viewerImage && (
+              <Image source={{ uri: viewerImage }} style={styles.viewerImage} resizeMode="contain" />
+            )}
+            <TouchableOpacity style={styles.viewerClose} onPress={() => setViewerImage(null)} hitSlop={8}>
+              <Ionicons name="close" size={26} color="#fff" />
+            </TouchableOpacity>
           </Pressable>
         </Modal>
       </SafeAreaView>
@@ -461,6 +606,50 @@ const styles = StyleSheet.create({
   sendBtn: { borderRadius: 999, paddingVertical: 14, alignItems: 'center' },
   sendBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
 
+  // ── Cavab qoşmaları (şəkil / video) ────────────────────────────────────
+  answerImage: { width: '100%', height: 180, borderRadius: 14, backgroundColor: Colors.surfaceLow },
+  answerVideoBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: 999, paddingVertical: 12,
+  },
+  answerVideoText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+
+  attachPreviewRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  attachThumbWrap: { position: 'relative' },
+  attachThumb: { width: 72, height: 72, borderRadius: 12, backgroundColor: Colors.surfaceLow },
+  attachRemove: {
+    position: 'absolute', top: -6, right: -6,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: Colors.textPrimary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  attachVideoChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: Colors.surfaceLow, borderRadius: 999,
+    paddingHorizontal: 12, paddingVertical: 8,
+  },
+  attachVideoText: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary, maxWidth: 160 },
+  attachRow: { flexDirection: 'row', gap: 10 },
+  attachBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.primaryFixed + '55',
+    backgroundColor: Colors.surfaceLowest,
+  },
+  attachBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
+
+  viewerBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  viewerImage: { width: '100%', height: '80%' },
+  viewerClose: {
+    position: 'absolute', top: 56, right: 20,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
   aiCard: {
     backgroundColor: Colors.surfaceLowest,
     borderRadius: 20, padding: 20, gap: 12,
@@ -473,6 +662,14 @@ const styles = StyleSheet.create({
   },
   aiTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   aiBody: { fontSize: 13, color: Colors.textSecondary, lineHeight: 21 },
+  aiLoadingWrap: { gap: 10, alignItems: 'flex-start' },
+  aiRetryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: Colors.primaryFixed + '55',
+    backgroundColor: Colors.surfaceLowest,
+  },
+  aiRetryText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
 
   // Rating Modal
   rateBackdrop: {

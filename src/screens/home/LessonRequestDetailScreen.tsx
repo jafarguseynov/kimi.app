@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import {
   type PublicLessonRequest,
 } from '../../api/lessonRequest.api';
 import { useTranslation } from '../../i18n';
+import SuccessOverlay from '../../components/common/SuccessOverlay';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.LessonRequestDetail>;
@@ -44,6 +45,7 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
   const user = useUserStore((s) => s.user);
   const isTeacher = user?.role === 'teacher';
   const qc = useQueryClient();
+  const [successVisible, setSuccessVisible] = useState(false);
 
   const { data: list = [], isLoading } = useQuery<PublicLessonRequest[]>({
     queryKey: ['openLessonRequests', 'all'],
@@ -55,7 +57,7 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
   const { mutate: doInterest, isPending: interestPending } = useMutation({
     mutationFn: () => expressInterest(requestId),
     onSuccess: () => {
-      Alert.alert(t('lessonReqDetail.alertSuccessTitle'), t('lessonReqDetail.alertSuccessMsg'));
+      setSuccessVisible(true);
       qc.invalidateQueries({ queryKey: ['openLessonRequests'] });
       qc.invalidateQueries({ queryKey: ['myLessonRequests'] });
     },
@@ -217,6 +219,13 @@ export default function LessonRequestDetailScreen({ navigation, route }: Props) 
           </LinearGradient>
         </TouchableOpacity>
       </View>
+
+      <SuccessOverlay
+        visible={successVisible}
+        title={t('lessonReqDetail.alertSuccessTitle')}
+        message={t('lessonReqDetail.alertSuccessMsg')}
+        onClose={() => setSuccessVisible(false)}
+      />
     </SafeAreaView>
   );
 }

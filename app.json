@@ -31,7 +31,7 @@
     "android": {
       "package": "com.jafarstudio.kimi",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 110,
+      "versionCode": 111,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

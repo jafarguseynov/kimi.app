@@ -22,6 +22,32 @@ export const uploadImage = async (uri: string): Promise<string> => {
 
 const isUsableUrl = (url?: string) => !!url && /^https?:\/\//.test(url) && !url.includes('placeholder.kimi.az');
 
+const MIME_BY_EXT: Record<string, string> = {
+  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+  mp4: 'video/mp4', mov: 'video/quicktime', m4v: 'video/x-m4v', webm: 'video/webm',
+};
+
+/**
+ * Şəkil və ya video faylını yükləyir. Yükləmə alınmasa və ya server yalnız
+ * placeholder qaytarsa (S3 konfiqurasiya olunmayıb) xəta atır — çünki lokal URI
+ * digər istifadəçilər üçün əlçatan deyil.
+ */
+export const uploadMediaStrict = async (uri: string): Promise<string> => {
+  const name = uri.split('/').pop() || `media-${Date.now()}.jpg`;
+  const ext = (/\.(\w+)$/.exec(name)?.[1] ?? 'jpg').toLowerCase();
+  const type = MIME_BY_EXT[ext] ?? 'image/jpeg';
+
+  const form = new FormData();
+  form.append('file', { uri, name, type } as any);
+
+  const res = await apiClient.post<{ url: string; key: string }>('/media/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 180000,
+  });
+  if (!isUsableUrl(res.data.url)) throw new Error('UPLOAD_NOT_AVAILABLE');
+  return res.data.url;
+};
+
 /**
  * Şəkli yükləməyə çalışır; uğursuz olsa və ya yalnız placeholder qaytarılsa
  * lokal URI-ni qaytarır (eyni cihazda göstərilə bilsin deyə).

@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
   Switch,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -118,7 +119,7 @@ export default function SemesterCalculatorScreen() {
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('calc.semesterHeader')}</Text>
-          <Text style={styles.brand}>Kimi.az</Text>
+          <View style={{ width: 40 }} />
         </View>
 
         {step === 'setup' ? (
@@ -127,7 +128,11 @@ export default function SemesterCalculatorScreen() {
             <View style={styles.mascotWrap}>
               <View style={styles.mascotAura} pointerEvents="none" />
               <View style={styles.mascotCircle}>
-                <Ionicons name="school" size={42} color={Colors.primary} />
+                <Image
+                  source={require('../../../assets/logo.png')}
+                  style={styles.mascotLogo}
+                  resizeMode="contain"
+                />
               </View>
             </View>
 
@@ -334,7 +339,6 @@ const styles = StyleSheet.create({
   },
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 },
-  brand: { fontSize: 16, fontWeight: '800', color: Colors.primaryDim, letterSpacing: -0.3, width: 70, textAlign: 'right' },
 
   /* Setup step */
   scrollSetup: { padding: 24, paddingTop: 32, paddingBottom: 48, gap: 24, alignItems: 'stretch' },
@@ -356,8 +360,11 @@ const styles = StyleSheet.create({
     width: 96, height: 96, borderRadius: 48,
     backgroundColor: '#fff',
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 6,
   },
+  // Loqo landşaft formatlıdır (3:2) — dairənin içinə "contain" ilə sığdırılır.
+  mascotLogo: { width: 78, height: 52 },
 
   heroBlock: { alignItems: 'center', gap: 10, marginBottom: 8 },
   heroTitle: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center', letterSpacing: -0.5, lineHeight: 30 },

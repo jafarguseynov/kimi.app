@@ -24,6 +24,7 @@ import { getTeachers, getTeacherAnalytics, ensureProfileReminder, getMe } from '
 import { getGlobalLeaderboard } from '../../api/leaderboard.api';
 import { getTeacherBookings } from '../../api/booking.api';
 import { listOpenRequests, expressInterest, type PublicLessonRequest } from '../../api/lessonRequest.api';
+import { getQuestions } from '../../api/marketplace.api';
 import { useOnboardingStore } from '../../store/onboarding.store';
 import { usePushStore } from '../../store/push.store';
 import { getPermissionStatus } from '../../utils/push';
@@ -36,6 +37,7 @@ import { useTranslation } from '../../i18n';
 import { rs } from '../../utils/responsive';
 import { useBadges } from '../../hooks/useBadges';
 import UnreadDot from '../../components/common/UnreadDot';
+import SuccessOverlay from '../../components/common/SuccessOverlay';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.HomeMain>;
@@ -45,6 +47,7 @@ const TEACHER_QUICK_ACTIONS = [
   { icon: 'create-outline', labelKey: 'home.qa.editProfile', target: 'editProfile' as const },
   { icon: 'help-circle-outline', labelKey: 'home.qa.requests', target: 'requests' as const },
   { icon: 'document-text-outline', labelKey: 'home.qa.lessonRequest', target: 'lessonRequest' as const },
+  { icon: 'megaphone-outline', labelKey: 'home.qa.openRequests', target: 'openRequests' as const },
   { icon: 'chatbubble-outline', labelKey: 'home.qa.chat', target: 'chat' as const },
   { icon: 'stats-chart-outline', labelKey: 'home.qa.stats', target: 'dashboard' as const },
 ] as const;
@@ -215,6 +218,12 @@ export default function HomeScreen({ navigation }: Props) {
   const { data: leaderboard = [] } = useQuery({ queryKey: ['leaderboard-home'], queryFn: getGlobalLeaderboard, enabled: !isTeacher && !isParent });
   const { data: analytics } = useQuery({ queryKey: ['teacher-analytics'], queryFn: getTeacherAnalytics, enabled: isTeacher });
   const { data: teacherBookings = [] } = useQuery({ queryKey: ['teacher-bookings-home'], queryFn: getTeacherBookings, enabled: isTeacher });
+  const { data: marketQuestions = [] } = useQuery({
+    queryKey: ['market-questions-home'],
+    queryFn: () => getQuestions().catch(() => []),
+    enabled: isTeacher,
+  });
+  const openQuestionCount = marketQuestions.filter((q) => !q.isResolved).length;
   const { data: openRequestsData } = useQuery<PublicLessonRequest[]>({
     queryKey: ['openLessonRequests'],
     queryFn: () => listOpenRequests().catch(() => [] as PublicLessonRequest[]),
@@ -224,6 +233,7 @@ export default function HomeScreen({ navigation }: Props) {
   // Pull-to-refresh: bütün ana səhifə sorğularını yenidən çək.
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [interestSuccessVisible, setInterestSuccessVisible] = useState(false);
   const onRefresh = async () => {
     setRefreshing(true);
     try {
@@ -306,7 +316,7 @@ export default function HomeScreen({ navigation }: Props) {
     }
     try {
       await expressInterest(id);
-      Alert.alert(t('home.interest.successTitle'), t('home.interest.successMsg'));
+      setInterestSuccessVisible(true);
     } catch (e: any) {
       const msg = e?.response?.data?.message;
       if (msg === 'SUBSCRIPTION_REQUIRED' || e?.response?.status === 403) {
@@ -430,6 +440,10 @@ export default function HomeScreen({ navigation }: Props) {
                         // "Tələblər" → açıq dərs sorğuları siyahısı (Home stack daxilində)
                         navigation.navigate(Routes.AllOpenRequests);
                         break;
+                      case 'openRequests':
+                        // "Açıq sorğular" → şagirdlərin yaratdığı ümumi dərs sorğuları
+                        navigation.navigate(Routes.AllOpenRequests);
+                        break;
                       case 'chat':
                         parent?.navigate('Chat');
                         break;
@@ -498,6 +512,27 @@ export default function HomeScreen({ navigation }: Props) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.calcTitle}>{t('home.teacher.calcTitle')}</Text>
                 <Text style={styles.calcSub}>{t('home.teacher.calcSub')}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
+            </TouchableOpacity>
+
+            {/* Sual Bazarı */}
+            <TouchableOpacity
+              style={styles.calcCard}
+              activeOpacity={0.9}
+              onPress={() => (navigation.getParent() as any)?.navigate('Marketplace' as never)}
+            >
+              <View style={[styles.calcIconWrap, styles.questionsIconWrap]}>
+                <Ionicons name="chatbubbles" size={24} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.calcTitle}>{t('home.teacher.questionsTitle')}</Text>
+                <Text style={styles.calcSub}>{t('home.teacher.questionsSub')}</Text>
+                {openQuestionCount > 0 && (
+                  <View style={styles.questionsCountPill}>
+                    <Text style={styles.questionsCountText}>{t('home.teacher.questionsOpen', { n: openQuestionCount })}</Text>
+                  </View>
+                )}
               </View>
               <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
@@ -1143,6 +1178,13 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Tərəfdaşlarımız (admin idarəli) */}
         <PartnersSection />
       </ScrollView>
+
+      <SuccessOverlay
+        visible={interestSuccessVisible}
+        title={t('home.interest.successTitle')}
+        message={t('home.interest.successMsg')}
+        onClose={() => setInterestSuccessVisible(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -1327,9 +1369,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   quickActionIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 48,
+    height: 48,
+    borderRadius: 13,
     backgroundColor: Colors.surfaceLowest,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1434,6 +1476,18 @@ const styles = StyleSheet.create({
   },
   calcTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
   calcSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 3, lineHeight: 17 },
+
+  // ── Teacher: Sual Bazarı kartı ─────────────────────────────────────────
+  questionsIconWrap: { backgroundColor: '#d1fae5' },
+  questionsCountPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#ecfdf5',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginTop: 6,
+  },
+  questionsCountText: { fontSize: 11, fontWeight: '700', color: '#059669' },
 
   // ── Teacher: Requests ──────────────────────────────────────────────────
   requestList: { gap: 10, marginBottom: 24 },

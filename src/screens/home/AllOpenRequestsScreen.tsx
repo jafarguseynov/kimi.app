@@ -26,6 +26,7 @@ import {
   type PublicLessonRequest,
 } from '../../api/lessonRequest.api';
 import { useTranslation } from '../../i18n';
+import SuccessOverlay from '../../components/common/SuccessOverlay';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.AllOpenRequests>;
@@ -57,6 +58,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
   const isTeacher = user?.role === 'teacher';
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('Hamısı');
+  const [successVisible, setSuccessVisible] = useState(false);
 
   const { data, isLoading, refetch, isRefetching } = useQuery<PublicLessonRequest[]>({
     queryKey: ['openLessonRequests', 'all'],
@@ -87,7 +89,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
     }
     try {
       await expressInterest(id);
-      Alert.alert(t('allOpenRequests.alertSuccessTitle'), t('allOpenRequests.alertSuccessMsg'));
+      setSuccessVisible(true);
       refetch();
     } catch (e: any) {
       const msg = e?.response?.data?.message;
@@ -298,6 +300,13 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
           )}
         </ScrollView>
       )}
+
+      <SuccessOverlay
+        visible={successVisible}
+        title={t('allOpenRequests.alertSuccessTitle')}
+        message={t('allOpenRequests.alertSuccessMsg')}
+        onClose={() => setSuccessVisible(false)}
+      />
 
       {/* FAB for students */}
       {!isTeacher && (
