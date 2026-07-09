@@ -23,7 +23,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jafarstudio.kimi",
-      "buildNumber": "103",
+      "buildNumber": "104",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
