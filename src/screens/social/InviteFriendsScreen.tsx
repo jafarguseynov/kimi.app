@@ -4,24 +4,34 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
+import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-const INVITE_LINK = 'kimi.az/invite/123';
 
 export default function InviteFriendsScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
+  const { data } = useQuery<{ code: string; link: string; earnings: number }>({
+    queryKey: ['referral'],
+    queryFn: () => client.get('/referral/link').then((r) => r.data),
+  });
+  const inviteLink = data?.link ?? '';
+  const inviteCode = data?.code ?? '';
+
   const onShare = async () => {
+    if (!inviteLink) return;
     try {
-      await Share.share({ message: t('social.shareMessage', { link: INVITE_LINK }) });
+      await Share.share({ message: t('social.shareMessage', { link: inviteLink, code: inviteCode }) });
     } catch {}
   };
 
   const onCopy = () => {
-    Clipboard.setString(INVITE_LINK);
+    if (!inviteLink) return;
+    Clipboard.setString(inviteLink);
     Alert.alert(t('social.copiedTitle'), t('social.copiedMsg'));
   };
 
@@ -44,7 +54,7 @@ export default function InviteFriendsScreen() {
 
           {/* Referral link box */}
           <View style={styles.linkBox}>
-            <Text style={styles.linkText} numberOfLines={1}>{INVITE_LINK}</Text>
+            <Text style={styles.linkText} numberOfLines={1}>{inviteLink || 'kimi.az/join?ref=…'}</Text>
             <TouchableOpacity onPress={onCopy} hitSlop={6} style={styles.copyBtn}>
               <Ionicons name="copy-outline" size={20} color={Colors.primary} />
             </TouchableOpacity>

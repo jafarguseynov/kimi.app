@@ -17,6 +17,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RouteProp } from '@react-navigation/native';
 import { AuthStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
@@ -27,7 +28,10 @@ import Input from '../../components/common/Input';
 import { UserRole } from '../../types/auth.types';
 import { useTranslation } from '../../i18n';
 
-type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Register> };
+type Props = {
+  navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Register>;
+  route: RouteProp<AuthStackParamList, typeof Routes.Register>;
+};
 
 const ROLE_OPTIONS: { id: Exclude<UserRole, 'admin'>; labelKey: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { id: 'student', labelKey: 'register.roleStudent', icon: 'school-outline' },
@@ -44,7 +48,7 @@ const LOGO_RATIO = 380 / 205;
 const LOGO_W = Math.min(340, Dimensions.get('window').width - 40);
 const LOGO_H = Math.round(LOGO_W / LOGO_RATIO);
 
-export default function RegisterScreen({ navigation }: Props) {
+export default function RegisterScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -56,7 +60,14 @@ export default function RegisterScreen({ navigation }: Props) {
   const [grade, setGrade] = React.useState('');
   const [school, setSchool] = React.useState('');
   const [childName, setChildName] = React.useState('');
-  const [referralCode, setReferralCode] = React.useState('');
+  // Referal linki ilə açılıbsa (kimiaz://join?ref=KOD və ya kimi.az/join?ref=KOD),
+  // dəvət kodu avtomatik doldurulur.
+  const [referralCode, setReferralCode] = React.useState(route.params?.ref ?? '');
+
+  React.useEffect(() => {
+    const ref = route.params?.ref;
+    if (ref) setReferralCode(ref);
+  }, [route.params?.ref]);
 
   const pickGrade = () =>
     Alert.alert(t('register.pickGrade'), '', [

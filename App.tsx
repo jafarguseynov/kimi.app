@@ -33,6 +33,20 @@ const queryClient = new QueryClient();
 // Bildirişə toxunulduqda naviqasiya üçün ref.
 export const navigationRef = createNavigationContainerRef();
 
+// Deep/Universal link konfiqurasiyası — referal linki tətbiqi açsın və kodu
+// qeydiyyat ekranına ötürsün. `https://kimi.az/join?ref=KOD` → Register (ref).
+// Custom scheme `kimiaz://join?ref=KOD` də dəstəklənir (tətbiq quraşdırılıbsa).
+// Qeyd: yalnız istifadəçi çıxış edibsə (yeni istifadəçi) Register mount olunur —
+// artıq daxil olmuş istifadəçidə link naviqasiya etməyəcək (gözlənilən davranış).
+const linking = {
+  prefixes: ['kimiaz://', 'https://kimi.az', 'https://www.kimi.az'],
+  config: {
+    screens: {
+      [Routes.Register]: 'join',
+    },
+  },
+};
+
 /**
  * Offline imtahan idarəetməsi (provider-lərin içində — tərcümə üçün):
  * - şəbəkə izləyicisi + reconnect-də submit növbəsini boşalt
@@ -156,7 +170,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <NavigationContainer ref={navigationRef}>
+          <NavigationContainer ref={navigationRef} linking={linking}>
             <OfflineBootstrap />
             <RootNavigator />
           </NavigationContainer>

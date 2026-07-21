@@ -22,6 +22,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.jafarstudio.kimi",
       "buildNumber": "104",
+      "associatedDomains": [
+        "applinks:kimi.az",
+        "applinks:www.kimi.az"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -36,6 +40,17 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            { "scheme": "https", "host": "kimi.az", "pathPrefix": "/join" },
+            { "scheme": "https", "host": "www.kimi.az", "pathPrefix": "/join" }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"

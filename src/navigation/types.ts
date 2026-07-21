@@ -3,7 +3,7 @@ import { Routes } from '../constants/routes';
 export type AuthStackParamList = {
   [Routes.Welcome]: undefined;
   [Routes.Login]: undefined;
-  [Routes.Register]: undefined;
+  [Routes.Register]: { ref?: string } | undefined;
   [Routes.OTP]: { phone: string };
   [Routes.RoleSelect]: undefined;
   [Routes.ProfileSetup]: undefined;

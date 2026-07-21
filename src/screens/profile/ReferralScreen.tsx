@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Share,
   ActivityIndicator,
+  Clipboard,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -64,13 +66,21 @@ export default function ReferralScreen() {
   }).length;
   const payingCount = friends.filter((f) => f.rewardPaid).length;
 
-  const displayLink = data?.link ?? 'kimi.az/invite/123';
+  const displayLink = data?.link ?? '';
+  const displayCode = data?.code ?? '';
 
   const handleShare = async () => {
+    if (!displayLink) return;
     await Share.share({
-      message: t('referral.shareMessage', { link: displayLink }),
+      message: t('referral.shareMessage', { link: displayLink, code: displayCode }),
       url: displayLink,
     });
+  };
+
+  const handleCopy = () => {
+    if (!displayLink) return;
+    Clipboard.setString(displayLink);
+    Alert.alert(t('referral.copiedTitle'), t('referral.copiedMsg'));
   };
 
   return (
@@ -138,7 +148,7 @@ export default function ReferralScreen() {
             <Text style={styles.sectionLabel}>{t('referral.linkLabel')}</Text>
             <View style={styles.linkPill}>
               <Text style={styles.linkText} numberOfLines={1}>{displayLink}</Text>
-              <TouchableOpacity style={styles.copyChip} onPress={handleShare} activeOpacity={0.85}>
+              <TouchableOpacity style={styles.copyChip} onPress={handleCopy} activeOpacity={0.85}>
                 <Ionicons name="copy-outline" size={14} color={Colors.primary} />
                 <Text style={styles.copyChipText}>{t('referral.copy')}</Text>
               </TouchableOpacity>
