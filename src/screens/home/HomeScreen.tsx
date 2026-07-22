@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -26,6 +26,9 @@ import { getTeacherBookings } from '../../api/booking.api';
 import { listOpenRequests, expressInterest, type PublicLessonRequest } from '../../api/lessonRequest.api';
 import { getQuestions } from '../../api/marketplace.api';
 import { useOnboardingStore } from '../../store/onboarding.store';
+import { useGetStartedStore } from '../../store/getStarted.store';
+import GetStartedCard, { type GetStartedStep } from './GetStartedCard';
+import HomeTourOverlay from './HomeTourOverlay';
 import { usePushStore } from '../../store/push.store';
 import { getPermissionStatus } from '../../utils/push';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
@@ -214,6 +217,65 @@ export default function HomeScreen({ navigation }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me]);
   const { data: stats } = useQuery({ queryKey: ['user-stats'], queryFn: getUserStats, enabled: !isTeacher });
+
+  // ── Başlanğıc yol xəritəsi (yalnız şagird) ──
+  const getStarted = useGetStartedStore();
+  const isStudent = !isTeacher && !isParent;
+  // Onboarding köməkçiləri yalnız yeni istifadəçilərə (hesab 14 gündən yeni,
+  // və ya createdAt bilinmirsə) — köhnə aktiv şagirdləri narahat etməmək üçün.
+  const createdAtMs = (user as any)?.createdAt ? new Date((user as any).createdAt).getTime() : 0;
+  const isNewUser = !createdAtMs || Date.now() - createdAtMs < 14 * 24 * 60 * 60 * 1000;
+  const profileHasGrade = !!((user as any)?.profile?.grade || (user as any)?.grade);
+  const examDone = (stats?.totalExams ?? 0) > 0;
+  const getStartedSteps: GetStartedStep[] = useMemo(() => {
+    const goExams = () => (navigation.getParent() as any)?.navigate('Exams');
+    return [
+      {
+        key: 'profile',
+        icon: 'person-outline',
+        label: t('getStarted.stepProfile'),
+        done: profileHasGrade,
+        onPress: () => navigation.navigate(Routes.EditProfile),
+      },
+      {
+        key: 'exam',
+        icon: 'document-text-outline',
+        label: t('getStarted.stepExam'),
+        done: examDone,
+        onPress: goExams,
+      },
+      {
+        key: 'ai',
+        icon: 'sparkles-outline',
+        label: t('getStarted.stepAi'),
+        done: getStarted.aiVisited,
+        onPress: () => {
+          getStarted.markAiVisited();
+          (navigation.getParent() as any)?.navigate(Routes.AIMentor);
+        },
+      },
+      {
+        key: 'teacher',
+        icon: 'school-outline',
+        label: t('getStarted.stepTeacher'),
+        done: getStarted.teacherVisited,
+        onPress: () => {
+          getStarted.markTeacherVisited();
+          (navigation.getParent() as any)?.navigate('Booking', { screen: Routes.TeacherList });
+        },
+      },
+    ];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileHasGrade, examDone, getStarted.aiVisited, getStarted.teacherVisited, t]);
+  const showGetStarted =
+    isStudent &&
+    isNewUser &&
+    getStarted.hydrated &&
+    !getStarted.dismissed &&
+    getStartedSteps.some((s) => !s.done);
+  // İlk açılış turu — bildiriş priming addımı həll olunandan sonra bir dəfə.
+  const showTour =
+    isStudent && isNewUser && getStarted.hydrated && !getStarted.hasSeenHomeTour && primingSeen;
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers-home'], queryFn: () => getTeachers({ limit: 3 }), enabled: !isTeacher && !isParent });
   const { data: leaderboard = [] } = useQuery({ queryKey: ['leaderboard-home'], queryFn: getGlobalLeaderboard, enabled: !isTeacher && !isParent });
   const { data: analytics } = useQuery({ queryKey: ['teacher-analytics'], queryFn: getTeacherAnalytics, enabled: isTeacher });
@@ -703,6 +765,11 @@ export default function HomeScreen({ navigation }: Props) {
               <Text style={styles.greetSub}>{t('home.greetStudentSub')}</Text>
             </View>
 
+            {/* Başlanğıc yol xəritəsi — yeni istifadəçini ilk addımlara yönləndirir */}
+            {showGetStarted && (
+              <GetStartedCard steps={getStartedSteps} onDismiss={getStarted.dismiss} />
+            )}
+
             {/* Hero Card */}
             <LinearGradient
               colors={[Colors.gradientStart, Colors.gradientEnd]}
@@ -1185,6 +1252,8 @@ export default function HomeScreen({ navigation }: Props) {
         message={t('home.interest.successMsg')}
         onClose={() => setInterestSuccessVisible(false)}
       />
+
+      <HomeTourOverlay visible={showTour} onFinish={getStarted.markTourSeen} />
     </SafeAreaView>
   );
 }

@@ -5,6 +5,7 @@ import { useUserStore } from '../store/user.store';
 import { useFavoriteTeachersStore } from '../store/favoritesTeachers.store';
 import { useRecentTeachersStore } from '../store/recentTeachers.store';
 import { useOnboardingStore } from '../store/onboarding.store';
+import { useGetStartedStore } from '../store/getStarted.store';
 import { usePushStore } from '../store/push.store';
 import { useSettingsStore } from '../store/settings.store';
 import { useFeatureFlagStore } from '../store/featureFlag.store';
@@ -22,6 +23,7 @@ export default function RootNavigator() {
   const hydrateFavorites = useFavoriteTeachersStore((s) => s.hydrate);
   const hydrateRecent = useRecentTeachersStore((s) => s.hydrate);
   const hydrateOnboarding = useOnboardingStore((s) => s.hydrate);
+  const hydrateGetStarted = useGetStartedStore((s) => s.hydrate);
   const hydratePush = usePushStore((s) => s.hydrate);
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
   const hydrateSpinWheel = useSpinWheelStore((s) => s.hydrate);
@@ -35,6 +37,7 @@ export default function RootNavigator() {
         hydrateFavorites();
         hydrateRecent();
         hydrateOnboarding();
+        hydrateGetStarted();
         hydratePush();
         hydrateSettings();
         hydrateSpinWheel();

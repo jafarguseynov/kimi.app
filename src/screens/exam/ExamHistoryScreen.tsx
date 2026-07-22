@@ -17,6 +17,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
+import EmptyState from '../../components/common/EmptyState';
 import { useQuery } from '@tanstack/react-query';
 import { getExamResults, type ExamResultRow } from '../../api/certificate.api';
 import { useTranslation } from '../../i18n';
@@ -275,12 +276,20 @@ export default function ExamHistoryScreen({ navigation }: Props) {
             <ActivityIndicator size="large" color={Colors.primary} />
           </View>
         ) : filtered.length === 0 ? (
-          <View style={styles.center}>
-            <Ionicons name="ribbon-outline" size={48} color={Colors.primaryFixed} />
-            <Text style={styles.emptyText}>
-              {certs.length === 0 ? t('examHistory.emptyNone') : t('examHistory.emptyFilter')}
-            </Text>
-          </View>
+          certs.length === 0 ? (
+            <EmptyState
+              icon="ribbon-outline"
+              title={t('getStarted.emptyExamsTitle')}
+              subtitle={t('getStarted.emptyExamsSub')}
+              ctaLabel={t('getStarted.emptyExamsCta')}
+              onPress={() => navigation.navigate(Routes.ExamCategories)}
+            />
+          ) : (
+            <View style={styles.center}>
+              <Ionicons name="ribbon-outline" size={48} color={Colors.primaryFixed} />
+              <Text style={styles.emptyText}>{t('examHistory.emptyFilter')}</Text>
+            </View>
+          )
         ) : (
           <View style={{ gap: 14 }}>
             {filtered.map((cert) => {

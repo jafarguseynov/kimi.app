@@ -3440,6 +3440,37 @@ export const az = {
     askKimi: 'Kimi-dən soruş',
   },
 
+  getStarted: {
+    title: 'Buradan başla',
+    progress: '{{done}}/{{total}} addım tamamlanıb',
+    dismiss: 'Bağla',
+    stepProfile: 'Profilini tamamla',
+    stepExam: 'İlk imtahanını həll et',
+    stepAi: 'AI Mentordan sual soruş',
+    stepTeacher: 'Müəllim tap',
+    // Empty state (boş ekranlar)
+    emptyExamsTitle: 'Hələ imtahan həll etməmisən',
+    emptyExamsSub: 'Biliyini yoxlamaq üçün ilk imtahanını seç və başla.',
+    emptyExamsCta: 'İmtahana başla',
+    emptyTeachersTitle: 'Hələ müəllim seçməmisən',
+    emptyTeachersSub: 'Fənn üzrə ən uyğun müəllimi tap və dərs sorğusu göndər.',
+    emptyTeachersCta: 'Müəllimlərə bax',
+    emptyAiTitle: 'AI Mentorla söhbətə başla',
+    emptyAiSub: 'İstənilən mövzunu soruş — dərsi izah etsin, məsələ həll etsin.',
+    emptyAiCta: 'Sual soruş',
+    // Spotlight tur
+    tourExamsTitle: 'İmtahanlar',
+    tourExamsBody: 'Buradan sınaq imtahanı seçib bilikini yoxlaya bilərsən.',
+    tourAiTitle: 'AI Mentor',
+    tourAiBody: 'İstənilən sualı yaz — AI dərhal izah etsin və məsələ həll etsin.',
+    tourTeacherTitle: 'Müəllimlər',
+    tourTeacherBody: 'Sənə uyğun müəllim tap və onlayn dərs sorğusu göndər.',
+    tourProfileTitle: 'Profil',
+    tourProfileBody: 'Nəticələrin, mükafatların və tənzimləmələr burada.',
+    tourNext: 'Növbəti',
+    tourDone: 'Anladım',
+    tourSkip: 'Keç',
+  },
   onboarding: {
     // NotificationPriming
     npTitle: 'Bildirişləri aç',
