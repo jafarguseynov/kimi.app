@@ -41,6 +41,22 @@ const ROLE_OPTIONS: { id: Exclude<UserRole, 'admin'>; labelKey: string; icon: ke
 
 const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif', 'Abituriyent'];
 
+// Ad/soyad: hər sözün ilk hərfi avtomatik böyük (Azərbaycan i/İ qaydası ilə).
+// Qalan hərflər istifadəçinin yazdığı kimi qalır, boşluqlar toxunulmadan saxlanır.
+const capitalizeName = (s: string) =>
+  s
+    .split(' ')
+    .map((w) => (w ? w.charAt(0).toLocaleUpperCase('az') + w.slice(1) : w))
+    .join(' ');
+
+// Telefon: +994 prefiksi həmişə saxlanır, silinə bilmir; istifadəçi yalnız
+// qalan 9 rəqəmi yazır. Yalnız rəqəmlər qəbul olunur.
+const normalizePhone = (raw: string) => {
+  const digits = raw.replace(/\D/g, '');
+  const rest = (digits.startsWith('994') ? digits.slice(3) : digits).slice(0, 9);
+  return '+994' + rest;
+};
+
 // Loqo ölçüsü: dar ekranda kiçilir, 340dp-də dayanır. Sabit ədədi en/hündürlük
 // işlədilir — `width:'100%' + maxWidth + aspectRatio` kombinasiyası ScrollView
 // (alignItems:'center') içində Yoga layout döngüsü yaradıb ekranı dondururdu.
@@ -56,7 +72,11 @@ export default function RegisterScreen({ navigation, route }: Props) {
   });
   const { mutate, isPending } = useRegister();
   const google = useGoogleSignIn();
-  const [role, setRole] = React.useState<Exclude<UserRole, 'admin'>>('student');
+  // Default seçim yoxdur — istifadəçi statusunu (şagird/müəllim/valideyn) mütləq
+  // özü seçməlidir. Əvvəllər 'student' default idi və seçməyənlər səhvən şagird
+  // kimi qeydiyyatdan keçirdi.
+  const [role, setRole] = React.useState<Exclude<UserRole, 'admin'> | null>(null);
+  const [roleError, setRoleError] = React.useState(false);
   const [grade, setGrade] = React.useState('');
   const [school, setSchool] = React.useState('');
   const [childName, setChildName] = React.useState('');
@@ -76,6 +96,11 @@ export default function RegisterScreen({ navigation, route }: Props) {
     ]);
 
   const onSubmit = (data: RegisterFormData) => {
+    // Status seçilməyibsə qeydiyyatı dayandır və xəbərdarlıq göstər.
+    if (!role) {
+      setRoleError(true);
+      return Alert.alert(t('register.roleRequiredTitle'), t('register.roleRequiredMsg'));
+    }
     if (role === 'parent') {
       if (!childName.trim()) return Alert.alert(t('register.childTitle'), t('register.childMsg'));
       if (!grade) return Alert.alert(t('register.gradeTitle'), t('register.gradeMsg'));
@@ -132,9 +157,16 @@ export default function RegisterScreen({ navigation, route }: Props) {
                 return (
                   <TouchableOpacity
                     key={opt.id}
-                    style={[styles.roleChip, active && styles.roleChipActive]}
+                    style={[
+                      styles.roleChip,
+                      roleError && styles.roleChipError,
+                      active && styles.roleChipActive,
+                    ]}
                     activeOpacity={0.85}
-                    onPress={() => setRole(opt.id)}
+                    onPress={() => {
+                      setRole(opt.id);
+                      setRoleError(false);
+                    }}
                   >
                     <Ionicons
                       name={opt.icon}
@@ -148,6 +180,9 @@ export default function RegisterScreen({ navigation, route }: Props) {
                 );
               })}
             </View>
+            {roleError && (
+              <Text style={styles.roleErrorText}>{t('register.roleHint')}</Text>
+            )}
 
             {/* Name */}
             <View style={[styles.labelWrap, { marginTop: 16 }]}>
@@ -159,8 +194,9 @@ export default function RegisterScreen({ navigation, route }: Props) {
               render={({ field: { onChange, value } }) => (
                 <Input
                   placeholder={t('register.namePlaceholder')}
-                  onChangeText={onChange}
+                  onChangeText={(v: string) => onChange(capitalizeName(v))}
                   value={value}
+                  autoCapitalize="words"
                   error={errors.name?.message}
                 />
               )}
@@ -176,8 +212,8 @@ export default function RegisterScreen({ navigation, route }: Props) {
               render={({ field: { onChange, value } }) => (
                 <Input
                   placeholder="+994 (__) ___-__-__"
-                  onChangeText={onChange}
-                  value={value}
+                  onChangeText={(v: string) => onChange(normalizePhone(v))}
+                  value={value || '+994'}
                   keyboardType="phone-pad"
                   error={errors.phone?.message}
                 />
@@ -238,7 +274,8 @@ export default function RegisterScreen({ navigation, route }: Props) {
                 <Input
                   placeholder={t('register.childNamePlaceholder')}
                   value={childName}
-                  onChangeText={setChildName}
+                  onChangeText={(v: string) => setChildName(capitalizeName(v))}
+                  autoCapitalize="words"
                 />
 
                 <View style={styles.labelWrap}>
@@ -298,7 +335,13 @@ export default function RegisterScreen({ navigation, route }: Props) {
 
             {/* Google ilə qeydiyyat */}
             <TouchableOpacity
-              onPress={() => google.signIn(role)}
+              onPress={() => {
+                if (!role) {
+                  setRoleError(true);
+                  return Alert.alert(t('register.roleRequiredTitle'), t('register.roleRequiredMsg'));
+                }
+                google.signIn(role);
+              }}
               disabled={google.loading}
               activeOpacity={0.85}
               style={styles.googleBtn}
@@ -424,8 +467,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  roleChipError: {
+    borderColor: Colors.danger,
+    backgroundColor: Colors.dangerLight,
+  },
   roleChipText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   roleChipTextActive: { color: '#fff' },
+  roleErrorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.danger,
+    marginTop: 6,
+    marginLeft: 2,
+  },
 
   labelWrap: { marginBottom: 4, marginTop: 12 },
   fieldLabel: {
