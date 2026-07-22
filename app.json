@@ -8,7 +8,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "runtimeVersion": "1.1.4",
+    "runtimeVersion": "1.1.3",
     "updates": {
       "url": "https://u.expo.dev/a9887c2f-8c5d-4cb5-9999-91446441c1a2",
       "fallbackToCacheTimeout": 0
