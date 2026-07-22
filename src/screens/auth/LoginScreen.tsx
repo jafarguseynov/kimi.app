@@ -24,7 +24,6 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { loginSchema, LoginFormData } from '../../utils/validation';
 import { useLogin } from '../../hooks/useAuth';
-import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import Input from '../../components/common/Input';
 import { useTranslation } from '../../i18n';
 import { LanguageFlagButton } from '../../components/LanguageSwitch';
@@ -46,7 +45,6 @@ export default function LoginScreen({ navigation }: Props) {
     defaultValues: { identifier: '+994' },
   });
   const { mutate, isPending } = useLogin();
-  const google = useGoogleSignIn();
 
   // Entrance animation
   const appear = useRef(new Animated.Value(0)).current;
@@ -159,41 +157,6 @@ export default function LoginScreen({ navigation }: Props) {
                   )}
                 </LinearGradient>
               </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>{t('login.or')}</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              {/* SSO */}
-              <View style={styles.ssoRow}>
-                <TouchableOpacity
-                  style={styles.ssoBtn}
-                  onPress={() => google.signIn()}
-                  disabled={google.loading}
-                  activeOpacity={0.85}
-                >
-                  {google.loading ? (
-                    <ActivityIndicator color="#4285F4" />
-                  ) : (
-                    <>
-                      <Text style={styles.googleG}>G</Text>
-                      <Text style={styles.ssoBtnText}>Google</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.ssoBtn, styles.ssoBtnDark]}
-                  onPress={() => Alert.alert(t('login.comingSoon'), t('login.appleSoon'))}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="logo-apple" size={20} color="#fff" />
-                  <Text style={[styles.ssoBtnText, { color: '#fff' }]}>Apple</Text>
-                </TouchableOpacity>
-              </View>
             </View>
 
             {/* Register link */}

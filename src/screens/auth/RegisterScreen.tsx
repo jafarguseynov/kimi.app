@@ -23,7 +23,6 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { registerSchema, RegisterFormData } from '../../utils/validation';
 import { useRegister } from '../../hooks/useAuth';
-import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import Input from '../../components/common/Input';
 import { UserRole } from '../../types/auth.types';
 import { useTranslation } from '../../i18n';
@@ -72,7 +71,6 @@ export default function RegisterScreen({ navigation, route }: Props) {
     defaultValues: { phone: '+994' },
   });
   const { mutate, isPending } = useRegister();
-  const google = useGoogleSignIn();
   // Default seçim yoxdur — istifadəçi statusunu (şagird/müəllim/valideyn) mütləq
   // özü seçməlidir. Əvvəllər 'student' default idi və seçməyənlər səhvən şagird
   // kimi qeydiyyatdan keçirdi.
@@ -336,29 +334,6 @@ export default function RegisterScreen({ navigation, route }: Props) {
                   </>
                 )}
               </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Google ilə qeydiyyat */}
-            <TouchableOpacity
-              onPress={() => {
-                if (!role) {
-                  setRoleError(true);
-                  return Alert.alert(t('register.roleRequiredTitle'), t('register.roleRequiredMsg'));
-                }
-                google.signIn(role);
-              }}
-              disabled={google.loading}
-              activeOpacity={0.85}
-              style={styles.googleBtn}
-            >
-              {google.loading ? (
-                <ActivityIndicator color="#4285F4" />
-              ) : (
-                <>
-                  <Text style={styles.googleG}>G</Text>
-                  <Text style={styles.googleBtnText}>{t('login.googleRegister')}</Text>
-                </>
-              )}
             </TouchableOpacity>
           </View>
 
