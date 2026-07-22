@@ -27,6 +27,7 @@ import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import Input from '../../components/common/Input';
 import { UserRole } from '../../types/auth.types';
 import { useTranslation } from '../../i18n';
+import { LanguageFlagButton } from '../../components/LanguageSwitch';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Register>;
@@ -126,6 +127,10 @@ export default function RegisterScreen({ navigation, route }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Dil seçimi — qeydiyyat bölməsində dili dəyişmək üçün */}
+      <View style={styles.langBar}>
+        <LanguageFlagButton />
+      </View>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -387,6 +392,13 @@ export default function RegisterScreen({ navigation, route }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  langBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 12 : 4,
+    zIndex: 10,
+  },
   scroll: {
     flexGrow: 1,
     paddingHorizontal: 20,

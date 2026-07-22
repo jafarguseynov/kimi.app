@@ -21,6 +21,8 @@ import { AuthStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { useWelcomeStore } from '../../store/welcome.store';
+import { LanguageFlagButton } from '../../components/LanguageSwitch';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -247,17 +249,25 @@ export default function WelcomeScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatRef = useRef<FlatList<Slide>>(null);
+  const markWelcomeSeen = useWelcomeStore((s) => s.markWelcomeSeen);
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const idx = Math.round(e.nativeEvent.contentOffset.x / W);
     if (idx !== currentIndex) setCurrentIndex(idx);
   };
 
+  // Karuseldən Login-ə keçəndə bir dəfə görüldüyünü yadda saxla — bir daha
+  // (çıxışdan sonra da) açılışda göstərilməsin.
+  const goToLogin = () => {
+    markWelcomeSeen();
+    navigation.navigate(Routes.Login);
+  };
+
   const onNext = () => {
     if (currentIndex < slides.length - 1) {
       flatRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
-      navigation.navigate(Routes.Login);
+      goToLogin();
     }
   };
 
@@ -272,9 +282,12 @@ export default function WelcomeScreen({ navigation }: Props) {
           style={styles.logo}
           resizeMode="contain"
         />
-        <TouchableOpacity onPress={() => navigation.navigate(Routes.Login)} hitSlop={12}>
-          <Text style={styles.skip}>{t('welcome.skip')}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <LanguageFlagButton />
+          <TouchableOpacity onPress={goToLogin} hitSlop={12}>
+            <Text style={styles.skip}>{t('welcome.skip')}</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Slides */}
@@ -350,6 +363,7 @@ const styles = StyleSheet.create({
     width: 220,
     height: 82,
   },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   skip: { fontSize: 14, fontWeight: '600', color: Colors.textSecondary },
 
   slide: {

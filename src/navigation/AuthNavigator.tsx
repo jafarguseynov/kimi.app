@@ -9,12 +9,20 @@ import OTPScreen from '../screens/auth/OTPScreen';
 import RoleSelectScreen from '../screens/auth/RoleSelectScreen';
 import ProfileSetupScreen from '../screens/onboarding/ProfileSetupScreen';
 import AIOnboardingScreen from '../screens/onboarding/AIOnboardingScreen';
+import { useWelcomeStore } from '../store/welcome.store';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export default function AuthNavigator() {
+  // Giriş karuseli yalnız ilk açılışda göstərilir. İstifadəçi bir dəfə keçəndən
+  // sonra (çıxış edib yenidən girsə belə) birbaşa Login ekranı açılır.
+  const hasSeenWelcome = useWelcomeStore((s) => s.hasSeenWelcome);
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
+    <Stack.Navigator
+      initialRouteName={hasSeenWelcome ? Routes.Login : Routes.Welcome}
+      screenOptions={{ headerShown: false, animation: 'none' }}
+    >
       <Stack.Screen name={Routes.Welcome} component={WelcomeScreen} />
       <Stack.Screen name={Routes.Login} component={LoginScreen} />
       <Stack.Screen name={Routes.Register} component={RegisterScreen} />

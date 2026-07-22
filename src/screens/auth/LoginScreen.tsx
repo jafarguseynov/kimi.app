@@ -27,6 +27,7 @@ import { useLogin } from '../../hooks/useAuth';
 import { useGoogleSignIn } from '../../hooks/useGoogleSignIn';
 import Input from '../../components/common/Input';
 import { useTranslation } from '../../i18n';
+import { LanguageFlagButton } from '../../components/LanguageSwitch';
 
 type Props = { navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Login> };
 
@@ -42,6 +43,7 @@ export default function LoginScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: { identifier: '+994' },
   });
   const { mutate, isPending } = useLogin();
   const google = useGoogleSignIn();
@@ -68,6 +70,10 @@ export default function LoginScreen({ navigation }: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Dil seçimi — istifadəçi qeydiyyat/giriş bölməsində dili dəyişə bilsin */}
+      <View style={styles.langBar}>
+        <LanguageFlagButton />
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -211,6 +217,13 @@ export default function LoginScreen({ navigation }: Props) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  langBar: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? 12 : 4,
+    zIndex: 10,
+  },
   scroll: {
     flexGrow: 1,
     alignItems: 'center',
