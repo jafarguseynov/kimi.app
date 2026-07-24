@@ -26,3 +26,11 @@ export const verifyOTP = (data: OTPPayload) =>
 
 export const changePassword = (data: { currentPassword: string; newPassword: string }) =>
   apiClient.post<{ message: string }>('/auth/change-password', data).then((r) => r.data);
+
+// Şifrəni unudanlar üçün: nömrəyə bərpa kodu göndər
+export const forgotPassword = (phone: string) =>
+  apiClient.post<{ message: string; status: string }>('/auth/forgot-password', { phone }).then((r) => r.data);
+
+// Şifrəni unudanlar üçün: kod + yeni şifrə → token (avtomatik giriş)
+export const resetPassword = (data: { phone: string; code: string; newPassword: string }) =>
+  apiClient.post<AuthResponse>('/auth/reset-password', data).then((r) => r.data);

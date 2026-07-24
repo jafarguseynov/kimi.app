@@ -5,6 +5,7 @@ export type AuthStackParamList = {
   [Routes.Login]: undefined;
   [Routes.Register]: { ref?: string } | undefined;
   [Routes.OTP]: { phone: string };
+  [Routes.ForgotPassword]: { phone?: string } | undefined;
   [Routes.RoleSelect]: undefined;
   [Routes.ProfileSetup]: undefined;
   [Routes.AIOnboarding]: undefined;

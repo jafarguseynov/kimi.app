@@ -157,6 +157,15 @@ export default function LoginScreen({ navigation }: Props) {
                   )}
                 </LinearGradient>
               </TouchableOpacity>
+
+              {/* Forgot password */}
+              <TouchableOpacity
+                onPress={() => navigation.navigate(Routes.ForgotPassword)}
+                activeOpacity={0.7}
+                style={styles.forgotWrap}
+              >
+                <Text style={styles.forgotText}>{t('login.forgotPassword')}</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Register link */}
@@ -269,6 +278,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   loginBtnText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  forgotWrap: { alignSelf: 'center', marginTop: 14, paddingVertical: 4 },
+  forgotText: { fontSize: 14, fontWeight: '600', color: Colors.primary },
 
   divider: {
     flexDirection: 'row',

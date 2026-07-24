@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { registerUser, loginUser, verifyOTP, requestOtp } from '../api/auth.api';
+import { registerUser, loginUser, verifyOTP, requestOtp, forgotPassword, resetPassword } from '../api/auth.api';
 import { deleteToken } from '../utils/token';
 import { useAuthStore } from '../store/auth.store';
 import { useUserStore } from '../store/user.store';
@@ -56,6 +56,27 @@ export const useVerifyOTP = () => {
       setUser(data.user);
       // Təsdiqdən sonra yeni müəllim → profil tamamlama addımı (qeydiyyat gate-lidirsə burada işarələnir)
       if (data.user?.role === 'teacher') setPendingTeacherSetup(true);
+    },
+  });
+};
+
+// Şifrəni unutdum: nömrəyə bərpa kodu göndər
+export const useForgotPassword = () => {
+  return useMutation({
+    mutationFn: (phone: string) => forgotPassword(phone),
+  });
+};
+
+// Şifrəni unutdum: kod + yeni şifrə → token saxla (avtomatik giriş)
+export const useResetPassword = () => {
+  const { setToken } = useAuthStore();
+  const { setUser } = useUserStore();
+
+  return useMutation({
+    mutationFn: (data: { phone: string; code: string; newPassword: string }) => resetPassword(data),
+    onSuccess: async (data) => {
+      await setToken(data.token);
+      setUser(data.user);
     },
   });
 };

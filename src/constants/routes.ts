@@ -4,6 +4,7 @@ export const Routes = {
   Login: 'Login',
   Register: 'Register',
   OTP: 'OTP',
+  ForgotPassword: 'ForgotPassword',
   RoleSelect: 'RoleSelect',
   ProfileSetup: 'ProfileSetup',
 
