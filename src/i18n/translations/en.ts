@@ -235,7 +235,7 @@ export const en = {
       qFindTeacher: 'Find\nteacher',
       qCalc: 'Calculator',
       qLearn: 'Learn',
-      qMarket: 'Market',
+      qMarket: 'Q&A Market',
       qSaved: 'Saved',
       qMessage: 'Message',
       newScreens: 'New screens',

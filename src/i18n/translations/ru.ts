@@ -235,7 +235,7 @@ export const ru = {
       qFindTeacher: 'Найти\nучителя',
       qCalc: 'Калькулятор',
       qLearn: 'Учёба',
-      qMarket: 'Маркет',
+      qMarket: 'Вопросы',
       qSaved: 'Сохранённое',
       qMessage: 'Сообщение',
       newScreens: 'Новые экраны',

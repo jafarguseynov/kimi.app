@@ -236,7 +236,7 @@ export const az = {
       qFindTeacher: 'Müəllim\ntap',
       qCalc: 'Kalkulyator',
       qLearn: 'Öyrən',
-      qMarket: 'Market',
+      qMarket: 'Sual bazarı',
       qSaved: 'Yaddaş',
       qMessage: 'Mesaj',
       newScreens: 'Yeni ekranlar',
