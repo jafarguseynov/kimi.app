@@ -862,7 +862,7 @@ export default function HomeScreen({ navigation }: Props) {
                 onPress={() => (navigation.getParent() as any)?.navigate('Marketplace' as never)}
               >
                 <View style={[styles.quickItemIcon, { backgroundColor: '#fef3c7' }]}>
-                  <Ionicons name="storefront-outline" size={24} color="#d97706" />
+                  <Ionicons name="help-circle-outline" size={26} color="#d97706" />
                 </View>
                 <Text style={styles.quickItemLabel}>{t('home.student.qMarket')}</Text>
               </TouchableOpacity>
