@@ -30,8 +30,14 @@ export const subscribeTeacher = (months: number) =>
   api.post<{ success: boolean; endsAt: string }>('/subscription/subscribe', { months }).then((r) => r.data);
 
 // Paket key-i ilə abunə ol (müəllim & şagird) — qiymət/müddət serverdə paketdən götürülür.
-export const subscribeByPlan = (planKey: string) =>
-  api.post<{ success: boolean; endsAt: string }>('/subscription/subscribe', { planKey }).then((r) => r.data);
+// promoCode verilibsə və keçərlidirsə server endirim tətbiq edir.
+export const subscribeByPlan = (planKey: string, promoCode?: string) =>
+  api
+    .post<{ success: boolean; endsAt: string; amountPaid: number; discountAmount: number }>(
+      '/subscription/subscribe',
+      { planKey, promoCode: promoCode?.trim() || undefined },
+    )
+    .then((r) => r.data);
 
 export const getSubscriptionStatus = () =>
   api.get<SubscriptionStatus>('/subscription/status').then((r) => r.data);

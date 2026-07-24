@@ -37,4 +37,7 @@ export interface OTPPayload {
 export interface AuthResponse {
   token: string;
   user: UserProfile;
+  // Qeydiyyatda backend telefon təsdiqi tələb edirsə true olur → OTP ekranına yönləndir.
+  requiresOtp?: boolean;
+  otpStatus?: string;
 }

@@ -68,7 +68,7 @@ export default function RegisterScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
   const { control, handleSubmit, formState: { errors } } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { phone: '+994' },
+    defaultValues: { phone: '+994', name: '', surname: '' },
   });
   const { mutate, isPending } = useRegister();
   // Default seçim yoxdur — istifadəçi statusunu (şagird/müəllim/valideyn) mütləq
@@ -105,9 +105,14 @@ export default function RegisterScreen({ navigation, route }: Props) {
       if (!grade) return Alert.alert(t('register.gradeTitle'), t('register.gradeMsg'));
     }
 
+    // Backend tək `name` sahəsi saxlayır — ad və soyadı birləşdirib göndəririk,
+    // `surname` payload-a düşməsin deyə ayrıca çıxarılır.
+    const { surname, ...rest } = data;
+    const phone = rest.phone;
     mutate(
       {
-        ...data,
+        ...rest,
+        name: `${data.name.trim()} ${surname.trim()}`.trim(),
         role,
         // Şagird üçün sinif/məktəb/məqsəd qeydiyyatdan sonra profildə doldurulur
         school: role === 'parent' ? school || undefined : undefined,
@@ -116,6 +121,13 @@ export default function RegisterScreen({ navigation, route }: Props) {
         referralCode: referralCode.trim() || undefined,
       },
       {
+        onSuccess: (res) => {
+          // Backend telefon təsdiqi tələb edirsə → WhatsApp OTP ekranına keç.
+          // (Köhnə backend requiresOtp qaytarmır → hook birbaşa girişə salır.)
+          if (res?.requiresOtp && !res.user?.isVerified) {
+            navigation.navigate(Routes.OTP, { phone: res.user?.phone || phone });
+          }
+        },
         onError: (err: any) => {
           Alert.alert(t('register.errorTitle'), err?.response?.data?.message || t('register.registerError'));
         },
@@ -201,6 +213,24 @@ export default function RegisterScreen({ navigation, route }: Props) {
                   value={value}
                   autoCapitalize="words"
                   error={errors.name?.message}
+                />
+              )}
+            />
+
+            {/* Surname */}
+            <View style={styles.labelWrap}>
+              <Text style={styles.fieldLabel}>{t('register.surnameLabel')}</Text>
+            </View>
+            <Controller
+              control={control}
+              name="surname"
+              render={({ field: { onChange, value } }) => (
+                <Input
+                  placeholder={t('register.surnamePlaceholder')}
+                  onChangeText={(v: string) => onChange(capitalizeName(v))}
+                  value={value}
+                  autoCapitalize="words"
+                  error={errors.surname?.message}
                 />
               )}
             />

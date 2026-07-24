@@ -1,5 +1,9 @@
-export const formatCurrency = (amount: number, currency = 'AZN') =>
-  `${amount.toFixed(2)} ${currency}`;
+// `amount` bəzən backend-dən string kimi gələ bilər (DECIMAL sütunları) — Number-ə
+// çeviririk ki, `.toFixed` heç vaxt crash verməsin. Yararsız dəyər 0 sayılır.
+export const formatCurrency = (amount: number | string, currency = 'AZN') => {
+  const n = Number(amount);
+  return `${(Number.isFinite(n) ? n : 0).toFixed(2)} ${currency}`;
+};
 
 export const formatDate = (date: string | Date) =>
   new Date(date).toLocaleDateString('az-AZ', { day: '2-digit', month: 'long', year: 'numeric' });

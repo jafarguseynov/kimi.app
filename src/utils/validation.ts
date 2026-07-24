@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const registerSchema = z.object({
   name: z.string().min(2, 'Ad ən azı 2 hərf olmalıdır'),
+  surname: z.string().min(2, 'Soyad ən azı 2 hərf olmalıdır'),
   email: z.string().email('Email düzgün deyil'),
   phone: z.string().regex(/^\+994[0-9]{9}$/, 'Telefon +994XXXXXXXXX formatında olmalıdır'),
   password: z.string().min(8, 'Şifrə ən azı 8 simvol olmalıdır'),

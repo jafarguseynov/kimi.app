@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   KeyboardAvoidingView, Platform,
@@ -13,6 +13,7 @@ import { Alert } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { subscribeTeacher, subscribeByPlan } from '../../api/subscription.api';
+import { validatePromo, getMyPromo, PromoPreview } from '../../api/promo.api';
 import { useTranslation } from '../../i18n';
 import { PAYMENTS_ENABLED } from '../../config/iap';
 import PaymentUnavailable from '../../components/PaymentUnavailable';
@@ -32,12 +33,48 @@ export default function CardPaymentScreen() {
   const [expiry, setExpiry] = useState('');
   const [cvv, setCvv] = useState('');
 
-  const amountLabel = params.amount != null ? `${Number(params.amount).toFixed(2)} ` : '45.00 ';
+  // Endirim kodu — yalnız paket (planKey) axınında göstərilir.
+  const [promo, setPromo] = useState('');
+  const [preview, setPreview] = useState<PromoPreview | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const applyPromo = async (codeArg?: string) => {
+    const code = (codeArg ?? promo).trim();
+    if (!params.planKey || !code) return;
+    setChecking(true);
+    try {
+      const res = await validatePromo(code, params.planKey);
+      setPreview(res);
+    } catch {
+      setPreview({ valid: false, reason: t('pay.promoInvalid') });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  // Qeydiyyatda yazılmış promo kodu varsa avtomatik doldur və yoxla.
+  useEffect(() => {
+    if (!params.planKey) return;
+    getMyPromo()
+      .then((r) => {
+        if (r.code) {
+          setPromo(r.code);
+          applyPromo(r.code);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.planKey]);
+
+  const baseAmount = params.amount != null ? Number(params.amount) : 45.0;
+  const finalAmount = preview?.valid && preview.finalAmount != null ? preview.finalAmount : baseAmount;
+  const amountLabel = `${finalAmount.toFixed(2)} `;
+  const appliedCode = preview?.valid ? promo.trim() : undefined;
 
   const { mutate: activateSub, isPending: activating } = useMutation({
     // Paket key-i varsa onunla abunə ol (müəllim & şagird üçün eyni axın, qiymət/müddət serverdə);
     // əks halda köhnə müəllim months-əsaslı axın (məs. abunəlik yeniləmə).
-    mutationFn: () => (params.planKey ? subscribeByPlan(params.planKey) : subscribeTeacher(params.months ?? 1)),
+    mutationFn: () => (params.planKey ? subscribeByPlan(params.planKey, appliedCode) : subscribeTeacher(params.months ?? 1)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['subscriptionStatus'] });
       queryClient.invalidateQueries({ queryKey: ['entitlements'] });
@@ -153,10 +190,54 @@ export default function CardPaymentScreen() {
               </View>
             </View>
 
+            {/* Endirim kodu — yalnız paket abunəliyində */}
+            {params.planKey && (
+              <View style={styles.promoWrap}>
+                <Text style={styles.fieldLabel}>{t('pay.promoLabel')}</Text>
+                <View style={styles.promoRow}>
+                  <View style={[styles.fieldBox, { flex: 1 }]}>
+                    <TextInput
+                      style={[styles.fieldInput, { textTransform: 'uppercase', letterSpacing: 1 }]}
+                      value={promo}
+                      onChangeText={(v) => { setPromo(v.toUpperCase()); if (preview) setPreview(null); }}
+                      placeholder={t('pay.promoPlaceholder')}
+                      placeholderTextColor={Colors.outlineVariant}
+                      autoCapitalize="characters"
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.promoBtn, (!promo.trim() || checking) && { opacity: 0.5 }]}
+                    onPress={() => applyPromo()}
+                    disabled={!promo.trim() || checking}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.promoBtnText}>{t('pay.promoApply')}</Text>
+                  </TouchableOpacity>
+                </View>
+                {preview && (
+                  <Text style={[styles.promoMsg, { color: preview.valid ? Colors.tertiary : Colors.danger }]}>
+                    {preview.valid
+                      ? `✓ ${t('pay.promoApplied')}`
+                      : `✕ ${preview.reason || t('pay.promoInvalid')}`}
+                  </Text>
+                )}
+              </View>
+            )}
+
             <View style={styles.amountRow}>
               <View>
                 <Text style={styles.amountLabel}>{t('pay.amountToPay')}</Text>
-                <Text style={styles.amountValue}>{amountLabel}<Text style={styles.amountCurrency}>AZN</Text></Text>
+                {preview?.valid && preview.discountAmount ? (
+                  <View style={styles.priceStack}>
+                    <Text style={styles.priceOld}>{baseAmount.toFixed(2)} AZN</Text>
+                    <Text style={styles.amountValue}>{amountLabel}<Text style={styles.amountCurrency}>AZN</Text></Text>
+                    <Text style={styles.discountNote}>
+                      {t('pay.promoDiscount')}: −{Number(preview.discountAmount).toFixed(2)} AZN
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.amountValue}>{amountLabel}<Text style={styles.amountCurrency}>AZN</Text></Text>
+                )}
               </View>
               <View style={styles.sslBadge}>
                 <Ionicons name="lock-closed" size={14} color={Colors.primary} />
@@ -238,6 +319,18 @@ const styles = StyleSheet.create({
   amountLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500', marginBottom: 4 },
   amountValue: { fontSize: 24, fontWeight: '800', color: Colors.primary },
   amountCurrency: { fontSize: 14, fontWeight: '500' },
+  priceStack: { gap: 2 },
+  priceOld: { fontSize: 13, color: Colors.textSecondary, textDecorationLine: 'line-through' },
+  discountNote: { fontSize: 11, fontWeight: '700', color: Colors.tertiary },
+
+  promoWrap: { gap: 8 },
+  promoRow: { flexDirection: 'row', gap: 10, alignItems: 'stretch' },
+  promoBtn: {
+    paddingHorizontal: 18, borderRadius: 16, backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  promoBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  promoMsg: { fontSize: 12, fontWeight: '600', paddingLeft: 4 },
   sslBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: Colors.surfaceLow, borderRadius: 999,

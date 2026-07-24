@@ -14,6 +14,9 @@ export const useRegister = () => {
   return useMutation({
     mutationFn: (data: RegisterPayload) => registerUser(data),
     onSuccess: async (data) => {
+      // Backend telefon təsdiqi tələb edirsə (məcburi OTP gate) hesabı hələ girişə salma —
+      // ekran OTP-yə yönləndirir, təsdiqdən sonra token verilir.
+      if (data.requiresOtp && !data.user?.isVerified) return;
       await setToken(data.token);
       setUser(data.user);
       // Yeni müəllim → ilk açılışda profil tamamlama addımı göstərilsin
@@ -44,12 +47,15 @@ export const useRequestOtp = () => {
 export const useVerifyOTP = () => {
   const { setToken } = useAuthStore();
   const { setUser } = useUserStore();
+  const { setPendingTeacherSetup } = useOnboardingStore();
 
   return useMutation({
     mutationFn: (data: OTPPayload) => verifyOTP(data),
     onSuccess: async (data) => {
       await setToken(data.token);
       setUser(data.user);
+      // Təsdiqdən sonra yeni müəllim → profil tamamlama addımı (qeydiyyat gate-lidirsə burada işarələnir)
+      if (data.user?.role === 'teacher') setPendingTeacherSetup(true);
     },
   });
 };
