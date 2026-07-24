@@ -884,6 +884,7 @@ export const en = {
     duelStarting: 'The duel is starting...',
     go: 'GO!',
     me: 'You',
+    opponentDefault: 'Opponent',
     pointsUnit: 'pts',
     stakeHint: 'Stake: {{stake}} XP • Winner takes {{prize}} XP',
     exitTitle: 'Leave the duel?',

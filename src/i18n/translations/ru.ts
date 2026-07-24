@@ -884,6 +884,7 @@ export const ru = {
     duelStarting: 'Дуэль начинается...',
     go: 'СТАРТ!',
     me: 'Ты',
+    opponentDefault: 'Соперник',
     pointsUnit: 'очк.',
     stakeHint: 'Ставка: {{stake}} XP • Победитель забирает {{prize}} XP',
     exitTitle: 'Выйти из дуэли?',

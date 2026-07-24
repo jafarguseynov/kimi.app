@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, BackHandler, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -9,8 +9,11 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
+import { duelSocket } from '../../services/duelSocket.service';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+type LiveQuestion = { index: number; text: string; options: { id: string; text: string }[] };
 
 type Params = {
   mode?: 'bot' | 'live';
@@ -19,6 +22,10 @@ type Params = {
   subject?: string;
   questionCount?: number;
   stake?: number;
+  // Canlı rejim
+  roomId?: string;
+  perQuestionSeconds?: number;
+  liveQuestions?: LiveQuestion[];
 };
 
 type Question = {
@@ -80,6 +87,16 @@ const speedBonus = (elapsedSec: number) =>
   Math.max(0, Math.round(SPEED_BONUS_MAX * (1 - elapsedSec / PER_QUESTION_SECONDS)));
 
 export default function DuelSessionScreen() {
+  const route = useRoute<any>();
+  const p: Params = (route.params ?? {}) as Params;
+  // Canlı rejim (real otaq + suallar) → real-time komponent; əks halda bot simulyasiyası.
+  if (p.mode === 'live' && p.roomId && p.liveQuestions?.length) {
+    return <LiveDuelSession />;
+  }
+  return <BotDuelSession />;
+}
+
+function BotDuelSession() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { user } = useUserStore();
@@ -346,6 +363,336 @@ export default function DuelSessionScreen() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// CANLI DUEL — real vaxtda backend websocket ilə (2 real şagird)
+// ─────────────────────────────────────────────────────────────────────────
+function LiveDuelSession() {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { user } = useUserStore();
+  const { t } = useTranslation();
+  const p: Params = (route.params ?? {}) as Params;
+
+  const roomId = p.roomId as string;
+  const opponentName = p.opponentName ?? t('duel.opponentDefault');
+  const subject = p.subject ?? 'Riyaziyyat';
+  const stake = p.stake ?? 25;
+  const perQ = p.perQuestionSeconds ?? PER_QUESTION_SECONDS;
+  const myName = user?.name?.split(' ')[0] ?? t('duel.me');
+
+  const questions = useMemo(
+    () => (p.liveQuestions ?? []).map((q) => ({ text: q.text, options: q.options })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const total = questions.length;
+
+  const [idx, setIdx] = useState(0);
+  const [selected, setSelected] = useState<number | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [correctIdx, setCorrectIdx] = useState<number | null>(null);
+  const [myScore, setMyScore] = useState(0);
+  const [oppScore, setOppScore] = useState(0);
+  const [oppProgress, setOppProgress] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(perQ);
+  const [lastBonus, setLastBonus] = useState<number | null>(null);
+  const [waiting, setWaiting] = useState(false); // öz suallarım bitdi, rəqibi gözləyirəm
+
+  const idxRef = useRef(0);
+  const revealedRef = useRef(false);
+  const answeringRef = useRef(false);
+  const finishedRef = useRef(false);
+  const qStartRef = useRef(Date.now());
+  const safetyRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const myScoreRef = useRef(0);
+  const myCorrectRef = useRef(0);
+
+  const current = questions[idx];
+
+  const advance = useCallback(() => {
+    revealedRef.current = false;
+    answeringRef.current = false;
+    setSelected(null);
+    setRevealed(false);
+    setCorrectIdx(null);
+    const next = idxRef.current + 1;
+    if (next >= total) {
+      setWaiting(true); // bütün suallar bitdi → duel:finished gözlə
+    } else {
+      idxRef.current = next;
+      setIdx(next);
+    }
+  }, [total]);
+
+  const revealNow = useCallback(
+    (ci: number, correct: boolean, gained: number, serverMyScore: number) => {
+      if (revealedRef.current) return;
+      revealedRef.current = true;
+      setCorrectIdx(ci >= 0 ? ci : null);
+      setRevealed(true);
+      if (correct) {
+        myCorrectRef.current += 1;
+        setLastBonus(Math.max(0, gained - BASE_POINTS));
+      } else {
+        setLastBonus(0);
+      }
+      myScoreRef.current = serverMyScore;
+      setMyScore(serverMyScore);
+      setTimeout(advance, 900);
+    },
+    [advance],
+  );
+
+  const submitAnswer = useCallback(
+    (optionIndex: number | null) => {
+      if (answeringRef.current || revealedRef.current || finishedRef.current) return;
+      answeringRef.current = true;
+      if (optionIndex !== null) setSelected(optionIndex);
+      const q = questions[idxRef.current];
+      const optionId = optionIndex !== null ? q?.options[optionIndex]?.id ?? null : null;
+      duelSocket.answer({
+        roomId,
+        questionIndex: idxRef.current,
+        optionId,
+        elapsedMs: Date.now() - qStartRef.current,
+      });
+      // Təhlükəsizlik: nəticə 4s gəlməzsə irəli keç (şəbəkə itkisi).
+      if (safetyRef.current) clearTimeout(safetyRef.current);
+      safetyRef.current = setTimeout(() => {
+        if (!revealedRef.current) revealNow(-1, false, 0, myScoreRef.current);
+      }, 4000);
+    },
+    [questions, roomId, revealNow],
+  );
+
+  const finishLive = useCallback(
+    (res: any) => {
+      if (finishedRef.current) return;
+      finishedRef.current = true;
+      if (safetyRef.current) clearTimeout(safetyRef.current);
+      navigation.replace(Routes.CompetitionResult, {
+        userScore: Number(res?.myScore) || myScoreRef.current,
+        opponentScore: Number(res?.opponentScore) || 0,
+        userName: myName,
+        opponentName,
+        mode: 'live',
+        userCorrect: Number(res?.myCorrect) || myCorrectRef.current,
+        opponentCorrect: Number(res?.opponentCorrect) || 0,
+        totalQuestions: total,
+        xpEarned: Number(res?.xpEarned) || 0,
+        medalsEarned: res?.won ? 2 : 0,
+      });
+    },
+    [navigation, myName, opponentName, total],
+  );
+
+  // Socket hadisələri (bir dəfə qeydiyyat)
+  useEffect(() => {
+    const onResult = (r: any) => {
+      if (finishedRef.current) return;
+      if (Number(r?.questionIndex) !== idxRef.current) return;
+      if (safetyRef.current) clearTimeout(safetyRef.current);
+      const q = questions[idxRef.current];
+      const ci = q ? q.options.findIndex((o) => o.id === r?.correctOptionId) : -1;
+      revealNow(ci, !!r?.correct, Number(r?.gained) || 0, Number(r?.myScore) || 0);
+    };
+    const onOppProgress = (d: any) => {
+      setOppProgress(Number(d?.progress) || 0);
+      setOppScore(Number(d?.score) || 0);
+    };
+    const onFinished = (res: any) => finishLive(res);
+
+    duelSocket.on('answer:result', onResult);
+    duelSocket.on('opponent:progress', onOppProgress);
+    duelSocket.on('duel:finished', onFinished);
+    return () => {
+      duelSocket.off('answer:result', onResult);
+      duelSocket.off('opponent:progress', onOppProgress);
+      duelSocket.off('duel:finished', onFinished);
+    };
+  }, [questions, revealNow, finishLive]);
+
+  // Sual başına geri sayım
+  useEffect(() => {
+    if (finishedRef.current || waiting) return;
+    qStartRef.current = Date.now();
+    setLastBonus(null);
+    setTimeLeft(perQ);
+    const timer = setInterval(() => {
+      setTimeLeft((v) => {
+        if (v <= 1) {
+          clearInterval(timer);
+          if (!revealedRef.current && !answeringRef.current) submitAnswer(null);
+          return 0;
+        }
+        return v - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, waiting]);
+
+  const confirmExit = () => {
+    Alert.alert(t('duel.exitTitle'), t('duel.exitBody'), [
+      { text: t('duel.continue'), style: 'cancel' },
+      {
+        text: t('duel.exit'),
+        style: 'destructive',
+        onPress: () => {
+          finishedRef.current = true;
+          duelSocket.leave(roomId);
+          duelSocket.disconnect();
+          navigation.goBack();
+        },
+      },
+    ]);
+  };
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      confirmExit();
+      return true;
+    });
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Unmount: normal bitibsə socket-i bağla
+  useEffect(
+    () => () => {
+      if (finishedRef.current) duelSocket.disconnect();
+    },
+    [],
+  );
+
+  const myProgress = idx + (revealed ? 1 : 0);
+  const myPct = total ? (myProgress / total) * 100 : 0;
+  const oppPct = total ? (oppProgress / total) * 100 : 0;
+
+  if (!current && !waiting) {
+    return (
+      <SafeAreaView style={[styles.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={Colors.primary} />
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Top bar */}
+      <View style={styles.top}>
+        <TouchableOpacity style={styles.iconBtn} onPress={confirmExit} hitSlop={8} activeOpacity={0.7}>
+          <Ionicons name="close" size={22} color={Colors.textSecondary} />
+        </TouchableOpacity>
+        <View style={styles.timerBox}>
+          <Ionicons name="time" size={14} color={timeLeft < 5 ? Colors.error : Colors.primary} />
+          <Text style={[styles.timerText, timeLeft < 5 && { color: Colors.error }]}>{timeLeft}s</Text>
+        </View>
+        <Text style={styles.qIdx}>{Math.min(idx + 1, total)}/{total}</Text>
+      </View>
+
+      {/* Players progress */}
+      <View style={styles.playersRow}>
+        <View style={styles.playerBlock}>
+          <View style={styles.playerHead}>
+            <View style={[styles.dot, { backgroundColor: Colors.primary }]} />
+            <Text style={styles.playerLabel}>{myName}</Text>
+            <Text style={styles.scoreText}>{myScore}</Text>
+          </View>
+          <View style={styles.trackBg}>
+            <LinearGradient
+              colors={GRADIENT}
+              style={[styles.trackFill, { width: `${myPct}%` as any }]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.vsMini}><Text style={styles.vsMiniText}>VS</Text></View>
+
+        <View style={styles.playerBlock}>
+          <View style={styles.playerHead}>
+            <View style={[styles.dot, { backgroundColor: Colors.error }]} />
+            <Text style={styles.playerLabel}>{opponentName}</Text>
+            <Text style={styles.scoreText}>{oppScore}</Text>
+          </View>
+          <View style={styles.trackBg}>
+            <View style={[styles.trackFillRed, { width: `${oppPct}%`, backgroundColor: Colors.error }]} />
+          </View>
+        </View>
+      </View>
+
+      {waiting ? (
+        <View style={styles.waitOpp}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+          <Text style={styles.waitOppTitle}>{t('duel.waitOpponentTitle')}</Text>
+          <Text style={styles.waitOppSub}>{t('duel.waitOpponentSub')}</Text>
+        </View>
+      ) : (
+        <>
+          {/* Question */}
+          <View style={styles.questionCard}>
+            <View style={styles.questionTopRow}>
+              <View style={styles.subjectChip}>
+                <Ionicons name="book" size={12} color={Colors.primary} />
+                <Text style={styles.subjectChipText}>{subject}</Text>
+              </View>
+              {lastBonus !== null && (
+                <View style={[styles.bonusBadge, lastBonus === 0 && styles.bonusBadgeZero]}>
+                  <Ionicons name="flash" size={11} color={lastBonus === 0 ? Colors.textSecondary : '#F59E0B'} />
+                  <Text style={[styles.bonusText, lastBonus === 0 && { color: Colors.textSecondary }]}>
+                    {lastBonus > 0 ? `+${BASE_POINTS + lastBonus} ${t('duel.pointsUnit')}` : `0 ${t('duel.pointsUnit')}`}
+                  </Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.questionText}>{current.text}</Text>
+          </View>
+
+          {/* Options */}
+          <View style={styles.options}>
+            {current.options.map((opt, i) => {
+              const isPicked = selected === i;
+              const isCorrect = correctIdx === i;
+              const showCorrect = revealed && isCorrect;
+              const showWrong = revealed && isPicked && !isCorrect;
+              const showDim = revealed && !isCorrect && !isPicked;
+              return (
+                <TouchableOpacity
+                  key={opt.id ?? i}
+                  style={[
+                    styles.option,
+                    !revealed && isPicked && styles.optionActive,
+                    showCorrect && styles.optionCorrect,
+                    showWrong && styles.optionWrong,
+                    showDim && { opacity: 0.55 },
+                  ]}
+                  activeOpacity={0.85}
+                  disabled={revealed || answeringRef.current}
+                  onPress={() => submitAnswer(i)}
+                >
+                  <View style={styles.optionLetter}>
+                    <Text style={styles.optionLetterText}>{String.fromCharCode(65 + i)}</Text>
+                  </View>
+                  <Text style={[styles.optionText, (showCorrect || showWrong) && styles.optionTextLight]}>
+                    {opt.text}
+                  </Text>
+                  {showCorrect && <Ionicons name="checkmark-circle" size={20} color="#fff" style={{ marginLeft: 'auto' }} />}
+                  {showWrong && <Ionicons name="close-circle" size={20} color="#fff" style={{ marginLeft: 'auto' }} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.bottomHint}>
+            <Text style={styles.hintText}>{t('duel.stakeHint', { stake, prize: stake * 2 })}</Text>
+          </View>
+        </>
+      )}
+    </SafeAreaView>
+  );
+}
+
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
 
@@ -433,4 +780,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.7)',
   },
   hintText: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, letterSpacing: 0.4 },
+
+  waitOpp: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 32 },
+  waitOppTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center' },
+  waitOppSub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20 },
 });

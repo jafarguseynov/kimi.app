@@ -885,6 +885,7 @@ export const az = {
     duelStarting: 'Yarış başlayır...',
     go: 'BAŞLA!',
     me: 'Sən',
+    opponentDefault: 'Rəqib',
     pointsUnit: 'xal',
     stakeHint: 'Mərc: {{stake}} XP • Qalib {{prize}} XP götürür',
     exitTitle: 'Duel-dən çıx?',

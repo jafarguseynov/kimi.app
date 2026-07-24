@@ -9,6 +9,8 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
+import { duelSocket } from '../../services/duelSocket.service';
+import { getToken } from '../../utils/token';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -22,13 +24,15 @@ type Params = {
   stake?: number;
 };
 
-const LIVE_OPPONENTS = [
-  { name: 'Leyla', level: 14 },
-  { name: 'Aytən', level: 12 },
-  { name: 'Murad', level: 13 },
-  { name: 'Səbinə', level: 11 },
-  { name: 'Cavid', level: 15 },
-];
+type LiveQuestion = { index: number; text: string; options: { id: string; text: string }[] };
+type MatchData = {
+  roomId: string;
+  perQuestionSeconds: number;
+  questions: LiveQuestion[];
+  opponent: { name: string; level: number };
+};
+
+const BOT_NAMES = ['Robo-Kimi', 'AI Murad', 'Beyin-Bot', 'Cyber-Aysu'];
 
 export default function DuelMatchScreen() {
   const navigation = useNavigation<any>();
@@ -45,13 +49,17 @@ export default function DuelMatchScreen() {
   const myName = user?.name?.split(' ')[0] ?? t('duel.me');
   const myLevel = 12;
 
-  const [phase, setPhase] = useState<'matching' | 'ready'>(mode === 'bot' ? 'ready' : 'matching');
+  const [phase, setPhase] = useState<'matching' | 'ready' | 'timeout'>(mode === 'bot' ? 'ready' : 'matching');
   const [opponent, setOpponent] = useState<{ name: string; level: number }>(() => {
     if (mode === 'bot') {
       return { name: p.opponentName ?? 'Robo-Kimi', level: p.opponentLevel ?? myLevel };
     }
     return { name: p.opponentName ?? '...', level: p.opponentLevel ?? 0 };
   });
+
+  // Real match məlumatı (canlı rejimdə socket-dən gəlir)
+  const matchRef = useRef<MatchData | null>(null);
+  const proceedingRef = useRef(false); // sessiyaya keçirik → socket açıq qalsın
 
   const pulse = useRef(new Animated.Value(0.4)).current;
   const searchSpin = useRef(new Animated.Value(0)).current;
@@ -70,15 +78,47 @@ export default function DuelMatchScreen() {
     ).start();
   }, []);
 
+  // ─── Canlı matchmaking (real backend websocket) ────────────────────────
+  const startSearch = React.useCallback(async () => {
+    setPhase('matching');
+    const token = await getToken();
+    if (!token) { setPhase('timeout'); return; }
+    duelSocket.connect(token);
+    duelSocket.joinQueue({ subject, questionCount, stake });
+  }, [subject, questionCount, stake]);
+
   useEffect(() => {
-    if (mode !== 'live' || phase !== 'matching') return;
-    const timer = setTimeout(() => {
-      const pick = LIVE_OPPONENTS[Math.floor(Math.random() * LIVE_OPPONENTS.length)];
-      setOpponent(pick);
+    if (mode !== 'live') return;
+
+    const onFound = (payload: MatchData) => {
+      matchRef.current = payload;
+      setOpponent({
+        name: payload.opponent?.name ?? t('duel.opponentDefault'),
+        level: payload.opponent?.level ?? 0,
+      });
       setPhase('ready');
-    }, 2800);
-    return () => clearTimeout(timer);
-  }, [mode, phase]);
+    };
+    const onTimeout = () => setPhase('timeout');
+    const onError = () => setPhase('timeout');
+
+    duelSocket.on('match:found', onFound);
+    duelSocket.on('queue:timeout', onTimeout);
+    duelSocket.on('connect_error', onError);
+
+    startSearch();
+
+    return () => {
+      duelSocket.off('match:found', onFound);
+      duelSocket.off('queue:timeout', onTimeout);
+      duelSocket.off('connect_error', onError);
+      // Sessiyaya keçmiriksə → növbədən çıx və socket-i bağla.
+      if (!proceedingRef.current) {
+        duelSocket.cancelQueue();
+        duelSocket.disconnect();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const opponentName = opponent.name;
   const opponentLevel = opponent.level;
@@ -92,6 +132,8 @@ export default function DuelMatchScreen() {
 
     if (countdown === 0) {
       const timer = setTimeout(() => {
+        const m = matchRef.current;
+        proceedingRef.current = true; // socket açıq qalsın (sessiya istifadə edir)
         navigation.replace(Routes.DuelSession, {
           mode,
           opponentName,
@@ -99,6 +141,10 @@ export default function DuelMatchScreen() {
           subject,
           questionCount,
           stake,
+          // Canlı rejim: real otaq + suallar
+          ...(mode === 'live' && m
+            ? { roomId: m.roomId, perQuestionSeconds: m.perQuestionSeconds, liveQuestions: m.questions }
+            : {}),
         });
       }, 700);
       return () => clearTimeout(timer);
@@ -109,10 +155,33 @@ export default function DuelMatchScreen() {
 
   const startDuel = () => setCountdown(3);
 
+  // "Rəqib tapılmadı" → istifadəçi açıq seçimlə bot ilə davam edir
+  const playBotInstead = () => {
+    duelSocket.cancelQueue();
+    duelSocket.disconnect();
+    const botName = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
+    navigation.replace(Routes.DuelSession, {
+      mode: 'bot',
+      opponentName: botName,
+      opponentLevel: myLevel,
+      subject,
+      questionCount,
+      stake,
+    });
+  };
+
+  const closeAndExit = () => {
+    if (mode === 'live') {
+      duelSocket.cancelQueue();
+      duelSocket.disconnect();
+    }
+    navigation.goBack();
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
+        <TouchableOpacity style={styles.headerBtn} onPress={closeAndExit} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="close" size={22} color={Colors.textSecondary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('duel.matchTitle')}</Text>
@@ -132,6 +201,38 @@ export default function DuelMatchScreen() {
         </TouchableOpacity>
       </View>
 
+      {phase === 'timeout' ? (
+      <View style={styles.main}>
+        <View style={styles.hero}>
+          <Text style={styles.heroTitle}>{t('duel.noOpponentTitle')}</Text>
+          <Text style={styles.heroSub}>{t('duel.noOpponentSub')}</Text>
+        </View>
+        <View style={styles.timeoutIcon}>
+          <Ionicons name="people-outline" size={56} color={Colors.textSecondary} />
+        </View>
+        <View style={styles.infoCard}>
+          <View style={styles.metaGrid}>
+            <View style={styles.metaCard}>
+              <Text style={styles.metaLabel}>{t('duel.topicUpper')}</Text>
+              <Text style={styles.metaValue}>{subject}</Text>
+            </View>
+            <View style={styles.metaCard}>
+              <Text style={styles.metaLabel}>{t('duel.questionsUpper')}</Text>
+              <Text style={styles.metaValue}>{questionCount} {t('duel.qShort')}</Text>
+            </View>
+          </View>
+        </View>
+        <TouchableOpacity style={{ width: '100%' }} activeOpacity={0.9} onPress={startSearch}>
+          <LinearGradient colors={GRADIENT} style={styles.startBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Text style={styles.startBtnText}>{t('duel.retrySearch')}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.botBtn} activeOpacity={0.85} onPress={playBotInstead}>
+          <Ionicons name="hardware-chip" size={18} color={Colors.primary} />
+          <Text style={styles.botBtnText}>{t('duel.playBot')}</Text>
+        </TouchableOpacity>
+      </View>
+      ) : (
       <View style={styles.main}>
         <View style={styles.hero}>
           <Text style={styles.heroTitle}>
@@ -272,6 +373,7 @@ export default function DuelMatchScreen() {
           </Text>
         </View>
       </View>
+      )}
 
       {/* Countdown overlay */}
       <Modal visible={countdown !== null} transparent animationType="fade" onRequestClose={() => {}}>
@@ -392,6 +494,19 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.3, shadowRadius: 24, elevation: 6,
   },
   startBtnText: { fontSize: 16, fontWeight: '900', color: '#fff', letterSpacing: 1.5 },
+
+  timeoutIcon: {
+    width: 110, height: 110, borderRadius: 55,
+    backgroundColor: Colors.surfaceLow,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 28,
+  },
+  botBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    width: '100%', borderRadius: 999, paddingVertical: 15, marginTop: 12,
+    backgroundColor: Colors.primaryLight,
+  },
+  botBtnText: { fontSize: 15, fontWeight: '800', color: Colors.primary },
 
   waitingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 24 },
   waitingDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },

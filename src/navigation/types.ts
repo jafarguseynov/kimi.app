@@ -54,7 +54,7 @@ export type ExamStackParamList = {
   [Routes.CompetitionResult]: { userScore?: number; opponentScore?: number; userName?: string; opponentName?: string; mode?: 'bot' | 'live'; userCorrect?: number; opponentCorrect?: number; totalQuestions?: number; xpEarned?: number; medalsEarned?: number } | undefined;
   [Routes.DuelMatch]: { mode?: 'bot' | 'live'; opponentName?: string; opponentLevel?: number; subject?: string; questionCount?: number; prize?: number; stake?: number } | undefined;
   [Routes.DuelMode]: undefined;
-  [Routes.DuelSession]: { mode?: 'bot' | 'live'; opponentName?: string; opponentLevel?: number; subject?: string; questionCount?: number; stake?: number } | undefined;
+  [Routes.DuelSession]: { mode?: 'bot' | 'live'; opponentName?: string; opponentLevel?: number; subject?: string; questionCount?: number; stake?: number; roomId?: string; perQuestionSeconds?: number; liveQuestions?: { index: number; text: string; options: { id: string; text: string }[] }[] } | undefined;
   [Routes.DuelInvite]: { challengerName?: string; challengerLevel?: number; challengerSchool?: string; challengerXp?: number; challengerWinRate?: number; subject?: string; questionCount?: number; stake?: number } | undefined;
   [Routes.DuelHistory]: undefined;
   [Routes.CertificatePreview]: { examId: string };
