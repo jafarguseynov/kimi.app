@@ -29,9 +29,11 @@ type Props = {
   route: RouteProp<AuthStackParamList, typeof Routes.ForgotPassword>;
 };
 
+type Step = 'phone' | 'code' | 'password';
+
 export default function ForgotPasswordScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const [step, setStep] = useState<'phone' | 'reset'>('phone');
+  const [step, setStep] = useState<Step>('phone');
   const [phone, setPhone] = useState(route.params?.phone ?? '+994');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -54,7 +56,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
     }
     sendCode(value, {
       onSuccess: () => {
-        setStep('reset');
+        setStep('code');
         setCountdown(OTP_RESEND_SECONDS);
       },
       onError: (err: any) => {
@@ -85,30 +87,30 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
     );
   }, [phone, code, newPassword, doReset, t]);
 
+  const goBack = useCallback(() => {
+    if (step === 'password') setStep('code');
+    else if (step === 'code') setStep('phone');
+    else navigation.goBack();
+  }, [step, navigation]);
+
   const mm = Math.floor(countdown / 60).toString().padStart(2, '0');
   const ss = (countdown % 60).toString().padStart(2, '0');
-  const canReset = code.length === 6 && newPassword.length >= 8 && !isResetting;
+
+  const iconName: keyof typeof Ionicons.glyphMap =
+    step === 'phone' ? 'lock-closed' : step === 'code' ? 'shield-checkmark' : 'key';
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => (step === 'reset' ? setStep('phone') : navigation.goBack())}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-          hitSlop={12}
-        >
+        <TouchableOpacity onPress={goBack} style={styles.backBtn} activeOpacity={0.7} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('forgot.headerTitle')}</Text>
         <View style={styles.headerSpacer} />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
@@ -122,15 +124,15 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
               end={{ x: 1, y: 1 }}
               style={styles.iconCircle}
             >
-              <Ionicons name={step === 'phone' ? 'lock-closed' : 'shield-checkmark'} size={40} color="#fff" />
+              <Ionicons name={iconName} size={40} color="#fff" />
             </LinearGradient>
           </View>
 
-          {step === 'phone' ? (
+          {/* ─── STEP 1: PHONE ─── */}
+          {step === 'phone' && (
             <>
               <Text style={styles.title}>{t('forgot.step1Title')}</Text>
               <Text style={styles.subtitle}>{t('forgot.step1Sub')}</Text>
-
               <View style={styles.form}>
                 <Input
                   label={t('forgot.phoneLabel')}
@@ -140,7 +142,6 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                   keyboardType="phone-pad"
                   autoCapitalize="none"
                 />
-
                 <TouchableOpacity onPress={onSendCode} disabled={isSending} activeOpacity={0.85} style={{ marginTop: 8 }}>
                   <LinearGradient
                     colors={[Colors.gradientStart, Colors.gradientEnd]}
@@ -160,21 +161,23 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                 </TouchableOpacity>
               </View>
             </>
-          ) : (
-            <>
-              <Text style={styles.title}>{t('forgot.step2Title')}</Text>
-              <Text style={styles.subtitle}>
-                {t('forgot.step2SubPre')}
-                <Text style={styles.phoneHighlight}>{phone.trim()}</Text>
-                {t('forgot.step2SubPost')}
-              </Text>
+          )}
 
+          {/* ─── STEP 2: CODE ─── */}
+          {step === 'code' && (
+            <>
+              <Text style={styles.title}>{t('forgot.codeTitle')}</Text>
+              <Text style={styles.subtitle}>
+                {t('forgot.codeSubPre')}
+                <Text style={styles.phoneHighlight}>{phone.trim()}</Text>
+                {t('forgot.codeSubPost')}
+              </Text>
               <View style={styles.form}>
-                <Text style={styles.fieldLabel}>{t('forgot.codeLabel')}</Text>
                 <View style={styles.otpWrap}>
                   <OtpInput
                     numberOfDigits={6}
                     onTextChange={setCode}
+                    onFilled={(v) => { setCode(v); setStep('password'); }}
                     focusColor={Colors.primary}
                     theme={{
                       containerStyle: styles.otpContainer,
@@ -199,6 +202,31 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                   )}
                 </View>
 
+                <TouchableOpacity
+                  onPress={() => setStep('password')}
+                  disabled={code.length < 6}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient
+                    colors={[Colors.gradientStart, Colors.gradientEnd]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.btn, code.length < 6 && { opacity: 0.55 }]}
+                  >
+                    <Text style={styles.btnText}>{t('forgot.continue')}</Text>
+                    <Ionicons name="arrow-forward" size={20} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* ─── STEP 3: NEW PASSWORD ─── */}
+          {step === 'password' && (
+            <>
+              <Text style={styles.title}>{t('forgot.pwTitle')}</Text>
+              <Text style={styles.subtitle}>{t('forgot.pwSub')}</Text>
+              <View style={styles.form}>
                 <Input
                   label={t('forgot.newPasswordLabel')}
                   placeholder={t('forgot.newPasswordPlaceholder')}
@@ -207,13 +235,17 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
                   secureTextEntry
                   autoCapitalize="none"
                 />
-
-                <TouchableOpacity onPress={onReset} disabled={!canReset} activeOpacity={0.85} style={{ marginTop: 8 }}>
+                <TouchableOpacity
+                  onPress={onReset}
+                  disabled={newPassword.length < 8 || isResetting}
+                  activeOpacity={0.85}
+                  style={{ marginTop: 8 }}
+                >
                   <LinearGradient
                     colors={[Colors.gradientStart, Colors.gradientEnd]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
-                    style={[styles.btn, !canReset && { opacity: 0.55 }]}
+                    style={[styles.btn, (newPassword.length < 8 || isResetting) && { opacity: 0.55 }]}
                   >
                     {isResetting ? (
                       <ActivityIndicator color="#fff" />
@@ -255,12 +287,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.primary },
   headerSpacer: { width: 40 },
 
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 32,
-  },
+  scroll: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32 },
 
   iconWrap: { alignItems: 'center', marginBottom: 20, marginTop: 8 },
   iconCircle: {
@@ -294,13 +321,6 @@ const styles = StyleSheet.create({
   phoneHighlight: { color: Colors.primary, fontWeight: '600', letterSpacing: 0.5 },
 
   form: { width: '100%' },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -326,17 +346,14 @@ const styles = StyleSheet.create({
     borderColor: Colors.surfaceContainer,
     backgroundColor: Colors.surfaceLow,
   },
-  pinBoxFocused: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.white,
-  },
+  pinBoxFocused: { borderColor: Colors.primary, backgroundColor: Colors.white },
   pinText: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary },
 
   timerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 20,
     justifyContent: 'center',
   },
   timerText: { fontSize: 14, fontWeight: '500', color: Colors.textSecondary },
