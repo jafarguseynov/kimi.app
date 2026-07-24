@@ -1895,6 +1895,7 @@ export const en = {
     errorTitle: 'Error',
     sendError: 'Could not send the code',
     resetError: 'Could not update password',
+    networkError: 'The server did not respond. Check your internet connection and try again.',
   },
   register: {
     logoSub: 'The education platform of the future',

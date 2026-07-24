@@ -1896,6 +1896,7 @@ export const az = {
     errorTitle: 'Xəta',
     sendError: 'Kod göndərilə bilmədi',
     resetError: 'Şifrə yenilənə bilmədi',
+    networkError: 'Server cavab vermədi. İnternet bağlantını yoxla və yenidən cəhd et.',
   },
   register: {
     logoSub: 'Gələcəyin təhsil platforması',

@@ -42,6 +42,15 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
   const { mutate: sendCode, isPending: isSending } = useForgotPassword();
   const { mutate: doReset, isPending: isResetting } = useResetPassword();
 
+  // Xəta mesajını çıxar: cavab yoxdursa (timeout/şəbəkə) ayrıca mesaj,
+  // validation massivini birləşdir, digər halda backend mesajını göstər.
+  const errMessage = useCallback((err: any, fallback: string): string => {
+    if (!err?.response) return t('forgot.networkError');
+    const m = err.response.data?.message;
+    if (Array.isArray(m)) return m[0] ?? fallback;
+    return m || fallback;
+  }, [t]);
+
   useEffect(() => {
     if (countdown === 0) return;
     const timer = setInterval(() => setCountdown((c) => c - 1), 1000);
@@ -60,7 +69,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
         setCountdown(OTP_RESEND_SECONDS);
       },
       onError: (err: any) => {
-        Alert.alert(t('forgot.errorTitle'), err?.response?.data?.message || t('forgot.sendError'));
+        Alert.alert(t('forgot.errorTitle'), errMessage(err, t('forgot.sendError')));
       },
     });
   }, [phone, sendCode, t]);
@@ -69,7 +78,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
     sendCode(phone.trim(), {
       onSuccess: () => setCountdown(OTP_RESEND_SECONDS),
       onError: (err: any) => {
-        Alert.alert(t('forgot.errorTitle'), err?.response?.data?.message || t('forgot.sendError'));
+        Alert.alert(t('forgot.errorTitle'), errMessage(err, t('forgot.sendError')));
       },
     });
   }, [phone, sendCode, t]);
@@ -81,7 +90,7 @@ export default function ForgotPasswordScreen({ navigation, route }: Props) {
         // Uğurda token saxlanır → RootNavigator avtomatik tətbiqə keçir.
         onSuccess: () => Alert.alert(t('forgot.successTitle'), t('forgot.successMsg')),
         onError: (err: any) => {
-          Alert.alert(t('forgot.errorTitle'), err?.response?.data?.message || t('forgot.resetError'));
+          Alert.alert(t('forgot.errorTitle'), errMessage(err, t('forgot.resetError')));
         },
       },
     );
