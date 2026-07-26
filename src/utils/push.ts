@@ -76,6 +76,26 @@ function isRealDevice(): boolean {
   }
 }
 
+// Expo push token-i al. ⚠️ İcazə ilk dəfə veriləndən DƏRHAL sonra `getExpoPushTokenAsync`
+// tez-tez null/xəta qaytarır — çünki APNs (iOS) / FCM (Android) cihaz qeydiyyatı hələ
+// tamamlanmayıb. Bu, yeni qeydiyyatdan keçən istifadəçilərin bildiriş almamasının əsas
+// səbəbi idi (token serverə heç vaxt getmirdi). Ona görə bir neçə dəfə qısa gecikmə ilə
+// təkrar cəhd edirik.
+async function fetchExpoTokenWithRetry(N: NotificationsModule, attempts = 3): Promise<string | null> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = projectId
+        ? await N.getExpoPushTokenAsync({ projectId })
+        : await N.getExpoPushTokenAsync();
+      if (res?.data) return res.data;
+    } catch {
+      // EAS projectId yoxdursa və ya cihaz qeydiyyatı hazır deyilsə — növbəti cəhd.
+    }
+    if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1500));
+  }
+  return null;
+}
+
 export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unsupported';
 
 // Cari OS icazə statusunu oxu (dialoq AÇMADAN). Dəstəklənməyən runtime → 'unsupported'.
@@ -109,16 +129,8 @@ export async function requestAndRegister(): Promise<{ status: PushPermissionStat
     }
     if (status !== 'granted') return { status, token: null };
 
-    let token: string | null = null;
-    try {
-      const res = projectId
-        ? await N.getExpoPushTokenAsync({ projectId })
-        : await N.getExpoPushTokenAsync();
-      token = res.data;
-    } catch {
-      // EAS projectId hələ yoxdursa (eas init işlədilməyib) token alınmır — app pozulmur.
-      token = null;
-    }
+    // İcazə yeni verilibsə cihaz qeydiyyatı bir anlıq gecikə bilər — təkrar cəhdli al.
+    const token = await fetchExpoTokenWithRetry(N);
     return { status, token };
   } catch {
     return { status: 'unsupported', token: null };
@@ -135,10 +147,7 @@ export async function refreshTokenIfGranted(): Promise<string | null> {
     if (Platform.OS === 'android') await setupAndroidChannels(N);
     const { status } = await N.getPermissionsAsync();
     if (status !== 'granted') return null;
-    const res = projectId
-      ? await N.getExpoPushTokenAsync({ projectId })
-      : await N.getExpoPushTokenAsync();
-    return res.data ?? null;
+    return await fetchExpoTokenWithRetry(N);
   } catch {
     return null;
   }

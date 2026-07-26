@@ -112,7 +112,7 @@ export default function App() {
   useEffect(() => {
     if (!authToken) return;
     let cancelled = false;
-    (async () => {
+    const syncToken = async () => {
       // settings hydrate bitməmişsə pushEnabled default true-dur; söndürülübsə yenilə etmə.
       const st = useSettingsStore.getState();
       if (st.hydrated && st.pushEnabled === false) return;
@@ -120,8 +120,16 @@ export default function App() {
       if (!cancelled && token) {
         savePushToken(token).catch(() => {});
       }
-    })();
-    return () => { cancelled = true; };
+    };
+    // 1) Açılışda dərhal. 2) Tətbiq ön plana qayıdanda təkrar — beləcə yeni istifadəçi
+    // priming ekranında icazə verib, lakin ilk token cəhdi boş qayıdıbsa (APNs/FCM hələ
+    // hazır deyildi), token növbəti aktivləşmədə səssiz serverə yazılır. Bu, "aç-bağla
+    // etməsə bildiriş gəlmir" xətasını aradan qaldırır.
+    syncToken();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncToken();
+    });
+    return () => { cancelled = true; sub.remove(); };
   }, [authToken]);
 
   useEffect(() => {
