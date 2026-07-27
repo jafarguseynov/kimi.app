@@ -88,7 +88,11 @@ export default function StreakDetailScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity activeOpacity={0.9} style={{ width: '100%' }}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={{ width: '100%' }}
+          onPress={() => navigation.navigate(Routes.MissionStart)}
+        >
           <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
             <Text style={styles.ctaText}>{t('streak.detContinueToday')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />

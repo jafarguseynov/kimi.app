@@ -85,8 +85,6 @@ export const Routes = {
   HomeMain: 'HomeMain',
   DailyMissions: 'DailyMissions',
   AIStudyPath: 'AIStudyPath',
-  TodaysTasks: 'TodaysTasks',
-  AIStudyPlan: 'AIStudyPlan',
   MotivationReminder: 'MotivationReminder',
   LearningProgress: 'LearningProgress',
   TopicProgress: 'TopicProgress',
@@ -123,6 +121,7 @@ export const Routes = {
   MissionProgress: 'MissionProgress',
   MissionStart: 'MissionStart',
   PerformanceSummary: 'PerformanceSummary',
+  QuestionActivity: 'QuestionActivity',
   ImprovementTips: 'ImprovementTips',
   WeeklyReport: 'WeeklyReport',
   SocialHub: 'SocialHub',
@@ -204,6 +203,7 @@ export const Routes = {
   TeacherProfileSetup: 'TeacherProfileSetup',
   TeacherClass: 'TeacherClass',
   JoinTeacher: 'JoinTeacher',
+  MyTeachers: 'MyTeachers',
 
   // Teacher verification
   VerificationStart: 'VerificationStart',

@@ -119,8 +119,6 @@ export type HomeStackParamList = {
   [Routes.LeaderboardDetail]: undefined;
   [Routes.LiveActivity]: undefined;
   [Routes.News]: undefined;
-  [Routes.TodaysTasks]: undefined;
-  [Routes.AIStudyPlan]: undefined;
   [Routes.MotivationReminder]: undefined;
   [Routes.LearningProgress]: undefined;
   [Routes.TopicProgress]: { topic?: string } | undefined;
@@ -180,6 +178,7 @@ export type HomeStackParamList = {
   [Routes.MissionProgress]: undefined;
   [Routes.MissionStart]: undefined;
   [Routes.PerformanceSummary]: undefined;
+  [Routes.QuestionActivity]: undefined;
   [Routes.ImprovementTips]: undefined;
   [Routes.WeeklyReport]: undefined;
   [Routes.SocialHub]: undefined;

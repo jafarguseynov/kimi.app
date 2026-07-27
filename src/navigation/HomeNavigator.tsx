@@ -12,8 +12,6 @@ import LeaderboardScreen from '../screens/home/LeaderboardScreen';
 import LeaderboardDetailScreen from '../screens/home/LeaderboardDetailScreen';
 import LiveActivityScreen from '../screens/home/LiveActivityScreen';
 import NewsScreen from '../screens/home/NewsScreen';
-import TodaysTasksScreen from '../screens/home/TodaysTasksScreen';
-import AIStudyPlanScreen from '../screens/home/AIStudyPlanScreen';
 import MotivationReminderScreen from '../screens/home/MotivationReminderScreen';
 import LearningProgressScreen from '../screens/home/LearningProgressScreen';
 import TopicProgressScreen from '../screens/home/TopicProgressScreen';
@@ -70,6 +68,7 @@ import TopTeachersLeaderboardScreen from '../screens/profile/TopTeachersLeaderbo
 import MissionProgressScreen from '../screens/home/MissionProgressScreen';
 import MissionStartScreen from '../screens/home/MissionStartScreen';
 import PerformanceSummaryScreen from '../screens/home/PerformanceSummaryScreen';
+import QuestionActivityScreen from '../screens/home/QuestionActivityScreen';
 import ImprovementTipsScreen from '../screens/home/ImprovementTipsScreen';
 import WeeklyReportScreen from '../screens/home/WeeklyReportScreen';
 import SocialHubScreen from '../screens/home/SocialHubScreen';
@@ -96,8 +95,6 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.LeaderboardDetail} component={LeaderboardDetailScreen} />
       <Stack.Screen name={Routes.LiveActivity} component={LiveActivityScreen} />
       <Stack.Screen name={Routes.News} component={NewsScreen} />
-      <Stack.Screen name={Routes.TodaysTasks} component={TodaysTasksScreen} />
-      <Stack.Screen name={Routes.AIStudyPlan} component={AIStudyPlanScreen} />
       <Stack.Screen name={Routes.MotivationReminder} component={MotivationReminderScreen} />
       <Stack.Screen name={Routes.LearningProgress} component={LearningProgressScreen} />
       <Stack.Screen name={Routes.TopicProgress} component={TopicProgressScreen} />
@@ -154,6 +151,7 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.MissionProgress} component={MissionProgressScreen} />
       <Stack.Screen name={Routes.MissionStart} component={MissionStartScreen} />
       <Stack.Screen name={Routes.PerformanceSummary} component={PerformanceSummaryScreen} />
+      <Stack.Screen name={Routes.QuestionActivity} component={QuestionActivityScreen} />
       <Stack.Screen name={Routes.ImprovementTips} component={ImprovementTipsScreen} />
       <Stack.Screen name={Routes.WeeklyReport} component={WeeklyReportScreen} />
       <Stack.Screen name={Routes.SocialHub} component={SocialHubScreen} />

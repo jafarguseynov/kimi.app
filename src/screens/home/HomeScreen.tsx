@@ -982,13 +982,9 @@ export default function HomeScreen({ navigation }: Props) {
                 </TestCategoryAccordion>
 
                 {/* 🤖 AI & Tapşırıq */}
-                <TestCategoryAccordion title={t('home.student.accAi')} count={4}>
+                <TestCategoryAccordion title={t('home.student.accAi')} count={2}>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title={t('home.student.cardAiPlan')} sub={t('home.student.cardAiPlanSub')} icon="hardware-chip" onPress={() => navigation.navigate(Routes.AIStudyPlan)} />
                     <TestCard title={t('home.student.cardBuilder')} sub={t('home.student.cardBuilderSub')} icon="construct" onPress={() => navigation.navigate(Routes.AIPracticeBuilder)} />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title={t('home.student.cardToday')} sub={t('home.student.cardTodaySub')} icon="checkmark-done-circle" onPress={() => navigation.navigate(Routes.TodaysTasks)} />
                     <TestCard title={t('home.student.cardMissions')} sub={t('home.student.cardMissionsSub')} icon="flame" onPress={() => navigation.navigate(Routes.MissionStart)} />
                   </View>
                 </TestCategoryAccordion>
