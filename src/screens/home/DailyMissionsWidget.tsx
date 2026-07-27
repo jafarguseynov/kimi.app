@@ -40,7 +40,7 @@ export default function DailyMissionsWidget() {
           <Text style={styles.icon}>{TYPE_ICONS[m.type] ?? '⭐'}</Text>
           <Text style={styles.missionTitle} numberOfLines={2}>{m.title}</Text>
           <View style={styles.xp}>
-            <Text style={styles.xpText}>+{m.xpReward} XP</Text>
+            <Text style={styles.xpText}>+{t('missions.rewardCoins', { n: m.xpReward })}</Text>
           </View>
         </View>
       ))}

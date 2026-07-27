@@ -1,52 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getMissions, getStreak, claimMission, DailyMission, StreakInfo } from '../../api/engagement.api';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface Task {
-  id: string;
-  titleKey: string;
-  subKey: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconBg: string;
-  iconColor: string;
-}
+// Baku təqvimi qısa gün adları (getDay: 0=Baz..6=Şən)
+const WD_LETTERS = ['B', 'B.e', 'Ç.a', 'Ç', 'C.a', 'C', 'Ş'];
 
-const TASKS: Task[] = [
-  { id: 't1', titleKey: 'missions.task1Title', subKey: 'missions.task1Sub', icon: 'document-text', iconBg: Colors.secondaryContainer + '80', iconColor: Colors.primary },
-  { id: 't2', titleKey: 'missions.task2Title', subKey: 'missions.task2Sub', icon: 'chatbubble-ellipses', iconBg: Colors.tertiaryContainer + '4D', iconColor: Colors.tertiary },
-  { id: 't3', titleKey: 'missions.task3Title', subKey: 'missions.task3Sub', icon: 'albums', iconBg: Colors.surfaceHighest, iconColor: Colors.primaryDim },
-];
-
-interface Mission {
-  id: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  titleKey: string;
-  rewardKey: string;
-  done: boolean;
-}
-
-const MISSIONS: Mission[] = [
-  { id: 'm1', icon: 'checkmark-circle', titleKey: 'missions.m1Title', rewardKey: 'missions.m1Reward', done: true },
-  { id: 'm2', icon: 'checkmark-circle', titleKey: 'missions.m2Title', rewardKey: 'missions.m2Reward', done: true },
-  { id: 'm3', icon: 'book', titleKey: 'missions.m3Title', rewardKey: 'missions.m3Reward', done: false },
-];
-
-interface Reward { id: string; titleKey: string; subKey: string; icon: keyof typeof Ionicons.glyphMap; color: string; locked?: boolean; }
-const REWARDS: Reward[] = [
-  { id: 'r1', titleKey: 'missions.r1Title', subKey: 'missions.r1Sub', icon: 'logo-bitcoin', color: '#FFB020' },
-  { id: 'r2', titleKey: 'missions.r2Title', subKey: 'missions.r2Sub', icon: 'lock-closed', color: Colors.textLight, locked: true },
-  { id: 'r3', titleKey: 'missions.r3Title', subKey: 'missions.r3Sub', icon: 'lock-closed', color: Colors.textLight, locked: true },
-];
-
-const DONE_COUNT = MISSIONS.filter((m) => m.done).length;
-const PROGRESS = DONE_COUNT / MISSIONS.length;
+const TYPE_ICON: Record<string, keyof typeof Ionicons.glyphMap> = {
+  exam: 'document-text',
+  question: 'chatbubble-ellipses',
+  flashcard: 'albums',
+};
+const TYPE_ROUTE: Record<string, string> = {
+  exam: 'Exams',
+  question: 'Marketplace',
+  flashcard: 'Learn',
+};
 
 type Tab = 'today' | 'progress';
 
@@ -54,6 +32,36 @@ export default function MissionStartScreen() {
   const navigation = useNavigation<any>();
   const [view, setView] = useState<Tab>('today');
   const { t } = useTranslation();
+  const qc = useQueryClient();
+
+  const { data: missions = [], isLoading: mLoading } = useQuery<DailyMission[]>({
+    queryKey: ['missions'],
+    queryFn: () => getMissions().catch(() => []),
+  });
+  const { data: streak, isLoading: sLoading } = useQuery<StreakInfo | undefined>({
+    queryKey: ['streak'],
+    queryFn: () => getStreak().catch(() => undefined),
+  });
+
+  const claim = useMutation({
+    mutationFn: (id: string) => claimMission(id),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['missions'] });
+      qc.invalidateQueries({ queryKey: ['wallet'] });
+      Alert.alert('🎉', t('missions.claimSuccess', { n: res.reward }));
+    },
+    onError: () => {
+      qc.invalidateQueries({ queryKey: ['missions'] });
+    },
+  });
+
+  const goToMission = (m: DailyMission) => {
+    const route = TYPE_ROUTE[m.type];
+    if (route) navigation.getParent()?.navigate(route);
+  };
+
+  const doneCount = missions.filter((m) => m.completed).length;
+  const total = missions.length;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -75,7 +83,28 @@ export default function MissionStartScreen() {
           </TouchableOpacity>
         </View>
 
-        {view === 'today' ? <TodayView /> : <ProgressView />}
+        {view === 'today' ? (
+          mLoading ? (
+            <ActivityIndicator style={{ marginTop: 48 }} color={Colors.primary} />
+          ) : (
+            <TodayView
+              missions={missions}
+              doneCount={doneCount}
+              total={total}
+              claiming={claim.isPending ? (claim.variables as string) : null}
+              onClaim={(id) => claim.mutate(id)}
+              onGo={goToMission}
+            />
+          )
+        ) : (
+          <ProgressView
+            missions={missions}
+            streak={streak}
+            loading={sLoading}
+            claiming={claim.isPending ? (claim.variables as string) : null}
+            onClaim={(id) => claim.mutate(id)}
+          />
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -83,8 +112,59 @@ export default function MissionStartScreen() {
   );
 }
 
-function TodayView() {
+function MissionRow({
+  m, claiming, onClaim, onGo,
+}: {
+  m: DailyMission; claiming: string | null; onClaim: (id: string) => void; onGo?: (m: DailyMission) => void;
+}) {
   const { t } = useTranslation();
+  const icon = TYPE_ICON[m.type] ?? 'flag';
+  const pct = Math.min(100, Math.round((m.progress / Math.max(m.target, 1)) * 100));
+  const isClaiming = claiming === m.id;
+
+  return (
+    <View style={[styles.taskCard, m.completed && !m.claimed && styles.taskCardReady]}>
+      <View style={[styles.taskIcon, { backgroundColor: Colors.primaryFixed + '1A' }]}>
+        <Ionicons name={icon} size={20} color={Colors.primary} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.taskTitle}>{m.title}</Text>
+        <View style={styles.rowMeta}>
+          <Ionicons name="logo-bitcoin" size={13} color="#FFB020" />
+          <Text style={styles.rewardText}>{t('missions.rewardCoins', { n: m.reward })}</Text>
+          <Text style={styles.progressText}>· {m.progress}/{m.target}</Text>
+        </View>
+        <View style={styles.miniTrack}>
+          <View style={[styles.miniFill, { width: `${pct}%` as any }]} />
+        </View>
+      </View>
+      {m.claimed ? (
+        <View style={styles.donePill}>
+          <Ionicons name="checkmark" size={13} color={Colors.tertiary} />
+          <Text style={styles.donePillText}>{t('missions.claimed')}</Text>
+        </View>
+      ) : m.completed ? (
+        <TouchableOpacity style={styles.claimBtn} onPress={() => onClaim(m.id)} disabled={isClaiming} activeOpacity={0.85}>
+          {isClaiming ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.claimBtnText}>{t('missions.claim')}</Text>}
+        </TouchableOpacity>
+      ) : onGo ? (
+        <TouchableOpacity style={styles.goBtn} onPress={() => onGo(m)} activeOpacity={0.85}>
+          <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
+        </TouchableOpacity>
+      ) : null}
+    </View>
+  );
+}
+
+function TodayView({
+  missions, doneCount, total, claiming, onClaim, onGo,
+}: {
+  missions: DailyMission[]; doneCount: number; total: number;
+  claiming: string | null; onClaim: (id: string) => void; onGo: (m: DailyMission) => void;
+}) {
+  const { t } = useTranslation();
+  const pct = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+
   return (
     <>
       <View style={{ gap: 6 }}>
@@ -94,32 +174,28 @@ function TodayView() {
 
       <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
         <View style={[styles.heroBlob, { right: -24, bottom: -24, width: 128, height: 128 }]} />
-        <View style={[styles.heroBlob, { left: -24, top: -24, width: 96, height: 96 }]} />
         <View style={styles.heroIcon}>
           <Ionicons name="flame" size={26} color="#fff" />
         </View>
-        <Text style={styles.heroTitle}>{t('missions.heroTitle')}</Text>
+        <Text style={styles.heroTitle}>{t('missions.heroReal', { n: total })}</Text>
         <View style={styles.heroBarTrack}>
-          <View style={styles.heroBarFill} />
+          <View style={[styles.heroBarFill, { width: `${pct}%` as any }]} />
         </View>
-        <Text style={styles.heroBarLabel}>{t('missions.heroBarLabel')}</Text>
+        <Text style={styles.heroBarLabel}>{t('missions.completedOf', { done: doneCount, total })}</Text>
       </LinearGradient>
 
-      <View style={{ gap: 14 }}>
-        {TASKS.map((task) => (
-          <TouchableOpacity key={task.id} activeOpacity={0.85} style={styles.taskCard}>
-            <View style={styles.checkbox} />
-            <View style={[styles.taskIcon, { backgroundColor: task.iconBg }]}>
-              <Ionicons name={task.icon} size={20} color={task.iconColor} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.taskTitle}>{t(task.titleKey)}</Text>
-              <Text style={styles.taskSub}>{t(task.subKey)}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.textLight} />
-          </TouchableOpacity>
-        ))}
-      </View>
+      {missions.length === 0 ? (
+        <View style={styles.empty}>
+          <Ionicons name="checkmark-done-circle-outline" size={52} color={Colors.primaryFixed} />
+          <Text style={styles.emptyText}>{t('missions.empty')}</Text>
+        </View>
+      ) : (
+        <View style={{ gap: 12 }}>
+          {missions.map((m) => (
+            <MissionRow key={m.id} m={m} claiming={claiming} onClaim={onClaim} onGo={onGo} />
+          ))}
+        </View>
+      )}
 
       <View style={styles.rewardChipWrap}>
         <View style={styles.rewardChip}>
@@ -127,69 +203,68 @@ function TodayView() {
           <Text style={styles.rewardChipText}>{t('missions.rewardChip')}</Text>
         </View>
       </View>
-
-      <TouchableOpacity activeOpacity={0.9}>
-        <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
-          <Text style={styles.ctaText}>{t('missions.start')}</Text>
-          <Ionicons name="arrow-forward" size={20} color="#fff" />
-        </LinearGradient>
-      </TouchableOpacity>
     </>
   );
 }
 
-function ProgressView() {
+function ProgressView({
+  missions, streak, loading, claiming, onClaim,
+}: {
+  missions: DailyMission[]; streak?: StreakInfo; loading: boolean;
+  claiming: string | null; onClaim: (id: string) => void;
+}) {
   const { t } = useTranslation();
+  if (loading) return <ActivityIndicator style={{ marginTop: 48 }} color={Colors.primary} />;
+
+  const current = streak?.current ?? 0;
+  const best = streak?.best ?? 0;
+  const week = streak?.week ?? [];
+
   return (
     <>
       <View style={styles.progressCard}>
         <View style={[styles.blob, { top: -40, left: -40 }]} />
         <View style={[styles.blob, { bottom: -40, right: -40 }]} />
-        <Text style={styles.progressLabel}>{t('missions.completedOf', { done: DONE_COUNT, total: MISSIONS.length })}</Text>
+        <Text style={styles.progressLabel}>{t('missions.streakTitle')}</Text>
 
         <View style={styles.ringWrap}>
           <View style={styles.ringTrack} />
-          <View style={[styles.ringFill, { transform: [{ rotate: PROGRESS >= 0.5 ? '45deg' : '-45deg' }] }]} />
           <View style={styles.ringInner}>
-            <Ionicons name="ribbon" size={40} color={Colors.primary} />
+            <Text style={styles.streakNum}>{current}</Text>
+            <Text style={styles.streakUnit}>{t('missions.streakDayUnit')}</Text>
+          </View>
+          <View style={styles.flameBadge}>
+            <Ionicons name="flame" size={18} color="#fff" />
           </View>
         </View>
+
+        <Text style={styles.streakStatus}>
+          {streak?.todayActive ? t('missions.streakActive') : t('missions.streakInactive')}
+        </Text>
+        <Text style={styles.bestStreak}>{t('missions.bestStreak', { n: best })}</Text>
+
+        {week.length > 0 && (
+          <View style={styles.weekRow}>
+            {week.map((d) => {
+              const letter = WD_LETTERS[new Date(d.date + 'T00:00:00').getDay()];
+              return (
+                <View key={d.date} style={styles.weekItem}>
+                  <View style={[styles.weekDot, d.active && styles.weekDotActive]}>
+                    {d.active && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  </View>
+                  <Text style={styles.weekLetter}>{letter}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       <View style={{ gap: 12 }}>
-        {MISSIONS.map((m) => (
-          <View key={m.id} style={[styles.missionCard, m.done && styles.missionCardDone, !m.done && styles.missionCardActive]}>
-            <View style={[styles.missionIcon, !m.done && { backgroundColor: Colors.primaryFixed + '33' }]}>
-              <Ionicons name={m.icon} size={22} color={Colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.missionTitle, m.done && styles.missionTitleDone]}>{t(m.titleKey)}</Text>
-              <Text style={styles.missionReward}>{t(m.rewardKey)}</Text>
-            </View>
-            {m.done ? (
-              <View style={styles.donePill}><Text style={styles.donePillText}>{t('missions.done')}</Text></View>
-            ) : (
-              <TouchableOpacity activeOpacity={0.9} style={styles.startBtn}>
-                <Text style={styles.startBtnText}>{t('missions.start')}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+        <Text style={styles.sectionTitle}>{t('missions.todayMissionsTitle')}</Text>
+        {missions.map((m) => (
+          <MissionRow key={m.id} m={m} claiming={claiming} onClaim={onClaim} />
         ))}
-      </View>
-
-      <View style={{ gap: 16, marginTop: 8 }}>
-        <Text style={styles.sectionTitle}>{t('missions.rewardsTitle')}</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 14, paddingRight: 16 }}>
-          {REWARDS.map((r) => (
-            <View key={r.id} style={[styles.rewardCard, r.locked && { opacity: 0.55 }]}>
-              <View style={styles.rewardIcon}>
-                <Ionicons name={r.icon} size={28} color={r.color} />
-              </View>
-              <Text style={styles.rewardTitle}>{t(r.titleKey)}</Text>
-              <Text style={styles.rewardSub}>{t(r.subKey)}</Text>
-            </View>
-          ))}
-        </ScrollView>
       </View>
     </>
   );
@@ -222,17 +297,31 @@ const styles = StyleSheet.create({
   },
   heroTitle: { fontSize: 20, fontWeight: '700', color: '#fff', lineHeight: 26, letterSpacing: -0.3 },
   heroBarTrack: { width: '100%', height: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.22)', overflow: 'hidden' },
-  heroBarFill: { width: '33%', height: '100%', borderRadius: 999, backgroundColor: '#fff' },
+  heroBarFill: { height: '100%', borderRadius: 999, backgroundColor: '#fff' },
   heroBarLabel: { fontSize: 12, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
 
+  empty: { alignItems: 'center', gap: 10, paddingVertical: 32 },
+  emptyText: { fontSize: 15, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center' },
+
   taskCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 24, padding: 18,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 16,
+    borderWidth: 1, borderColor: Colors.surfaceContainer,
   },
-  checkbox: { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: Colors.outlineVariant + '4D' },
-  taskIcon: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  taskTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  taskSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  taskCardReady: { borderColor: Colors.primaryFixed + '66' },
+  taskIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  taskTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  rowMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  rewardText: { fontSize: 12, fontWeight: '700', color: '#B7791F' },
+  progressText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  miniTrack: { height: 5, borderRadius: 999, backgroundColor: Colors.surfaceContainer, overflow: 'hidden', marginTop: 8 },
+  miniFill: { height: '100%', borderRadius: 999, backgroundColor: Colors.primary },
+
+  donePill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 999, backgroundColor: Colors.tertiaryContainer + '55' },
+  donePillText: { fontSize: 11, fontWeight: '700', color: Colors.tertiary },
+  claimBtn: { minWidth: 72, alignItems: 'center', backgroundColor: Colors.primary, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 },
+  claimBtnText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  goBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryFixed + '1A' },
 
   rewardChipWrap: { alignItems: 'center' },
   rewardChip: {
@@ -240,13 +329,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLow, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 999,
   },
   rewardChipText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
-
-  ctaBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    paddingVertical: 18, borderRadius: 999,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 18 }, shadowOpacity: 0.22, shadowRadius: 24, elevation: 6,
-  },
-  ctaText: { fontSize: 17, fontWeight: '700', color: '#fff' },
 
   progressCard: {
     backgroundColor: Colors.surfaceLowest, borderRadius: 32, padding: 24,
@@ -256,52 +338,30 @@ const styles = StyleSheet.create({
   blob: { position: 'absolute', width: 160, height: 160, borderRadius: 80, backgroundColor: Colors.primaryFixed, opacity: 0.15 },
   progressLabel: { fontSize: 17, fontWeight: '600', color: Colors.textSecondary, marginBottom: 16 },
   ringWrap: { width: 128, height: 128, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  ringTrack: { position: 'absolute', width: 128, height: 128, borderRadius: 64, borderWidth: 8, borderColor: Colors.surfaceContainer },
-  ringFill: {
-    position: 'absolute', width: 128, height: 128, borderRadius: 64, borderWidth: 8,
-    borderColor: 'transparent', borderTopColor: Colors.primary, borderRightColor: Colors.primary, borderBottomColor: Colors.primary,
-  },
+  ringTrack: { position: 'absolute', width: 128, height: 128, borderRadius: 64, borderWidth: 8, borderColor: Colors.primaryFixed + '33' },
   ringInner: {
     width: 96, height: 96, borderRadius: 48,
     backgroundColor: Colors.surfaceLowest, alignItems: 'center', justifyContent: 'center',
   },
-
-  missionCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 24, padding: 16,
-    borderWidth: 1, borderColor: Colors.surfaceContainer,
+  streakNum: { fontSize: 40, fontWeight: '800', color: Colors.primary, lineHeight: 44 },
+  streakUnit: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
+  flameBadge: {
+    position: 'absolute', bottom: 4, right: 4, width: 34, height: 34, borderRadius: 17,
+    backgroundColor: '#F97316', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 3, borderColor: Colors.surfaceLowest,
   },
-  missionCardDone: { opacity: 0.65 },
-  missionCardActive: {
-    borderColor: Colors.primaryFixed + '55',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.06, shadowRadius: 18, elevation: 2,
+  streakStatus: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginTop: 18 },
+  bestStreak: { fontSize: 13, color: Colors.textSecondary, marginTop: 4 },
+  weekRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  weekItem: { alignItems: 'center', gap: 6 },
+  weekDot: {
+    width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.surfaceContainer,
   },
-  missionIcon: {
-    width: 48, height: 48, borderRadius: 24, backgroundColor: Colors.primaryFixed + '1A',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  missionTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  missionTitleDone: { textDecorationLine: 'line-through', textDecorationColor: Colors.textLight, color: Colors.textSecondary },
-  missionReward: { fontSize: 13, fontWeight: '600', color: Colors.primary, marginTop: 2 },
-
-  donePill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: Colors.surfaceHigh },
-  donePillText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
-
-  startBtn: { backgroundColor: Colors.primary, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999 },
-  startBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  weekDotActive: { backgroundColor: Colors.primary },
+  weekLetter: { fontSize: 10, fontWeight: '600', color: Colors.textSecondary },
 
   sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-
-  rewardCard: {
-    width: 140, backgroundColor: Colors.surfaceLowest, borderRadius: 24, padding: 16,
-    alignItems: 'center', borderWidth: 1, borderColor: Colors.surfaceContainer,
-  },
-  rewardIcon: {
-    width: 64, height: 64, borderRadius: 32, backgroundColor: Colors.surfaceLow,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-  },
-  rewardTitle: { fontSize: 13, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
-  rewardSub: { fontSize: 11, color: Colors.textSecondary, textAlign: 'center', marginTop: 4 },
 });
 
 const pairTab = StyleSheet.create({

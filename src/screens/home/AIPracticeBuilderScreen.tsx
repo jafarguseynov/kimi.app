@@ -1,33 +1,80 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useMutation } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { useExamConfig } from '../../hooks/useExamConfig';
+import { generateExam } from '../../api/exam.api';
+import { getTopicStats } from '../../api/topicStats.api';
+import { useQuery } from '@tanstack/react-query';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Count = 5 | 10 | 20;
-type Difficulty = 'Asan' | 'Orta' | 'Çətin';
+type Difficulty = 'easy' | 'medium' | 'hard';
 const DIFF_TKEY: Record<Difficulty, string> = {
-  'Asan': 'aiPractice.diffEasy',
-  'Orta': 'aiPractice.diffMedium',
-  'Çətin': 'aiPractice.diffHard',
+  easy: 'aiPractice.diffEasy',
+  medium: 'aiPractice.diffMedium',
+  hard: 'aiPractice.diffHard',
 };
 
-const HISTORY = [
-  { id: '1', title: 'Riyaziyyat - Tənliklər', meta: 'Dünən, 10 sual',     icon: 'function' as any },
-  { id: '2', title: 'İngilis dili - Zamanlar', meta: '2 gün əvvəl, 20 sual', icon: 'language' as const },
-];
+const FALLBACK_SUBJECTS = ['Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Fizika', 'Kimya', 'Biologiya', 'Tarix', 'Coğrafiya'];
 
 export default function AIPracticeBuilderScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const [topic, setTopic] = useState('Faizlər');
+  const config = useExamConfig();
+
+  // Fənn siyahısı: admin konfiqi → yoxdursa fallback
+  const subjects = useMemo(() => {
+    const fromCfg = config?.global?.subjects?.map((s) => s.label).filter(Boolean);
+    return fromCfg && fromCfg.length ? fromCfg : FALLBACK_SUBJECTS;
+  }, [config]);
+
+  // İstifadəçinin zəif mövzuları (tövsiyə üçün)
+  const { data: stats } = useQuery({
+    queryKey: ['topicStats'],
+    queryFn: () => getTopicStats(),
+  });
+  const weakSubject: string | undefined = stats?.weak?.[0];
+
+  const [topic, setTopic] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [count, setCount] = useState<Count>(10);
-  const [difficulty, setDifficulty] = useState<Difficulty>('Orta');
+  const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+
+  const selectedTopic = topic ?? weakSubject ?? subjects[0];
+
+  const gen = useMutation({
+    mutationFn: () =>
+      generateExam({
+        subject: selectedTopic,
+        difficulty,
+        questionCount: count,
+        type: 'practice',
+      }),
+    onSuccess: (exam) => {
+      navigation.getParent()?.navigate('Exams', {
+        screen: Routes.ExamInfo,
+        params: {
+          examId: exam.id,
+          title: exam.title,
+          questionCount: exam.questionCount,
+          duration: exam.duration,
+          difficulty: exam.difficulty as any,
+          subject: exam.subject,
+        },
+      });
+    },
+    onError: () => {
+      Alert.alert(t('aiPractice.headerTitle'), t('aiPractice.genError'));
+    },
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -36,33 +83,35 @@ export default function AIPracticeBuilderScreen() {
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('aiPractice.headerTitle')}</Text>
-        <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
-          <Ionicons name="time-outline" size={22} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Topic selector */}
         <View style={{ gap: 8 }}>
           <Text style={styles.label}>{t('aiPractice.topicLabel')}</Text>
-          <TouchableOpacity style={styles.selector} activeOpacity={0.85}>
-            <Text style={styles.selectorText}>{topic}</Text>
+          <TouchableOpacity style={styles.selector} activeOpacity={0.85} onPress={() => setPickerOpen(true)}>
+            <Text style={styles.selectorText}>{selectedTopic}</Text>
             <Ionicons name="chevron-down" size={20} color={Colors.textSecondary} />
           </TouchableOpacity>
         </View>
 
-        {/* AI recommendation */}
-        <View style={styles.recCard}>
-          <View style={styles.recBlob} pointerEvents="none" />
-          <View style={styles.recIcon}>
-            <Ionicons name="bulb" size={22} color={Colors.primary} />
+        {/* AI recommendation (real weak subject) */}
+        {weakSubject && (
+          <View style={styles.recCard}>
+            <View style={styles.recBlob} pointerEvents="none" />
+            <View style={styles.recIcon}>
+              <Ionicons name="bulb" size={22} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.recTitle}>{t('aiPractice.recTitle')}</Text>
+              <Text style={styles.recSub}>{t('aiPractice.recSub')}</Text>
+              <TouchableOpacity onPress={() => setTopic(weakSubject)} activeOpacity={0.8}>
+                <Text style={styles.recValue}>{weakSubject} →</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.recTitle}>{t('aiPractice.recTitle')}</Text>
-            <Text style={styles.recSub}>{t('aiPractice.recSub')}</Text>
-            <Text style={styles.recValue}>{t('aiPractice.questions', { n: 10 })}</Text>
-          </View>
-        </View>
+        )}
 
         {/* Question count */}
         <View style={{ gap: 12 }}>
@@ -71,10 +120,7 @@ export default function AIPracticeBuilderScreen() {
             {([5, 10, 20] as Count[]).map((n) => {
               const active = count === n;
               return (
-                <TouchableOpacity
-                  key={n} activeOpacity={0.85} onPress={() => setCount(n)}
-                  style={[styles.segItem, active && styles.segItemActive]}
-                >
+                <TouchableOpacity key={n} activeOpacity={0.85} onPress={() => setCount(n)} style={[styles.segItem, active && styles.segItemActive]}>
                   <Text style={[styles.segText, active && styles.segTextActive]}>{n}</Text>
                 </TouchableOpacity>
               );
@@ -86,13 +132,10 @@ export default function AIPracticeBuilderScreen() {
         <View style={{ gap: 12 }}>
           <Text style={styles.label}>{t('aiPractice.diffLabel')}</Text>
           <View style={styles.segmented}>
-            {(['Asan', 'Orta', 'Çətin'] as Difficulty[]).map((d) => {
+            {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => {
               const active = difficulty === d;
               return (
-                <TouchableOpacity
-                  key={d} activeOpacity={0.85} onPress={() => setDifficulty(d)}
-                  style={[styles.segItem, active && styles.segItemActive]}
-                >
+                <TouchableOpacity key={d} activeOpacity={0.85} onPress={() => setDifficulty(d)} style={[styles.segItem, active && styles.segItemActive]}>
                   <Text style={[styles.segText, active && styles.segTextActive]}>{t(DIFF_TKEY[d])}</Text>
                 </TouchableOpacity>
               );
@@ -100,35 +143,48 @@ export default function AIPracticeBuilderScreen() {
           </View>
         </View>
 
-        {/* CTA */}
-        <TouchableOpacity activeOpacity={0.85} style={{ marginTop: 8 }}>
+        {/* CTA — REAL generate */}
+        <TouchableOpacity activeOpacity={0.85} style={{ marginTop: 8 }} onPress={() => gen.mutate()} disabled={gen.isPending}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.ctaBtn}>
-            <Ionicons name="sparkles" size={20} color="#fff" />
-            <Text style={styles.ctaText}>{t('aiPractice.ctaCreate')}</Text>
+            {gen.isPending ? (
+              <>
+                <ActivityIndicator size="small" color="#fff" />
+                <Text style={styles.ctaText}>{t('aiPractice.generating')}</Text>
+              </>
+            ) : (
+              <>
+                <Ionicons name="sparkles" size={20} color="#fff" />
+                <Text style={styles.ctaText}>{t('aiPractice.ctaCreate')}</Text>
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* History */}
-        <View style={{ gap: 16, marginTop: 16 }}>
-          <Text style={styles.sectionTitle}>{t('aiPractice.historyTitle')}</Text>
-          <View style={{ gap: 12 }}>
-            {HISTORY.map((h) => (
-              <TouchableOpacity key={h.id} style={styles.histItem} activeOpacity={0.85}>
-                <View style={styles.histIcon}>
-                  <Ionicons name={h.icon as any} size={22} color={Colors.textSecondary} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.histTitle}>{h.title}</Text>
-                  <Text style={styles.histMeta}>{h.meta}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        <Text style={styles.hint}>{t('aiPractice.hint')}</Text>
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Subject picker modal */}
+      <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setPickerOpen(false)}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{t('aiPractice.topicLabel')}</Text>
+            <ScrollView style={{ maxHeight: 360 }}>
+              {subjects.map((s) => {
+                const active = s === selectedTopic;
+                return (
+                  <TouchableOpacity key={s} style={styles.modalItem} onPress={() => { setTopic(s); setPickerOpen(false); }} activeOpacity={0.8}>
+                    <Text style={[styles.modalItemText, active && { color: Colors.primary, fontWeight: '700' }]}>{s}</Text>
+                    {active && <Ionicons name="checkmark" size={20} color={Colors.primary} />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -190,18 +246,15 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 4,
   },
   ctaText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  hint: { fontSize: 12, color: Colors.textMuted, textAlign: 'center' },
 
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
-  histItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: Colors.borderLight,
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: Colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 36 },
+  modalHandle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.borderLight, marginBottom: 16 },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginBottom: 12 },
+  modalItem: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  histIcon: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: Colors.surfaceLow,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  histTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  histMeta: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  modalItemText: { fontSize: 16, color: Colors.textPrimary },
 });

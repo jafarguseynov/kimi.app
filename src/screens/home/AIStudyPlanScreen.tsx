@@ -1,30 +1,39 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getTopicStats } from '../../api/topicStats.api';
+import { getMissions, DailyMission } from '../../api/engagement.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-
-interface Task { id: string; titleKey: string; done: boolean; }
-
-const INITIAL: Task[] = [
-  { id: '1', titleKey: 'aiStudyPlan.task1', done: false },
-  { id: '2', titleKey: 'aiStudyPlan.task2', done: false },
-  { id: '3', titleKey: 'aiStudyPlan.task3', done: true },
-];
-
-const PRIORITY_TOPICS = ['Kəsrlər', 'Faiz artımı', 'Mürəkkəb tənliklər'];
 
 export default function AIStudyPlanScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const [tasks, setTasks] = useState<Task[]>(INITIAL);
-  const toggle = (id: string) => setTasks((p) => p.map((task) => task.id === id ? { ...task, done: !task.done } : task));
+
+  const { data: stats, isLoading: sLoading } = useQuery({
+    queryKey: ['topicStats'],
+    queryFn: () => getTopicStats(),
+  });
+  const { data: missions = [], isLoading: mLoading } = useQuery<DailyMission[]>({
+    queryKey: ['missions'],
+    queryFn: () => getMissions().catch(() => []),
+  });
+
+  const weakSubjects = stats?.weak ?? [];
+  const recTopic = weakSubjects[0];
+  const loading = sLoading || mLoading;
+
+  const startPractice = () => {
+    // Yeni: AIPracticeBuilder real AI məşq yaradır — zəif mövzunu ötür
+    navigation.navigate(Routes.AIPracticeBuilder);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -37,65 +46,82 @@ export default function AIStudyPlanScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header section */}
         <View>
           <Text style={styles.title}>{t('aiStudyPlan.title')}</Text>
           <Text style={styles.subtitle}>{t('aiStudyPlan.subtitle')}</Text>
         </View>
 
-        {/* AI Recommendation card */}
-        <View style={styles.recCard}>
-          <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.recHeader}>
-            <View style={styles.botBgDecor}>
-              <Ionicons name="hardware-chip" size={120} color="rgba(255,255,255,0.18)" />
-            </View>
-            <View style={styles.recHeaderTop}>
-              <View style={styles.botPill}>
-                <Ionicons name="hardware-chip" size={16} color="#fff" />
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 24 }} color={Colors.primary} />
+        ) : (
+          <>
+            {/* AI Recommendation card (real weakest subject) */}
+            <View style={styles.recCard}>
+              <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.recHeader}>
+                <View style={styles.botBgDecor}>
+                  <Ionicons name="hardware-chip" size={120} color="rgba(255,255,255,0.18)" />
+                </View>
+                <View style={styles.recHeaderTop}>
+                  <View style={styles.botPill}>
+                    <Ionicons name="hardware-chip" size={16} color="#fff" />
+                  </View>
+                  <Text style={styles.recKicker}>{t('aiStudyPlan.recKicker')}</Text>
+                </View>
+                <Text style={styles.recTopic}>
+                  {recTopic ? t('aiStudyPlan.recTopicPrefix', { s: recTopic }) : t('aiStudyPlan.noWeak')}
+                </Text>
+              </LinearGradient>
+
+              <View style={styles.recBody}>
+                <View>
+                  <Text style={styles.recBodyKicker}>{t('aiStudyPlan.targetLabel')}</Text>
+                  <Text style={styles.recBodyValue}>
+                    {weakSubjects.length > 0
+                      ? t('aiStudyPlan.weakCount', { n: weakSubjects.length })
+                      : t('aiStudyPlan.targetNone')}
+                  </Text>
+                </View>
+                <View style={styles.recBodyIcon}>
+                  <Ionicons name="analytics" size={22} color={Colors.primary} />
+                </View>
               </View>
-              <Text style={styles.recKicker}>{t('aiStudyPlan.recKicker')}</Text>
             </View>
-            <Text style={styles.recTopic}>{t('aiStudyPlan.recTopic')}</Text>
-          </LinearGradient>
 
-          <View style={styles.recBody}>
-            <View>
-              <Text style={styles.recBodyKicker}>{t('aiStudyPlan.targetLabel')}</Text>
-              <Text style={styles.recBodyValue}>{t('aiStudyPlan.targetValue')}</Text>
-            </View>
-            <View style={styles.recBodyIcon}>
-              <Ionicons name="analytics" size={22} color={Colors.primary} />
-            </View>
-          </View>
-        </View>
-
-        {/* Task list */}
-        <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>{t('aiStudyPlan.todoTitle')}</Text>
-          {tasks.map((task) => (
-            <TouchableOpacity key={task.id} style={styles.taskRow} activeOpacity={0.85} onPress={() => toggle(task.id)}>
-              {task.done ? (
-                <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+            {/* Task list — real daily missions */}
+            <View style={{ gap: 12 }}>
+              <Text style={styles.sectionTitle}>{t('aiStudyPlan.todoTitle')}</Text>
+              {missions.length === 0 ? (
+                <Text style={styles.emptyText}>{t('missions.empty')}</Text>
               ) : (
-                <Ionicons name="ellipse-outline" size={24} color={Colors.outline ?? Colors.textMuted} />
+                missions.map((m) => (
+                  <View key={m.id} style={styles.taskRow}>
+                    {m.completed ? (
+                      <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                    ) : (
+                      <Ionicons name="ellipse-outline" size={24} color={Colors.outline ?? Colors.textMuted} />
+                    )}
+                    <Text style={[styles.taskText, m.completed && styles.taskTextDone]}>{m.title}</Text>
+                  </View>
+                ))
               )}
-              <Text style={[styles.taskText, task.done && styles.taskTextDone]}>{t(task.titleKey)}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+            </View>
 
-        {/* Priority topics */}
-        <View style={{ gap: 12 }}>
-          <Text style={styles.sectionTitle}>{t('aiStudyPlan.priorityTitle')}</Text>
-          <Text style={styles.priorityHint}>{t('aiStudyPlan.priorityHint')}</Text>
-          <View style={styles.chipsRow}>
-            {PRIORITY_TOPICS.map((p) => (
-              <View key={p} style={styles.priorityChip}>
-                <Text style={styles.priorityChipText}>{p}</Text>
+            {/* Priority topics — real weak subjects */}
+            {weakSubjects.length > 0 && (
+              <View style={{ gap: 12 }}>
+                <Text style={styles.sectionTitle}>{t('aiStudyPlan.priorityTitle')}</Text>
+                <Text style={styles.priorityHint}>{t('aiStudyPlan.priorityHint')}</Text>
+                <View style={styles.chipsRow}>
+                  {weakSubjects.map((p) => (
+                    <TouchableOpacity key={p} style={styles.priorityChip} activeOpacity={0.8} onPress={startPractice}>
+                      <Text style={styles.priorityChipText}>{p}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
-            ))}
-          </View>
-        </View>
+            )}
+          </>
+        )}
 
         {/* Daha çox AI alətləri */}
         <View style={aiActStyles.section}>
@@ -120,7 +146,7 @@ export default function AIStudyPlanScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity activeOpacity={0.85}>
+        <TouchableOpacity activeOpacity={0.85} onPress={startPractice}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
             <Text style={styles.startBtnText}>{t('aiStudyPlan.start')}</Text>
             <Ionicons name="arrow-forward" size={20} color="#fff" />
@@ -186,6 +212,7 @@ const styles = StyleSheet.create({
   },
 
   sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  emptyText: { fontSize: 14, color: Colors.textMuted },
 
   taskRow: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 16,

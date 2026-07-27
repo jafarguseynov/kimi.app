@@ -1,36 +1,52 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getMissions, claimMission, DailyMission } from '../../api/engagement.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface Task {
-  id: string;
-  titleKey: string;
-  hintKey?: string;
-  done: boolean;
-}
-
-const INITIAL: Task[] = [
-  { id: '1', titleKey: 'todaysTasks.task1', done: true },
-  { id: '2', titleKey: 'todaysTasks.task2', done: true },
-  { id: '3', titleKey: 'todaysTasks.task3', hintKey: 'todaysTasks.task3hint', done: false },
-];
+const TYPE_ROUTE: Record<string, string> = {
+  exam: 'Exams',
+  question: 'Marketplace',
+  flashcard: 'Learn',
+};
 
 export default function TodaysTasksScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const [tasks, setTasks] = useState<Task[]>(INITIAL);
+  const qc = useQueryClient();
 
-  const toggle = (id: string) => setTasks((prev) => prev.map((task) => task.id === id ? { ...task, done: !task.done } : task));
-  const completed = tasks.filter((task) => task.done).length;
-  const pct = Math.round((completed / tasks.length) * 100);
+  const { data: missions = [], isLoading } = useQuery<DailyMission[]>({
+    queryKey: ['missions'],
+    queryFn: () => getMissions().catch(() => []),
+  });
+
+  const claim = useMutation({
+    mutationFn: (id: string) => claimMission(id),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['missions'] });
+      qc.invalidateQueries({ queryKey: ['wallet'] });
+      Alert.alert('🎉', t('missions.claimSuccess', { n: res.reward }));
+    },
+    onError: () => qc.invalidateQueries({ queryKey: ['missions'] }),
+  });
+
+  const completed = missions.filter((m) => m.completed).length;
+  const total = missions.length;
+  const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const allDone = total > 0 && completed === total;
+
+  const goToMission = (m: DailyMission) => {
+    const route = TYPE_ROUTE[m.type];
+    if (route) (navigation.getParent() as any)?.navigate(route);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -43,7 +59,6 @@ export default function TodaysTasksScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Hero title */}
         <View style={{ gap: 8 }}>
           <Text style={styles.hero}>
             {t('todaysTasks.heroWelcome')}{'\n'}
@@ -52,7 +67,6 @@ export default function TodaysTasksScreen() {
           <Text style={styles.heroSub}>{t('todaysTasks.heroSub')}</Text>
         </View>
 
-        {/* Main task card */}
         <View style={styles.taskCard}>
           <View style={styles.streakBadge}>
             <Text style={{ fontSize: 22 }}>🔥</Text>
@@ -62,7 +76,7 @@ export default function TodaysTasksScreen() {
           <View style={{ marginBottom: 24 }}>
             <View style={styles.progressTopRow}>
               <Text style={styles.progressLabel}>{t('todaysTasks.progressLabel')}</Text>
-              <Text style={styles.progressValue}>{t('todaysTasks.completedOf', { done: completed, total: tasks.length })}</Text>
+              <Text style={styles.progressValue}>{t('todaysTasks.completedOf', { done: completed, total })}</Text>
             </View>
             <View style={styles.progressTrack}>
               <LinearGradient
@@ -72,29 +86,56 @@ export default function TodaysTasksScreen() {
             </View>
           </View>
 
-          <View style={{ gap: 12, marginBottom: 28 }}>
-            {tasks.map((task) => (
-              <TouchableOpacity key={task.id} style={styles.taskRow} activeOpacity={0.85} onPress={() => toggle(task.id)}>
-                <View style={[styles.checkbox, task.done && styles.checkboxDone]}>
-                  {task.done && <Ionicons name="checkmark" size={14} color="#fff" />}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.taskTitle, task.done && styles.taskTitleDone]}>{t(task.titleKey)}</Text>
-                  {task.hintKey && !task.done && <Text style={styles.taskHint}>{t(task.hintKey)}</Text>}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
+          {isLoading ? (
+            <ActivityIndicator style={{ marginVertical: 24 }} color={Colors.primary} />
+          ) : total === 0 ? (
+            <Text style={styles.emptyText}>{t('missions.empty')}</Text>
+          ) : (
+            <View style={{ gap: 12, marginBottom: 8 }}>
+              {missions.map((m) => {
+                const prog = Math.min(100, Math.round((m.progress / Math.max(m.target, 1)) * 100));
+                const isClaiming = claim.isPending && claim.variables === m.id;
+                return (
+                  <View key={m.id} style={styles.taskRow}>
+                    <View style={[styles.checkbox, m.completed && styles.checkboxDone]}>
+                      {m.completed && <Ionicons name="checkmark" size={14} color="#fff" />}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.taskTitle, m.claimed && styles.taskTitleDone]}>{m.title}</Text>
+                      <View style={styles.metaRow}>
+                        <Ionicons name="logo-bitcoin" size={12} color="#FFB020" />
+                        <Text style={styles.metaReward}>{t('missions.rewardCoins', { n: m.reward })}</Text>
+                        <Text style={styles.metaProg}>· {m.progress}/{m.target}</Text>
+                      </View>
+                      {!m.completed && (
+                        <View style={styles.miniTrack}><View style={[styles.miniFill, { width: `${prog}%` as any }]} /></View>
+                      )}
+                    </View>
+                    {m.claimed ? (
+                      <Ionicons name="checkmark-circle" size={24} color={Colors.tertiary} />
+                    ) : m.completed ? (
+                      <TouchableOpacity style={styles.claimBtn} onPress={() => claim.mutate(m.id)} disabled={isClaiming} activeOpacity={0.85}>
+                        {isClaiming ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.claimBtnText}>{t('missions.claim')}</Text>}
+                      </TouchableOpacity>
+                    ) : (
+                      <TouchableOpacity style={styles.goBtn} onPress={() => goToMission(m)} activeOpacity={0.85}>
+                        <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          )}
 
-          <TouchableOpacity activeOpacity={0.85}>
-            <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
-              <Text style={styles.ctaText}>{t('todaysTasks.continue')}</Text>
-              <Ionicons name="arrow-forward" size={20} color="#fff" />
-            </LinearGradient>
-          </TouchableOpacity>
+          {allDone && (
+            <View style={styles.allDoneBanner}>
+              <Ionicons name="trophy" size={18} color={Colors.tertiary} />
+              <Text style={styles.allDoneText}>{t('todaysTasks.allDone')}</Text>
+            </View>
+          )}
         </View>
 
-        {/* Missiya alt-action */}
         <View style={ttActStyles.section}>
           <View style={ttActStyles.row}>
             <TouchableOpacity style={ttActStyles.card} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MissionStart)}>
@@ -102,7 +143,7 @@ export default function TodaysTasksScreen() {
               <Text style={ttActStyles.cardTitle}>{t('todaysTasks.missionStart')}</Text>
               <Text style={ttActStyles.cardSub}>{t('todaysTasks.missionStartSub')}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={ttActStyles.card} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.MissionProgress)}>
+            <TouchableOpacity style={ttActStyles.card} activeOpacity={0.85} onPress={() => navigation.navigate(Routes.DailyMissions)}>
               <Ionicons name="ribbon" size={20} color={Colors.primary} />
               <Text style={ttActStyles.cardTitle}>{t('todaysTasks.missionProgress')}</Text>
               <Text style={ttActStyles.cardSub}>{t('todaysTasks.missionProgressSub')}</Text>
@@ -163,25 +204,34 @@ const styles = StyleSheet.create({
   progressTrack: { height: 12, backgroundColor: Colors.surfaceLow, borderRadius: 999, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 999 },
 
+  emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 20 },
+
   taskRow: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    flexDirection: 'row', alignItems: 'center', gap: 14,
     padding: 16, borderRadius: 12,
     backgroundColor: Colors.surfaceLow + '80',
   },
   checkbox: {
     width: 24, height: 24, borderRadius: 12,
     borderWidth: 2, borderColor: Colors.borderLight,
-    alignItems: 'center', justifyContent: 'center', marginTop: 2,
+    alignItems: 'center', justifyContent: 'center',
   },
   checkboxDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  taskTitle: { fontSize: 15, fontWeight: '500', color: Colors.textPrimary },
+  taskTitle: { fontSize: 15, fontWeight: '600', color: Colors.textPrimary },
   taskTitleDone: { textDecorationLine: 'line-through', opacity: 0.6 },
-  taskHint: { fontSize: 12, color: Colors.textSecondary, marginTop: 4 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  metaReward: { fontSize: 12, fontWeight: '700', color: '#B7791F' },
+  metaProg: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  miniTrack: { height: 4, borderRadius: 999, backgroundColor: Colors.surfaceContainer, overflow: 'hidden', marginTop: 6 },
+  miniFill: { height: '100%', borderRadius: 999, backgroundColor: Colors.primary },
 
-  cta: {
+  claimBtn: { minWidth: 66, alignItems: 'center', backgroundColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999 },
+  claimBtnText: { fontSize: 12, fontWeight: '800', color: '#fff' },
+  goBtn: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryFixed + '1A' },
+
+  allDoneBanner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 18, borderRadius: 999,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 4,
+    marginTop: 20, paddingVertical: 14, borderRadius: 16, backgroundColor: Colors.tertiaryContainer + '44',
   },
-  ctaText: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  allDoneText: { fontSize: 14, fontWeight: '700', color: Colors.tertiary },
 });

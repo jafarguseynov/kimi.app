@@ -72,8 +72,8 @@ export default function DailyMissionsScreen({ navigation }: Props) {
             <Text style={styles.heroSub}>{t('dailyMissionsScreen.completedOf', { done: completedCount, total })}</Text>
           </View>
           <View style={styles.xpBadge}>
-            <Ionicons name="flash" size={16} color="#fbbf24" />
-            <Text style={styles.xpBadgeText}>{earnedXp} / {totalXp} XP</Text>
+            <Ionicons name="logo-bitcoin" size={16} color="#fbbf24" />
+            <Text style={styles.xpBadgeText}>{earnedXp} / {totalXp}</Text>
           </View>
         </LinearGradient>
 
@@ -107,8 +107,8 @@ export default function DailyMissionsScreen({ navigation }: Props) {
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.missionTitle, done && styles.missionTitleDone]} numberOfLines={2}>{m.title}</Text>
                     <View style={styles.metaRow}>
-                      <Ionicons name="flash" size={12} color="#f59e0b" />
-                      <Text style={styles.metaText}>{m.xpReward} XP</Text>
+                      <Ionicons name="logo-bitcoin" size={12} color="#f59e0b" />
+                      <Text style={styles.metaText}>{t('missions.rewardCoins', { n: m.xpReward })}</Text>
                     </View>
                   </View>
                   {done ? (
