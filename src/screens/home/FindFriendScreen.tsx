@@ -1,51 +1,68 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { searchUsers, sendFriendRequest, type FriendSearchItem } from '../../api/friend.api';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 const AVATAR = (seed: string) =>
   `https://api.dicebear.com/8.x/initials/png?seed=${encodeURIComponent(seed)}&backgroundColor=eef1f3&textColor=006190`;
 
-type Status = 'add' | 'sent' | 'friend';
-
-interface UserCard {
-  id: string;
-  name: string;
-  sub: string;
-  status: Status;
-}
-
-const USERS: UserCard[] = [
-  { id: 'u1', name: 'Elvin Məmmədov', sub: 'Riyaziyyat həvəskarı', status: 'add' },
-  { id: 'u2', name: 'Leyla Əliyeva', sub: 'Fizika üzrə mütəxəssis', status: 'sent' },
-  { id: 'u3', name: 'Kamran Quliyev', sub: 'İngilis dili öyrənir', status: 'friend' },
-];
-
 export default function FindFriendScreen() {
   const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
+  const [results, setResults] = useState<FriendSearchItem[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [busyId, setBusyId] = useState<string | null>(null);
   const { t } = useTranslation();
+
+  // Axtarış — debounce (350ms), ən az 2 hərf.
+  useEffect(() => {
+    const q = query.trim();
+    if (q.length < 2) { setResults([]); setSearching(false); return; }
+    let active = true;
+    setSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchUsers(q);
+        if (active) setResults(Array.isArray(res) ? res : []);
+      } catch { if (active) setResults([]); }
+      finally { if (active) setSearching(false); }
+    }, 350);
+    return () => { active = false; clearTimeout(timer); };
+  }, [query]);
+
+  const onAdd = async (u: FriendSearchItem) => {
+    setBusyId(u.id);
+    try {
+      const res: any = await sendFriendRequest(u.id);
+      const nextRelation: FriendSearchItem['relation'] = res?.status === 'accepted' ? 'friends' : 'requested';
+      setResults((prev) => prev.map((r) => (r.id === u.id ? { ...r, relation: nextRelation } : r)));
+      queryClient.invalidateQueries({ queryKey: ['friends'] });
+      queryClient.invalidateQueries({ queryKey: ['friendRequests'] });
+    } catch { /* no-op */ } finally { setBusyId(null); }
+  };
+
+  const q = query.trim();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8} style={styles.avatarWrap}>
-            <Image source={{ uri: AVATAR('Sən') }} style={styles.avatar} />
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.title}>{t('findFriend.title')}</Text>
         </View>
-        <TouchableOpacity style={styles.bellBtn} hitSlop={8}>
-          <Ionicons name="notifications" size={18} color={Colors.textSecondary} />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Search */}
         <View style={styles.searchWrap}>
           <Ionicons name="search" size={20} color={Colors.outlineVariant} style={{ marginLeft: 16 }} />
@@ -54,58 +71,81 @@ export default function FindFriendScreen() {
             placeholderTextColor={Colors.outlineVariant}
             value={query}
             onChangeText={setQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
             style={styles.searchInput}
           />
+          {searching && <ActivityIndicator color={Colors.primary} style={{ marginRight: 16 }} />}
         </View>
 
-        {/* User list */}
-        <View style={{ gap: 16 }}>
-          {USERS.map((u) => (
-            <View key={u.id} style={styles.userCard}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 }}>
-                <Image source={{ uri: AVATAR(u.name) }} style={styles.userAvatar} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.userName}>{u.name}</Text>
-                  <Text style={styles.userSub}>{u.sub}</Text>
+        {/* User list / states */}
+        {q.length < 2 ? (
+          <Text style={styles.hint}>{t('findFriend.searchHint')}</Text>
+        ) : results.length === 0 && !searching ? (
+          <Text style={styles.hint}>{t('findFriend.noResults')}</Text>
+        ) : (
+          <View style={{ gap: 16 }}>
+            {results.map((u) => (
+              <View key={u.id} style={styles.userCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 }}>
+                  <Image source={{ uri: u.avatarUrl ?? AVATAR(u.name) }} style={styles.userAvatar} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.userName} numberOfLines={1}>{u.name}</Text>
+                    {u.subtitle ? (
+                      <Text style={styles.userMeta} numberOfLines={1}>{u.subtitle}</Text>
+                    ) : null}
+                    {u.online && <Text style={styles.userSub}>{t('social.active')}</Text>}
+                  </View>
                 </View>
+                {u.relation === 'friends' ? (
+                  <View style={styles.friendPill}>
+                    <Ionicons name="checkmark-circle" size={16} color={Colors.tertiary} />
+                    <Text style={styles.friendPillText}>{t('findFriend.friend')}</Text>
+                  </View>
+                ) : u.relation === 'requested' ? (
+                  <View style={[styles.actionBtn, styles.actionBtnSent]}>
+                    <Ionicons name="hourglass" size={16} color={Colors.textSecondary} />
+                    <Text style={styles.actionBtnSentText}>{t('findFriend.sent')}</Text>
+                  </View>
+                ) : u.relation === 'incoming' ? (
+                  <View style={[styles.actionBtn, styles.actionBtnSent]}>
+                    <Ionicons name="person-add" size={16} color={Colors.textSecondary} />
+                    <Text style={styles.actionBtnSentText}>{t('findFriend.incoming')}</Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity activeOpacity={0.9} disabled={busyId === u.id} onPress={() => onAdd(u)}>
+                    <LinearGradient
+                      colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={styles.actionBtn}
+                    >
+                      {busyId === u.id ? (
+                        <ActivityIndicator color="#fff" size="small" />
+                      ) : (
+                        <>
+                          <Ionicons name="person-add" size={16} color="#fff" />
+                          <Text style={styles.actionBtnText}>{t('findFriend.add')}</Text>
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
               </View>
-              {u.status === 'add' && (
-                <TouchableOpacity activeOpacity={0.9}>
-                  <LinearGradient
-                    colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={styles.actionBtn}
-                  >
-                    <Ionicons name="person-add" size={16} color="#fff" />
-                    <Text style={styles.actionBtnText}>{t('findFriend.add')}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-              {u.status === 'sent' && (
-                <View style={[styles.actionBtn, styles.actionBtnSent]}>
-                  <Ionicons name="hourglass" size={16} color={Colors.textSecondary} />
-                  <Text style={styles.actionBtnSentText}>{t('findFriend.sent')}</Text>
-                </View>
-              )}
-              {u.status === 'friend' && (
-                <View style={styles.friendPill}>
-                  <Ionicons name="checkmark-circle" size={16} color={Colors.tertiary} />
-                  <Text style={styles.friendPillText}>{t('findFriend.friend')}</Text>
-                </View>
-              )}
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        )}
 
         {/* Footer encouragement card */}
-        <View style={styles.footerCard}>
-          <View style={styles.footerIcon}>
-            <Ionicons name="trophy" size={24} color={Colors.primary} />
+        {q.length < 2 && (
+          <View style={styles.footerCard}>
+            <View style={styles.footerIcon}>
+              <Ionicons name="trophy" size={24} color={Colors.primary} />
+            </View>
+            <Text style={styles.footerText}>
+              {t('findFriend.footerPre')}{'\n'}
+              <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{t('findFriend.footerBold')}</Text>
+            </Text>
           </View>
-          <Text style={styles.footerText}>
-            {t('findFriend.footerPre')}{'\n'}
-            <Text style={{ fontWeight: '700', color: Colors.textPrimary }}>{t('findFriend.footerBold')}</Text>
-          </Text>
-        </View>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -123,20 +163,12 @@ const styles = StyleSheet.create({
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   avatarWrap: {
-    width: 44, height: 44, borderRadius: 22, overflow: 'hidden',
-    borderWidth: 1, borderColor: Colors.surfaceVariant,
-    backgroundColor: Colors.surfaceHigh,
-  },
-  avatar: { width: '100%', height: '100%' },
-  title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.4 },
-  bellBtn: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.surfaceLowest,
+    width: 44, height: 44, borderRadius: 22,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: Colors.surfaceVariant + '80',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
+  title: { fontSize: 22, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.4 },
 
-  scroll: { paddingHorizontal: 24, paddingTop: 24, gap: 40 },
+  scroll: { paddingHorizontal: 24, paddingTop: 24, gap: 24 },
 
   searchWrap: {
     flexDirection: 'row', alignItems: 'center',
@@ -149,6 +181,8 @@ const styles = StyleSheet.create({
     fontSize: 15, color: Colors.textPrimary,
   },
 
+  hint: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 24, lineHeight: 20 },
+
   userCard: {
     backgroundColor: Colors.surfaceLowest, borderRadius: 32, padding: 16,
     flexDirection: 'row', alignItems: 'center', gap: 12,
@@ -159,11 +193,12 @@ const styles = StyleSheet.create({
     width: 56, height: 56, borderRadius: 28, backgroundColor: Colors.surfaceHigh,
   },
   userName: { fontSize: 16, fontWeight: '700', color: Colors.textPrimary },
-  userSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  userMeta: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  userSub: { fontSize: 13, color: Colors.tertiary, marginTop: 2, fontWeight: '600' },
 
   actionBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999,
+    paddingHorizontal: 16, paddingVertical: 10, borderRadius: 999, minWidth: 96, justifyContent: 'center',
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 12, elevation: 3,
   },
   actionBtnText: { fontSize: 13, fontWeight: '600', color: '#fff' },

@@ -1,83 +1,32 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { useUserStore } from '../../store/user.store';
+import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-
-type ActivityKind = 'exam' | 'league' | 'streak' | 'course';
-
-interface Activity {
-  id: string;
-  name: string;
-  initial: string;
-  kind: ActivityKind;
-  badgeColor: string;
-  badgeIcon: keyof typeof Ionicons.glyphMap;
-  highlightKey: string;
-  highlightColor: string;
-  suffixKey: string;
-  metaKey: string;
-}
-
-const ACTIVITIES: Activity[] = [
-  {
-    id: 'a1', name: 'Ali', initial: 'A', kind: 'exam',
-    badgeColor: Colors.primary, badgeIcon: 'help-circle',
-    highlightKey: 'liveActivity.a1Hi', highlightColor: Colors.primary,
-    suffixKey: 'liveActivity.a1Suf', metaKey: 'liveActivity.a1Meta',
-  },
-  {
-    id: 'a2', name: 'Leyla', initial: 'L', kind: 'league',
-    badgeColor: '#EAB308', badgeIcon: 'school',
-    highlightKey: 'liveActivity.a2Hi', highlightColor: '#CA8A04',
-    suffixKey: 'liveActivity.a2Suf', metaKey: 'liveActivity.a2Meta',
-  },
-  {
-    id: 'a3', name: 'Murad', initial: 'M', kind: 'streak',
-    badgeColor: '#F97316', badgeIcon: 'flame',
-    highlightKey: 'liveActivity.a3Hi', highlightColor: '#EA580C',
-    suffixKey: 'liveActivity.a3Suf', metaKey: 'liveActivity.a3Meta',
-  },
-  {
-    id: 'a4', name: 'Günel', initial: 'G', kind: 'course',
-    badgeColor: '#10B981', badgeIcon: 'sparkles',
-    highlightKey: 'liveActivity.a4Hi', highlightColor: '#059669',
-    suffixKey: 'liveActivity.a4Suf', metaKey: 'liveActivity.a4Meta',
-  },
-];
-
-function LivePulse() {
-  const pulse = React.useRef(new Animated.Value(0)).current;
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.timing(pulse, { toValue: 1, duration: 1400, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-    ).start();
-  }, [pulse]);
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 2.2] });
-  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.75, 0] });
-  return (
-    <View style={liveStyles.wrap}>
-      <Animated.View style={[liveStyles.ring, { transform: [{ scale }], opacity }]} />
-      <View style={liveStyles.dot} />
-    </View>
-  );
-}
-
-const liveStyles = StyleSheet.create({
-  wrap: { width: 10, height: 10, alignItems: 'center', justifyContent: 'center' },
-  ring: { position: 'absolute', width: 10, height: 10, borderRadius: 5, backgroundColor: Colors.primary },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-});
 
 export default function LiveActivityScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const user = useUserStore((s) => s.user);
+
+  const { data: board = [], isLoading } = useQuery<LeaderboardEntry[]>({
+    queryKey: ['leaderboard-detail'],
+    queryFn: getGlobalLeaderboard,
+  });
+
+  const leaders = board.slice(0, 8);
+  const totalStudents = board.length;
+  const totalExams = board.reduce((s, e) => s + (e.examCount || 0), 0);
+  const initial = (name: string) => name.charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -89,9 +38,7 @@ export default function LiveActivityScreen() {
           <Ionicons name="star" size={18} color={Colors.primary} />
           <Text style={styles.headerTitle}>{t('liveActivity.headerTitle')}</Text>
         </View>
-        <TouchableOpacity style={styles.headerBtn} hitSlop={8} onPress={() => navigation.navigate(Routes.Notifications)}>
-          <Ionicons name="notifications-outline" size={20} color={Colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -109,70 +56,76 @@ export default function LiveActivityScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Hero */}
+        {/* Hero — real community aggregate */}
         <LinearGradient
           colors={GRADIENT}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
           style={styles.hero}
         >
-          <View style={styles.livePill}>
-            <Text style={styles.livePillText}>{t('liveActivity.liveNow')}</Text>
-          </View>
+          <Ionicons name="people" size={28} color="#fff" style={{ marginBottom: 12 }} />
           <Text style={styles.heroTitle}>{t('liveActivity.heroTitle')}</Text>
-          <Text style={styles.heroSub}>{t('liveActivity.heroSub')}</Text>
+          <Text style={styles.heroSub}>
+            {t('liveActivity.heroSub', { students: totalStudents.toLocaleString('az-AZ'), exams: totalExams.toLocaleString('az-AZ') })}
+          </Text>
         </LinearGradient>
 
-        {/* Section header */}
-        <View style={styles.sectionHead}>
-          <Text style={styles.sectionTitle}>{t('liveActivity.recentTitle')}</Text>
-          <View style={styles.activeRow}>
-            <LivePulse />
-            <Text style={styles.activeText}>{t('liveActivity.activePeople')}</Text>
-          </View>
-        </View>
-
-        {/* Activity feed */}
-        <View style={{ gap: 14 }}>
-          {ACTIVITIES.map((a) => (
-            <TouchableOpacity key={a.id} style={styles.card} activeOpacity={0.88}>
-              <View style={styles.avatarWrap}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{a.initial}</Text>
-                </View>
-                <View style={[styles.avatarBadge, { backgroundColor: a.badgeColor }]}>
-                  <Ionicons name={a.badgeIcon} size={12} color="#fff" />
-                </View>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardLine}>
-                  {a.name}{' '}
-                  <Text style={[styles.highlight, { color: a.highlightColor }]}>{t(a.highlightKey)}</Text>
-                  {t(a.suffixKey)}
-                </Text>
-                <Text style={styles.meta}>{t(a.metaKey)}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={Colors.surfaceHigh} />
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <TouchableOpacity style={styles.loadMore} activeOpacity={0.85}>
-          <Text style={styles.loadMoreText}>{t('liveActivity.loadMore')}</Text>
-        </TouchableOpacity>
-
-        {/* Bento stats */}
+        {/* Bento stats — real */}
         <View style={styles.bentoRow}>
           <View style={styles.bentoCard}>
             <Ionicons name="people" size={22} color={Colors.primary} style={{ marginBottom: 10 }} />
-            <Text style={styles.bentoNum}>45.2K</Text>
+            <Text style={styles.bentoNum}>{totalStudents.toLocaleString('az-AZ')}</Text>
             <Text style={styles.bentoLabel}>{t('liveActivity.activeStudents')}</Text>
           </View>
           <View style={styles.bentoCard}>
             <Ionicons name="checkmark-done-circle" size={22} color={Colors.tertiary} style={{ marginBottom: 10 }} />
-            <Text style={styles.bentoNum}>128</Text>
+            <Text style={styles.bentoNum}>{totalExams.toLocaleString('az-AZ')}</Text>
             <Text style={styles.bentoLabel}>{t('liveActivity.newSuccess')}</Text>
           </View>
         </View>
+
+        {/* Section header */}
+        <View style={styles.sectionHead}>
+          <Text style={styles.sectionTitle}>{t('liveActivity.recentTitle')}</Text>
+          <TouchableOpacity onPress={() => navigation.navigate(Routes.LeaderboardDetail)}>
+            <Text style={styles.linkText}>{t('socialHub.all')}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Community leaders — real leaderboard */}
+        {isLoading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 8 }} />
+        ) : leaders.length === 0 ? (
+          <Text style={styles.emptyLine}>{t('liveActivity.emptyLeaders')}</Text>
+        ) : (
+          <View style={{ gap: 14 }}>
+            {leaders.map((e) => {
+              const me = e.userId === user?.id;
+              return (
+                <TouchableOpacity
+                  key={e.userId}
+                  style={[styles.card, me && styles.cardMe]}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate(Routes.LeaderboardDetail)}
+                >
+                  <Text style={styles.rank}>{e.rank}</Text>
+                  <View style={styles.avatar}>
+                    <Text style={styles.avatarText}>{initial(e.name)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardName} numberOfLines={1}>{me ? t('leaderboardDetail.youLabel') : e.name}</Text>
+                    <Text style={styles.meta} numberOfLines={1}>
+                      {t('leaderboardDetail.examMeta', { count: e.examCount, pct: e.avgPercentage })}
+                    </Text>
+                  </View>
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={styles.xp}>{e.totalScore.toLocaleString('az-AZ')}</Text>
+                    <Text style={styles.xpUnit}>XP</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -193,54 +146,15 @@ const styles = StyleSheet.create({
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.primary },
 
-  scroll: { padding: 24, gap: 32, paddingBottom: 48 },
+  scroll: { padding: 24, gap: 28, paddingBottom: 48 },
 
   /* Hero */
   hero: {
-    borderRadius: 20, padding: 32, alignItems: 'center',
+    borderRadius: 20, padding: 28, alignItems: 'center',
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.18, shadowRadius: 40, elevation: 6,
   },
-  livePill: {
-    backgroundColor: 'rgba(255,255,255,0.22)',
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999,
-    marginBottom: 16,
-  },
-  livePillText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 1.5 },
-  heroTitle: { fontSize: 24, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: -0.5, marginBottom: 8 },
-  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 18 },
-
-  /* Section head */
-  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  activeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  activeText: { fontSize: 11, fontWeight: '700', color: Colors.primary, letterSpacing: 0.5 },
-
-  /* Card */
-  card: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 20, elevation: 2,
-  },
-  avatarWrap: { position: 'relative' },
-  avatar: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.primary + '1A',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.surfaceLow,
-  },
-  avatarText: { fontSize: 18, fontWeight: '800', color: Colors.primary },
-  avatarBadge: {
-    position: 'absolute', bottom: -2, right: -2,
-    width: 22, height: 22, borderRadius: 11,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: '#fff',
-  },
-  cardLine: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary, lineHeight: 19 },
-  highlight: { fontWeight: '800' },
-  meta: { fontSize: 11, color: Colors.textMuted, fontWeight: '500', marginTop: 4 },
-
-  loadMore: { paddingVertical: 16, alignItems: 'center' },
-  loadMoreText: { fontSize: 13, fontWeight: '700', color: Colors.primary, letterSpacing: 0.5 },
+  heroTitle: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', letterSpacing: -0.5, marginBottom: 8 },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', textAlign: 'center', lineHeight: 19 },
 
   /* Bento */
   bentoRow: { flexDirection: 'row', gap: 14 },
@@ -249,6 +163,32 @@ const styles = StyleSheet.create({
   },
   bentoNum: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5 },
   bentoLabel: { fontSize: 11, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 4 },
+
+  /* Section head */
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
+  linkText: { fontSize: 13, fontWeight: '600', color: Colors.primary },
+
+  emptyLine: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingVertical: 16 },
+
+  /* Card */
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 20, elevation: 2,
+  },
+  cardMe: { borderWidth: 1.5, borderColor: Colors.primary },
+  rank: { width: 22, fontSize: 14, fontWeight: '800', color: Colors.textSecondary, textAlign: 'center' },
+  avatar: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: Colors.primary + '1A',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  cardName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  meta: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500', marginTop: 2 },
+  xp: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  xpUnit: { fontSize: 10, fontWeight: '500', color: Colors.textSecondary, marginTop: 1 },
 });
 
 const pairTab = StyleSheet.create({
