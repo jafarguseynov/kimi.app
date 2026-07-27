@@ -7,6 +7,7 @@ export interface LeaderboardEntry {
   totalScore: number;
   examCount: number;
   avgPercentage: number;
+  isCurrentUser?: boolean;
 }
 
 export interface LeagueEntry {
@@ -30,6 +31,10 @@ export interface ExamRankEntry {
 
 export const getGlobalLeaderboard = (): Promise<LeaderboardEntry[]> =>
   client.get('/leaderboard').then((r) => r.data);
+
+/** Dostlar reytinqi — server dostları özü tapır (qlobal top-50 məhdudiyyəti YOX, 0 imtahanlılar da daxil). */
+export const getFriendsLeaderboard = (): Promise<LeaderboardEntry[]> =>
+  client.get('/leaderboard/friends').then((r) => r.data);
 
 export const getLeague = (): Promise<LeagueEntry[]> =>
   client.get('/leaderboard/league').then((r) => r.data);

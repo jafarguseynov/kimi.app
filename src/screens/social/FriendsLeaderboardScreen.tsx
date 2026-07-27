@@ -9,8 +9,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
 import { useUserStore } from '../../store/user.store';
-import { getFriends, type FriendItem } from '../../api/friend.api';
-import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
+import { getFriendsLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -38,23 +37,16 @@ export default function FriendsLeaderboardScreen() {
   const { t } = useTranslation();
   const user = useUserStore((s) => s.user);
 
-  const { data: friends = [] } = useQuery<FriendItem[]>({
-    queryKey: ['friends'],
-    queryFn: () => getFriends().catch(() => [] as FriendItem[]),
-  });
+  // Server dostları özü tapır: qlobal top-50 məhdudiyyəti yoxdur, 0 imtahanlı dostlar da 0 XP ilə gəlir.
   const { data: board = [], isLoading } = useQuery<LeaderboardEntry[]>({
-    queryKey: ['leaderboard-detail'],
-    queryFn: getGlobalLeaderboard,
+    queryKey: ['friends-leaderboard'],
+    queryFn: () => getFriendsLeaderboard().catch(() => [] as LeaderboardEntry[]),
   });
 
-  // Dostların + özümün qlobal reytinqdəki real balları → aramızda yenidən sıralanır.
-  const ranked = useMemo(() => {
-    const ids = new Set(friends.map((f) => f.id));
-    if (user?.id) ids.add(user.id);
-    return board
-      .filter((e) => ids.has(e.userId))
-      .map((e, i) => ({ ...e, place: i + 1 }));
-  }, [friends, board, user?.id]);
+  const ranked = useMemo(
+    () => board.map((e, i) => ({ ...e, place: e.rank ?? i + 1 })),
+    [board],
+  );
 
   const initial = (name: string) => name.charAt(0).toUpperCase();
   const top3 = ranked.slice(0, 3);
@@ -87,7 +79,7 @@ export default function FriendsLeaderboardScreen() {
 
         {isLoading ? (
           <View style={styles.center}><ActivityIndicator size="large" color={Colors.primary} /></View>
-        ) : ranked.length === 0 ? (
+        ) : ranked.length <= 1 ? (
           <View style={styles.empty}>
             <Ionicons name="trophy-outline" size={44} color={Colors.textMuted} />
             <Text style={styles.emptyText}>{t('social.friendsBoardEmpty')}</Text>
