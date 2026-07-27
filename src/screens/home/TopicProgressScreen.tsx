@@ -1,30 +1,40 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { getRoadmap } from '../../api/analytics.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-
-type StepState = 'done' | 'active' | 'pending';
-interface Step { id: string; titleKey: string; subtitleKey?: string; state: StepState; }
-
-const STEPS: Step[] = [
-  { id: '1', titleKey: 'topicProgress.s1', state: 'done' },
-  { id: '2', titleKey: 'topicProgress.s2', state: 'done' },
-  { id: '3', titleKey: 'topicProgress.s3', state: 'active',  subtitleKey: 'topicProgress.s3sub' },
-  { id: '4', titleKey: 'topicProgress.s4', state: 'pending', subtitleKey: 'topicProgress.s4sub' },
-];
 
 export default function TopicProgressScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { t } = useTranslation();
-  const topic = route.params?.topic ?? 'Faizlər';
-  const pct = 60;
+  const paramTopic: string | undefined = route.params?.topic;
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['roadmap', paramTopic ?? '_weakest'],
+    queryFn: () => getRoadmap(paramTopic),
+  });
+
+  const topic = data?.subject ?? paramTopic ?? '—';
+  const pct = data?.avgPct ?? 0;
+  const steps = data?.steps ?? [];
+
+  // Data-əsaslı Kimi mesajı (sabit mətn yox).
+  const insight =
+    pct >= 80
+      ? t('topicProgress.insightMastered')
+      : pct >= 60
+      ? t('topicProgress.insightGood')
+      : (data?.attempts ?? 0) === 0
+      ? t('topicProgress.insightStart')
+      : t('topicProgress.insightWeak');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -36,6 +46,9 @@ export default function TopicProgressScreen() {
         <View style={styles.headerBtn} />
       </View>
 
+      {isLoading ? (
+        <View style={styles.loadingWrap}><ActivityIndicator size="large" color={Colors.primary} /></View>
+      ) : (
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Topic header */}
         <View style={styles.topicCard}>
@@ -62,13 +75,13 @@ export default function TopicProgressScreen() {
         {/* Timeline */}
         <View style={styles.timelineCard}>
           <View style={styles.timelineBar} />
-          {STEPS.map((s, i) => (
-            <View key={s.id} style={[styles.step, i === STEPS.length - 1 && { marginBottom: 0 }]}>
-              {s.state === 'done' ? (
+          {steps.map((s, i) => (
+            <View key={i} style={[styles.step, i === steps.length - 1 && { marginBottom: 0 }]}>
+              {s.status === 'done' ? (
                 <View style={[styles.stepDot, { backgroundColor: Colors.primary }]}>
                   <Ionicons name="checkmark" size={16} color="#fff" />
                 </View>
-              ) : s.state === 'active' ? (
+              ) : s.status === 'current' ? (
                 <View style={[styles.stepDot, styles.stepDotActive]}>
                   <Ionicons name="sync" size={16} color={Colors.primary} />
                 </View>
@@ -80,12 +93,12 @@ export default function TopicProgressScreen() {
               <View style={{ flex: 1, paddingTop: 6 }}>
                 <Text style={[
                   styles.stepTitle,
-                  s.state === 'active' && { color: Colors.primary, fontWeight: '700' },
-                  s.state === 'pending' && { color: Colors.textSecondary, fontWeight: '500' },
+                  s.status === 'current' && { color: Colors.primary, fontWeight: '700' },
+                  s.status === 'locked' && { color: Colors.textSecondary, fontWeight: '500' },
                 ]}>
-                  {t(s.titleKey)}
+                  {s.label}
                 </Text>
-                {s.subtitleKey && <Text style={styles.stepSub}>{t(s.subtitleKey)}</Text>}
+                <Text style={styles.stepSub}>{s.detail}</Text>
               </View>
             </View>
           ))}
@@ -99,7 +112,7 @@ export default function TopicProgressScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.aiKicker}>{t('topicProgress.kimiSays')}</Text>
-            <Text style={styles.aiText}>{t('topicProgress.aiText')}</Text>
+            <Text style={styles.aiText}>{insight}</Text>
           </View>
         </View>
 
@@ -110,36 +123,40 @@ export default function TopicProgressScreen() {
               <Ionicons name="checkmark-done" size={16} color={Colors.tertiary} />
             </View>
             <View>
-              <Text style={styles.statLabel}>{t('topicProgress.correct')}</Text>
-              <Text style={styles.statValue}>18</Text>
+              <Text style={styles.statLabel}>{t('topicProgress.examCount')}</Text>
+              <Text style={styles.statValue}>{data?.attempts ?? 0}</Text>
             </View>
           </View>
           <View style={styles.statCard}>
-            <View style={[styles.statIconBox, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="close" size={16} color={Colors.danger} />
+            <View style={[styles.statIconBox, { backgroundColor: '#E0E7FF' }]}>
+              <Ionicons name="trending-up" size={16} color={Colors.primary} />
             </View>
             <View>
-              <Text style={styles.statLabel}>{t('topicProgress.wrong')}</Text>
-              <Text style={styles.statValue}>4</Text>
+              <Text style={styles.statLabel}>{t('topicProgress.avgScore')}</Text>
+              <Text style={styles.statValue}>{pct}%</Text>
             </View>
           </View>
           <View style={[styles.statCard, { flexBasis: '100%' }]}>
-            <View style={[styles.statIconBox, { backgroundColor: '#E0E7FF' }]}>
-              <Ionicons name="time-outline" size={16} color={Colors.secondary ?? Colors.textSecondary} />
+            <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="star" size={16} color="#F59E0B" />
             </View>
             <View>
-              <Text style={styles.statLabel}>{t('topicProgress.timeSpent')}</Text>
-              <Text style={styles.statValue}>{t('topicProgress.timeValue')}</Text>
+              <Text style={styles.statLabel}>{t('topicProgress.bestScore')}</Text>
+              <Text style={styles.statValue}>{data?.bestPct ?? 0}%</Text>
             </View>
           </View>
         </View>
 
         <View style={{ height: 120 }} />
       </ScrollView>
+      )}
 
       {/* Footer CTA */}
       <View style={styles.footer}>
-        <TouchableOpacity activeOpacity={0.85}>
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={() => (navigation.getParent() as any)?.navigate('Exams')}
+        >
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.cta}>
             <Text style={styles.ctaText}>{t('topicProgress.continue')}</Text>
           </LinearGradient>
@@ -159,6 +176,7 @@ const styles = StyleSheet.create({
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.primary },
 
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 24, gap: 32, paddingBottom: 48 },
 
   topicCard: {

@@ -22,6 +22,7 @@ import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
 import { getUserStats } from '../../api/dashboard.api';
 import { getTeachers, getTeacherAnalytics, ensureProfileReminder, getMe } from '../../api/user.api';
 import { getGlobalLeaderboard } from '../../api/leaderboard.api';
+import { getPendingDuelInvite } from '../../api/duel.api';
 import { getTeacherBookings } from '../../api/booking.api';
 import { listOpenRequests, expressInterest, type PublicLessonRequest } from '../../api/lessonRequest.api';
 import { getQuestions } from '../../api/marketplace.api';
@@ -278,6 +279,14 @@ export default function HomeScreen({ navigation }: Props) {
     isStudent && isNewUser && getStarted.hydrated && !getStarted.hasSeenHomeTour && primingSeen;
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers-home'], queryFn: () => getTeachers({ limit: 3 }), enabled: !isTeacher && !isParent });
   const { data: leaderboard = [] } = useQuery({ queryKey: ['leaderboard-home'], queryFn: getGlobalLeaderboard, enabled: !isTeacher && !isParent });
+  // Yalnız REAL, gözləyən duel dəvəti olduqda banner göstərilir (saxta banner yoxdur).
+  const { data: pendingDuel } = useQuery({
+    queryKey: ['pending-duel-invite'],
+    queryFn: getPendingDuelInvite,
+    enabled: !isTeacher && !isParent,
+    retry: false,
+    refetchInterval: 60000,
+  });
   const { data: analytics } = useQuery({ queryKey: ['teacher-analytics'], queryFn: getTeacherAnalytics, enabled: isTeacher });
   const { data: teacherBookings = [] } = useQuery({ queryKey: ['teacher-bookings-home'], queryFn: getTeacherBookings, enabled: isTeacher });
   const { data: marketQuestions = [] } = useQuery({
@@ -899,25 +908,40 @@ export default function HomeScreen({ navigation }: Props) {
                   <Text style={styles.sectionTitle}>{t('home.student.newScreens')}</Text>
                 </View>
 
-                {/* Duel dəvəti — notification banner */}
-                <TouchableOpacity
-                  style={{ backgroundColor: '#FEE2E2', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#FECACA' }}
-                  activeOpacity={0.85}
-                  onPress={() =>
-                    (navigation.getParent() as any)?.navigate('Exams', {
-                      screen: Routes.DuelInvite,
-                    })
-                  }
-                >
-                  <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-                    <Ionicons name="notifications" size={20} color="#DC2626" />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 13, fontWeight: '800', color: '#991B1B' }}>{t('home.student.duelTitle')}</Text>
-                    <Text style={{ fontSize: 11, color: '#7F1D1D' }}>{t('home.student.duelSub')}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color="#991B1B" />
-                </TouchableOpacity>
+                {/* Duel dəvəti — YALNIZ real, gözləyən dəvət olduqda göstərilir */}
+                {pendingDuel && (
+                  <TouchableOpacity
+                    style={{ backgroundColor: '#FEE2E2', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#FECACA' }}
+                    activeOpacity={0.85}
+                    onPress={() =>
+                      (navigation.getParent() as any)?.navigate('Exams', {
+                        screen: Routes.DuelInvite,
+                        params: {
+                          inviteId: pendingDuel.id,
+                          challengerName: pendingDuel.challengerName,
+                          challengerLevel: pendingDuel.challengerLevel,
+                          challengerSchool: pendingDuel.challengerSchool,
+                          challengerXp: pendingDuel.challengerXp,
+                          challengerWinRate: pendingDuel.challengerWinRate,
+                          subject: pendingDuel.subject,
+                          questionCount: pendingDuel.questionCount,
+                          stake: pendingDuel.stake,
+                        },
+                      })
+                    }
+                  >
+                    <View style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+                      <Ionicons name="notifications" size={20} color="#DC2626" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13, fontWeight: '800', color: '#991B1B' }}>{t('home.student.duelTitle')}</Text>
+                      <Text style={{ fontSize: 11, color: '#7F1D1D' }}>
+                        {t('home.student.duelSub', { name: pendingDuel.challengerName })}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#991B1B" />
+                  </TouchableOpacity>
+                )}
 
                 {/* 👥 Sosial & İcma */}
                 <TestCategoryAccordion title={t('home.student.accSocial')} count={5} defaultOpen>
@@ -953,7 +977,7 @@ export default function HomeScreen({ navigation }: Props) {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TestCard title={t('home.student.cardTips')} sub={t('home.student.cardTipsSub')} icon="bulb" onPress={() => navigation.navigate(Routes.ImprovementTips)} />
-                    <TestCard title={t('home.student.cardTopic')} sub={t('home.student.cardTopicSub')} icon="git-network" onPress={() => navigation.navigate(Routes.TopicProgress, { topic: 'Faizlər' })} />
+                    <TestCard title={t('home.student.cardTopic')} sub={t('home.student.cardTopicSub')} icon="git-network" onPress={() => navigation.navigate(Routes.TopicProgress)} />
                   </View>
                 </TestCategoryAccordion>
 

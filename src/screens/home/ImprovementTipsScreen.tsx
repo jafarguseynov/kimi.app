@@ -1,62 +1,31 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { getTips } from '../../api/analytics.api';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface Tip {
-  id: string;
-  titleKey: string;
-  subKey?: string;
-  badgeKey?: string;
-  badgeIcon?: keyof typeof Ionicons.glyphMap;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconBg: string;
-  iconColor: string;
-  ctaKey: string;
-  primary?: boolean;
-}
-
-const TIPS: Tip[] = [
-  {
-    id: 't1',
-    titleKey: 'improvementTips.t1Title',
-    badgeKey: 'improvementTips.t1Badge',
-    badgeIcon: 'trending-up',
-    icon: 'flash',
-    iconBg: '#DCFCE7',
-    iconColor: '#16a34a',
-    ctaKey: 'improvementTips.t1Cta',
-    primary: true,
-  },
-  {
-    id: 't2',
-    titleKey: 'improvementTips.t2Title',
-    subKey: 'improvementTips.t2Sub',
-    icon: 'albums',
-    iconBg: '#DBEAFE',
-    iconColor: '#2563eb',
-    ctaKey: 'improvementTips.t2Cta',
-  },
-  {
-    id: 't3',
-    titleKey: 'improvementTips.t3Title',
-    subKey: 'improvementTips.t3Sub',
-    icon: 'time',
-    iconBg: '#FFEDD5',
-    iconColor: '#ea580c',
-    ctaKey: 'improvementTips.t3Cta',
-  },
+const ICONS: { icon: keyof typeof Ionicons.glyphMap; bg: string; color: string }[] = [
+  { icon: 'flash', bg: '#DCFCE7', color: '#16a34a' },
+  { icon: 'albums', bg: '#DBEAFE', color: '#2563eb' },
+  { icon: 'time', bg: '#FFEDD5', color: '#ea580c' },
+  { icon: 'bulb', bg: '#F3E8FF', color: '#9333ea' },
 ];
 
 export default function ImprovementTipsScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+
+  const { data: tips = [], isLoading } = useQuery({
+    queryKey: ['ai-tips'],
+    queryFn: getTips,
+  });
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -92,31 +61,26 @@ export default function ImprovementTipsScreen() {
         </View>
 
         {/* Tip cards */}
-        <View style={{ gap: 16 }}>
-          {TIPS.map((tip) => (
-            <View key={tip.id} style={styles.tipCard}>
-              <View style={[styles.tipIcon, { backgroundColor: tip.iconBg }]}>
-                <Ionicons name={tip.icon} size={22} color={tip.iconColor} />
-              </View>
-              <View style={{ flex: 1, gap: 4 }}>
-                <Text style={styles.tipTitle}>{t(tip.titleKey)}</Text>
-                {tip.subKey && <Text style={styles.tipSub}>{t(tip.subKey)}</Text>}
-                {tip.badgeKey && (
-                  <View style={styles.badgeRow}>
-                    {tip.badgeIcon && <Ionicons name={tip.badgeIcon} size={12} color="#15803d" />}
-                    <Text style={styles.badgeText}>{t(tip.badgeKey)}</Text>
+        {isLoading ? (
+          <ActivityIndicator size="large" color={Colors.primary} style={{ paddingVertical: 24 }} />
+        ) : (
+          <View style={{ gap: 16 }}>
+            {tips.map((tip, i) => {
+              const ic = ICONS[i % ICONS.length];
+              return (
+                <View key={i} style={styles.tipCard}>
+                  <View style={[styles.tipIcon, { backgroundColor: ic.bg }]}>
+                    <Ionicons name={ic.icon} size={22} color={ic.color} />
                   </View>
-                )}
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.9}
-                style={[styles.tipBtn, tip.primary && styles.tipBtnPrimary]}
-              >
-                <Text style={[styles.tipBtnText, tip.primary && styles.tipBtnTextPrimary]}>{t(tip.ctaKey)}</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <Text style={styles.tipTitle}>{tip.title}</Text>
+                    <Text style={styles.tipSub}>{tip.body}</Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <View style={{ height: 32 }} />
       </ScrollView>

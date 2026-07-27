@@ -1,24 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getProgress } from '../../api/analytics.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const DAYS = [
-  { labelKey: 'learnProgress.wdMon', height: 0.3 },
-  { labelKey: 'learnProgress.wdTue', height: 0.55 },
-  { labelKey: 'learnProgress.wdWed', height: 0.42 },
-  { labelKey: 'learnProgress.wdThu', height: 0.85 },
-  { labelKey: 'learnProgress.wdFri', height: 0.62 },
-  { labelKey: 'learnProgress.wdSat', height: 0.25 },
-  { labelKey: 'learnProgress.wdSun', height: 0.72, today: true },
-];
+// AZ qısa həftə günləri (getDay 0=Bazar ... 6=Şənbə).
+const WD_SHORT = ['B', 'B.e', 'Ç.a', 'Ç', 'C.a', 'C', 'Ş'];
 
 function CircularProgress({ pct, label, size = 192 }: { pct: number; label: string; size?: number }) {
   const strokeWidth = 14;
@@ -54,6 +49,17 @@ export default function LearningProgressScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
+  const { data, isLoading } = useQuery({
+    queryKey: ['progress'],
+    queryFn: getProgress,
+  });
+
+  const overallPct = data?.overallPct ?? 0;
+  const days = data?.days ?? [];
+  const todayCount = days.length ? days[days.length - 1].examCount : 0;
+  const weekCount = days.reduce((s, d) => s + d.examCount, 0);
+  const activeDays = data?.activeDays ?? 0;
+
   const GRID = [
     { icon: 'pie-chart' as const, titleKey: 'learnProgress.g1Title', subKey: 'learnProgress.g1Sub', route: Routes.PerformanceSummary },
     { icon: 'bar-chart' as const, titleKey: 'learnProgress.g2Title', subKey: 'learnProgress.g2Sub', route: Routes.WeeklyReport },
@@ -87,7 +93,7 @@ export default function LearningProgressScreen() {
             <Text style={styles.heroTitle}>{t('learnProgress.heroTitle')}</Text>
             <Text style={styles.heroSub}>{t('learnProgress.heroSub')}</Text>
           </View>
-          <CircularProgress pct={75} label={t('learnProgress.completed')} />
+          <CircularProgress pct={overallPct} label={t('learnProgress.completed')} />
         </View>
 
         {/* Stats bento */}
@@ -95,7 +101,7 @@ export default function LearningProgressScreen() {
           <View style={styles.statCard}>
             <View>
               <Text style={styles.statKicker}>{t('learnProgress.today')}</Text>
-              <Text style={styles.statValue}>{t('learnProgress.todayTasks')}</Text>
+              <Text style={styles.statValue}>{t('learnProgress.examCount', { n: todayCount })}</Text>
             </View>
             <View style={[styles.statIcon, { backgroundColor: Colors.primary + '22' }]}>
               <Ionicons name="checkmark-done" size={22} color={Colors.primary} />
@@ -104,7 +110,7 @@ export default function LearningProgressScreen() {
           <View style={styles.statCard}>
             <View>
               <Text style={styles.statKicker}>{t('learnProgress.thisWeek')}</Text>
-              <Text style={styles.statValue}>{t('learnProgress.weekTasks')}</Text>
+              <Text style={styles.statValue}>{t('learnProgress.weekSummary', { n: weekCount, d: activeDays })}</Text>
             </View>
             <View style={[styles.statIcon, { backgroundColor: Colors.secondary + '22' }]}>
               <Ionicons name="calendar" size={22} color={Colors.textPrimary} />
@@ -121,22 +127,29 @@ export default function LearningProgressScreen() {
               <Text style={styles.legendText}>{t('learnProgress.chartLegend')}</Text>
             </View>
           </View>
+          {isLoading ? (
+            <ActivityIndicator size="large" color={Colors.primary} style={{ paddingVertical: 40 }} />
+          ) : (
           <View style={styles.chart}>
-            {DAYS.map((d) => (
-              <View key={d.labelKey} style={styles.chartCol}>
-                <View style={styles.chartBarTrack}>
-                  <View
-                    style={[
-                      styles.chartBarFill,
-                      { height: `${d.height * 100}%` as any },
-                      d.today && styles.chartBarToday,
-                    ]}
-                  />
+            {days.map((d, i) => {
+              const isToday = i === days.length - 1;
+              return (
+                <View key={d.date} style={styles.chartCol}>
+                  <View style={styles.chartBarTrack}>
+                    <View
+                      style={[
+                        styles.chartBarFill,
+                        { height: `${Math.max(4, d.avgPct)}%` as any },
+                        isToday && styles.chartBarToday,
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.chartLabel, isToday && styles.chartLabelToday]}>{WD_SHORT[d.weekday]}</Text>
                 </View>
-                <Text style={[styles.chartLabel, d.today && styles.chartLabelToday]}>{t(d.labelKey)}</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
+          )}
         </View>
 
         {/* Dərinə bax — 2×3 grid */}

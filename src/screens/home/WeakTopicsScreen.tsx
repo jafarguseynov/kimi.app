@@ -1,11 +1,13 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getTopicStats } from '../../api/topicStats.api';
 
 interface Weak {
   id: string;
@@ -13,11 +15,6 @@ interface Weak {
   errorPct: number;
   severity: 'high' | 'medium';
 }
-
-const WEAK: Weak[] = [
-  { id: '1', topic: 'Faizlər',   errorPct: 80, severity: 'high' },
-  { id: '2', topic: 'Tənliklər', errorPct: 65, severity: 'medium' },
-];
 
 const SEVERITY: Record<Weak['severity'], { color: string; icon: keyof typeof Ionicons.glyphMap }> = {
   high:   { color: Colors.danger,  icon: 'alert-circle' },
@@ -27,6 +24,26 @@ const SEVERITY: Record<Weak['severity'], { color: string; icon: keyof typeof Ion
 export default function WeakTopicsScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['topic-stats'],
+    queryFn: getTopicStats,
+  });
+
+  // Real zəif fənlər (avg < 60) → errorPct = 100 - avg.
+  const weakList = useMemo<Weak[]>(() => {
+    const all = stats?.all ?? [];
+    const weakNames = new Set(stats?.weak ?? []);
+    return all
+      .filter((s) => weakNames.has(s.subject) || s.avg < 60)
+      .sort((a, b) => a.avg - b.avg)
+      .map((s, i) => ({
+        id: String(i),
+        topic: s.subject,
+        errorPct: Math.max(0, Math.min(100, 100 - s.avg)),
+        severity: s.avg < 40 ? 'high' : 'medium',
+      }));
+  }, [stats]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -60,7 +77,14 @@ export default function WeakTopicsScreen() {
         {/* Section */}
         <View style={{ gap: 20 }}>
           <Text style={styles.sectionTitle}>{t('weakTopics.attentionSection')}</Text>
-          {WEAK.map((w) => {
+          {isLoading ? (
+            <ActivityIndicator size="large" color={Colors.primary} style={{ paddingVertical: 24 }} />
+          ) : weakList.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons name="checkmark-circle" size={40} color={Colors.tertiary} />
+              <Text style={styles.emptyText}>{t('weakTopics.empty')}</Text>
+            </View>
+          ) : weakList.map((w) => {
             const sev = SEVERITY[w.severity];
             return (
               <View key={w.id} style={styles.card}>
@@ -140,6 +164,10 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
   },
   badgeText: { fontSize: 11, fontWeight: '800', color: Colors.tertiary, letterSpacing: 0.5 },
+
+  /* Empty */
+  emptyBox: { alignItems: 'center', gap: 12, paddingVertical: 28 },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 24, lineHeight: 20 },
 
   /* Card */
   sectionTitle: { fontSize: 20, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },

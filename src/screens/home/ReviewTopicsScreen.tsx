@@ -1,27 +1,46 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getReviewPlan } from '../../api/analytics.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-
-type Status = 'due' | 'pending';
-
-interface Item { id: string; topic: string; whenLabel: string; whenIcon: keyof typeof Ionicons.glyphMap; status: Status; }
-
-const ITEMS: Item[] = [
-  { id: '1', topic: 'Faizlər',   whenLabel: 'Bu gün təkrar et', whenIcon: 'time-outline',     status: 'due' },
-  { id: '2', topic: 'Tənliklər', whenLabel: '2 gün sonra',      whenIcon: 'calendar-outline', status: 'pending' },
-];
 
 export default function ReviewTopicsScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+
+  const { data: plan = [], isLoading } = useQuery({
+    queryKey: ['review-plan'],
+    queryFn: getReviewPlan,
+  });
+
+  const items = useMemo(
+    () =>
+      plan.map((it, i) => {
+        const due = it.status === 'due';
+        const whenLabel = due
+          ? t('reviewTopics.whenDue')
+          : it.status === 'soon'
+          ? t('reviewTopics.whenSoon')
+          : t('reviewTopics.whenOk', { n: it.lastAttemptDays });
+        return {
+          id: String(i),
+          topic: it.subject,
+          meta: t('reviewTopics.meta', { avg: it.avgPct, n: it.attempts }),
+          whenLabel,
+          whenIcon: (due ? 'time-outline' : 'calendar-outline') as keyof typeof Ionicons.glyphMap,
+          due,
+        };
+      }),
+    [plan, t],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -44,13 +63,21 @@ export default function ReviewTopicsScreen() {
 
         {/* Items */}
         <View style={{ gap: 24 }}>
-          {ITEMS.map((it) => {
-            const due = it.status === 'due';
+          {isLoading ? (
+            <ActivityIndicator size="large" color={Colors.primary} style={{ paddingVertical: 24 }} />
+          ) : items.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons name="calendar-outline" size={40} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>{t('reviewTopics.empty')}</Text>
+            </View>
+          ) : items.map((it) => {
+            const due = it.due;
             return (
               <View key={it.id} style={[styles.card, !due && { opacity: 0.85 }]}>
                 <View style={styles.cardTop}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{it.topic}</Text>
+                    <Text style={styles.metaText}>{it.meta}</Text>
                     <View style={styles.whenRow}>
                       <Ionicons name={it.whenIcon} size={14} color={Colors.textSecondary} />
                       <Text style={styles.whenText}>{it.whenLabel}</Text>
@@ -124,6 +151,9 @@ const styles = StyleSheet.create({
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
   cardTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 4, letterSpacing: -0.2 },
+  metaText: { fontSize: 12, color: Colors.textSecondary, marginBottom: 6 },
+  emptyBox: { alignItems: 'center', gap: 12, paddingVertical: 28 },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 24, lineHeight: 20 },
   whenRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   whenText: { fontSize: 12, color: Colors.textSecondary },
 

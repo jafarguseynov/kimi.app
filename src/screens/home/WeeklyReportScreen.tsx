@@ -1,42 +1,43 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
-
-interface DayPoint { labelKey: string; value: number; }
-const POINTS: DayPoint[] = [
-  { labelKey: 'weeklyReport.wdMon', value: 25 },
-  { labelKey: 'weeklyReport.wdTue', value: 35 },
-  { labelKey: 'weeklyReport.wdWed', value: 28 },
-  { labelKey: 'weeklyReport.wdThu', value: 60 },
-  { labelKey: 'weeklyReport.wdFri', value: 50 },
-  { labelKey: 'weeklyReport.wdSat', value: 75 },
-  { labelKey: 'weeklyReport.wdSun', value: 70 },
-];
-
-interface Topic {
-  id: string;
-  name: string;
-  subKey: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  pct: number;
-  tone: 'success' | 'danger';
-}
-
-const TOPICS: Topic[] = [
-  { id: 't1', name: 'Riyaziyyat', subKey: 'weeklyReport.topicStrong', icon: 'calculator', pct: 92, tone: 'success' },
-  { id: 't2', name: 'İngilis dili', subKey: 'weeklyReport.topicWeak', icon: 'language', pct: 45, tone: 'danger' },
-];
+import { getWeeklyReport } from '../../api/analytics.api';
 
 const CHART_H = 128;
-const TODAY_INDEX = POINTS.length - 1;
+// AZ qısa həftə günləri (getDay 0=Bazar ... 6=Şənbə).
+const WD_SHORT = ['B', 'B.e', 'Ç.a', 'Ç', 'C.a', 'C', 'Ş'];
 
 export default function WeeklyReportScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['weekly-report'],
+    queryFn: getWeeklyReport,
+  });
+
+  const spark = data?.spark ?? [];
+  const avgPct = data?.avgPct ?? 0;
+  const examCount = data?.examCount ?? 0;
+  const activeDays = data?.activeDays ?? 0;
+  const subjects = data?.subjects ?? [];
+  const todayIndex = spark.length - 1;
+
+  // Son 7 günün həftə-günü etiketləri (bu günlə bitir).
+  const dayLabels = useMemo(() => {
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today.getTime() - (6 - i) * 24 * 60 * 60 * 1000);
+      return WD_SHORT[d.getDay()];
+    });
+  }, []);
+
+  const band = avgPct >= 80 ? t('weeklyReport.high') : avgPct >= 60 ? t('weeklyReport.mid') : t('weeklyReport.low');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -48,6 +49,9 @@ export default function WeeklyReportScreen() {
         <View style={styles.headerBtn} />
       </View>
 
+      {isLoading ? (
+        <View style={styles.loadingWrap}><ActivityIndicator size="large" color={Colors.primary} /></View>
+      ) : (
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Main chart card */}
         <View style={styles.chartCard}>
@@ -55,12 +59,12 @@ export default function WeeklyReportScreen() {
           <View style={{ gap: 4 }}>
             <Text style={styles.chartKicker}>{t('weeklyReport.chartKicker')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
-              <Text style={styles.chartBig}>78%</Text>
+              <Text style={styles.chartBig}>{avgPct}%</Text>
               <Text style={styles.chartSub}>{t('weeklyReport.thisWeek')}</Text>
             </View>
             <View style={styles.deltaPill}>
-              <Ionicons name="trending-up" size={14} color={Colors.tertiary} />
-              <Text style={styles.deltaText}>{t('weeklyReport.delta')}</Text>
+              <Ionicons name="flame" size={14} color={Colors.tertiary} />
+              <Text style={styles.deltaText}>{t('weeklyReport.activeDays', { n: activeDays })}</Text>
             </View>
           </View>
 
@@ -71,11 +75,11 @@ export default function WeeklyReportScreen() {
             <View style={[styles.gridLine, { top: '66%' }]} />
 
             <View style={styles.barsRow}>
-              {POINTS.map((p, i) => {
-                const isToday = i === TODAY_INDEX;
-                const h = Math.max(8, (p.value / 100) * CHART_H);
+              {spark.map((v, i) => {
+                const isToday = i === todayIndex;
+                const h = Math.max(8, (v / 100) * CHART_H);
                 return (
-                  <View key={p.labelKey} style={styles.barCol}>
+                  <View key={i} style={styles.barCol}>
                     <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
                       <View
                         style={[
@@ -91,8 +95,8 @@ export default function WeeklyReportScreen() {
             </View>
           </View>
           <View style={styles.daysRow}>
-            {POINTS.map((p) => (
-              <Text key={p.labelKey} style={styles.dayLabel}>{t(p.labelKey)}</Text>
+            {dayLabels.map((label, i) => (
+              <Text key={i} style={styles.dayLabel}>{label}</Text>
             ))}
           </View>
         </View>
@@ -105,11 +109,11 @@ export default function WeeklyReportScreen() {
             </View>
             <View>
               <Text style={styles.statKicker}>{t('weeklyReport.scoreKicker')}</Text>
-              <Text style={styles.statBig}>78%</Text>
+              <Text style={styles.statBig}>{avgPct}%</Text>
             </View>
           </View>
           <View style={styles.highBadge}>
-            <Text style={styles.highBadgeText}>{t('weeklyReport.high')}</Text>
+            <Text style={styles.highBadgeText}>{band}</Text>
           </View>
         </View>
 
@@ -121,19 +125,22 @@ export default function WeeklyReportScreen() {
             </View>
             <View>
               <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-                <Text style={styles.miniBig}>45</Text>
-                <Text style={styles.miniUnit}>{t('weeklyReport.correctUnit')}</Text>
+                <Text style={styles.miniBig}>{examCount}</Text>
+                <Text style={styles.miniUnit}>{t('weeklyReport.examUnit')}</Text>
               </View>
-              <Text style={styles.miniLabel}>{t('weeklyReport.correctLabel')}</Text>
+              <Text style={styles.miniLabel}>{t('weeklyReport.examLabel')}</Text>
             </View>
           </View>
           <View style={styles.miniCard}>
             <View style={[styles.statIcon, { backgroundColor: Colors.secondary + '1A' }]}>
-              <Ionicons name="time" size={20} color={Colors.secondary} />
+              <Ionicons name="flame" size={20} color={Colors.secondary} />
             </View>
             <View>
-              <Text style={styles.miniBig}>{t('weeklyReport.timeValue')}</Text>
-              <Text style={styles.miniLabel}>{t('weeklyReport.timeLabel')}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+                <Text style={styles.miniBig}>{activeDays}</Text>
+                <Text style={styles.miniUnit}>/7</Text>
+              </View>
+              <Text style={styles.miniLabel}>{t('weeklyReport.activeLabel')}</Text>
             </View>
           </View>
         </View>
@@ -141,32 +148,45 @@ export default function WeeklyReportScreen() {
         {/* Topic analysis */}
         <View style={{ gap: 14 }}>
           <Text style={styles.sectionTitle}>{t('weeklyReport.sectionTitle')}</Text>
-          {TOPICS.map((topic) => {
-            const color = topic.tone === 'success' ? Colors.tertiary : Colors.danger;
+          {subjects.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Ionicons name="bar-chart-outline" size={36} color={Colors.textMuted} />
+              <Text style={styles.emptyText}>{t('weeklyReport.empty')}</Text>
+            </View>
+          ) : subjects.map((topic, i) => {
+            const strong = topic.avgPct >= 60;
+            const color = strong ? Colors.tertiary : Colors.danger;
             return (
-              <View key={topic.id} style={styles.topicCard}>
+              <View key={i} style={styles.topicCard}>
                 <View style={[styles.topicStripe, { backgroundColor: color }]} />
                 <View style={[styles.topicIcon]}>
-                  <Ionicons name={topic.icon} size={20} color={Colors.textSecondary} />
+                  <Ionicons name="book" size={20} color={Colors.textSecondary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.topicName}>{topic.name}</Text>
-                  <Text style={styles.topicSub}>{t(topic.subKey)}</Text>
+                  <Text style={styles.topicName} numberOfLines={1}>{topic.subject}</Text>
+                  <Text style={styles.topicSub}>
+                    {strong ? t('weeklyReport.topicStrong') : t('weeklyReport.topicWeak')} · {t('weeklyReport.topicCount', { n: topic.count })}
+                  </Text>
                 </View>
-                <Text style={[styles.topicPct, { color }]}>{topic.pct}%</Text>
+                <Text style={[styles.topicPct, { color }]}>{topic.avgPct}%</Text>
               </View>
             );
           })}
         </View>
 
         {/* CTA */}
-        <TouchableOpacity activeOpacity={0.9} style={styles.cta}>
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={styles.cta}
+          onPress={() => (navigation.getParent() as any)?.navigate('Exams')}
+        >
           <Text style={styles.ctaText}>{t('weeklyReport.ctaText')}</Text>
           <Ionicons name="arrow-forward" size={20} color="#fff" />
         </TouchableOpacity>
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -182,6 +202,9 @@ const styles = StyleSheet.create({
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
   headerTitle: { fontSize: 18, fontWeight: '600', color: Colors.textPrimary, letterSpacing: -0.3 },
 
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyBox: { alignItems: 'center', gap: 10, paddingVertical: 24 },
+  emptyText: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 24, lineHeight: 20 },
   scroll: { padding: 16, gap: 32 },
 
   chartCard: {
