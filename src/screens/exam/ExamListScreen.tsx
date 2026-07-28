@@ -279,13 +279,10 @@ export default function ExamListScreen({ navigation }: Props) {
       );
       return;
     }
-    const first = exams[0];
-    if (!first?.id) {
-      Alert.alert(t('examList.alertMonthlyTitle'), t('examList.alertNoExam'));
-      return;
-    }
     setSubmissionType('national');
-    navigation.navigate(Routes.MonthlyExamDetail, { examId: first.id, title: t('examList.nationalRating') });
+    // Milli Reyting = real qlobal reytinq ekranı (Aylıq sessiya ilə eyni imtahan
+    // detalına yönləndirmə bug-u idi — indi öz ayrı ekranına gedir).
+    rootNav.navigate(Routes.Home, { screen: Routes.Leaderboard });
   };
   const openHistory = () => navigation.navigate(Routes.ExamHistory);
   const openLiveLeaderboard = () => navigation.navigate(Routes.LiveLeaderboard);
