@@ -1092,18 +1092,18 @@ export default function HomeScreen({ navigation }: Props) {
               </View>
               {aiWeakName || aiStrongName ? (
                 <View style={styles.aiPlanGrid}>
-                  <View style={[styles.aiTopicCard, { borderBottomColor: '#fca5a5' }]}>
+                  <View style={[styles.aiTopicCard, { borderBottomColor: aiWeakName ? '#fca5a5' : Colors.border }]}>
                     <Text style={styles.aiTopicBadgeWeak}>{t('home.student.weakTopic')}</Text>
                     <Text style={styles.aiTopicName} numberOfLines={1}>{aiWeakName ?? '—'}</Text>
                     <View style={styles.aiProgressTrack}>
-                      <View style={[styles.aiProgressFill, { width: `${aiPctOf(aiWeakName) ?? 30}%` as any, backgroundColor: '#f87171' }]} />
+                      <View style={[styles.aiProgressFill, { width: `${aiWeakName ? (aiPctOf(aiWeakName) ?? 0) : 0}%` as any, backgroundColor: aiWeakName ? '#f87171' : Colors.border }]} />
                     </View>
                   </View>
-                  <View style={[styles.aiTopicCard, { borderBottomColor: '#6ee7b7' }]}>
+                  <View style={[styles.aiTopicCard, { borderBottomColor: aiStrongName ? '#6ee7b7' : Colors.border }]}>
                     <Text style={styles.aiTopicBadgeStrong}>{t('home.student.strongTopic')}</Text>
                     <Text style={styles.aiTopicName} numberOfLines={1}>{aiStrongName ?? '—'}</Text>
                     <View style={styles.aiProgressTrack}>
-                      <View style={[styles.aiProgressFill, { width: `${aiPctOf(aiStrongName) ?? 80}%` as any, backgroundColor: Colors.tertiary }]} />
+                      <View style={[styles.aiProgressFill, { width: `${aiStrongName ? (aiPctOf(aiStrongName) ?? 0) : 0}%` as any, backgroundColor: aiStrongName ? Colors.tertiary : Colors.border }]} />
                     </View>
                   </View>
                 </View>
