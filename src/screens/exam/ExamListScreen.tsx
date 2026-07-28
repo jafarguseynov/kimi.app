@@ -14,6 +14,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getExamResults, ExamResultRow } from '../../api/certificate.api';
 import { getTopicStats } from '../../api/topicStats.api';
 import { getEntitlements } from '../../api/shop.api';
+import { getUpcomingExamEvents } from '../../api/exam.api';
 import { useExamStore } from '../../store/exam.store';
 import { useExamGoalStore } from '../../store/examGoal.store';
 import { useTranslation } from '../../i18n';
@@ -187,6 +188,10 @@ export default function ExamListScreen({ navigation }: Props) {
   const { data: topicStats } = useQuery({ queryKey: ['topicStats'], queryFn: getTopicStats });
   const { data: entitlements } = useQuery({ queryKey: ['entitlements'], queryFn: getEntitlements });
   const premiumActive = !!entitlements?.premiumActive;
+  // Rəsmi imtahan sessiyaları (admin-idarəli, cədvəlli) — yoxdursa köhnə statik davranış.
+  const { data: examEvents } = useQuery({ queryKey: ['upcomingExamEvents'], queryFn: getUpcomingExamEvents });
+  const monthlyEvent = examEvents?.monthly ?? null;
+  const nationalEvent = examEvents?.national ?? null;
   const setSubmissionType = useExamStore((s) => s.setSubmissionType);
   const sessionId = useExamStore((s) => s.sessionId);
   const sessionQuestionsLen = useExamStore((s) => s.questions.length);
@@ -211,6 +216,14 @@ export default function ExamListScreen({ navigation }: Props) {
   const bestHour = useMemo(() => computeBestHour(results), [results]);
   const difficultyMix = useMemo(() => computeDifficultyMix(exams), [exams]);
   const nextMonthlyLabel = useMemo(() => computeNextMonthlyLabel(), []);
+  // Aylıq kartın altyazısı: admin cədvəlli event varsa onun REAL tarixi, yoxsa hesablanmış.
+  const monthlyDateLabel = useMemo(() => {
+    if (monthlyEvent) {
+      const d = new Date(monthlyEvent.startAt);
+      return `${d.getDate()} ${AZ_MONTHS[d.getMonth()]}`;
+    }
+    return nextMonthlyLabel;
+  }, [monthlyEvent, nextMonthlyLabel]);
   const lastResult = results[0];
   const idleDays = daysSinceLastExam(results);
 
@@ -259,16 +272,23 @@ export default function ExamListScreen({ navigation }: Props) {
     navigation.navigate(Routes.LiveExamWaiting, { examId: first.id, title: first.title });
   };
   const openMonthly = () => {
+    setSubmissionType('monthly');
+    // Admin cədvəlli aylıq sessiya varsa — real event detalına.
+    if (monthlyEvent) {
+      navigation.navigate(Routes.MonthlyExamDetail, { eventId: monthlyEvent.id, title: monthlyEvent.title });
+      return;
+    }
     const first = exams[0];
     if (!first?.id) {
       Alert.alert(t('examList.alertMonthlyTitle'), t('examList.alertNoExam'));
       return;
     }
-    setSubmissionType('monthly');
     navigation.navigate(Routes.MonthlyExamDetail, { examId: first.id, title: first.title });
   };
   const openNational = () => {
-    if (!premiumActive) {
+    // Premium gate — event premiumOnly deyilsə açıq; event yoxdursa köhnə davranış (premium tələb).
+    const requiresPremium = nationalEvent ? nationalEvent.premiumOnly : true;
+    if (requiresPremium && !premiumActive) {
       Alert.alert(
         t('examList.alertNationalTitle'),
         t('examList.alertNationalMsg'),
@@ -280,8 +300,12 @@ export default function ExamListScreen({ navigation }: Props) {
       return;
     }
     setSubmissionType('national');
-    // Milli Reyting = real qlobal reytinq ekranı (Aylıq sessiya ilə eyni imtahan
-    // detalına yönləndirmə bug-u idi — indi öz ayrı ekranına gedir).
+    // Admin cədvəlli Milli Reyting imtahanı varsa — real event detalına (tarix/iştirak/sıralama).
+    if (nationalEvent) {
+      navigation.navigate(Routes.MonthlyExamDetail, { eventId: nationalEvent.id, title: nationalEvent.title });
+      return;
+    }
+    // Fallback: real qlobal reytinq ekranı.
     rootNav.navigate(Routes.Home, { screen: Routes.Leaderboard });
   };
   const openHistory = () => navigation.navigate(Routes.ExamHistory);
@@ -512,7 +536,7 @@ export default function ExamListScreen({ navigation }: Props) {
             <TouchableOpacity activeOpacity={0.85} onPress={openMonthly} style={intentStyles.actionRow}>
               <View style={{ flex: 1 }}>
                 <Text style={intentStyles.actionTitle}>{t('examList.monthlySession')}</Text>
-                <Text style={intentStyles.actionSub}>{t('examList.next', { label: nextMonthlyLabel })}</Text>
+                <Text style={intentStyles.actionSub}>{t('examList.next', { label: monthlyDateLabel })}</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
             </TouchableOpacity>

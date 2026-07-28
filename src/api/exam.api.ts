@@ -70,6 +70,39 @@ export interface ExamConfigBundle {
 export const getExamConfig = () =>
   apiClient.get<ExamConfigBundle>('/exam-config').then((r) => r.data);
 
+// ─── Rəsmi imtahan sessiyaları (admin-idarəli, cədvəlli) ────────────────────
+export type ExamEventStatus = 'upcoming' | 'live' | 'ended';
+export interface ExamEvent {
+  id: string;
+  kind: 'monthly' | 'national';
+  title: string;
+  description: string | null;
+  startAt: string;
+  durationMin: number;
+  examId: string | null;
+  premiumOnly: boolean;
+  status: ExamEventStatus;
+  participantCount: number;
+}
+export interface ExamEventLeaderRow {
+  rank: number;
+  userId: string;
+  name: string;
+  score: number;
+  total: number;
+  percentage: number;
+  timeSpent: number;
+}
+
+export const getUpcomingExamEvents = () =>
+  apiClient.get<{ monthly: ExamEvent | null; national: ExamEvent | null }>('/exam-events/upcoming').then((r) => r.data);
+
+export const getExamEvent = (id: string) =>
+  apiClient.get<ExamEvent>(`/exam-events/${id}`).then((r) => r.data);
+
+export const getExamEventLeaderboard = (id: string) =>
+  apiClient.get<ExamEventLeaderRow[]>(`/exam-events/${id}/leaderboard`).then((r) => r.data);
+
 export const startExam = (examId: string) =>
   // Longer timeout: the backend may be cold-starting (Render free tier),
   // which can exceed the default 15s client timeout.

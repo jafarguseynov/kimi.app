@@ -1,15 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
 import { rf, rs } from '../../utils/responsive';
+import { getExamEvent, getExamEventLeaderboard } from '../../api/exam.api';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.MonthlyExamDetail>;
@@ -22,20 +24,84 @@ const RULES = [
   { icon: 'analytics-outline' as const, color: Colors.tertiary, bg: Colors.tertiaryContainer + '40', titleKey: 'monthlyExam.rule3Title', bodyKey: 'monthlyExam.rule3Body' },
 ];
 
-const STATS = [
+const STATIC_STATS = [
   { icon: 'calendar-outline' as const, labelKey: 'monthlyExam.statDate', valueKey: 'monthlyExam.statDateVal' },
   { icon: 'time-outline' as const, labelKey: 'monthlyExam.statTime', valueKey: 'monthlyExam.statTimeVal' },
   { icon: 'help-circle-outline' as const, labelKey: 'monthlyExam.statQuestions', valueKey: 'monthlyExam.statQuestionsVal' },
   { icon: 'timer-outline' as const, labelKey: 'monthlyExam.statDuration', valueKey: 'monthlyExam.statDurationVal' },
 ];
 
+const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
+  upcoming: { label: 'Gələcək', color: '#1D4ED8', bg: 'rgba(255,255,255,0.2)' },
+  live: { label: 'CANLI', color: '#16A34A', bg: 'rgba(255,255,255,0.28)' },
+  ended: { label: 'Bitib', color: '#6B7280', bg: 'rgba(255,255,255,0.18)' },
+};
+
+function fmtDate(iso: string): { date: string; time: string } {
+  const d = new Date(iso);
+  return {
+    date: d.toLocaleDateString('az-AZ', { day: '2-digit', month: 'short', year: 'numeric' }),
+    time: d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
 export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { title = t('monthlyExam.title'), examId } = route.params;
+  const { title, examId: paramExamId, eventId } = route.params;
+
+  // Admin cədvəlli event — real data. eventId yoxdursa köhnə statik axın.
+  const { data: event, isLoading: eventLoading } = useQuery({
+    queryKey: ['examEvent', eventId],
+    queryFn: () => getExamEvent(eventId as string),
+    enabled: !!eventId,
+  });
+  const { data: leaders = [] } = useQuery({
+    queryKey: ['examEventLeaderboard', eventId],
+    queryFn: () => getExamEventLeaderboard(eventId as string),
+    enabled: !!eventId,
+  });
+
+  const heroTitle = event?.title ?? title ?? t('monthlyExam.title');
+  const effectiveExamId = event?.examId ?? paramExamId ?? null;
+  const status = event?.status;
+  const statusMeta = status ? STATUS_META[status] : null;
 
   const handleJoin = () => {
-    navigation.navigate(Routes.LiveExamWaiting, { examId, title });
+    if (event && status === 'upcoming') {
+      const { date, time } = fmtDate(event.startAt);
+      Alert.alert(heroTitle, `İmtahan ${date}, saat ${time}-da başlayacaq. O vaxt yenidən qoşul.`);
+      return;
+    }
+    if (!effectiveExamId) {
+      // Bağlı imtahan yoxdur — köhnə davranış (praktika mövcud deyilsə xəbərdarlıq).
+      Alert.alert(heroTitle, 'Bu sessiya üçün imtahan hələ hazır deyil.');
+      return;
+    }
+    if (event) {
+      // Real imtahan — normal axınla başlanır, nəticə reytinqi qidalandırır.
+      navigation.navigate(Routes.ExamDetail, { examId: effectiveExamId, title: heroTitle });
+    } else {
+      navigation.navigate(Routes.LiveExamWaiting, { examId: effectiveExamId, title: heroTitle });
+    }
   };
+
+  const joinLabel =
+    event && status === 'upcoming' ? 'Tezliklə başlayır'
+    : event && status === 'ended' ? 'Nəticələrə bax / təkrar həll et'
+    : t('monthlyExam.join');
+
+  // Real event üçün dinamik statlar.
+  const dynamicStats = event
+    ? (() => {
+        const { date, time } = fmtDate(event.startAt);
+        return [
+          { icon: 'calendar-outline' as const, label: t('monthlyExam.statDate'), value: date },
+          { icon: 'time-outline' as const, label: t('monthlyExam.statTime'), value: time },
+          { icon: 'people-outline' as const, label: 'İştirakçı', value: String(event.participantCount) },
+          { icon: 'timer-outline' as const, label: t('monthlyExam.statDuration'), value: event.durationMin > 0 ? `${event.durationMin} dəq` : 'Açıq' },
+        ];
+      })()
+    : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -43,86 +109,132 @@ export default function MonthlyExamDetailScreen({ navigation, route }: Props) {
         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{t('monthlyExam.title')}</Text>
-        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8}>
-          <Ionicons name="ellipsis-vertical" size={20} color={Colors.textSecondary} />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>{heroTitle}</Text>
+        <View style={styles.headerBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Hero Card */}
-        <LinearGradient
-          colors={[Colors.gradientStart, Colors.gradientEnd]}
-          style={styles.heroCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.heroGlow1} />
-          <View style={styles.heroGlow2} />
-          <View style={styles.heroBadge}>
-            <Ionicons name="star" size={12} color="#fff" />
-            <Text style={styles.heroBadgeText}>{t('monthlyExam.badge')}</Text>
-          </View>
-          <Text style={styles.heroTitle}>{t('monthlyExam.heroTitle')}</Text>
-          <View style={styles.statsGrid}>
-            {STATS.map((s) => (
-              <View key={s.labelKey} style={styles.statBox}>
-                <Text style={styles.statBoxLabel}>{t(s.labelKey)}</Text>
-                <View style={styles.statBoxRow}>
-                  <Ionicons name={s.icon} size={18} color={Colors.primaryFixed} />
-                  <Text style={styles.statBoxValue}>{t(s.valueKey)}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </LinearGradient>
-
-        {/* Rules */}
-        <View style={styles.rulesSection}>
-          <View style={styles.rulesTitleRow}>
-            <View style={styles.rulesAccent} />
-            <Text style={styles.rulesTitle}>{t('monthlyExam.rulesTitle')}</Text>
-          </View>
-          <View style={styles.rulesCard}>
-            {RULES.map((r, i) => (
-              <View key={r.titleKey} style={[styles.ruleRow, i < RULES.length - 1 && styles.ruleRowBorder]}>
-                <View style={[styles.ruleIcon, { backgroundColor: r.bg }]}>
-                  <Ionicons name={r.icon} size={22} color={r.color} />
-                </View>
-                <View style={styles.ruleBody}>
-                  <Text style={styles.ruleTitle}>{t(r.titleKey)}</Text>
-                  <Text style={styles.ruleText}>{t(r.bodyKey)}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+      {eventLoading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={Colors.primary} />
         </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {/* Hero Card */}
+          <LinearGradient
+            colors={[Colors.gradientStart, Colors.gradientEnd]}
+            style={styles.heroCard}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.heroGlow1} />
+            <View style={styles.heroGlow2} />
+            <View style={styles.heroBadgeRow}>
+              <View style={styles.heroBadge}>
+                <Ionicons name="star" size={12} color="#fff" />
+                <Text style={styles.heroBadgeText}>{t('monthlyExam.badge')}</Text>
+              </View>
+              {statusMeta && (
+                <View style={[styles.statusBadge, { backgroundColor: statusMeta.bg }]}>
+                  {status === 'live' && <View style={styles.liveDot} />}
+                  <Text style={styles.statusBadgeText}>{statusMeta.label}</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.heroTitle}>{event ? heroTitle : t('monthlyExam.heroTitle')}</Text>
+            {event?.description ? <Text style={styles.heroDesc}>{event.description}</Text> : null}
+            <View style={styles.statsGrid}>
+              {(dynamicStats ?? null)
+                ? dynamicStats!.map((s) => (
+                    <View key={s.label} style={styles.statBox}>
+                      <Text style={styles.statBoxLabel}>{s.label}</Text>
+                      <View style={styles.statBoxRow}>
+                        <Ionicons name={s.icon} size={18} color={Colors.primaryFixed} />
+                        <Text style={styles.statBoxValue}>{s.value}</Text>
+                      </View>
+                    </View>
+                  ))
+                : STATIC_STATS.map((s) => (
+                    <View key={s.labelKey} style={styles.statBox}>
+                      <Text style={styles.statBoxLabel}>{t(s.labelKey)}</Text>
+                      <View style={styles.statBoxRow}>
+                        <Ionicons name={s.icon} size={18} color={Colors.primaryFixed} />
+                        <Text style={styles.statBoxValue}>{t(s.valueKey)}</Text>
+                      </View>
+                    </View>
+                  ))}
+            </View>
+          </LinearGradient>
 
-        {/* Warning */}
-        <View style={styles.warningCard}>
-          <View style={styles.warningIcon}>
-            <Ionicons name="information-circle-outline" size={24} color={Colors.warning} />
+          {/* Leaderboard — real event üçün */}
+          {event && effectiveExamId && (
+            <View style={styles.rulesSection}>
+              <View style={styles.rulesTitleRow}>
+                <View style={styles.rulesAccent} />
+                <Text style={styles.rulesTitle}>Reytinq</Text>
+              </View>
+              <View style={styles.rulesCard}>
+                {leaders.length === 0 ? (
+                  <Text style={styles.emptyLeader}>Hələ nəticə yoxdur — ilk sən ol!</Text>
+                ) : (
+                  leaders.slice(0, 10).map((r, i) => (
+                    <View key={r.userId} style={[styles.leaderRow, i < Math.min(leaders.length, 10) - 1 && styles.ruleRowBorder]}>
+                      <Text style={[styles.leaderRank, r.rank <= 3 && styles.leaderRankTop]}>{r.rank}</Text>
+                      <Text style={styles.leaderName} numberOfLines={1}>{r.name}</Text>
+                      <Text style={styles.leaderScore}>{r.percentage}%</Text>
+                    </View>
+                  ))
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* Rules */}
+          <View style={styles.rulesSection}>
+            <View style={styles.rulesTitleRow}>
+              <View style={styles.rulesAccent} />
+              <Text style={styles.rulesTitle}>{t('monthlyExam.rulesTitle')}</Text>
+            </View>
+            <View style={styles.rulesCard}>
+              {RULES.map((r, i) => (
+                <View key={r.titleKey} style={[styles.ruleRow, i < RULES.length - 1 && styles.ruleRowBorder]}>
+                  <View style={[styles.ruleIcon, { backgroundColor: r.bg }]}>
+                    <Ionicons name={r.icon} size={22} color={r.color} />
+                  </View>
+                  <View style={styles.ruleBody}>
+                    <Text style={styles.ruleTitle}>{t(r.titleKey)}</Text>
+                    <Text style={styles.ruleText}>{t(r.bodyKey)}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
           </View>
-          <Text style={styles.warningTitle}>{t('monthlyExam.warningTitle')}</Text>
-          <Text style={styles.warningText}>
-            {t('monthlyExam.warningText')}
-          </Text>
-        </View>
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+          {/* Warning */}
+          <View style={styles.warningCard}>
+            <View style={styles.warningIcon}>
+              <Ionicons name="information-circle-outline" size={24} color={Colors.warning} />
+            </View>
+            <Text style={styles.warningTitle}>{t('monthlyExam.warningTitle')}</Text>
+            <Text style={styles.warningText}>
+              {t('monthlyExam.warningText')}
+            </Text>
+          </View>
+
+          <View style={{ height: 100 }} />
+        </ScrollView>
+      )}
 
       {/* Fixed Bottom */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity onPress={handleJoin} activeOpacity={0.85}>
+        <TouchableOpacity onPress={handleJoin} activeOpacity={0.85} disabled={event ? status === 'upcoming' : false}>
           <LinearGradient
-            colors={[Colors.gradientStart, Colors.gradientEnd]}
+            colors={event && status === 'upcoming' ? ['#9CA3AF', '#9CA3AF'] : [Colors.gradientStart, Colors.gradientEnd]}
             style={styles.joinBtn}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.joinBtnText}>{t('monthlyExam.join')}</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
+            <Text style={styles.joinBtnText}>{joinLabel}</Text>
+            <Ionicons name={event && status === 'upcoming' ? 'time-outline' : 'arrow-forward'} size={20} color="#fff" />
           </LinearGradient>
         </TouchableOpacity>
         <Text style={styles.bottomFooter}>{t('monthlyExam.providedBy')}</Text>
@@ -152,7 +264,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.surfaceLow,
   },
-  headerTitle: { fontSize: rf(17), fontWeight: '600', color: Colors.primary },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: rf(17), fontWeight: '600', color: Colors.primary, marginHorizontal: rs(8) },
+
+  loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   scroll: { paddingHorizontal: rs(20), paddingTop: rs(24), gap: rs(20) },
 
@@ -184,6 +298,7 @@ const styles = StyleSheet.create({
     borderRadius: 64,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
+  heroBadgeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: rs(14) },
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -193,11 +308,21 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: rs(12),
     paddingVertical: rs(5),
-    marginBottom: rs(14),
   },
   heroBadgeText: { fontSize: rf(10), fontWeight: '700', color: '#fff', textTransform: 'uppercase', letterSpacing: 1.5 },
-  heroTitle: { fontSize: rf(22), fontWeight: '800', color: '#fff', lineHeight: rf(29), letterSpacing: -0.4, marginBottom: rs(18) },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(10) },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: 999,
+    paddingHorizontal: rs(10),
+    paddingVertical: rs(5),
+  },
+  statusBadgeText: { fontSize: rf(10), fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: 1 },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
+  heroTitle: { fontSize: rf(22), fontWeight: '800', color: '#fff', lineHeight: rf(29), letterSpacing: -0.4, marginBottom: rs(6) },
+  heroDesc: { fontSize: rf(13), color: 'rgba(255,255,255,0.85)', lineHeight: rf(19), marginBottom: rs(14) },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: rs(10), marginTop: rs(12) },
   statBox: {
     flex: 1,
     minWidth: '45%',
@@ -244,6 +369,14 @@ const styles = StyleSheet.create({
   ruleBody: { flex: 1 },
   ruleTitle: { fontSize: rf(14), fontWeight: '700', color: Colors.textPrimary, marginBottom: rs(4) },
   ruleText: { fontSize: rf(12), color: Colors.textSecondary, lineHeight: rf(18) },
+
+  // Leaderboard
+  leaderRow: { flexDirection: 'row', alignItems: 'center', gap: rs(12), paddingHorizontal: rs(16), paddingVertical: rs(12) },
+  leaderRank: { width: rs(24), textAlign: 'center', fontSize: rf(14), fontWeight: '700', color: Colors.textSecondary },
+  leaderRankTop: { color: Colors.primary, fontWeight: '800' },
+  leaderName: { flex: 1, fontSize: rf(14), fontWeight: '600', color: Colors.textPrimary },
+  leaderScore: { fontSize: rf(14), fontWeight: '800', color: Colors.primary },
+  emptyLeader: { padding: rs(18), textAlign: 'center', fontSize: rf(13), color: Colors.textSecondary },
 
   warningCard: {
     backgroundColor: Colors.warningLight,
