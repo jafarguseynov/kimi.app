@@ -26,6 +26,8 @@ import { getPendingDuelInvite } from '../../api/duel.api';
 import { getTeacherBookings } from '../../api/booking.api';
 import { listOpenRequests, expressInterest, type PublicLessonRequest } from '../../api/lessonRequest.api';
 import { getQuestions } from '../../api/marketplace.api';
+import { getMissions, type DailyMission } from '../../api/engagement.api';
+import { getTopicStats } from '../../api/topicStats.api';
 import { useOnboardingStore } from '../../store/onboarding.store';
 import { useGetStartedStore } from '../../store/getStarted.store';
 import GetStartedCard, { type GetStartedStep } from './GetStartedCard';
@@ -279,6 +281,18 @@ export default function HomeScreen({ navigation }: Props) {
     isStudent && isNewUser && getStarted.hydrated && !getStarted.hasSeenHomeTour && primingSeen;
   const { data: teachers = [] } = useQuery({ queryKey: ['teachers-home'], queryFn: () => getTeachers({ limit: 3 }), enabled: !isTeacher && !isParent });
   const { data: leaderboard = [] } = useQuery({ queryKey: ['leaderboard-home'], queryFn: getGlobalLeaderboard, enabled: !isTeacher && !isParent });
+  // Bugünkü tapşırıqlar — real günlük missiyalar
+  const { data: homeMissions = [] } = useQuery<DailyMission[]>({
+    queryKey: ['missions'],
+    queryFn: () => getMissions().catch(() => []),
+    enabled: !isTeacher && !isParent,
+  });
+  // AI Tədris Planı preview — real zəif/güclü fənlər
+  const { data: homeTopicStats } = useQuery({
+    queryKey: ['topicStats'],
+    queryFn: () => getTopicStats(),
+    enabled: !isTeacher && !isParent,
+  });
   // Yalnız REAL, gözləyən duel dəvəti olduqda banner göstərilir (saxta banner yoxdur).
   const { data: pendingDuel } = useQuery({
     queryKey: ['pending-duel-invite'],
@@ -300,6 +314,15 @@ export default function HomeScreen({ navigation }: Props) {
     queryFn: () => listOpenRequests().catch(() => [] as PublicLessonRequest[]),
   });
   const openRequests: PublicLessonRequest[] = Array.isArray(openRequestsData) ? openRequestsData.slice(0, 5) : [];
+
+  // AI Tədris Planı preview — real zəif/güclü fənn + faiz
+  const aiWeakName = homeTopicStats?.weak?.[0];
+  const aiStrongName = homeTopicStats?.strong?.[0];
+  const aiAllStats = homeTopicStats?.all ?? [];
+  const aiPctOf = (name?: string) => {
+    const f = aiAllStats.find((a) => a.subject === name);
+    return f ? Math.max(4, Math.min(100, Math.round(f.avg))) : undefined;
+  };
 
   // Pull-to-refresh: bütün ana səhifə sorğularını yenidən çək.
   const queryClient = useQueryClient();
@@ -1017,48 +1040,42 @@ export default function HomeScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
             <View style={styles.todayTaskList}>
-              <TouchableOpacity
-                style={styles.todayTaskCard}
-                activeOpacity={0.85}
-                onPress={() =>
-                  (navigation.getParent() as any)?.navigate('Exams', {
-                    screen: Routes.NewExam,
-                    params: { questionCount: 10, duration: 15, difficulty: 'medium', questionType: 'test', examType: 'practice' },
-                  })
-                }
-              >
-                <View style={styles.todayTaskLeft}>
-                  <View style={[styles.todayTaskIconWrap, { backgroundColor: Colors.primaryLight }]}>
-                    <Ionicons name="calculator-outline" size={20} color={Colors.primary} />
-                  </View>
-                  <View style={styles.todayTaskInfo}>
-                    <Text style={styles.todayTaskTitle}>{t('home.student.mathTest')}</Text>
-                    <Text style={styles.todayTaskSub}>{t('home.student.mathTestSub')}</Text>
+              {homeMissions.length === 0 ? (
+                <View style={styles.todayTaskCard}>
+                  <View style={styles.todayTaskLeft}>
+                    <View style={[styles.todayTaskIconWrap, { backgroundColor: Colors.primaryLight }]}>
+                      <Ionicons name="checkmark-done-outline" size={20} color={Colors.primary} />
+                    </View>
+                    <View style={styles.todayTaskInfo}>
+                      <Text style={styles.todayTaskTitle}>{t('missions.empty')}</Text>
+                    </View>
                   </View>
                 </View>
-                <Ionicons name="chevron-forward" size={22} color={Colors.outlineVariant} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.todayTaskCard, styles.todayTaskDone]}
-                activeOpacity={0.85}
-                onPress={() =>
-                  (navigation.getParent() as any)?.navigate('Learn', {
-                    screen: Routes.LearningHome,
-                  })
-                }
-              >
-                <View style={styles.todayTaskLeft}>
-                  <View style={[styles.todayTaskIconWrap, { backgroundColor: Colors.tertiaryContainer + '33' }]}>
-                    <Ionicons name="language-outline" size={20} color={Colors.tertiary} />
-                  </View>
-                  <View style={styles.todayTaskInfo}>
-                    <Text style={styles.todayTaskTitle}>{t('home.student.learnWords')}</Text>
-                    <Text style={styles.todayTaskSub}>{t('home.student.learnWordsSub')}</Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={22} color={Colors.primary} />
-              </TouchableOpacity>
+              ) : (
+                homeMissions.slice(0, 3).map((m) => {
+                  const icon = m.type === 'question' ? 'chatbubble-ellipses-outline' : 'document-text-outline';
+                  const dest = m.type === 'question' ? 'Marketplace' : 'Exams';
+                  return (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[styles.todayTaskCard, m.completed && styles.todayTaskDone]}
+                      activeOpacity={0.85}
+                      onPress={() => (navigation.getParent() as any)?.navigate(dest)}
+                    >
+                      <View style={styles.todayTaskLeft}>
+                        <View style={[styles.todayTaskIconWrap, { backgroundColor: m.completed ? Colors.tertiaryContainer + '33' : Colors.primaryLight }]}>
+                          <Ionicons name={(m.completed ? 'checkmark' : icon) as any} size={20} color={m.completed ? Colors.tertiary : Colors.primary} />
+                        </View>
+                        <View style={styles.todayTaskInfo}>
+                          <Text style={styles.todayTaskTitle}>{m.title}</Text>
+                          <Text style={styles.todayTaskSub}>{m.progress}/{m.target} · {t('missions.rewardCoins', { n: m.reward })}</Text>
+                        </View>
+                      </View>
+                      <Ionicons name="chevron-forward" size={22} color={m.completed ? Colors.primary : Colors.outlineVariant} />
+                    </TouchableOpacity>
+                  );
+                })
+              )}
             </View>
 
             {/* AI Teaching Plan */}
@@ -1073,22 +1090,26 @@ export default function HomeScreen({ navigation }: Props) {
                 <View style={{ flex: 1 }} />
                 <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
               </View>
-              <View style={styles.aiPlanGrid}>
-                <View style={[styles.aiTopicCard, { borderBottomColor: '#fca5a5' }]}>
-                  <Text style={styles.aiTopicBadgeWeak}>{t('home.student.weakTopic')}</Text>
-                  <Text style={styles.aiTopicName}>{t('home.student.fractions')}</Text>
-                  <View style={styles.aiProgressTrack}>
-                    <View style={[styles.aiProgressFill, { width: '33%', backgroundColor: '#f87171' }]} />
+              {aiWeakName || aiStrongName ? (
+                <View style={styles.aiPlanGrid}>
+                  <View style={[styles.aiTopicCard, { borderBottomColor: '#fca5a5' }]}>
+                    <Text style={styles.aiTopicBadgeWeak}>{t('home.student.weakTopic')}</Text>
+                    <Text style={styles.aiTopicName} numberOfLines={1}>{aiWeakName ?? '—'}</Text>
+                    <View style={styles.aiProgressTrack}>
+                      <View style={[styles.aiProgressFill, { width: `${aiPctOf(aiWeakName) ?? 30}%` as any, backgroundColor: '#f87171' }]} />
+                    </View>
+                  </View>
+                  <View style={[styles.aiTopicCard, { borderBottomColor: '#6ee7b7' }]}>
+                    <Text style={styles.aiTopicBadgeStrong}>{t('home.student.strongTopic')}</Text>
+                    <Text style={styles.aiTopicName} numberOfLines={1}>{aiStrongName ?? '—'}</Text>
+                    <View style={styles.aiProgressTrack}>
+                      <View style={[styles.aiProgressFill, { width: `${aiPctOf(aiStrongName) ?? 80}%` as any, backgroundColor: Colors.tertiary }]} />
+                    </View>
                   </View>
                 </View>
-                <View style={[styles.aiTopicCard, { borderBottomColor: '#6ee7b7' }]}>
-                  <Text style={styles.aiTopicBadgeStrong}>{t('home.student.strongTopic')}</Text>
-                  <Text style={styles.aiTopicName}>{t('home.student.synonyms')}</Text>
-                  <View style={styles.aiProgressTrack}>
-                    <View style={[styles.aiProgressFill, { width: '80%', backgroundColor: Colors.tertiary }]} />
-                  </View>
-                </View>
-              </View>
+              ) : (
+                <Text style={styles.aiPlanEmpty}>{t('home.student.aiPlanEmpty')}</Text>
+              )}
             </TouchableOpacity>
 
             {/* Recommended Teachers */}
@@ -2234,6 +2255,7 @@ const styles = StyleSheet.create({
   aiTopicBadgeWeak: { fontSize: 9, fontWeight: '700', color: '#ef4444', textTransform: 'uppercase', letterSpacing: 1 },
   aiTopicBadgeStrong: { fontSize: 9, fontWeight: '700', color: Colors.tertiary, textTransform: 'uppercase', letterSpacing: 1 },
   aiTopicName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  aiPlanEmpty: { fontSize: 13, color: Colors.textSecondary, paddingVertical: 8 },
   aiProgressTrack: { height: 6, backgroundColor: Colors.surfaceHigh, borderRadius: 999, overflow: 'hidden' },
   aiProgressFill: { height: '100%', borderRadius: 999 },
 

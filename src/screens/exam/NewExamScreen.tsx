@@ -242,7 +242,8 @@ export default function NewExamScreen({ navigation, route }: Props) {
           </ScrollView>
         </View>
 
-        {/* Topics */}
+        {/* Topics — yalnız fənn üçün mövzu siyahısı varsa göstərilir */}
+        {topicList.length > 0 && (
         <View style={styles.section}>
           <View style={styles.labelRow}>
             <Text style={styles.label}>{t('newExam.topics')}</Text>
@@ -267,6 +268,7 @@ export default function NewExamScreen({ navigation, route }: Props) {
             })}
           </View>
         </View>
+        )}
 
         {/* Difficulty */}
         <View style={styles.section}>

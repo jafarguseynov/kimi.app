@@ -288,6 +288,7 @@ export const ru = {
       learnWords: 'Выучи 5 новых слов',
       learnWordsSub: 'Английский • Средний уровень',
       aiPlanTitle: 'Учебный план AI',
+      aiPlanEmpty: 'Пройди тест, чтобы AI показал твои слабые и сильные предметы.',
       weakTopic: 'Слабая тема',
       fractions: 'Дроби',
       strongTopic: 'Сильная тема',

@@ -288,6 +288,7 @@ export const en = {
       learnWords: 'Learn 5 new words',
       learnWordsSub: 'English • Intermediate',
       aiPlanTitle: 'AI Study Plan',
+      aiPlanEmpty: 'Take an exam so AI can show your weak and strong subjects.',
       weakTopic: 'Weak topic',
       fractions: 'Fractions',
       strongTopic: 'Strong topic',

@@ -289,6 +289,7 @@ export const az = {
       learnWords: '5 yeni söz öyrən',
       learnWordsSub: 'İngilis dili • Orta səviyyə',
       aiPlanTitle: 'AI Tədris Planı',
+      aiPlanEmpty: 'İmtahan ver ki, AI zəif və güclü fənlərini göstərsin.',
       weakTopic: 'Zəif mövzu',
       fractions: 'Kəsrlər',
       strongTopic: 'Güclü mövzu',
