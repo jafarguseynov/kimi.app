@@ -45,7 +45,7 @@ export const getExamCategories = () =>
   apiClient.get<RemoteCategory[]>('/exam-categories').then((r) => r.data);
 
 // ─── Admin paneldən idarə olunan imtahan parametrləri ───────────────────────
-export interface ExamConfigSubject { key: string; label: string; icon?: string }
+export interface ExamConfigSubject { key: string; label: string; icon?: string; topics?: string[] }
 
 export interface ResolvedExamConfig {
   minQuestions: number;

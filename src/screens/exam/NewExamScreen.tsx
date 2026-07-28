@@ -38,6 +38,8 @@ const FALLBACK_SUBJECTS: { key: string; label: string; icon: keyof typeof Ionico
   { key: 'en', label: 'İngilis dili', icon: 'globe' },
 ];
 
+// Fallback — admin exam-config əlçatmaz olsa (offline / köhnə backend) istifadə olunur.
+// Əsas mənbə: admin paneldə hər fənnin `topics` massivi (config-dən gəlir).
 const TOPICS_BY_SUBJECT: Record<string, string[]> = {
   math: ['Həqiqi ədədlər', 'Üçbucaqlar', 'Funksiyalar', 'Vektorlar', 'Tənliklər', 'Həndəsə'],
   az: ['Morfologiya', 'Sintaksis', 'Orfoqrafiya', 'Bədii ədəbiyyat', 'İnşa'],
@@ -125,7 +127,12 @@ export default function NewExamScreen({ navigation, route }: Props) {
     if (gradeIdx >= GRADES.length) setGradeIdx(Math.max(0, GRADES.length - 1));
   }, [GRADES]);
 
-  const topicList = TOPICS_BY_SUBJECT[subject] ?? [];
+  // Mövzular admin exam-config-dən (subjects[].topics) gəlir; yoxdursa hardcode fallback.
+  const topicList = useMemo(() => {
+    const fromCfg = cfg?.subjects?.find((s) => s.key === subject)?.topics;
+    if (fromCfg?.length) return fromCfg;
+    return TOPICS_BY_SUBJECT[subject] ?? [];
+  }, [cfg, subject]);
 
   const toggleTopic = (topic: string) => {
     setTopics((prev) => {
