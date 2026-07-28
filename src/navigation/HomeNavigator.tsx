@@ -13,7 +13,6 @@ import LeaderboardDetailScreen from '../screens/home/LeaderboardDetailScreen';
 import LiveActivityScreen from '../screens/home/LiveActivityScreen';
 import NewsScreen from '../screens/home/NewsScreen';
 import MotivationReminderScreen from '../screens/home/MotivationReminderScreen';
-import LearningProgressScreen from '../screens/home/LearningProgressScreen';
 import TopicProgressScreen from '../screens/home/TopicProgressScreen';
 import ReviewTopicsScreen from '../screens/home/ReviewTopicsScreen';
 import AIPracticeBuilderScreen from '../screens/home/AIPracticeBuilderScreen';
@@ -71,7 +70,6 @@ import PerformanceSummaryScreen from '../screens/home/PerformanceSummaryScreen';
 import QuestionActivityScreen from '../screens/home/QuestionActivityScreen';
 import ImprovementTipsScreen from '../screens/home/ImprovementTipsScreen';
 import WeeklyReportScreen from '../screens/home/WeeklyReportScreen';
-import SocialHubScreen from '../screens/home/SocialHubScreen';
 import FindFriendScreen from '../screens/home/FindFriendScreen';
 import MyFriendsScreen from '../screens/social/MyFriendsScreen';
 import TeacherProfilePremiumScreen from '../screens/profile/TeacherProfilePremiumScreen';
@@ -96,7 +94,6 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.LiveActivity} component={LiveActivityScreen} />
       <Stack.Screen name={Routes.News} component={NewsScreen} />
       <Stack.Screen name={Routes.MotivationReminder} component={MotivationReminderScreen} />
-      <Stack.Screen name={Routes.LearningProgress} component={LearningProgressScreen} />
       <Stack.Screen name={Routes.TopicProgress} component={TopicProgressScreen} />
       <Stack.Screen name={Routes.ReviewTopics} component={ReviewTopicsScreen} />
       <Stack.Screen name={Routes.AIPracticeBuilder} component={AIPracticeBuilderScreen} />
@@ -154,7 +151,6 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.QuestionActivity} component={QuestionActivityScreen} />
       <Stack.Screen name={Routes.ImprovementTips} component={ImprovementTipsScreen} />
       <Stack.Screen name={Routes.WeeklyReport} component={WeeklyReportScreen} />
-      <Stack.Screen name={Routes.SocialHub} component={SocialHubScreen} />
       <Stack.Screen name={Routes.FindFriend} component={FindFriendScreen} />
       <Stack.Screen name={Routes.MyFriends} component={MyFriendsScreen} />
       <Stack.Screen name={Routes.TeacherProfilePremium} component={TeacherProfilePremiumScreen} />

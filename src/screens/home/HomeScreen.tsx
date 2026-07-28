@@ -944,10 +944,7 @@ export default function HomeScreen({ navigation }: Props) {
                 )}
 
                 {/* 👥 Sosial & İcma */}
-                <TestCategoryAccordion title={t('home.student.accSocial')} count={5} defaultOpen>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title={t('home.student.cardSocialHub')} sub={t('home.student.cardSocialHubSub')} icon="people" onPress={() => navigation.navigate(Routes.SocialHub)} />
-                  </View>
+                <TestCategoryAccordion title={t('home.student.accSocial')} count={4} defaultOpen>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TestCard title={t('home.student.cardFindFriend')} sub={t('home.student.cardFindFriendSub')} icon="person-add" onPress={() => navigation.navigate(Routes.FindFriend)} />
                     <TestCard title={t('home.student.cardMyFriends')} sub={t('home.student.cardMyFriendsSub')} icon="people-circle" onPress={() => navigation.navigate(Routes.MyFriends)} />
@@ -959,15 +956,11 @@ export default function HomeScreen({ navigation }: Props) {
                 </TestCategoryAccordion>
 
                 {/* 📊 Performans & Analitika */}
-                <TestCategoryAccordion title={t('home.student.accPerf')} count={7}>
+                <TestCategoryAccordion title={t('home.student.accPerf')} count={6}>
                   <Text style={perfStyles.groupLabel}>{t('home.student.grpStats')}</Text>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <TestCard title={t('home.student.cardProgress')} sub={t('home.student.cardProgressSub')} icon="trending-up" iconColor={Colors.tertiary} onPress={() => navigation.navigate(Routes.LearningProgress)} />
                     <TestCard title={t('home.student.cardPerf')} sub={t('home.student.cardPerfSub')} icon="pie-chart" onPress={() => navigation.navigate(Routes.PerformanceSummary)} />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
                     <TestCard title={t('home.student.cardWeekly')} sub={t('home.student.cardWeeklySub')} icon="bar-chart" onPress={() => navigation.navigate(Routes.WeeklyReport)} />
-                    <View style={{ flex: 1 }} />
                   </View>
 
                   <Text style={perfStyles.groupLabel}>{t('home.student.grpAiDev')}</Text>
