@@ -225,6 +225,7 @@ export const en = {
       title: 'Our partners',
     },
     student: {
+      heroBadge: 'Daily challenge',
       heroTitle: 'Ready to test your knowledge?',
       heroSub: 'A new exam session awaits you. Start now and leave your rivals behind.',
       startExam: 'Start exam',

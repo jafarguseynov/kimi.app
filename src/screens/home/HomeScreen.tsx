@@ -804,20 +804,31 @@ export default function HomeScreen({ navigation }: Props) {
 
             {/* Hero Card */}
             <LinearGradient
-              colors={[Colors.gradientStart, Colors.gradientEnd]}
+              colors={['#00476b', '#0077b6', '#4cc9f0']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.heroCard}
             >
-              <Text style={styles.heroTitle}>{t('home.student.heroTitle')}</Text>
-              <Text style={styles.heroSub}>{t('home.student.heroSub')}</Text>
-              <TouchableOpacity
-                style={styles.heroBtn}
-                activeOpacity={0.85}
-                onPress={() => (navigation.getParent() as any)?.navigate('Exams' as never)}
-              >
-                <Text style={styles.heroBtnText}>{t('home.student.startExam')}</Text>
-              </TouchableOpacity>
+              <View style={styles.heroOrb1} pointerEvents="none" />
+              <View style={styles.heroOrb2} pointerEvents="none" />
+              <Ionicons name="rocket" size={128} color="rgba(255,255,255,0.10)" style={styles.heroWatermark} />
+              <View style={styles.heroContentZ}>
+                <View style={styles.heroBadge}>
+                  <Ionicons name="flash" size={12} color="#fff" />
+                  <Text style={styles.heroBadgeText}>{t('home.student.heroBadge')}</Text>
+                </View>
+                <Text style={styles.heroTitle}>{t('home.student.heroTitle')}</Text>
+                <Text style={styles.heroSub}>{t('home.student.heroSub')}</Text>
+                <TouchableOpacity
+                  style={styles.heroBtn}
+                  activeOpacity={0.85}
+                  onPress={() => (navigation.getParent() as any)?.navigate('Exams' as never)}
+                >
+                  <Ionicons name="play-circle" size={20} color={Colors.primary} />
+                  <Text style={styles.heroBtnText}>{t('home.student.startExam')}</Text>
+                  <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
+                </TouchableOpacity>
+              </View>
             </LinearGradient>
 
             {/* Quick Actions */}
@@ -1697,35 +1708,60 @@ const styles = StyleSheet.create({
 
   // ── Student: Hero Card ─────────────────────────────────────────────────
   heroCard: {
-    borderRadius: 20,
-    padding: 28,
+    borderRadius: 24,
+    padding: 26,
     marginBottom: 24,
-    shadowColor: Colors.primary,
+    overflow: 'hidden',
+    shadowColor: '#0077b6',
     shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.18,
-    shadowRadius: 32,
+    shadowOpacity: 0.28,
+    shadowRadius: 30,
     elevation: 8,
   },
+  heroContentZ: { zIndex: 2 },
+  heroOrb1: {
+    position: 'absolute', top: -50, right: -40,
+    width: 170, height: 170, borderRadius: 85,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+  },
+  heroOrb2: {
+    position: 'absolute', bottom: -60, left: -30,
+    width: 130, height: 130, borderRadius: 65,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+  },
+  heroWatermark: { position: 'absolute', right: -14, bottom: -18, transform: [{ rotate: '-12deg' }] },
+  heroBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999, marginBottom: 14,
+  },
+  heroBadgeText: { fontSize: 10, fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' },
   heroTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '900',
     color: '#fff',
     marginBottom: 8,
+    letterSpacing: -0.4,
+    lineHeight: 30,
   },
   heroSub: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.88)',
     lineHeight: 22,
-    marginBottom: 20,
+    marginBottom: 22,
+    maxWidth: '92%',
   },
   heroBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#fff',
     alignSelf: 'flex-start',
     paddingHorizontal: 20,
-    paddingVertical: 10,
+    paddingVertical: 13,
     borderRadius: 999,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 12, elevation: 4,
   },
-  heroBtnText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+  heroBtnText: { fontSize: 15, fontWeight: '800', color: Colors.primary },
 
   // ── Student: Quick Grid ────────────────────────────────────────────────
   quickGrid: {

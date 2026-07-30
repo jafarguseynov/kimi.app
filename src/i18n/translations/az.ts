@@ -226,6 +226,7 @@ export const az = {
       title: 'Tərəfdaşlarımız',
     },
     student: {
+      heroBadge: 'Günün çağırışı',
       heroTitle: 'Biliklərini yoxlamağa hazırsan?',
       heroSub: 'Yeni imtahan sessiyası səni gözləyir. İndi başla və rəqibləri geridə qoy.',
       startExam: 'İmtahan başlat',
