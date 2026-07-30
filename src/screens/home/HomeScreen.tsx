@@ -1146,6 +1146,9 @@ export default function HomeScreen({ navigation }: Props) {
                 const subject = tch.subjects?.[0] || t('home.student.variousSubjects');
                 const experience = (tch as any).experienceYears;
                 const avatarUrl = (tch as any).avatarUrl as string | undefined;
+                const gnd = ((tch as any).gender ?? '').toLowerCase();
+                const genderIcon = gnd === 'female' ? 'woman' : gnd === 'male' ? 'man' : 'person';
+                const genderGrad: [string, string] = gnd === 'female' ? ['#F472B6', '#DB2777'] : gnd === 'male' ? ['#38BDF8', '#0077b6'] : [Colors.gradientStart, Colors.gradientEnd];
                 const goToTeacher = () => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherProfile, params: { teacher: tch } } as never);
                 return (
                   <TouchableOpacity
@@ -1175,12 +1178,12 @@ export default function HomeScreen({ navigation }: Props) {
                         <Image source={{ uri: avatarUrl }} style={styles.teacherAvatarRichImg} />
                       ) : (
                         <LinearGradient
-                          colors={[Colors.gradientStart, Colors.gradientEnd]}
+                          colors={genderGrad}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
                           style={styles.teacherAvatarRichImg}
                         >
-                          <Text style={styles.teacherAvatarInitial}>{initials}</Text>
+                          <Ionicons name={genderIcon as any} size={34} color="#fff" />
                         </LinearGradient>
                       )}
                       {(tch as any).verified && (

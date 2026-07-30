@@ -233,6 +233,10 @@ export default function TeacherListScreen() {
     const showInPerson = !showOnline && item.format === 'in-person';
     const isFavorite = favoriteIds.has(item.id);
     const isVerified = !!item.verified;
+    // Şəkil yoxdursa cinsə görə kimi.az standart ikonu (qadın/kişi/neytral).
+    const g = (item.gender ?? '').toLowerCase();
+    const genderIcon = g === 'female' ? 'woman' : g === 'male' ? 'man' : 'person';
+    const genderGrad: [string, string] = g === 'female' ? ['#F472B6', '#DB2777'] : g === 'male' ? ['#38BDF8', '#0077b6'] : gradient;
 
     return (
       <TouchableOpacity
@@ -244,8 +248,8 @@ export default function TeacherListScreen() {
           {item.avatarUrl ? (
             <Image source={{ uri: item.avatarUrl }} style={styles.photoBox} />
           ) : (
-            <LinearGradient colors={gradient} style={styles.photoBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={styles.photoInitial}>{initial}</Text>
+            <LinearGradient colors={genderGrad} style={styles.photoBox} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Ionicons name={genderIcon as any} size={64} color="rgba(255,255,255,0.95)" />
             </LinearGradient>
           )}
 

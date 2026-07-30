@@ -59,6 +59,10 @@ export default function TeacherProfileScreen() {
   const route = useRoute<any>();
   const teacher = route.params?.teacher;
   const teacherId: string | undefined = teacher?.id;
+  // Şəkil yoxdursa cinsə görə kimi.az standart avatarı.
+  const _g = (teacher?.gender ?? '').toString().toLowerCase();
+  const genderIcon = _g === 'female' ? 'woman' : _g === 'male' ? 'man' : 'person';
+  const genderGrad: [string, string] = _g === 'female' ? ['#F472B6', '#DB2777'] : _g === 'male' ? ['#38BDF8', '#0077b6'] : [Colors.gradientStart, Colors.gradientEnd];
   const pushRecent = useRecentTeachersStore((s) => s.push);
   const queryClient = useQueryClient();
   // Profil baxış sayı — açılışda server +1 edib qaytarır (canlı göstərmək üçün).
@@ -254,12 +258,12 @@ export default function TeacherProfileScreen() {
             ) : (
               <>
                 <LinearGradient
-                  colors={[Colors.gradientStart, Colors.gradientEnd]}
+                  colors={genderGrad}
                   style={StyleSheet.absoluteFill}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 />
-                <Text style={styles.photoInitial}>{initial}</Text>
+                <Ionicons name={genderIcon as any} size={Math.round(PHOTO_SIZE * 0.5)} color="#fff" />
               </>
             )}
           </View>

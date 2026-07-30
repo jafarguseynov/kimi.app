@@ -9,12 +9,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useNavigation } from '@react-navigation/native';
 import { ProfileStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { getMe, updateUser } from '../../api/user.api';
+import { getMyChildren, unlinkChild, ChildItem } from '../../api/parent.api';
 import { getSpecializations } from '../../api/specialization.api';
 import { uploadImageOrFallback } from '../../api/media.api';
 import { selectAvatar, getEntitlements } from '../../api/shop.api';
@@ -149,6 +150,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [birthDate, setBirthDate] = useState(userAny?.birthDate ?? '');
+  const [gender, setGender] = useState<string>(userAny?.gender ?? '');
   // parent
   const [notifExams, setNotifExams] = useState(true);
   const [notifLessons, setNotifLessons] = useState(true);
@@ -165,6 +167,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       setPhone(me.phone ?? '');
       setEmail(me.email ?? '');
       setBirthDate(meAny.birthDate ?? '');
+      setGender(meAny.gender ?? '');
       if (meAny.avatarUrl) setAvatarUri(meAny.avatarUrl);
       if (meAny.avatarId) setAvatarId(meAny.avatarId);
       else if (meAny.profile?.avatarId) setAvatarId(meAny.profile.avatarId);
@@ -199,6 +202,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         if (phone) data.phone = phone;
         if (email) data.email = email;
         data.birthDate = birthDate;
+        if (gender) data.gender = gender;
       }
 
       if (role === 'teacher') {
@@ -228,7 +232,12 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       // İstifadəçi redaktə səhifəsində QALIR — avtomatik geri qayıtma yoxdur.
       // (İstəsə geri düyməsi ilə çıxar; təkrar redaktə + saxlama sərbəst işləyir.)
     },
-    onError: () => Alert.alert(t('editProfile.errorTitle'), t('editProfile.errorBody')),
+    onError: (e: any) => {
+      // Serverdən gələn aydın mesajı göstər (məs. "telefon/email artıq istifadə olunur"),
+      // yoxdursa ümumi mətnə keç.
+      const msg = e?.response?.data?.message;
+      Alert.alert(t('editProfile.errorTitle'), typeof msg === 'string' && msg ? msg : t('editProfile.errorBody'));
+    },
   });
 
   const toggleSubject = (s: string) =>
@@ -293,7 +302,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
                   ) : avatarUri ? (
                     <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
                   ) : (
-                    <Ionicons name="person" size={52} color={Colors.primary} />
+                    <Ionicons
+                      name={gender === 'female' ? 'woman' : gender === 'male' ? 'man' : 'person'}
+                      size={52}
+                      color={gender === 'female' ? '#DB2777' : gender === 'male' ? '#0077b6' : Colors.primary}
+                    />
                   )}
                 </View>
               </LinearGradient>
@@ -387,6 +400,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               phone={phone} setPhone={setPhone}
               email={email} setEmail={setEmail}
               birthDate={birthDate} setBirthDate={setBirthDate}
+              gender={gender} setGender={setGender}
             />
           )}
 
@@ -696,11 +710,6 @@ function StudentForm({
 }
 
 // ─── Parent Form ──────────────────────────────────────────────────────────────
-const PARENT_CHILDREN = [
-  { id: '1', name: 'Cəfər Yusifov', gradeKey: 'editProfile.child1Grade', bgColor: Colors.primary + '1A', iconColor: Colors.primary },
-  { id: '2', name: 'Aysel Məmmədova', gradeKey: 'editProfile.child2Grade', bgColor: Colors.tertiaryContainer + '60', iconColor: Colors.tertiary },
-];
-
 function ParentForm({
   firstName, setFirstName, lastName, setLastName,
   phone, setPhone, email, setEmail,
@@ -720,6 +729,32 @@ function ParentForm({
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
+  const navigation = useNavigation<any>();
+  const queryClient = useQueryClient();
+  const { data: childrenData } = useQuery<ChildItem[]>({
+    queryKey: ['myChildren'],
+    queryFn: () => getMyChildren().catch(() => [] as ChildItem[]),
+  });
+  const children: ChildItem[] = Array.isArray(childrenData) ? childrenData : [];
+
+  const handleUnlink = (child: ChildItem) => {
+    Alert.alert(t('editProfile.unlinkTitle'), t('editProfile.unlinkMsg', { name: child.name }), [
+      { text: t('editProfile.cancel'), style: 'cancel' },
+      {
+        text: t('editProfile.unlinkConfirm'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await unlinkChild(child.linkId);
+            await queryClient.invalidateQueries({ queryKey: ['myChildren'] });
+          } catch (e: any) {
+            Alert.alert(t('enterChildCode.errorTitle'), e?.response?.data?.message || t('enterChildCode.errorMsg'));
+          }
+        },
+      },
+    ]);
+  };
+
   return (
     <View style={styles.formSection}>
       {/* Personal info card */}
@@ -770,21 +805,27 @@ function ParentForm({
       <View style={styles.parentCard}>
         <View style={styles.parentCardHeader}>
           <Text style={styles.parentCardTitle}>{t('editProfile.connectedStudents')}</Text>
-          <TouchableOpacity style={styles.addChildBtn} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.addChildBtn} activeOpacity={0.7} onPress={() => navigation.navigate(Routes.ConnectChild)}>
             <Ionicons name="add-circle" size={18} color={Colors.primary} />
             <Text style={styles.addChildText}>{t('editProfile.addStudent')}</Text>
           </TouchableOpacity>
         </View>
-        {PARENT_CHILDREN.map((child) => (
-          <View key={child.id} style={styles.childRow}>
-            <View style={[styles.childIconBox, { backgroundColor: child.bgColor }]}>
-              <Ionicons name="person" size={22} color={child.iconColor} />
+        {children.length === 0 ? (
+          <Text style={styles.childGrade}>{t('editProfile.noStudentsLinked')}</Text>
+        ) : children.map((child) => (
+          <View key={child.linkId} style={styles.childRow}>
+            <View style={[styles.childIconBox, { backgroundColor: Colors.primary + '1A' }]}>
+              {child.avatarUrl ? (
+                <Image source={{ uri: child.avatarUrl }} style={styles.childAvatarImg} resizeMode="cover" />
+              ) : (
+                <Ionicons name="person" size={22} color={Colors.primary} />
+              )}
             </View>
             <View style={styles.childTextBlock}>
               <Text style={styles.childName}>{child.name}</Text>
-              <Text style={styles.childGrade}>{t(child.gradeKey)}</Text>
+              {!!child.grade && <Text style={styles.childGrade}>{child.grade}</Text>}
             </View>
-            <TouchableOpacity style={styles.childDeleteBtn} activeOpacity={0.7}>
+            <TouchableOpacity style={styles.childDeleteBtn} activeOpacity={0.7} onPress={() => handleUnlink(child)}>
               <Ionicons name="trash-outline" size={20} color={Colors.textLight} />
             </TouchableOpacity>
           </View>
@@ -850,11 +891,12 @@ function ParentForm({
 
 // ─── Contact Fields (müəllim + şagird) ────────────────────────────────────────
 function ContactFields({
-  phone, setPhone, email, setEmail, birthDate, setBirthDate,
+  phone, setPhone, email, setEmail, birthDate, setBirthDate, gender, setGender,
 }: {
   phone: string; setPhone: (v: string) => void;
   email: string; setEmail: (v: string) => void;
   birthDate: string; setBirthDate: (v: string) => void;
+  gender: string; setGender: (v: string) => void;
 }) {
   const { t } = useTranslation();
   // Doğum tarixini GG.AA.İİİİ formatında avtomatik nöqtələ.
@@ -882,6 +924,29 @@ function ContactFields({
             keyboardType="number-pad"
             maxLength={10}
           />
+        </View>
+      </View>
+
+      <View style={styles.fieldBlock}>
+        <Text style={styles.fieldLabelSm}>{t('editProfile.gender')}</Text>
+        <View style={styles.genderRow}>
+          {([
+            { key: 'male', label: t('editProfile.genderMale'), icon: 'male' as const },
+            { key: 'female', label: t('editProfile.genderFemale'), icon: 'female' as const },
+          ]).map((g) => {
+            const active = gender === g.key;
+            return (
+              <TouchableOpacity
+                key={g.key}
+                style={[styles.genderBtn, active && styles.genderBtnActive]}
+                activeOpacity={0.8}
+                onPress={() => setGender(active ? '' : g.key)}
+              >
+                <Ionicons name={g.icon} size={16} color={active ? '#fff' : Colors.primary} />
+                <Text style={[styles.genderText, active && styles.genderTextActive]}>{g.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </View>
 
@@ -929,6 +994,15 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.borderLight,
   },
   contactInput: { flex: 1, fontSize: 15, color: Colors.textPrimary, padding: 0 },
+  genderRow: { flexDirection: 'row', gap: 10 },
+  genderBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, borderRadius: 14,
+    backgroundColor: Colors.surfaceSecondary, borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  genderBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  genderText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  genderTextActive: { color: '#fff' },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -1190,7 +1264,9 @@ const styles = StyleSheet.create({
   childIconBox: {
     width: 48, height: 48, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
   },
+  childAvatarImg: { width: '100%', height: '100%' },
   childTextBlock: { flex: 1, gap: 2 },
   childName: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   childGrade: { fontSize: 11, fontWeight: '500', color: Colors.textMuted },
