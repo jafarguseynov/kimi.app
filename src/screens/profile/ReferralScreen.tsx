@@ -24,8 +24,6 @@ import { useTranslation } from '../../i18n';
 import { useMonetization } from '../../store/featureFlag.store';
 import { useUserStore } from '../../store/user.store';
 
-const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-
 interface ReferralData {
   code: string;
   link: string;
@@ -126,9 +124,12 @@ export default function ReferralScreen() {
           </View>
 
           {/* Bonus balance */}
-          <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
+          <LinearGradient colors={['#00476b', '#0077b6', '#4cc9f0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceCard}>
             <View style={styles.balanceOrbTopRight} pointerEvents="none" />
             <View style={styles.balanceOrbBottomLeft} pointerEvents="none" />
+            <View style={styles.balanceGiftChip} pointerEvents="none">
+              <Ionicons name="gift" size={22} color="#fff" />
+            </View>
             <View style={styles.balanceContent}>
               <Text style={styles.balanceLabel}>{t('referral.balanceLabel')}</Text>
               <View style={styles.balanceAmountRow}>
@@ -142,6 +143,7 @@ export default function ReferralScreen() {
                     activeOpacity={0.85}
                     onPress={() => navigation.navigate(Routes.Wallet)}
                   >
+                    <Ionicons name="add-circle" size={16} color={Colors.primary} />
                     <Text style={styles.balanceBtnSolidText}>{t('referral.increaseBalance')}</Text>
                   </TouchableOpacity>
                 )}
@@ -151,6 +153,7 @@ export default function ReferralScreen() {
                   onPress={() => navigation.navigate(Routes.ReferralBalance)}
                 >
                   <Text style={styles.balanceBtnGhostText}>{t('referral.details')}</Text>
+                  <Ionicons name="chevron-forward" size={15} color="#fff" />
                 </TouchableOpacity>
               </View>
             </View>
@@ -160,6 +163,9 @@ export default function ReferralScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('referral.codeLabel')}</Text>
             <View style={styles.codePill}>
+              <View style={[styles.pillIconChip, { backgroundColor: '#EAF4FF' }]}>
+                <Ionicons name="pricetag" size={16} color="#0077b6" />
+              </View>
               <Text style={styles.codeText} numberOfLines={1}>{displayCode || '—'}</Text>
               <TouchableOpacity style={styles.copyChip} onPress={handleCopyCode} activeOpacity={0.85}>
                 <Ionicons name="copy-outline" size={14} color={Colors.primary} />
@@ -172,6 +178,9 @@ export default function ReferralScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('referral.linkLabel')}</Text>
             <View style={styles.linkPill}>
+              <View style={[styles.pillIconChip, { backgroundColor: '#E7F8F0' }]}>
+                <Ionicons name="link" size={16} color="#0a8f5f" />
+              </View>
               <Text style={styles.linkText} numberOfLines={1}>{displayLink}</Text>
               <TouchableOpacity style={styles.copyChip} onPress={handleCopy} activeOpacity={0.85}>
                 <Ionicons name="copy-outline" size={14} color={Colors.primary} />
@@ -179,8 +188,8 @@ export default function ReferralScreen() {
               </TouchableOpacity>
             </View>
             <TouchableOpacity activeOpacity={0.9} onPress={handleShare}>
-              <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.shareCta}>
-                <Ionicons name="share-social-outline" size={20} color="#fff" />
+              <LinearGradient colors={['#00476b', '#0077b6', '#4cc9f0']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.shareCta}>
+                <Ionicons name="share-social" size={20} color="#fff" />
                 <Text style={styles.shareCtaText}>{t('referral.shareLink')}</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -347,17 +356,27 @@ const styles = StyleSheet.create({
   balanceAmountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 28 },
   balanceAmount: { fontSize: 48, fontWeight: '800', color: '#fff', letterSpacing: -1 },
   balanceCurrency: { fontSize: 18, fontWeight: '700', color: 'rgba(255,255,255,0.9)' },
+  balanceGiftChip: {
+    position: 'absolute', top: 22, right: 22,
+    width: 48, height: 48, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
+    zIndex: 2,
+  },
   balanceBtnRow: { flexDirection: 'row', gap: 10 },
   balanceBtnSolid: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#fff',
-    paddingHorizontal: 24, paddingVertical: 14, borderRadius: 999,
+    paddingHorizontal: 20, paddingVertical: 14, borderRadius: 999,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 8, elevation: 2,
   },
   balanceBtnSolidText: { fontSize: 13, fontWeight: '800', color: Colors.primary },
   balanceBtnGhost: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 24, paddingVertical: 14, borderRadius: 999,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)',
+    paddingHorizontal: 20, paddingVertical: 14, borderRadius: 999,
   },
   balanceBtnGhostText: { fontSize: 13, fontWeight: '800', color: '#fff' },
 
@@ -368,20 +387,26 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', letterSpacing: 1.5,
     paddingHorizontal: 4,
   },
+  pillIconChip: {
+    width: 34, height: 34, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
   linkPill: {
-    backgroundColor: Colors.surfaceLow,
-    paddingLeft: 22, paddingRight: 6, paddingVertical: 6,
-    borderRadius: 999,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: '#fff',
+    paddingLeft: 8, paddingRight: 6, paddingVertical: 6,
+    borderRadius: 18,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
   linkText: { flex: 1, fontSize: 13, fontWeight: '800', color: Colors.primary },
   codePill: {
-    backgroundColor: Colors.surfaceLow,
-    paddingLeft: 22, paddingRight: 6, paddingVertical: 6,
-    borderRadius: 999,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)',
+    backgroundColor: '#fff',
+    paddingLeft: 8, paddingRight: 6, paddingVertical: 6,
+    borderRadius: 18,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.05, shadowRadius: 10, elevation: 2,
   },
   codeText: { flex: 1, fontSize: 18, fontWeight: '900', color: Colors.primary, letterSpacing: 3, textTransform: 'uppercase' },
   copyChip: {
