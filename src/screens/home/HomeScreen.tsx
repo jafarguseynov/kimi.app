@@ -1182,9 +1182,11 @@ export default function HomeScreen({ navigation }: Props) {
                           <Text style={styles.teacherAvatarInitial}>{initials}</Text>
                         </LinearGradient>
                       )}
-                      <View style={styles.teacherVerifiedBadge}>
-                        <Ionicons name="checkmark" size={10} color="#fff" />
-                      </View>
+                      {(tch as any).verified && (
+                        <View style={styles.teacherVerifiedBadge}>
+                          <Ionicons name="checkmark" size={10} color="#fff" />
+                        </View>
+                      )}
                     </View>
 
                     <View style={styles.teacherCardBody}>

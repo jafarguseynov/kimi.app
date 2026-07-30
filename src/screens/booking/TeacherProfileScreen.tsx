@@ -11,6 +11,7 @@ import {
   Image,
   RefreshControl,
   Share,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,8 +24,10 @@ import { getOrCreateChat } from '../../api/chat.api';
 import { recordTeacherView, reportContent } from '../../api/user.api';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { levelMeta } from '../../constants/teacherLevel';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
 import { useTranslation } from '../../i18n';
+import { getVideoThumbnail } from '../../utils/video';
 
 const { width } = Dimensions.get('window');
 const PHOTO_SIZE = Math.min(width - 40, 320);
@@ -129,6 +132,13 @@ export default function TeacherProfileScreen() {
       teacherSubject: booking.subject ?? teacher?.subjects?.[0],
       teacherAvatarUrl: teacher?.avatarUrl,
     });
+  };
+
+  // Müəllim tanıtım (təqdimat) videosunu YouTube-da / brauzerdə aç.
+  const introVideoUrl: string | undefined = teacher?.introVideoUrl;
+  const introThumb = getVideoThumbnail(introVideoUrl);
+  const openIntro = () => {
+    if (introVideoUrl) Linking.openURL(introVideoUrl).catch(() => {});
   };
 
   // Profili paylaş.
@@ -238,7 +248,7 @@ export default function TeacherProfileScreen() {
       >
         {/* Hero */}
         <View style={styles.heroSection}>
-          <View style={[styles.photoBox, { width: PHOTO_SIZE, height: PHOTO_SIZE }]}>
+          <View style={[styles.photoBox, { width: PHOTO_SIZE, height: PHOTO_SIZE }, teacher?.isPremium && styles.photoBoxPremium]}>
             {teacher?.avatarUrl ? (
               <Image source={{ uri: teacher.avatarUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
             ) : (
@@ -256,9 +266,28 @@ export default function TeacherProfileScreen() {
 
           <View style={styles.heroInfo}>
             <View style={styles.heroNameRow}>
-              <Text style={styles.heroName}>{teacher?.name ?? t('booking.defaultTeacher')}</Text>
-              <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />
+              <Text style={[styles.heroName, teacher?.isPremium && styles.heroNamePremium]}>{teacher?.name ?? t('booking.defaultTeacher')}</Text>
+              {teacher?.verified && <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />}
             </View>
+            {(teacher?.isPremium || levelMeta(teacher?.level)) && (
+              <View style={styles.heroBadgeRow}>
+                {teacher?.isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="ribbon" size={13} color="#7A4B00" />
+                    <Text style={styles.premiumBadgeText}>{t('teacherTier.premiumTeacher')}</Text>
+                  </View>
+                )}
+                {(() => {
+                  const lvl = levelMeta(teacher?.level);
+                  return lvl ? (
+                    <View style={[styles.heroLevelBadge, { backgroundColor: lvl.bg }]}>
+                      <Ionicons name={lvl.icon} size={13} color={lvl.fg} />
+                      <Text style={[styles.heroLevelText, { color: lvl.fg }]}>{t(`teacherTier.${lvl.key}Teacher`)}</Text>
+                    </View>
+                  ) : null;
+                })()}
+              </View>
+            )}
             <View style={styles.ratingRow}>
               <View style={styles.ratingPill}>
                 <Ionicons name="star" size={16} color="#F59E0B" />
@@ -273,31 +302,41 @@ export default function TeacherProfileScreen() {
           </View>
         </View>
 
-        {/* Açar göstəricilər — təcrübə + qiymət (vurğulu) */}
+        {/* Açar göstəricilər — təcrübə + qiymət (canlı gradient kartlar) */}
         <View style={styles.statsTop}>
-          <View style={styles.highlightCard}>
-            <View style={styles.statIconBox}>
-              <Ionicons name="time-outline" size={20} color={Colors.primary} />
+          <LinearGradient
+            colors={['#0077b6', '#47b4fa']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.metricCard}
+          >
+            <Ionicons name="time" size={82} color="rgba(255,255,255,0.14)" style={styles.metricWatermark} />
+            <View style={styles.metricIconChip}>
+              <Ionicons name="time" size={18} color="#fff" />
             </View>
-            <Text style={styles.statMeta}>{t('teacherProfile.metaExperience')}</Text>
-            <Text style={styles.statVal}>
+            <Text style={styles.metricLabel}>{t('teacherProfile.metaExperience')}</Text>
+            <Text style={styles.metricValue}>
               {teacher?.experienceYears > 0 ? `${teacher.experienceYears} ${t('editProfile.yearUnit')}` : t('teacherProfile.expValue')}
             </Text>
-          </View>
-          <View style={styles.highlightCard}>
-            <View style={styles.statIconBox}>
-              <Ionicons name="wallet-outline" size={20} color={Colors.primary} />
+          </LinearGradient>
+          <LinearGradient
+            colors={['#0a8f5f', '#34d399']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={[styles.metricCard, { shadowColor: '#0a8f5f' }]}
+          >
+            <Ionicons name="wallet" size={82} color="rgba(255,255,255,0.14)" style={styles.metricWatermark} />
+            <View style={styles.metricIconChip}>
+              <Ionicons name="wallet" size={18} color="#fff" />
             </View>
-            <Text style={styles.statMeta}>{t('teacherProfile.metaPrice')}</Text>
-            <Text style={styles.statVal}>{t('teacherProfile.priceValue', { rate: teacher?.hourlyRate ?? 15 })}</Text>
-          </View>
+            <Text style={styles.metricLabel}>{t('teacherProfile.metaPrice')}</Text>
+            <Text style={styles.metricValue}>{t('teacherProfile.priceValue', { rate: teacher?.hourlyRate ?? 15 })}</Text>
+          </LinearGradient>
         </View>
 
-        {/* Detallar — vahid səliqəli kart (format · ərazi · yaş) */}
+        {/* Detallar — rəngli ikon çipləri ilə (format · ərazi · yaş) */}
         <View style={styles.infoCard}>
           <View style={styles.infoRow}>
-            <View style={styles.infoIconBox}>
-              <Ionicons name="laptop-outline" size={18} color={Colors.primary} />
+            <View style={[styles.infoIconBox, { backgroundColor: '#EAF4FF' }]}>
+              <Ionicons name="laptop" size={18} color="#0077b6" />
             </View>
             <View style={styles.infoTextWrap}>
               <Text style={styles.infoMeta}>{t('teacherProfile.metaFormat')}</Text>
@@ -306,8 +345,8 @@ export default function TeacherProfileScreen() {
           </View>
           <View style={styles.infoDivider} />
           <View style={styles.infoRow}>
-            <View style={styles.infoIconBox}>
-              <Ionicons name="location-outline" size={18} color={Colors.primary} />
+            <View style={[styles.infoIconBox, { backgroundColor: '#E7F8F0' }]}>
+              <Ionicons name="location" size={18} color="#0a8f5f" />
             </View>
             <View style={styles.infoTextWrap}>
               <Text style={styles.infoMeta}>{t('teacherProfile.metaArea')}</Text>
@@ -316,8 +355,8 @@ export default function TeacherProfileScreen() {
           </View>
           <View style={styles.infoDivider} />
           <View style={styles.infoRow}>
-            <View style={styles.infoIconBox}>
-              <Ionicons name="person-outline" size={18} color={Colors.primary} />
+            <View style={[styles.infoIconBox, { backgroundColor: '#F3ECFF' }]}>
+              <Ionicons name="person" size={18} color="#7C3AED" />
             </View>
             <View style={styles.infoTextWrap}>
               <Text style={styles.infoMeta}>{t('teacherProfile.metaAge')}</Text>
@@ -348,6 +387,44 @@ export default function TeacherProfileScreen() {
             <Ionicons name="school-outline" size={80} color={Colors.textPrimary} style={{ opacity: 0.03 }} />
           </View>
         </View>
+
+        {/* Tanıtım videosu — müəllim əlavə edibsə şagirdə qapaq şəkli kimi göstərilir */}
+        {!!introVideoUrl && (
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>{t('teacherProfile.introVideoLabel')}</Text>
+            {introThumb ? (
+              <TouchableOpacity style={styles.introVideoThumb} activeOpacity={0.9} onPress={openIntro}>
+                <Image source={{ uri: introThumb }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.55)']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0.5, y: 0.3 }}
+                  end={{ x: 0.5, y: 1 }}
+                />
+                <View style={styles.introVideoPlayBig}>
+                  <Ionicons name="play" size={26} color="#fff" style={{ marginLeft: 3 }} />
+                </View>
+                <View style={styles.introVideoCaption}>
+                  <Ionicons name="logo-youtube" size={16} color="#fff" />
+                  <Text style={styles.introVideoCaptionText} numberOfLines={1}>{t('teacherProfile.introVideoWatch')}</Text>
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.introVideoCard} activeOpacity={0.85} onPress={openIntro}>
+                <View style={styles.introVideoIcon}>
+                  <Ionicons name="logo-youtube" size={26} color="#e11d48" />
+                </View>
+                <View style={styles.introVideoTextWrap}>
+                  <Text style={styles.introVideoTitle}>{t('teacherProfile.introVideoWatch')}</Text>
+                  <Text style={styles.introVideoSub} numberOfLines={1}>{t('teacherProfile.introVideoSub')}</Text>
+                </View>
+                <View style={styles.introVideoPlay}>
+                  <Ionicons name="play" size={18} color="#fff" />
+                </View>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
 
         {/* Schedule */}
         <View style={styles.section}>
@@ -554,10 +631,28 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 16 },
     shadowOpacity: 0.1, shadowRadius: 32, elevation: 6,
   },
+  photoBoxPremium: {
+    borderWidth: 3, borderColor: '#E8B84B',
+    shadowColor: '#D4901F', shadowOpacity: 0.35, shadowRadius: 28,
+  },
   photoInitial: { fontSize: 80, fontWeight: '900', color: 'rgba(255,255,255,0.85)', fontStyle: 'italic' },
   heroInfo: { alignItems: 'center', gap: 10 },
-  heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   heroName: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  heroNamePremium: { color: '#9A6A12' },
+  premiumBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+    backgroundColor: '#FFD75E',
+    borderWidth: 1, borderColor: '#E8B84B',
+  },
+  premiumBadgeText: { fontSize: 12, fontWeight: '900', color: '#7A4B00', letterSpacing: 0.4 },
+  heroBadgeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'center', gap: 6 },
+  heroLevelBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
+  },
+  heroLevelText: { fontSize: 12, fontWeight: '900', letterSpacing: 0.4 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   ratingPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -584,41 +679,40 @@ const styles = StyleSheet.create({
   statCardWide: {
     flexBasis: '100%', flexDirection: 'row', gap: 12,
   },
-  statIconBox: {
-    width: 32, height: 32, borderRadius: 10,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  statMeta: { fontSize: 9, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.5 },
-  statVal: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-
-  // ─── Yenilənmiş səliqəli dizayn ───
+  // ─── Canlı gradient göstərici kartları ───
   statsTop: { flexDirection: 'row', gap: 12, width: '100%' },
-  highlightCard: {
-    flex: 1,
-    backgroundColor: Colors.surface, borderRadius: 20, padding: 16, gap: 8,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
-    borderWidth: 1, borderColor: Colors.borderLight,
+  metricCard: {
+    flex: 1, borderRadius: 22, padding: 16, gap: 6, overflow: 'hidden',
+    shadowColor: '#0077b6', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22, shadowRadius: 16, elevation: 5,
   },
+  metricWatermark: { position: 'absolute', right: -10, bottom: -14 },
+  metricIconChip: {
+    width: 36, height: 36, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  metricLabel: { fontSize: 10, fontWeight: '800', color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase', letterSpacing: 1.2 },
+  metricValue: { fontSize: 20, fontWeight: '900', color: '#fff' },
+
+  // ─── Detal kartı (rəngli ikon çipləri) ───
   infoCard: {
     width: '100%', marginTop: 12,
-    backgroundColor: Colors.surface, borderRadius: 20,
+    backgroundColor: Colors.surface, borderRadius: 22,
     paddingHorizontal: 16,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
+    shadowColor: '#0f172a', shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06, shadowRadius: 16, elevation: 2,
     borderWidth: 1, borderColor: Colors.borderLight,
   },
-  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 14 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16 },
   infoIconBox: {
-    width: 38, height: 38, borderRadius: 12,
-    backgroundColor: Colors.primaryLight,
+    width: 40, height: 40, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
   infoTextWrap: { flex: 1, gap: 3 },
   infoMeta: { fontSize: 10, fontWeight: '700', color: Colors.textMuted, textTransform: 'uppercase', letterSpacing: 1.2 },
   infoVal: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, lineHeight: 20 },
-  infoDivider: { height: 1, backgroundColor: Colors.borderLight, marginLeft: 52 },
+  infoDivider: { height: 1, backgroundColor: Colors.borderLight, marginLeft: 54 },
 
   section: { width: '100%', gap: 12 },
   sectionLabel: { fontSize: 10, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 2, paddingHorizontal: 4 },
@@ -639,6 +733,46 @@ const styles = StyleSheet.create({
   },
   bioText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 21 },
   bioWatermark: { position: 'absolute', bottom: -16, right: -16 },
+
+  // Tanıtım videosu — qapaq şəkli (16:9)
+  introVideoThumb: {
+    width: '100%', aspectRatio: 16 / 9, borderRadius: 20, overflow: 'hidden',
+    backgroundColor: Colors.surfaceLow, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  introVideoPlayBig: {
+    width: 60, height: 60, borderRadius: 30,
+    backgroundColor: 'rgba(225,29,72,0.92)',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+  },
+  introVideoCaption: {
+    position: 'absolute', left: 12, bottom: 12, right: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+  },
+  introVideoCaptionText: { flex: 1, fontSize: 13, fontWeight: '700', color: '#fff' },
+
+  // Tanıtım videosu kartı (YouTube olmayan link — ehtiyat)
+  introVideoCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: Colors.surface, borderRadius: 20, padding: 16,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  introVideoIcon: {
+    width: 46, height: 46, borderRadius: 14,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  introVideoTextWrap: { flex: 1, gap: 3 },
+  introVideoTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  introVideoSub: { fontSize: 12, fontWeight: '500', color: Colors.textSecondary },
+  introVideoPlay: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: Colors.primary,
+    alignItems: 'center', justifyContent: 'center',
+  },
 
   scheduleHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
   weekBadge: { backgroundColor: Colors.primaryLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },

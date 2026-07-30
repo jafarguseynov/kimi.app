@@ -22,6 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { levelMeta } from '../../constants/teacherLevel';
 import { useFavoriteTeachersStore } from '../../store/favoritesTeachers.store';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
 import { useTranslation } from '../../i18n';
@@ -41,9 +42,13 @@ interface Teacher {
   city?: string;
   gender?: 'male' | 'female';
   age?: number;
+  verified?: boolean; // ADMIN tərəfindən təsdiqlənmiş müəllim (yaşıl nişan)
+  experienceYears?: number; // müəllimin təcrübə ili (kartda göstərilir)
   isFeatured?: boolean;
+  isPremium?: boolean;   // premium abunəçi müəllim (backend)
   profileViews?: number; // real profil baxış sayı (backend)
   ratingCount?: number;  // real rəy sayı (backend)
+  level?: number;        // müəllim səviyyəsi 0=Yeni,1=Yaxşı,2=Əla,3=Super (backend)
 }
 
 const CITY_SUGGESTIONS = [
@@ -226,11 +231,11 @@ export default function TeacherListScreen() {
     const showOnline = item.isOnline || item.format === 'online';
     const showInPerson = !showOnline && item.format === 'in-person';
     const isFavorite = favoriteIds.has(item.id);
-    const isVerified = item.isVerified !== false;
+    const isVerified = !!item.verified;
 
     return (
       <TouchableOpacity
-        style={[styles.card, { width: CARD_WIDTH }]}
+        style={[styles.card, { width: CARD_WIDTH }, item.isPremium && styles.cardPremium]}
         onPress={() => navigation.navigate(Routes.TeacherProfile, { teacher: item })}
         activeOpacity={0.85}
       >
@@ -274,8 +279,29 @@ export default function TeacherListScreen() {
           )}
         </View>
 
+        {(item.isPremium || levelMeta(item.level)) && (
+          <View style={styles.badgeRow}>
+            {item.isPremium && (
+              <View style={styles.premiumRibbon}>
+                <Ionicons name="ribbon" size={11} color="#7A4B00" />
+                <Text style={styles.premiumRibbonText}>PREMIUM</Text>
+              </View>
+            )}
+            {(() => {
+              const lvl = levelMeta(item.level);
+              return lvl ? (
+                <View style={[styles.levelBadge, { backgroundColor: lvl.bg }]}>
+                  <Ionicons name={lvl.icon} size={10} color={lvl.fg} />
+                  <Text style={[styles.levelBadgeText, { color: lvl.fg }]}>{t(`teacherTier.${lvl.key}`)}</Text>
+                </View>
+              ) : null;
+            })()}
+          </View>
+        )}
+
         <View style={styles.nameRow}>
-          <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
+          {item.isPremium && <Ionicons name="star" size={13} color="#D4901F" />}
+          <Text style={[styles.cardName, item.isPremium && styles.cardNamePremium]} numberOfLines={1}>{item.name}</Text>
           {isVerified && <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />}
         </View>
         <Text style={styles.cardSubject} numberOfLines={1}>{subjectLabel}</Text>
@@ -301,6 +327,13 @@ export default function TeacherListScreen() {
         <View style={styles.cityRow}>
           <Ionicons name="location-outline" size={12} color={Colors.textMuted} />
           <Text style={styles.cityText} numberOfLines={1}>{cityLabel}</Text>
+          {item.experienceYears != null && item.experienceYears > 0 && (
+            <>
+              <Text style={styles.cityDot}>·</Text>
+              <Ionicons name="briefcase-outline" size={11} color={Colors.textMuted} />
+              <Text style={styles.cityText}>{t('teacherList.expYears', { n: item.experienceYears })}</Text>
+            </>
+          )}
         </View>
 
         <View style={styles.priceFooter}>
@@ -935,6 +968,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04, shadowRadius: 16, elevation: 2,
   },
 
+  cardPremium: {
+    borderColor: '#E8B84B', borderWidth: 1.5,
+    backgroundColor: '#FFFBF2',
+    shadowColor: '#D4901F', shadowOpacity: 0.18, shadowRadius: 16, elevation: 4,
+  },
+  badgeRow: {
+    flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 5,
+    marginBottom: 6,
+  },
+  premiumRibbon: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7,
+    backgroundColor: '#FFD75E',
+    borderWidth: 1, borderColor: '#E8B84B',
+  },
+  premiumRibbonText: { fontSize: 9, fontWeight: '900', color: '#7A4B00', letterSpacing: 0.6 },
+  levelBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 7,
+  },
+  levelBadgeText: { fontSize: 9, fontWeight: '900', letterSpacing: 0.4 },
+
   photoContainer: { position: 'relative', marginBottom: 10 },
   photoBox: {
     width: '100%', aspectRatio: 1,
@@ -983,6 +1038,7 @@ const styles = StyleSheet.create({
 
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   cardName: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary, flexShrink: 1 },
+  cardNamePremium: { color: '#9A6A12' },
   cardSubject: { fontSize: 11, fontWeight: '500', color: Colors.textMuted, marginTop: 2, marginBottom: 8 },
 
   metricsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 6 },
@@ -992,6 +1048,7 @@ const styles = StyleSheet.create({
 
   cityRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 10 },
   cityText: { fontSize: 10, fontWeight: '500', color: Colors.textMuted, flexShrink: 1 },
+  cityDot: { fontSize: 10, fontWeight: '700', color: Colors.textMuted },
 
   priceFooter: {
     borderTopWidth: 1, borderTopColor: Colors.borderLight,
