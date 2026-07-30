@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Clipboard,
   Alert,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,6 +22,7 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
 import { useMonetization } from '../../store/featureFlag.store';
+import { useUserStore } from '../../store/user.store';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -43,6 +45,8 @@ export default function ReferralScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
   const { payments: payVisible } = useMonetization();
+  const me = useUserStore((s) => s.user);
+  const [listOpen, setListOpen] = useState(false);
   const { data, isLoading } = useQuery<ReferralData>({
     queryKey: ['referral'],
     queryFn: async () => {
@@ -69,18 +73,27 @@ export default function ReferralScreen() {
   const displayLink = data?.link ?? '';
   const displayCode = data?.code ?? '';
 
+  const firstName = ((me?.name ?? '') as string).trim().split(/\s+/)[0] ?? '';
+
   const handleShare = async () => {
     if (!displayLink) return;
-    await Share.share({
-      message: t('referral.shareMessage', { link: displayLink, code: displayCode }),
-      url: displayLink,
-    });
+    // Göndərənin adından şəxsi mesaj; ad yoxdursa neytral variant.
+    const message = firstName
+      ? t('referral.shareMessage', { name: firstName, code: displayCode, link: displayLink })
+      : t('referral.shareMessageNoName', { code: displayCode, link: displayLink });
+    await Share.share({ message, url: displayLink });
   };
 
   const handleCopy = () => {
     if (!displayLink) return;
     Clipboard.setString(displayLink);
     Alert.alert(t('referral.copiedTitle'), t('referral.copiedMsg'));
+  };
+
+  const handleCopyCode = () => {
+    if (!displayCode) return;
+    Clipboard.setString(displayCode);
+    Alert.alert(t('referral.copiedTitle'), t('referral.codeCopiedMsg'));
   };
 
   return (
@@ -143,6 +156,18 @@ export default function ReferralScreen() {
             </View>
           </LinearGradient>
 
+          {/* Referral code */}
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>{t('referral.codeLabel')}</Text>
+            <View style={styles.codePill}>
+              <Text style={styles.codeText} numberOfLines={1}>{displayCode || '—'}</Text>
+              <TouchableOpacity style={styles.copyChip} onPress={handleCopyCode} activeOpacity={0.85}>
+                <Ionicons name="copy-outline" size={14} color={Colors.primary} />
+                <Text style={styles.copyChipText}>{t('referral.copy')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
           {/* Referral link */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>{t('referral.linkLabel')}</Text>
@@ -171,36 +196,92 @@ export default function ReferralScreen() {
               </View>
             </View>
             <View style={styles.statsGrid}>
-              <StatCard icon="people-outline" iconColor={Colors.primary} iconBg="#EFF8FE" value={invitedCount} label={t('referral.statInvited')} />
-              <StatCard icon="person-add-outline" iconColor="#4F46E5" iconBg="#EEF2FF" value={registeredCount} label={t('referral.statRegistered')} />
-              <StatCard icon="flash-outline" iconColor="#059669" iconBg="#ECFDF5" value={activeCount} label={t('referral.statActive')} />
-              <StatCard icon="card-outline" iconColor="#D97706" iconBg="#FFFBEB" value={payingCount} label={t('referral.statPaying')} highlight />
+              <StatCard icon="people" accent="#0077b6" tint="#EAF4FF" value={invitedCount} label={t('referral.statInvited')} onPress={() => setListOpen(true)} />
+              <StatCard icon="person-add" accent="#4F46E5" tint="#EEF2FF" value={registeredCount} label={t('referral.statRegistered')} />
+              <StatCard icon="flash" accent="#0a8f5f" tint="#E7F8F0" value={activeCount} label={t('referral.statActive')} />
+              <StatCard icon="card" accent="#D97706" tint="#FFF7E6" value={payingCount} label={t('referral.statPaying')} />
             </View>
           </View>
 
           <View style={{ height: 24 }} />
         </ScrollView>
       )}
+
+      {/* Dəvət olunanların siyahısı + status */}
+      <Modal visible={listOpen} transparent animationType="slide" onRequestClose={() => setListOpen(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setListOpen(false)}>
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>{t('referral.invitedListTitle')}</Text>
+            {friends.length === 0 ? (
+              <View style={styles.modalEmptyWrap}>
+                <Ionicons name="people-outline" size={40} color={Colors.outlineVariant} />
+                <Text style={styles.modalEmpty}>{t('referral.invitedEmpty')}</Text>
+              </View>
+            ) : (
+              <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
+                {friends.map((f) => {
+                  const paid = f.rewardPaid;
+                  let dateLabel = '';
+                  try { dateLabel = new Date(f.joinedAt).toLocaleDateString(); } catch { /* ignore */ }
+                  return (
+                    <View key={f.id} style={styles.friendRow}>
+                      <View style={styles.friendAvatar}>
+                        <Text style={styles.friendInitial}>{f.name?.[0]?.toUpperCase() ?? '?'}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.friendName} numberOfLines={1}>{f.name || '—'}</Text>
+                        {!!dateLabel && <Text style={styles.friendMeta}>{dateLabel}</Text>}
+                      </View>
+                      <View style={[styles.friendBadge, { backgroundColor: paid ? '#E7F8F0' : '#FFF7E6' }]}>
+                        <View style={[styles.friendDot, { backgroundColor: paid ? '#0a8f5f' : '#D97706' }]} />
+                        <Text style={[styles.friendBadgeText, { color: paid ? '#0a8f5f' : '#D97706' }]}>
+                          {paid ? t('referral.statusPaid') : t('referral.statusRegistered')}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+            <TouchableOpacity style={styles.modalClose} onPress={() => setListOpen(false)} activeOpacity={0.85}>
+              <Text style={styles.modalCloseText}>{t('referral.close')}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
 
-function StatCard({ icon, iconColor, iconBg, value, label, highlight }: {
+function StatCard({ icon, accent, tint, value, label, onPress }: {
   icon: keyof typeof Ionicons.glyphMap;
-  iconColor: string;
-  iconBg: string;
+  accent: string;
+  tint: string;
   value: number;
   label: string;
-  highlight?: boolean;
+  onPress?: () => void;
 }) {
-  return (
-    <View style={[styles.statCard, highlight && styles.statCardHighlight]}>
-      <View style={[styles.statIconBox, { backgroundColor: iconBg }]}>
-        <Ionicons name={icon} size={22} color={iconColor} />
+  const inner = (
+    <LinearGradient
+      colors={[tint, '#ffffff']}
+      start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }}
+      style={[styles.statCard, { borderColor: accent + '22', shadowColor: accent }]}
+    >
+      <View style={styles.statTopRow}>
+        <View style={[styles.statIconBox, { backgroundColor: accent }]}>
+          <Ionicons name={icon} size={20} color="#fff" />
+        </View>
+        {onPress && <Ionicons name="chevron-forward-circle" size={22} color={accent} style={{ opacity: 0.9 }} />}
       </View>
-      <Text style={styles.statValue}>{value}</Text>
+      <Text style={[styles.statValue, { color: accent }]}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </LinearGradient>
+  );
+  return onPress ? (
+    <TouchableOpacity style={styles.statCardWrap} activeOpacity={0.85} onPress={onPress}>{inner}</TouchableOpacity>
+  ) : (
+    <View style={styles.statCardWrap}>{inner}</View>
   );
 }
 
@@ -295,6 +376,14 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)',
   },
   linkText: { flex: 1, fontSize: 13, fontWeight: '800', color: Colors.primary },
+  codePill: {
+    backgroundColor: Colors.surfaceLow,
+    paddingLeft: 22, paddingRight: 6, paddingVertical: 6,
+    borderRadius: 999,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.8)',
+  },
+  codeText: { flex: 1, fontSize: 18, fontWeight: '900', color: Colors.primary, letterSpacing: 3, textTransform: 'uppercase' },
   copyChip: {
     backgroundColor: '#fff',
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -320,18 +409,41 @@ const styles = StyleSheet.create({
   statsDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.primary },
   statsPillText: { fontSize: 10, fontWeight: '800', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.6 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
+  statCardWrap: { width: '47%' },
   statCard: {
-    width: '47%',
-    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 22,
-    borderWidth: 1, borderColor: 'transparent',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1,
+    borderRadius: 20, padding: 18,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.14, shadowRadius: 14, elevation: 3,
   },
-  statCardHighlight: { borderWidth: 2, borderColor: Colors.primary + '14' },
+  statTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   statIconBox: {
-    width: 44, height: 44, borderRadius: 12,
+    width: 44, height: 44, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
-    marginBottom: 20,
   },
-  statValue: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, marginBottom: 4 },
-  statLabel: { fontSize: 9, fontWeight: '800', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1.4 },
+  statValue: { fontSize: 30, fontWeight: '900', marginBottom: 4, letterSpacing: -0.5 },
+  statLabel: { fontSize: 9, fontWeight: '800', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1.2 },
+
+  /* Invited list modal */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#fff', borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, paddingBottom: 30 },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.surfaceHigh, alignSelf: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 18, fontWeight: '900', color: Colors.textPrimary, marginBottom: 16 },
+  modalEmptyWrap: { alignItems: 'center', gap: 10, paddingVertical: 30 },
+  modalEmpty: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center' },
+  friendRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
+  },
+  friendAvatar: {
+    width: 42, height: 42, borderRadius: 21, backgroundColor: Colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  friendInitial: { fontSize: 16, fontWeight: '800', color: Colors.primary },
+  friendName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  friendMeta: { fontSize: 11, fontWeight: '500', color: Colors.textMuted, marginTop: 2 },
+  friendBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
+  friendDot: { width: 6, height: 6, borderRadius: 3 },
+  friendBadgeText: { fontSize: 11, fontWeight: '800' },
+  modalClose: { marginTop: 18, alignSelf: 'center', paddingVertical: 12, paddingHorizontal: 40, borderRadius: 999, backgroundColor: Colors.surfaceLow },
+  modalCloseText: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
 });
