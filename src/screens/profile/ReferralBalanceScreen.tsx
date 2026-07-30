@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Share,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -70,7 +69,10 @@ export default function ReferralBalanceScreen() {
   const friends: ReferralFriend[] = Array.isArray(friendsData) ? friendsData : [];
   const paidFriends = friends.filter((f) => f.rewardPaid);
   const availableBalance = paidFriends.reduce((s, f) => s + f.reward, 0);
-  const totalEarned = friends.reduce((s, f) => s + f.reward, 0);
+  // "Toplam Qazanc" yalnız REAL ÖDƏNMİŞ komissiyadır. Gözləmədəki mükafatlar (dəvət
+  // olunan hələ paket almayıb) qazanc sayılmır — yalnız qeydiyyat komissiya vermir.
+  const totalEarned = availableBalance;
+  const pendingAmount = friends.filter((f) => !f.rewardPaid).reduce((s, f) => s + f.reward, 0);
   const invitedCount = friends.length;
 
   const sortedFriends = [...friends].sort((a, b) => {
@@ -79,17 +81,6 @@ export default function ReferralBalanceScreen() {
     return (isNaN(db) ? 0 : db) - (isNaN(da) ? 0 : da);
   });
   const recentFriends = sortedFriends.slice(0, 5);
-
-  const code = data?.code ?? '';
-  const link = data?.link ?? '';
-
-  const handleShare = async () => {
-    if (!link && !code) return;
-    await Share.share({
-      message: link ? t('referralBalance.shareLinkMessage', { link }) : t('referralBalance.shareCodeMessage', { code }),
-      url: link || undefined,
-    });
-  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -140,6 +131,9 @@ export default function ReferralBalanceScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.bentoLabel}>{t('referralBalance.totalEarned')}</Text>
                 <Text style={styles.bentoValue}>{totalEarned.toFixed(2)} AZN</Text>
+                {pendingAmount > 0 && (
+                  <Text style={styles.bentoPending}>{t('referralBalance.pendingHint', { amount: pendingAmount.toFixed(2) })}</Text>
+                )}
               </View>
             </View>
             <View style={styles.bentoCard}>
@@ -214,25 +208,6 @@ export default function ReferralBalanceScreen() {
             )}
           </View>
 
-          {/* Referral code share */}
-          <View style={styles.shareCard}>
-            <Text style={styles.shareTitle}>{t('referralBalance.codeTitle')}</Text>
-            <View style={styles.codeRow}>
-              <Text style={styles.codeText}>{code || '—'}</Text>
-              <TouchableOpacity hitSlop={8} onPress={handleShare} activeOpacity={0.7}>
-                <Ionicons name="copy-outline" size={20} color={Colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.shareBtnRow}>
-              <TouchableOpacity style={styles.shareIconBtn} onPress={handleShare} activeOpacity={0.75}>
-                <Ionicons name="share-social" size={22} color={Colors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.shareIconBtn} onPress={handleShare} activeOpacity={0.75}>
-                <Ionicons name="qr-code" size={22} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
-          </View>
-
           <View style={{ height: 24 }} />
         </ScrollView>
       )}
@@ -289,6 +264,7 @@ const styles = StyleSheet.create({
   },
   bentoLabel: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary, marginBottom: 2 },
   bentoValue: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  bentoPending: { fontSize: 10, fontWeight: '700', color: '#F59E0B', marginTop: 2 },
 
   /* Tip */
   tipCard: {
@@ -346,25 +322,4 @@ const styles = StyleSheet.create({
   txDot: { width: 6, height: 6, borderRadius: 3 },
   txStatus: { fontSize: 11, color: Colors.textSecondary },
   txAmount: { fontSize: 14, fontWeight: '800', color: Colors.tertiary },
-
-  /* Share card */
-  shareCard: {
-    backgroundColor: Colors.surfaceLow + '80', borderRadius: 18,
-    padding: 24, alignItems: 'center', gap: 16,
-    borderWidth: 2, borderStyle: 'dashed', borderColor: Colors.outlineVariant + '50',
-  },
-  shareTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
-  codeRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 14,
-    paddingHorizontal: 18, paddingVertical: 12,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.03, shadowRadius: 4,
-  },
-  codeText: { fontSize: 16, fontWeight: '800', color: Colors.primary, letterSpacing: 3, textTransform: 'uppercase' },
-  shareBtnRow: { flexDirection: 'row', gap: 14 },
-  shareIconBtn: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: Colors.surfaceLowest,
-    alignItems: 'center', justifyContent: 'center',
-  },
 });
