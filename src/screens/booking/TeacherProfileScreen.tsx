@@ -267,7 +267,7 @@ export default function TeacherProfileScreen() {
           <View style={styles.heroInfo}>
             <View style={styles.heroNameRow}>
               <Text style={[styles.heroName, teacher?.isPremium && styles.heroNamePremium]}>{teacher?.name ?? t('booking.defaultTeacher')}</Text>
-              {teacher?.verified && <Ionicons name="checkmark-circle" size={22} color={Colors.primary} />}
+              {teacher?.isComplete && <Ionicons name="checkmark-circle" size={22} color="#1DA1F2" />}
             </View>
             {(teacher?.isPremium || levelMeta(teacher?.level)) && (
               <View style={styles.heroBadgeRow}>

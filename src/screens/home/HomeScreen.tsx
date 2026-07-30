@@ -15,6 +15,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
+import { shortName } from '../../utils/name';
 import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
@@ -1190,7 +1191,7 @@ export default function HomeScreen({ navigation }: Props) {
                     </View>
 
                     <View style={styles.teacherCardBody}>
-                      <Text style={styles.teacherNameRich} numberOfLines={1}>{tch.name}</Text>
+                      <Text style={styles.teacherNameRich} numberOfLines={1}>{shortName(tch.name)}</Text>
                       <Text style={styles.teacherSubjectRich} numberOfLines={1}>
                         {subject}{experience ? ` • ${t('home.student.expYears', { n: experience })}` : ''}
                       </Text>

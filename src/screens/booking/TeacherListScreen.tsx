@@ -22,6 +22,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { shortName } from '../../utils/name';
 import { levelMeta } from '../../constants/teacherLevel';
 import { useFavoriteTeachersStore } from '../../store/favoritesTeachers.store';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
@@ -301,7 +302,7 @@ export default function TeacherListScreen() {
 
         <View style={styles.nameRow}>
           {item.isPremium && <Ionicons name="star" size={13} color="#D4901F" />}
-          <Text style={[styles.cardName, item.isPremium && styles.cardNamePremium]} numberOfLines={1}>{item.name}</Text>
+          <Text style={[styles.cardName, item.isPremium && styles.cardNamePremium]} numberOfLines={1}>{shortName(item.name)}</Text>
           {isVerified && <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />}
         </View>
         <Text style={styles.cardSubject} numberOfLines={1}>{subjectLabel}</Text>
