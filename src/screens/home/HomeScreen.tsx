@@ -1201,7 +1201,7 @@ export default function HomeScreen({ navigation }: Props) {
                       <View style={styles.teacherStatsRow}>
                         <Ionicons name="star" size={12} color="#f59e0b" />
                         <Text style={styles.teacherStatsText}>
-                          {hasRating ? tch.rating!.toFixed(1) : t('home.student.newTeacher')}
+                          {hasRating ? tch.rating!.toFixed(1) : ((tch as any).isNew ? t('home.student.newTeacher') : t('home.student.noReviews'))}
                         </Text>
                       </View>
                     </View>

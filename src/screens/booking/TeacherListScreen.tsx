@@ -43,6 +43,7 @@ interface Teacher {
   city?: string;
   gender?: 'male' | 'female';
   age?: number;
+  isNew?: boolean; // hesab ≤7 gün — "Yeni" nişanı üçün
   verified?: boolean; // ADMIN tərəfindən təsdiqlənmiş müəllim (yaşıl nişan)
   experienceYears?: number; // müəllimin təcrübə ili (kartda göstərilir)
   isFeatured?: boolean;
@@ -320,7 +321,7 @@ export default function TeacherListScreen() {
                 <Text style={styles.metricMuted}>({reviewCount})</Text>
               </>
             ) : (
-              <Text style={styles.metricMuted}>{t('teacherList.newTeacher')}</Text>
+              <Text style={styles.metricMuted}>{item.isNew ? t('teacherList.newTeacher') : t('teacherList.noReviews')}</Text>
             )}
           </View>
           <View style={styles.metricItem}>
