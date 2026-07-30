@@ -47,6 +47,28 @@ const subjectIcon = (subject: string): IconName => {
   return 'help-circle-outline';
 };
 
+// Fənnə görə rəng teması — siyahını rəngli/enerjili edir (thumb gradient, çip, qiymət, düymə).
+type SubjectTheme = { grad: [string, string]; accent: string; tint: string };
+const SUBJECT_THEME: Record<string, SubjectTheme> = {
+  Riyaziyyat: { grad: ['#EA580C', '#FB923C'], accent: '#EA580C', tint: '#FFF1E8' },
+  Kimya: { grad: ['#7C3AED', '#A855F7'], accent: '#7C3AED', tint: '#F3ECFF' },
+  Fizika: { grad: ['#0077b6', '#4cc9f0'], accent: '#0077b6', tint: '#EAF4FF' },
+  Biologiya: { grad: ['#0a8f5f', '#34d399'], accent: '#0a8f5f', tint: '#E7F8F0' },
+  Tarix: { grad: ['#B45309', '#F59E0B'], accent: '#B45309', tint: '#FEF3C7' },
+  Coğrafiya: { grad: ['#0891B2', '#22D3EE'], accent: '#0891B2', tint: '#E0F7FB' },
+  Ədəbiyyat: { grad: ['#BE185D', '#F472B6'], accent: '#BE185D', tint: '#FCE7F3' },
+  İngilis: { grad: ['#4F46E5', '#818CF8'], accent: '#4F46E5', tint: '#EEF2FF' },
+  Azərbaycan: { grad: ['#0D9488', '#2DD4BF'], accent: '#0D9488', tint: '#E0F7F4' },
+  İnformatika: { grad: ['#475569', '#94A3B8'], accent: '#475569', tint: '#EEF2F6' },
+};
+const DEFAULT_THEME: SubjectTheme = { grad: ['#0077b6', '#47b4fa'], accent: '#0077b6', tint: '#EAF4FF' };
+const subjectTheme = (subject: string): SubjectTheme => {
+  for (const key of Object.keys(SUBJECT_THEME)) {
+    if (subject?.toLowerCase().includes(key.toLowerCase())) return SUBJECT_THEME[key];
+  }
+  return DEFAULT_THEME;
+};
+
 const timeAgo = (iso: string, t: TFn): string => {
   const diff = Date.now() - new Date(iso).getTime();
   const m = Math.floor(diff / 60000);
@@ -149,29 +171,32 @@ export default function MarketplaceHomeScreen() {
         ) : (
           visible.map((q) => {
             const urgent = isUrgent(q);
+            const theme = subjectTheme(q.subject);
+            const iconName = subjectIcon(q.subject).replace('-outline', '') as IconName;
             return (
               <TouchableOpacity
                 key={q.id}
                 activeOpacity={0.9}
-                style={styles.card}
+                style={[styles.card, { shadowColor: theme.accent }]}
                 onPress={() => navigation.navigate(Routes.QuestionDetail, { questionId: q.id })}
               >
                 <LinearGradient
-                  colors={[Colors.primaryFixed + '33', Colors.primary + '22']}
+                  colors={theme.grad}
                   style={styles.thumb}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                 >
-                  <Ionicons name={subjectIcon(q.subject)} size={36} color={Colors.primary} />
+                  <Ionicons name={iconName} size={38} color="#fff" />
                 </LinearGradient>
 
                 <View style={styles.cardBody}>
                   <View style={styles.badgeRow}>
-                    <View style={styles.subjectChip}>
-                      <Text style={styles.subjectChipText} numberOfLines={1}>{q.subject}</Text>
+                    <View style={[styles.subjectChip, { backgroundColor: theme.tint }]}>
+                      <Text style={[styles.subjectChipText, { color: theme.accent }]} numberOfLines={1}>{q.subject}</Text>
                     </View>
                     {urgent && (
                       <View style={styles.urgentChip}>
+                        <Ionicons name="flame" size={10} color="#fff" />
                         <Text style={styles.urgentChipText}>{t('marketplace.urgent')}</Text>
                       </View>
                     )}
@@ -181,23 +206,27 @@ export default function MarketplaceHomeScreen() {
                     <Ionicons name="time-outline" size={12} color={Colors.outline} />
                     <Text style={styles.metaText}>{timeAgo(q.createdAt, t)}</Text>
                     <Text style={styles.metaDot}>•</Text>
-                    <Ionicons name="chatbubble-outline" size={12} color={Colors.outline} />
+                    <View style={[styles.statusDot, { backgroundColor: q.isResolved ? Colors.outline : '#0a8f5f' }]} />
                     <Text style={styles.metaText}>{q.isResolved ? t('marketplace.resolved') : t('marketplace.open')}</Text>
                   </View>
 
                   <View style={styles.bottomRow}>
-                    <Text style={styles.price}>{q.price.toFixed(2)} AZN</Text>
+                    <View style={[styles.priceChip, { backgroundColor: theme.tint }]}>
+                      <Ionicons name="cash" size={13} color={theme.accent} />
+                      <Text style={[styles.price, { color: theme.accent }]}>{q.price.toFixed(2)} AZN</Text>
+                    </View>
                     <TouchableOpacity
                       activeOpacity={0.85}
                       onPress={() => navigation.navigate(Routes.QuestionDetail, { questionId: q.id })}
                     >
                       <LinearGradient
-                        colors={GRADIENT}
-                        style={styles.answerBtn}
+                        colors={theme.grad}
+                        style={[styles.answerBtn, { shadowColor: theme.accent }]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                       >
                         <Text style={styles.answerBtnText}>{t('marketplace.answerVerb')}</Text>
+                        <Ionicons name="arrow-forward" size={13} color="#fff" />
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -279,11 +308,12 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row', gap: 14,
     backgroundColor: Colors.surfaceLowest,
-    borderRadius: 18, padding: 14,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.06, shadowRadius: 24, elevation: 2,
+    borderRadius: 22, padding: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.13, shadowRadius: 20, elevation: 3,
   },
   thumb: {
-    width: 88, height: 88, borderRadius: 16,
+    width: 84, height: 84, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
@@ -291,29 +321,35 @@ const styles = StyleSheet.create({
 
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   subjectChip: {
-    backgroundColor: Colors.primary + '1A',
-    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4,
     maxWidth: '70%',
   },
-  subjectChipText: { fontSize: 10, fontWeight: '700', color: Colors.primary },
+  subjectChipText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
   urgentChip: {
-    backgroundColor: Colors.error + '1A',
-    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: '#EF4444',
+    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4,
   },
   urgentChipText: {
-    fontSize: 9, fontWeight: '800', color: Colors.error,
-    letterSpacing: 0.8,
+    fontSize: 9, fontWeight: '900', color: '#fff',
+    letterSpacing: 0.8, textTransform: 'uppercase',
   },
 
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
   metaText: { fontSize: 11, color: Colors.textSecondary, fontWeight: '500' },
   metaDot: { fontSize: 11, color: Colors.outline, marginHorizontal: 2 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
 
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  price: { fontSize: 17, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
+  priceChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12,
+  },
+  price: { fontSize: 15, fontWeight: '900', letterSpacing: -0.3 },
   answerBtn: {
-    paddingHorizontal: 18, paddingVertical: 8, borderRadius: 999,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 16, paddingVertical: 9, borderRadius: 999,
+    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 12, elevation: 3,
   },
   answerBtnText: { fontSize: 12, fontWeight: '800', color: '#fff' },
 
