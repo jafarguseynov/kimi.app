@@ -839,9 +839,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Exams' as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: Colors.primaryLight }]}>
-                  <Ionicons name="document-text-outline" size={24} color={Colors.primary} />
-                </View>
+                <LinearGradient colors={['#0077b6', '#47b4fa']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#0077b6' }]}>
+                  <Ionicons name="document-text" size={24} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qStartExam')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -849,9 +849,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate(Routes.AIMentor as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: '#f3e8ff' }]}>
-                  <Ionicons name="hardware-chip-outline" size={24} color="#7c3aed" />
-                </View>
+                <LinearGradient colors={['#7c3aed', '#a855f7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#7c3aed' }]}>
+                  <Ionicons name="hardware-chip" size={24} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qAiAsk')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -859,9 +859,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherList } as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: '#ecfdf5' }]}>
-                  <Ionicons name="school-outline" size={24} color="#059669" />
-                </View>
+                <LinearGradient colors={['#059669', '#34d399']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#059669' }]}>
+                  <Ionicons name="school" size={24} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qFindTeacher')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -869,9 +869,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Calculators' as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: Colors.warningLight }]}>
-                  <Ionicons name="calculator-outline" size={24} color={Colors.warning} />
-                </View>
+                <LinearGradient colors={['#d97706', '#fbbf24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#d97706' }]}>
+                  <Ionicons name="calculator" size={24} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qCalc')}</Text>
               </TouchableOpacity>
             </View>
@@ -883,9 +883,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Learn' as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: '#dbeafe' }]}>
-                  <Ionicons name="book-outline" size={24} color="#2563eb" />
-                </View>
+                <LinearGradient colors={['#2563eb', '#60a5fa']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#2563eb' }]}>
+                  <Ionicons name="book" size={24} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qLearn')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -893,9 +893,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Marketplace' as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: '#fef3c7' }]}>
-                  <Ionicons name="help-circle-outline" size={26} color="#d97706" />
-                </View>
+                <LinearGradient colors={['#ea580c', '#fb923c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#ea580c' }]}>
+                  <Ionicons name="help-circle" size={28} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qMarket')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -903,9 +903,9 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Bookmarks' as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: '#fce7f3' }]}>
-                  <Ionicons name="bookmark-outline" size={24} color="#db2777" />
-                </View>
+                <LinearGradient colors={['#db2777', '#f472b6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#db2777' }]}>
+                  <Ionicons name="bookmark" size={24} color="#fff" />
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qSaved')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -913,12 +913,12 @@ export default function HomeScreen({ navigation }: Props) {
                 activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Chat' as never)}
               >
-                <View style={[styles.quickItemIcon, { backgroundColor: '#e0e7ff' }]}>
-                  <Ionicons name="chatbubbles-outline" size={24} color="#4f46e5" />
+                <LinearGradient colors={['#4f46e5', '#818cf8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#4f46e5' }]}>
+                  <Ionicons name="chatbubbles" size={24} color="#fff" />
                   {badges.messages > 0 && (
                     <UnreadDot count={1} style={{ position: 'absolute', top: -2, right: -2 }} />
                   )}
-                </View>
+                </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qMessage')}</Text>
               </TouchableOpacity>
             </View>
@@ -2225,7 +2225,10 @@ const styles = StyleSheet.create({
   quickSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
   quickRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
   quickItem: { flex: 1, alignItems: 'center', gap: 8 },
-  quickItemIcon: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  quickItemIcon: {
+    width: 58, height: 58, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+    shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.28, shadowRadius: 10, elevation: 4,
+  },
   quickItemLabel: { fontSize: 9, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center', lineHeight: 13 },
 
   // ── Student: Today's Tasks ─────────────────────────────────────────────
