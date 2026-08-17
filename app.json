@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "kimi-az-mobile",
+    "name": "Kimi.az",
     "slug": "kimi-az-mobile",
     "scheme": "kimiaz",
-    "version": "1.1.4",
+    "version": "1.1.5",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,11 +21,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jafarstudio.kimi",
-      "buildNumber": "105",
-      "associatedDomains": [
-        "applinks:kimi.az",
-        "applinks:www.kimi.az"
-      ],
+      "buildNumber": "106",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -33,7 +29,7 @@
     "android": {
       "package": "com.jafarstudio.kimi",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 112,
+      "versionCode": 114,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -45,15 +41,29 @@
           "action": "VIEW",
           "autoVerify": true,
           "data": [
-            { "scheme": "https", "host": "kimi.az", "pathPrefix": "/join" },
-            { "scheme": "https", "host": "www.kimi.az", "pathPrefix": "/join" }
+            {
+              "scheme": "https",
+              "host": "kimi.az",
+              "pathPrefix": "/join"
+            },
+            {
+              "scheme": "https",
+              "host": "www.kimi.az",
+              "pathPrefix": "/join"
+            }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "blockedPermissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE_MICROPHONE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.FOREGROUND_SERVICE"
       ]
     },
     "web": {
@@ -61,6 +71,7 @@
     },
     "plugins": [
       "./plugins/withLetsEncryptTrust",
+      "./plugins/withAndroid16Compat",
       "expo-secure-store",
       [
         "expo-notifications",
@@ -86,6 +97,16 @@
           "photosPermission": "Profil şəklinizi seçmək üçün Kimi.az tətbiqi qalereyaya giriş istəyir.",
           "cameraPermission": "Profil şəkli çəkmək üçün Kimi.az tətbiqi kameraya giriş istəyir.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "buildToolsVersion": "36.0.0"
+          }
         }
       ]
     ],
