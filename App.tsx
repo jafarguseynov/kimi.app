@@ -6,13 +6,22 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import RootNavigator from './src/navigation/RootNavigator';
+import RootErrorBoundary from './src/components/common/RootErrorBoundary';
 import { Routes } from './src/constants/routes';
 import {
   ensureNotificationChannels,
   addNotificationResponseListener,
+  getLastNotificationResponseInfo,
   refreshTokenIfGranted,
+  setBadgeCount,
+  type NotificationResponseInfo,
 } from './src/utils/push';
-import { savePushToken } from './src/api/notification.api';
+import {
+  claimNotificationResponse,
+  runWhenNavigationReady,
+  flushPendingNavigation,
+} from './src/utils/notificationRouting';
+import { savePushToken, getUnreadCount } from './src/api/notification.api';
 import { useAuthStore } from './src/store/auth.store';
 import { useSettingsStore } from './src/store/settings.store';
 import { useTranslation } from './src/i18n';
@@ -120,6 +129,15 @@ export default function App() {
       if (!cancelled && token) {
         savePushToken(token).catch(() => {});
       }
+      // App ikon nişanını serverdəki oxunmamış bildiriş sayı ilə sinxronla
+      // (açılışda + hər ön plana qayıdışda). Beləcə istifadəçi başqa cihazda
+      // oxusa və ya push gəlməsə belə nişan həqiqi sayı göstərir.
+      try {
+        const count = await getUnreadCount();
+        if (!cancelled) setBadgeCount(count);
+      } catch {
+        /* say alına bilmədi — kritik deyil */
+      }
     };
     // 1) Açılışda dərhal. 2) Tətbiq ön plana qayıdanda təkrar — beləcə yeni istifadəçi
     // priming ekranında icazə verib, lakin ilk token cəhdi boş qayıdıbsa (APNs/FCM hələ
@@ -137,53 +155,75 @@ export default function App() {
     ensureNotificationChannels();
 
     // İstifadəçi bildirişə toxunduqda → uyğun ekrana keç (default: Bildirişlər).
-    const sub = addNotificationResponseListener((data) => {
-      if (!navigationRef.isReady()) return;
-      try {
-        switch (data?.type) {
-          case 'chat_message':
-            // Birbaşa həmin söhbəti aç (chatId varsa); yoxdursa siyahıya keç.
-            if (data?.chatId) {
-              (navigationRef as any).navigate('Chat', {
-                screen: Routes.ChatRoom,
-                params: {
-                  chatId: data.chatId,
-                  name: data.senderName || '',
-                  userId: data.senderId,
-                },
-              });
-            } else {
-              navigationRef.navigate(Routes.ChatList as never);
+    // ⚠️ Naviqasiya YALNIZ `claimNotificationResponse()` icazə verəndə baş verir.
+    // Android köhnə Intent extras-ını proses hər bərpa olunanda təkrar emit edir —
+    // o təkrarlar burada kəsilir (bax: utils/notificationRouting.ts).
+    const handleResponse = async (res: NotificationResponseInfo) => {
+      const allowed = await claimNotificationResponse(res);
+      if (!allowed) return;
+      const data = res.data ?? {};
+      runWhenNavigationReady(
+        () => navigationRef.isReady(),
+        () => {
+          try {
+            switch (data?.type) {
+              case 'chat_message':
+                // Birbaşa həmin söhbəti aç (chatId varsa); yoxdursa siyahıya keç.
+                if (data?.chatId) {
+                  (navigationRef as any).navigate('Chat', {
+                    screen: Routes.ChatRoom,
+                    params: {
+                      chatId: data.chatId,
+                      name: data.senderName || '',
+                      userId: data.senderId,
+                    },
+                  });
+                } else {
+                  navigationRef.navigate(Routes.ChatList as never);
+                }
+                break;
+              case 'lesson_request_interest':
+                navigationRef.navigate(Routes.MyRequests as never);
+                break;
+              case 'booking_new':
+              case 'booking_status':
+                navigationRef.navigate(Routes.BookingHistory as never);
+                break;
+              default:
+                navigationRef.navigate(Routes.Notifications as never);
             }
-            break;
-          case 'lesson_request_interest':
-            navigationRef.navigate(Routes.MyRequests as never);
-            break;
-          case 'booking_new':
-          case 'booking_status':
-            navigationRef.navigate(Routes.BookingHistory as never);
-            break;
-          default:
+          } catch {
             navigationRef.navigate(Routes.Notifications as never);
-        }
-      } catch {
-        navigationRef.navigate(Routes.Notifications as never);
-      }
-    });
+          }
+        },
+      );
+    };
+
+    const sub = addNotificationResponseListener((res) => { handleResponse(res); });
+
+    // Soyuq başlanğıc: tətbiq bildirişə toxunularaq açılıbsa, cavab bu dinləyici
+    // qurulmazdan əvvəl emit olunmuş ola bilər. Nativ keşdəki sonuncu cavabı da
+    // yoxlayırıq — `claimNotificationResponse` təkrarı onsuz da bloklayır.
+    const initial = getLastNotificationResponseInfo();
+    if (initial) handleResponse(initial);
 
     return () => sub?.remove();
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <NavigationContainer ref={navigationRef} linking={linking}>
-            <OfflineBootstrap />
-            <RootNavigator />
-          </NavigationContainer>
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    // Xəta tutucusu ƏN XARİCDƏDİR — provider-lərin birində baş verən xəta da
+    // ağ ekran yox, izahlı "yenidən cəhd et" ekranı ilə nəticələnsin.
+    <RootErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <NavigationContainer ref={navigationRef} linking={linking} onReady={flushPendingNavigation}>
+              <OfflineBootstrap />
+              <RootNavigator />
+            </NavigationContainer>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </RootErrorBoundary>
   );
 }

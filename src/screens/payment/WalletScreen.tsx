@@ -16,6 +16,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { getWallet, getTransactions, TransactionItem } from '../../api/payment.api';
+import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { Routes } from '../../constants/routes';
@@ -75,14 +76,31 @@ export default function WalletScreen() {
     queryFn: getTransactions,
   });
 
+  // Real referal məlumatı (kod + dəvət olunanların sayı) — placeholder əvəzinə.
+  const { data: referral } = useQuery<{ code?: string; link?: string }>({
+    queryKey: ['referral'],
+    queryFn: () => client.get('/referral/link').then((r) => r.data).catch(() => ({})),
+  });
+  const { data: friends = [] } = useQuery<any[]>({
+    queryKey: ['referral-friends'],
+    queryFn: () => client.get('/referral/friends').then((r) => r.data).catch(() => []),
+  });
+
   const isLoading = walletLoading || txLoading;
-  const balance = wallet?.balance ?? 45.0;
+  const balance = wallet?.balance ?? 0;
   const totalEarnings = transactions
     .filter((t) => t.type === 'earn' || t.type === 'topup')
     .reduce((sum, t) => sum + t.amount, 0);
+  const invitedCount = Array.isArray(friends) ? friends.length : 0;
+  const referralCode = referral?.code ?? '';
 
-  const handleShare = () =>
-    Share.share({ message: t('pay.walletShareMessage') });
+  const handleShare = () => {
+    const target = referral?.link || referralCode;
+    const msg = target
+      ? `Kimi.az-a mənim dəvət kodumla qoşul: ${target}`
+      : t('pay.walletShareMessage');
+    Share.share({ message: msg });
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -136,7 +154,7 @@ export default function WalletScreen() {
                   </View>
                   <View style={styles.bentoInfo}>
                     <Text style={styles.bentoLabel}>{t('pay.totalEarnings')}</Text>
-                    <Text style={styles.bentoValue}>{totalEarnings > 0 ? formatCurrency(totalEarnings) : '120.00 AZN'}</Text>
+                    <Text style={styles.bentoValue}>{formatCurrency(totalEarnings)}</Text>
                   </View>
                 </View>
                 <View style={styles.bentoCard}>
@@ -145,7 +163,7 @@ export default function WalletScreen() {
                   </View>
                   <View style={styles.bentoInfo}>
                     <Text style={styles.bentoLabel}>{t('pay.invited')}</Text>
-                    <Text style={styles.bentoValue}>24 Nəfər</Text>
+                    <Text style={styles.bentoValue}>{invitedCount} {t('pay.peopleUnit')}</Text>
                   </View>
                 </View>
               </View>
@@ -189,7 +207,7 @@ export default function WalletScreen() {
               <View style={styles.shareCard}>
                 <Text style={styles.shareCardTitle}>{t('pay.yourReferralCode')}</Text>
                 <View style={styles.codeRow}>
-                  <Text style={styles.codeText}>KIMI7788</Text>
+                  <Text style={styles.codeText}>{referralCode || '—'}</Text>
                   <TouchableOpacity onPress={handleShare} activeOpacity={0.7}>
                     <Ionicons name="copy-outline" size={20} color={Colors.textSecondary} />
                   </TouchableOpacity>

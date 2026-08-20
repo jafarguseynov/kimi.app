@@ -10,6 +10,8 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import RoleSelectScreen from '../screens/auth/RoleSelectScreen';
 import ProfileSetupScreen from '../screens/onboarding/ProfileSetupScreen';
 import AIOnboardingScreen from '../screens/onboarding/AIOnboardingScreen';
+import TermsOfServiceScreen from '../screens/settings/TermsOfServiceScreen';
+import PrivacyPolicyScreen from '../screens/settings/PrivacyPolicyScreen';
 import { useWelcomeStore } from '../store/welcome.store';
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
@@ -32,6 +34,9 @@ export default function AuthNavigator() {
       <Stack.Screen name={Routes.RoleSelect} component={RoleSelectScreen} />
       <Stack.Screen name={Routes.ProfileSetup} component={ProfileSetupScreen} />
       <Stack.Screen name={Routes.AIOnboarding} component={AIOnboardingScreen} />
+      {/* Qeydiyyatda razılıq mətnləri — istifadəçi təsdiqləməzdən əvvəl oxuya bilsin */}
+      <Stack.Screen name={Routes.TermsOfService} component={TermsOfServiceScreen} />
+      <Stack.Screen name={Routes.PrivacyPolicy} component={PrivacyPolicyScreen} />
     </Stack.Navigator>
   );
 }

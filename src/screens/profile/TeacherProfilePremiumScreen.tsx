@@ -1,31 +1,73 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Share, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
-
-const AVATAR = `https://api.dicebear.com/8.x/initials/png?seed=${encodeURIComponent('Aysel Məmmədova')}&backgroundColor=eef1f3&textColor=006190`;
-
-type StatItem = { icon: keyof typeof Ionicons.glyphMap; labelKey: string; value: string; suffix?: string };
-const STATS: StatItem[] = [
-  { icon: 'briefcase-outline', labelKey: 'teacherPremium.statExperience', value: '8 il' },
-  { icon: 'cash-outline', labelKey: 'teacherPremium.statPrice', value: '30 ₼', suffix: '/saat' },
-  { icon: 'laptop-outline', labelKey: 'teacherPremium.statFormat', value: 'Hibrid' },
-];
-
-const SUBJECTS = [
-  'Abituriyent Riyaziyyat',
-  'Məntiq (Magistratura)',
-  'Olimpiada hazırlığı',
-  'Buraxılış imtahanı',
-];
+import { Routes } from '../../constants/routes';
+import { useUserStore } from '../../store/user.store';
+import { getMe } from '../../api/user.api';
+import { getTeacherReviews } from '../../api/booking.api';
+import { getVideoThumbnail } from '../../utils/video';
 
 export default function TeacherProfilePremiumScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const storeUser = useUserStore((s) => s.user);
+
+  // Müəllimin ÖZ profili — real məlumatı serverdən çək (store köhnə ola bilər).
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
+  const d: any = { ...(storeUser as any), ...((me as any) ?? {}) };
+  const teacherId: string | undefined = d?.id;
+
+  // Reytinq + rəy sayı — şagirdin gördüyü ilə eyni mənbədən.
+  const { data: reviewsData } = useQuery({
+    queryKey: ['teacherReviews', teacherId],
+    queryFn: () => getTeacherReviews(teacherId as string).catch(() => []),
+    enabled: !!teacherId,
+  });
+  const reviews = Array.isArray(reviewsData) ? reviewsData : [];
+  const reviewCount = reviews.length;
+  const avgRating = reviewCount > 0
+    ? reviews.reduce((s, r) => s + r.rating, 0) / reviewCount
+    : Number(d?.rating ?? 0);
+
+  const name: string = d?.name ?? t('teacherPremium.defaultName');
+  const avatarUrl: string | undefined = d?.avatarUrl || undefined;
+  const initialsAvatar = `https://api.dicebear.com/8.x/initials/png?seed=${encodeURIComponent(name)}&backgroundColor=eef1f3&textColor=006190`;
+  const isVerified: boolean = !!d?.isVerified;
+
+  const subjects: string[] = Array.isArray(d?.subjects) ? d.subjects.filter(Boolean) : [];
+  const roleLine = subjects.length ? subjects.join(' · ') : (d?.headline || d?.areaName || '');
+  const bio: string = (d?.bio ?? '').trim();
+
+  // Dərs formatı etiketi
+  const formatLabel = (f: string) =>
+    f === 'online' ? t('editProfile.formatOnline') : f === 'home' ? t('editProfile.formatHome') : f === 'course' ? t('editProfile.formatCourse') : f;
+  const formats: string[] = Array.isArray(d?.lessonFormats) ? d.lessonFormats.filter(Boolean) : [];
+  const formatValue = formats.length ? formats.map(formatLabel).join(', ') : '—';
+
+  const experienceYears = Number(d?.experienceYears ?? 0);
+  const hourlyRate = Number(d?.hourlyRate ?? 0);
+  const introVideoUrl: string | undefined = d?.introVideoUrl || undefined;
+  const introThumb = getVideoThumbnail(introVideoUrl);
+
+  const stats: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string; suffix?: string }[] = [
+    { icon: 'briefcase-outline', label: t('teacherPremium.statExperience'), value: experienceYears > 0 ? `${experienceYears} ${t('editProfile.yearUnit')}` : '—' },
+    { icon: 'cash-outline', label: t('teacherPremium.statPrice'), value: hourlyRate > 0 ? `${hourlyRate} ₼` : '—', suffix: hourlyRate > 0 ? '/saat' : undefined },
+    { icon: 'laptop-outline', label: t('teacherPremium.statFormat'), value: formatValue },
+  ];
+
+  const openIntro = () => { if (introVideoUrl) Linking.openURL(introVideoUrl).catch(() => {}); };
+
+  const handleShare = () => {
+    Share.share({
+      message: t('teacherProfile.shareMsg', { name, subject: subjects[0] ?? '' }),
+    }).catch(() => {});
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -44,8 +86,8 @@ export default function TeacherProfilePremiumScreen() {
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn} hitSlop={6}>
               <Ionicons name="arrow-back" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navBtn} hitSlop={6}>
-              <Ionicons name="ellipsis-vertical" size={20} color={Colors.textPrimary} />
+            <TouchableOpacity style={styles.navBtn} hitSlop={6} onPress={handleShare}>
+              <Ionicons name="share-outline" size={20} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -53,36 +95,38 @@ export default function TeacherProfilePremiumScreen() {
         {/* Profile header */}
         <View style={styles.profileHeader}>
           <View style={styles.avatarWrap}>
-            <Image source={{ uri: AVATAR }} style={styles.avatar} />
+            <Image source={{ uri: avatarUrl ?? initialsAvatar }} style={styles.avatar} />
           </View>
 
           <View style={styles.nameRow}>
-            <Text style={styles.name}>Aysel Məmmədova</Text>
-            <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />
+            <Text style={styles.name}>{name}</Text>
+            {isVerified && <Ionicons name="checkmark-circle" size={20} color={Colors.primary} />}
           </View>
-          <Text style={styles.role}>Riyaziyyat və Məntiq</Text>
+          {!!roleLine && <Text style={styles.role}>{roleLine}</Text>}
 
           <View style={styles.badgeRow}>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={14} color="#F59E0B" />
-              <Text style={styles.ratingValue}>4.9</Text>
-              <Text style={styles.ratingSub}>{t('teacherPremium.reviews', { count: 124 })}</Text>
+              <Text style={styles.ratingValue}>{avgRating.toFixed(1)}</Text>
+              <Text style={styles.ratingSub}>{t('teacherPremium.reviews', { count: reviewCount })}</Text>
             </View>
-            <View style={styles.superBadge}>
-              <Ionicons name="school" size={14} color={Colors.primary} />
-              <Text style={styles.superBadgeText}>{t('teacherPremium.superTeacher')}</Text>
-            </View>
+            {isVerified && (
+              <View style={styles.superBadge}>
+                <Ionicons name="school" size={14} color={Colors.primary} />
+                <Text style={styles.superBadgeText}>{t('teacherPremium.superTeacher')}</Text>
+              </View>
+            )}
           </View>
         </View>
 
         {/* Quick stats */}
         <View style={styles.statsGrid}>
-          {STATS.map((s) => (
-            <View key={s.labelKey} style={styles.statCard}>
+          {stats.map((s) => (
+            <View key={s.label} style={styles.statCard}>
               <View style={styles.statIconBubble}>
                 <Ionicons name={s.icon} size={18} color={Colors.primary} />
               </View>
-              <Text style={styles.statLabel}>{t(s.labelKey)}</Text>
+              <Text style={styles.statLabel}>{s.label}</Text>
               <Text style={styles.statValue}>
                 {s.value}
                 {s.suffix && <Text style={styles.statSuffix}>{s.suffix}</Text>}
@@ -97,57 +141,68 @@ export default function TeacherProfilePremiumScreen() {
             <Ionicons name="person-circle-outline" size={20} color={Colors.primary} />
             <Text style={styles.sectionTitle}>{t('teacherPremium.aboutTitle')}</Text>
           </View>
-          <Text style={styles.bioText} numberOfLines={3}>
-            Salam! Mən Aysel, 8 illik pedaqoji təcrübəyə malik Riyaziyyat və Məntiq müəllimiyəm. Şagirdlərimə riyaziyyatı sevdirmək və mürəkkəb mövzuları sadə yollarla izah etmək mənim əsas məqsədimdir. Hər bir şagirdin fərdi öyrənmə tərzinə uyğun yanaşma tətbiq edirəm.
+          <Text style={styles.bioText}>
+            {bio || t('teacherPremium.aboutEmpty')}
           </Text>
-          <TouchableOpacity hitSlop={6}>
-            <Text style={styles.readMore}>{t('teacherPremium.readMore')}</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Subjects */}
-        <View style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <Ionicons name="book-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>{t('teacherPremium.subjectsTitle')}</Text>
+        {subjects.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="book-outline" size={20} color={Colors.primary} />
+              <Text style={styles.sectionTitle}>{t('teacherPremium.subjectsTitle')}</Text>
+            </View>
+            <View style={styles.chipWrap}>
+              {subjects.map((s) => (
+                <View key={s} style={styles.chip}>
+                  <Text style={styles.chipText}>{s}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-          <View style={styles.chipWrap}>
-            {SUBJECTS.map((s) => (
-              <View key={s} style={styles.chip}>
-                <Text style={styles.chipText}>{s}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+        )}
 
-        {/* Education */}
-        <View style={styles.section}>
-          <View style={styles.sectionTitleRow}>
-            <Ionicons name="library-outline" size={20} color={Colors.primary} />
-            <Text style={styles.sectionTitle}>{t('teacherPremium.educationTitle')}</Text>
-          </View>
-          <View style={styles.eduRow}>
-            <View style={styles.eduIcon}>
-              <Ionicons name="school-outline" size={22} color={Colors.textSecondary} />
+        {/* Tanıtım videosu — qapaq şəkli (şagirdin gördüyü kimi) */}
+        {!!introVideoUrl && (
+          <View style={styles.section}>
+            <View style={styles.sectionTitleRow}>
+              <Ionicons name="logo-youtube" size={20} color="#e11d48" />
+              <Text style={styles.sectionTitle}>{t('teacherProfile.introVideoLabel')}</Text>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.eduName}>Bakı Dövlət Universiteti</Text>
-              <Text style={styles.eduSpec}>Tətbiqi Riyaziyyat (Bakalavr və Magistr)</Text>
-              <Text style={styles.eduYears}>2010 - 2016</Text>
-            </View>
+            {introThumb ? (
+              <TouchableOpacity style={styles.videoThumb} activeOpacity={0.9} onPress={openIntro}>
+                <Image source={{ uri: introThumb }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.55)']}
+                  style={StyleSheet.absoluteFill}
+                  start={{ x: 0.5, y: 0.3 }}
+                  end={{ x: 0.5, y: 1 }}
+                />
+                <View style={styles.videoPlayBig}>
+                  <Ionicons name="play" size={26} color="#fff" style={{ marginLeft: 3 }} />
+                </View>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.videoRow} activeOpacity={0.85} onPress={openIntro}>
+                <Ionicons name="play-circle" size={22} color={Colors.primary} />
+                <Text style={styles.videoRowText}>{t('teacherProfile.introVideoWatch')}</Text>
+                <Ionicons name="open-outline" size={16} color={Colors.textSecondary} />
+              </TouchableOpacity>
+            )}
           </View>
-        </View>
+        )}
 
         <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* Sticky bottom actions */}
       <View style={styles.bottomBar}>
-        <TouchableOpacity style={styles.shareBtn} activeOpacity={0.85}>
+        <TouchableOpacity style={styles.shareBtn} activeOpacity={0.85} onPress={handleShare}>
           <Ionicons name="share-outline" size={18} color={Colors.textPrimary} />
           <Text style={styles.shareBtnText}>{t('teacherPremium.share')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.9} style={{ flex: 1 }}>
+        <TouchableOpacity activeOpacity={0.9} style={{ flex: 1 }} onPress={() => navigation.navigate(Routes.EditProfile)}>
           <LinearGradient
             colors={[Colors.gradientStart, Colors.gradientEnd]}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -240,7 +295,6 @@ const styles = StyleSheet.create({
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   sectionTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary, letterSpacing: -0.3 },
   bioText: { fontSize: 14, color: Colors.textSecondary, lineHeight: 22 },
-  readMore: { fontSize: 13, fontWeight: '600', color: Colors.primary, marginTop: 6 },
 
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
@@ -250,15 +304,23 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, color: Colors.textPrimary },
 
-  eduRow: { flexDirection: 'row', gap: 14, alignItems: 'flex-start' },
-  eduIcon: {
-    width: 48, height: 48, borderRadius: 14,
-    backgroundColor: Colors.surfaceContainer,
-    alignItems: 'center', justifyContent: 'center',
+  videoRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
-  eduName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  eduSpec: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  eduYears: { fontSize: 11, color: Colors.textMuted, marginTop: 4 },
+  videoRowText: { flex: 1, fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
+  videoThumb: {
+    width: '100%', aspectRatio: 16 / 9, borderRadius: 16, overflow: 'hidden',
+    backgroundColor: Colors.surfaceLow, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  videoPlayBig: {
+    width: 58, height: 58, borderRadius: 29,
+    backgroundColor: 'rgba(225,29,72,0.92)',
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 5,
+  },
 
   bottomBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,

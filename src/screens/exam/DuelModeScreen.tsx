@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { createDuelInvite } from '../../api/duel.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -30,12 +31,42 @@ const BOT_NAMES = ['Robo-Kimi', 'AI Murad', 'Beyin-Bot', 'Cyber-Aysu'];
 export default function DuelModeScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<any>();
-  const [mode, setMode] = useState<Mode>('bot');
+  const route = useRoute<any>();
+  // Dostdan-dosta çağırış: MyFriends "Yarış" düyməsindən gəlir.
+  const challengeFriend: { id: string; name: string } | undefined = route.params?.challengeFriend;
+  const [mode, setMode] = useState<Mode>(challengeFriend ? 'live' : 'bot');
   const [subject, setSubject] = useState<string>('Riyaziyyat');
   const [stake, setStake] = useState<number>(25);
   const [questionCount, setQuestionCount] = useState<number>(10);
+  const [sending, setSending] = useState(false);
 
-  const start = () => {
+  const start = async () => {
+    // Dosta adresli çağırış → real dəvət yarat, sonra xüsusi növbədə gözlə.
+    if (challengeFriend) {
+      if (sending) return;
+      setSending(true);
+      try {
+        const invite = await createDuelInvite(challengeFriend.id, { subject, questionCount, stake });
+        navigation.replace(Routes.DuelMatch, {
+          mode: 'live',
+          opponentName: challengeFriend.name,
+          subject,
+          questionCount,
+          prize: stake * 2,
+          stake,
+          inviteCode: invite.id,
+        });
+      } catch (e: any) {
+        Alert.alert(
+          t('duel.prep'),
+          e?.response?.data?.message || t('duel.inviteFailed'),
+        );
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     if (mode === 'bot') {
       const botName = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
       navigation.replace(Routes.DuelMatch, {
@@ -92,7 +123,21 @@ export default function DuelModeScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        {/* Dosta çağırış başlığı */}
+        {challengeFriend && (
+          <View style={styles.friendBanner}>
+            <View style={styles.friendBannerIcon}>
+              <Ionicons name="flash" size={20} color={Colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.friendBannerTitle}>{t('duel.inviteFriendTitle', { name: challengeFriend.name })}</Text>
+              <Text style={styles.friendBannerSub}>{t('duel.inviteFriendSub')}</Text>
+            </View>
+          </View>
+        )}
+
         {/* Step 1: Mode */}
+        {!challengeFriend && (
         <View style={styles.section}>
           <View style={styles.stepHead}>
             <View style={styles.stepNum}><Text style={styles.stepNumText}>1</Text></View>
@@ -140,6 +185,7 @@ export default function DuelModeScreen() {
             </TouchableOpacity>
           </View>
         </View>
+        )}
 
         {/* Step 2: Subject */}
         <View style={styles.section}>
@@ -234,7 +280,7 @@ export default function DuelModeScreen() {
         </View>
 
         {/* CTA */}
-        <TouchableOpacity activeOpacity={0.9} onPress={start} style={{ marginTop: 8 }}>
+        <TouchableOpacity activeOpacity={0.9} onPress={start} disabled={sending} style={{ marginTop: 8 }}>
           <LinearGradient
             colors={GRADIENT}
             style={styles.cta}
@@ -242,7 +288,13 @@ export default function DuelModeScreen() {
           >
             <Ionicons name="flash" size={18} color="#fff" />
             <Text style={styles.ctaText}>
-              {mode === 'bot' ? t('duel.startBot') : t('duel.findOpponent')}
+              {sending
+                ? t('duel.waitDots')
+                : challengeFriend
+                ? t('duel.inviteFriendCta', { name: challengeFriend.name })
+                : mode === 'bot'
+                ? t('duel.startBot')
+                : t('duel.findOpponent')}
             </Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -351,4 +403,17 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.28, shadowRadius: 18, elevation: 6,
   },
   ctaText: { fontSize: 14.5, fontWeight: '900', color: '#fff', letterSpacing: 0.4 },
+
+  friendBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.primaryLight,
+    borderRadius: 16, padding: 14,
+    borderWidth: 1, borderColor: Colors.primary + '33',
+  },
+  friendBannerIcon: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  friendBannerTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  friendBannerSub: { fontSize: 11.5, color: Colors.textSecondary, marginTop: 2 },
 });

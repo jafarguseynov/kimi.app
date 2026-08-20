@@ -13,11 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { HomeStackParamList } from '../../navigation/types';
-import { listMyRequests, type MyLessonRequest } from '../../api/lessonRequest.api';
+import { closeMyRequest, listMyRequests, type MyLessonRequest } from '../../api/lessonRequest.api';
 import { useTranslation } from '../../i18n';
 
 type Props = {
@@ -41,10 +41,40 @@ export default function MyRequestsScreen({ navigation }: Props) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<'active' | 'completed'>('active');
 
+  const qc = useQueryClient();
+
   const { data: requests = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['myLessonRequests'],
     queryFn: () => listMyRequests().catch(() => [] as MyLessonRequest[]),
   });
+
+  // «Müəllimimi tapdım» — sorğu bağlanır və yayımdan çıxır.
+  // Bağlandıqdan sonra açıq sorğu siyahıları da yenilənir ki, müəllimlərin
+  // ekranında qalmasın.
+  const closeReq = useMutation({
+    mutationFn: (id: string) => closeMyRequest(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['myLessonRequests'] });
+      qc.invalidateQueries({ queryKey: ['openLessonRequests'] });
+      qc.invalidateQueries({ queryKey: ['matchedLessonRequests'] });
+    },
+    onError: (e: any) => {
+      Alert.alert(
+        t('myRequests.closeErrorTitle'),
+        e?.response?.data?.message || t('myRequests.closeErrorBody'),
+      );
+    },
+  });
+
+  const confirmClose = (r: MyLessonRequest) =>
+    Alert.alert(
+      t('myRequests.closeConfirmTitle'),
+      t('myRequests.closeConfirmBody', { subject: r.subject }),
+      [
+        { text: t('myRequests.closeCancel'), style: 'cancel' },
+        { text: t('myRequests.closeConfirmCta'), onPress: () => closeReq.mutate(r.id) },
+      ],
+    );
 
   const { active, completed } = useMemo(() => {
     const a: MyLessonRequest[] = [];
@@ -200,6 +230,20 @@ export default function MyRequestsScreen({ navigation }: Props) {
                   </View>
                 </View>
 
+                {/* «Müəllimimi tapdım» — yalnız açıq sorğularda.
+                    Basıldıqda sorğu bağlanır və müəllimlərə göstərilmir. */}
+                {tab === 'active' && (
+                  <TouchableOpacity
+                    style={styles.foundBtn}
+                    activeOpacity={0.85}
+                    onPress={() => confirmClose(r)}
+                    disabled={closeReq.isPending}
+                  >
+                    <Ionicons name="checkmark-circle" size={17} color="#047857" />
+                    <Text style={styles.foundBtnText}>{t('myRequests.foundTeacher')}</Text>
+                  </TouchableOpacity>
+                )}
+
                 {/* Footer actions */}
                 <View style={styles.cardFooter}>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -345,6 +389,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 5,
   },
   chipPrimaryText: { fontSize: 11, fontWeight: '800', color: Colors.primary },
+
+  foundBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    height: 42, borderRadius: 12, marginTop: 4,
+    backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0',
+  },
+  foundBtnText: { fontSize: 13.5, fontWeight: '800', color: '#047857' },
 
   cardFooter: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',

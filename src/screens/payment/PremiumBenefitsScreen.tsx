@@ -15,6 +15,9 @@ import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
 import { PAYMENTS_ENABLED } from '../../config/iap';
+import { useReturnTab } from '../../hooks/useReturnTab';
+import { useUserStore } from '../../store/user.store';
+import TeacherPremiumScreen from './TeacherPremiumScreen';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -35,8 +38,16 @@ const BENEFITS: Benefit[] = [
 ];
 
 export default function PremiumBenefitsScreen() {
+  // Müəllim üçün bu səhifə tamamilə fərqlidir: onun premium dəyəri şagird
+  // axınıdır (sorğu/rezervasiya qapısı), AI limitləri deyil — aşağıdakı şagird
+  // məzmunu ona uyğun gəlmir. Ona görə rola görə ayrı ekran render olunur.
+  const role = useUserStore((s) => s.user?.role);
+  if (role === 'teacher') return <TeacherPremiumScreen />;
+
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
+  // Başqa tabdan (İmtahanlar, Profil, Rezervasiya) açılıbsa geri həmin taba qayıt.
+  useReturnTab();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

@@ -56,9 +56,7 @@ export default function LiveExamsListScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{t('liveExams.center')}</Text>
-        <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>

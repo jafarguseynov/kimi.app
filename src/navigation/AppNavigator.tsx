@@ -1,5 +1,7 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { AppTabParamList } from './types';
 import { Routes } from '../constants/routes';
@@ -16,6 +18,8 @@ import ChatNavigator from './ChatNavigator';
 import BookingNavigator from './BookingNavigator';
 import CalculatorNavigator from './CalculatorNavigator';
 import BookmarksScreen from '../screens/bookmarks/BookmarksScreen';
+import RequestsNavigator from './RequestsNavigator';
+import TeacherDashboardScreen from '../screens/profile/TeacherDashboardScreen';
 
 const Tab = createBottomTabNavigator<AppTabParamList>();
 
@@ -25,12 +29,35 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   [Routes.AIMentor]: 'sparkles',
   Booking: 'people',
   [Routes.Profile]: 'person',
+  // Müəllim tabları (§20)
+  [Routes.TeacherRequests]: 'clipboard',
+  Chat: 'chatbubble-ellipses',
+  [Routes.TeacherStats]: 'stats-chart',
 };
+
+/** Tab bar-da GİZLƏDİLƏN (amma naviqasiya üçün qeydiyyatda qalan) ekranın seçimləri. */
+const HIDDEN = { tabBarItemStyle: { display: 'none' as const }, tabBarButton: () => null };
 
 export default function AppNavigator() {
   const { t } = useTranslation();
+  // Aşağı naviqasiya BÜTÜN rollar üçün eynidir:
+  //   Ana səhifə · İmtahanlar · AI Mentor · Müəllimlər · Profil
+  // Müəllimə xas ekranlar (Sorğular, Mesajlar, Statistika) tab bar-da
+  // GÖRÜNMÜR, amma qeydiyyatda qalır — ana səhifədəki sürətli keçidlərdən
+  // və "Sizin üçün" tövsiyələrindən açılır.
+  const insets = useSafeAreaInsets();
+  // Android edge-to-edge (app.json: edgeToEdgeEnabled) rejimində sistem naviqasiya
+  // paneli tətbiqin üzərinə çəkilir. React Navigation normalda tab bar-a
+  // `insets.bottom` özü əlavə edir, LAKİN `tabBarStyle`-da sabit `height`/`paddingBottom`
+  // versən onun hesabını tam əvəz edir (BottomTabBar getTabBarHeight → customHeight).
+  // Ona görə insetı özümüz əlavə edirik: görünən 64dp dizayn olduğu kimi qalır,
+  // altına isə cihazın REAL safe-area boşluğu qədər sahə əlavə olunur —
+  // həm jest, həm 3 düymə rejimində düzgün işləyir. iOS-da (inset=0 verilir)
+  // mövcud görünüş dəyişmir.
+  const androidNavInset = Platform.OS === 'android' ? insets.bottom : 0;
   return (
     <Tab.Navigator
+      backBehavior="history"
       screenListeners={{ tabPress: () => hapticLight() }}
       screenOptions={({ route }) => ({
         tabBarActiveTintColor: Colors.primary,
@@ -38,9 +65,9 @@ export default function AppNavigator() {
         tabBarStyle: {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.border,
-          height: 64,
+          height: 64 + androidNavInset,
           paddingTop: 6,
-          paddingBottom: 8,
+          paddingBottom: 8 + androidNavInset,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
@@ -51,6 +78,14 @@ export default function AppNavigator() {
       })}
     >
       <Tab.Screen name={Routes.Home} component={HomeNavigator} options={{ tabBarLabel: t('nav.home') }} />
+
+      {/* ── Müəllim ekranları: gizli, ana səhifə qısayollarından açılır ── */}
+      <Tab.Screen
+        name={Routes.TeacherRequests}
+        component={RequestsNavigator}
+        options={HIDDEN}
+      />
+
       <Tab.Screen
         name="Exams"
         component={ExamNavigator}
@@ -62,7 +97,11 @@ export default function AppNavigator() {
           },
         })}
       />
-      <Tab.Screen name={Routes.AIMentor} component={AIMentorScreen} options={{ tabBarLabel: t('nav.ai') }} />
+      <Tab.Screen
+        name={Routes.AIMentor}
+        component={AIMentorScreen}
+        options={{ tabBarLabel: t('nav.ai') }}
+      />
       <Tab.Screen
         name="Booking"
         component={BookingNavigator}
@@ -76,6 +115,21 @@ export default function AppNavigator() {
           },
         })}
       />
+
+      {/* Mesajlar */}
+      <Tab.Screen
+        name="Chat"
+        component={ChatNavigator}
+        options={HIDDEN}
+      />
+
+      {/* Statistika — müəllimin şəxsi rəqəmləri */}
+      <Tab.Screen
+        name={Routes.TeacherStats}
+        component={TeacherDashboardScreen}
+        options={HIDDEN}
+      />
+
       <Tab.Screen
         name={Routes.Profile}
         component={ProfileNavigator}
@@ -103,11 +157,6 @@ export default function AppNavigator() {
       <Tab.Screen
         name={Routes.Bookmarks}
         component={BookmarksScreen}
-        options={{ tabBarItemStyle: { display: 'none' }, tabBarButton: () => null }}
-      />
-      <Tab.Screen
-        name="Chat"
-        component={ChatNavigator}
         options={{ tabBarItemStyle: { display: 'none' }, tabBarButton: () => null }}
       />
       <Tab.Screen

@@ -1,44 +1,102 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getExamResults, getCertificates } from '../../api/certificate.api';
+import { getEntitlements } from '../../api/shop.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-type RewardKind = 'xp' | 'premium';
+const XP_PER_EXAM_POINT = 10; // hər düz cavab balı = 10 XP (ProfileScreen ilə eyni)
+const XP_PER_CERT = 100; // hər sertifikat = 100 XP
+const XP_PER_LEVEL = 2000; // ProfileScreen ilə eyni səviyyə formulu
+
+type RewardKind = 'exam' | 'cert';
 
 interface RewardEntry {
   id: string;
   kind: RewardKind;
-  title: string;
   source: string;
-  amount: string;
-  when: string;
+  xp: number;
+  date: number; // epoch ms
   icon: keyof typeof Ionicons.glyphMap;
-  iconBg: string;
-  iconColor: string;
 }
-
-const TOTAL_XP = 2450;
-const PREMIUM_DAYS = 15;
-const LEVEL = 12;
-
-const HISTORY: RewardEntry[] = [
-  { id: '1', kind: 'xp', title: 'XP qazandın', source: 'Gündəlik tapşırıq tamamlandı', amount: '+50 XP', when: 'Bu gün', icon: 'star', iconBg: Colors.primaryLight, iconColor: Colors.primary },
-  { id: '2', kind: 'premium', title: 'Premium qazandın', source: 'Hədiyyə çarxı uduşu', amount: '+3 gün', when: 'Dünən', icon: 'ribbon', iconBg: Colors.warningLight, iconColor: Colors.warning },
-  { id: '3', kind: 'xp', title: 'XP qazandın', source: 'İmtahan nəticəsi: Əla', amount: '+100 XP', when: '15.05.2026', icon: 'sparkles', iconBg: Colors.primaryLight, iconColor: Colors.primary },
-  { id: '4', kind: 'xp', title: 'XP qazandın', source: 'Duel qələbəsi vs Nicat', amount: '+50 XP', when: '12.05.2026', icon: 'flash', iconBg: Colors.primaryLight, iconColor: Colors.primary },
-  { id: '5', kind: 'premium', title: 'Premium qazandın', source: 'Həftəlik missiya', amount: '+1 gün', when: '10.05.2026', icon: 'ribbon', iconBg: Colors.warningLight, iconColor: Colors.warning },
-];
 
 export default function RewardHistoryScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+
+  const { data: results = [], isLoading: loadingResults } = useQuery({
+    queryKey: ['examResults'],
+    queryFn: getExamResults,
+  });
+  const { data: certs = [], isLoading: loadingCerts } = useQuery({
+    queryKey: ['certificates'],
+    queryFn: getCertificates,
+  });
+  const { data: entitlements } = useQuery({
+    queryKey: ['entitlements'],
+    queryFn: getEntitlements,
+  });
+
+  const isLoading = loadingResults || loadingCerts;
+
+  const { totalXp, level, premiumDays, history } = useMemo(() => {
+    const examXp = results.reduce((s, r) => s + (r.score ?? 0) * XP_PER_EXAM_POINT, 0);
+    const certXp = certs.length * XP_PER_CERT;
+    const totalXp = examXp + certXp;
+    const level = Math.max(1, Math.floor(totalXp / XP_PER_LEVEL) + 1);
+
+    let premiumDays = 0;
+    if (entitlements?.premiumUntil) {
+      const diff = new Date(entitlements.premiumUntil).getTime() - Date.now();
+      premiumDays = diff > 0 ? Math.ceil(diff / (24 * 60 * 60 * 1000)) : 0;
+    }
+
+    const entries: RewardEntry[] = [
+      ...results.map((r) => ({
+        id: `exam-${r.id}`,
+        kind: 'exam' as const,
+        source: r.examTitle,
+        xp: (r.score ?? 0) * XP_PER_EXAM_POINT,
+        date: new Date(r.completedAt).getTime(),
+        icon: (r.percentage >= 90 ? 'sparkles' : 'star') as keyof typeof Ionicons.glyphMap,
+      })),
+      ...certs.map((c) => ({
+        id: `cert-${c.id}`,
+        kind: 'cert' as const,
+        source: c.examTitle,
+        xp: XP_PER_CERT,
+        date: new Date(c.issuedAt).getTime(),
+        icon: 'ribbon' as keyof typeof Ionicons.glyphMap,
+      })),
+    ]
+      .filter((e) => !isNaN(e.date))
+      .sort((a, b) => b.date - a.date)
+      .slice(0, 40);
+
+    return { totalXp, level, premiumDays, history: entries };
+  }, [results, certs, entitlements]);
+
+  const formatWhen = (ms: number): string => {
+    const d = new Date(ms);
+    const today = new Date();
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const same = (a: Date, b: Date) =>
+      a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear();
+    if (same(d, today)) return t('rewardHistory.today');
+    if (same(d, yest)) return t('rewardHistory.yesterday');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    return `${dd}.${mm}.${d.getFullYear()}`;
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -57,15 +115,21 @@ export default function RewardHistoryScreen() {
 
           <View style={styles.heroBlock}>
             <View style={styles.heroRow}>
-              <Text style={styles.heroValue}>{TOTAL_XP.toLocaleString('az-AZ')}<Text style={styles.heroUnit}>{t('rewardHistory.unitXp')}</Text></Text>
+              <Text style={styles.heroValue}>
+                {totalXp.toLocaleString('az-AZ')}
+                <Text style={styles.heroUnit}>{t('rewardHistory.unitXp')}</Text>
+              </Text>
               <View style={styles.levelBadge}>
                 <Ionicons name="medal" size={14} color="#fff" />
-                <Text style={styles.levelText}>{t('rewardHistory.level', { n: LEVEL })}</Text>
+                <Text style={styles.levelText}>{t('rewardHistory.level', { n: level })}</Text>
               </View>
             </View>
             <View style={styles.heroDivider} />
             <View style={styles.heroRow}>
-              <Text style={styles.heroValue}>{PREMIUM_DAYS}<Text style={styles.heroUnit}>{t('rewardHistory.unitDays')}</Text></Text>
+              <Text style={styles.heroValue}>
+                {premiumDays}
+                <Text style={styles.heroUnit}>{t('rewardHistory.unitDays')}</Text>
+              </Text>
               <Text style={styles.heroSub}>{t('rewardHistory.premiumStatus')}</Text>
             </View>
           </View>
@@ -74,39 +138,48 @@ export default function RewardHistoryScreen() {
         {/* List header */}
         <View style={styles.listHeader}>
           <Text style={styles.listTitle}>{t('rewardHistory.listTitle')}</Text>
-          <Ionicons name="filter" size={20} color={Colors.outline} />
         </View>
 
         {/* Transactions */}
-        <View style={{ gap: 12 }}>
-          {HISTORY.map((r) => (
-            <View key={r.id} style={styles.card}>
-              <View style={[styles.iconBox, { backgroundColor: r.iconBg }]}>
-                <Ionicons name={r.icon} size={20} color={r.iconColor} />
+        {isLoading ? (
+          <ActivityIndicator size="large" color={Colors.primary} style={{ marginTop: 24 }} />
+        ) : history.length === 0 ? (
+          <View style={styles.helper}>
+            <Ionicons name="gift-outline" size={44} color={Colors.primaryFixed} />
+            <Text style={styles.emptyTitle}>{t('rewardHistory.emptyTitle')}</Text>
+            <Text style={styles.helperText}>{t('rewardHistory.emptySub')}</Text>
+            <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.DailyMissions)}>
+              <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.helperBtn}>
+                <Text style={styles.helperBtnText}>{t('rewardHistory.helperBtn')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={{ gap: 12 }}>
+            {history.map((r) => (
+              <View key={r.id} style={styles.card}>
+                <View
+                  style={[
+                    styles.iconBox,
+                    { backgroundColor: r.kind === 'cert' ? Colors.warningLight : Colors.primaryLight },
+                  ]}
+                >
+                  <Ionicons name={r.icon} size={20} color={r.kind === 'cert' ? Colors.warning : Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>
+                    {r.kind === 'cert' ? t('rewardHistory.certEarned') : t('rewardHistory.xpEarned')}
+                  </Text>
+                  <Text style={styles.cardSub} numberOfLines={1}>{r.source}</Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={styles.amount}>+{r.xp} XP</Text>
+                  <Text style={styles.when}>{formatWhen(r.date)}</Text>
+                </View>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{r.title}</Text>
-                <Text style={styles.cardSub}>{r.source}</Text>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Text style={[styles.amount, { color: r.kind === 'xp' ? Colors.primary : Colors.warning }]}>
-                  {r.amount}
-                </Text>
-                <Text style={styles.when}>{r.when}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        {/* Empty state helper */}
-        <View style={styles.helper}>
-          <Text style={styles.helperText}>{t('rewardHistory.helperText')}</Text>
-          <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.DailyMissions)}>
-            <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.helperBtn}>
-              <Text style={styles.helperBtnText}>{t('rewardHistory.helperBtn')}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -156,15 +229,16 @@ const styles = StyleSheet.create({
   iconBox: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   cardTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
   cardSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  amount: { fontSize: 15, fontWeight: '900' },
+  amount: { fontSize: 15, fontWeight: '900', color: Colors.primary },
   when: { fontSize: 9, color: Colors.textMuted, marginTop: 2, letterSpacing: 0.8, textTransform: 'uppercase' },
 
   helper: {
     backgroundColor: Colors.surfaceLow, borderRadius: 18, padding: 24,
-    alignItems: 'center', gap: 16,
+    alignItems: 'center', gap: 12,
     borderWidth: 2, borderStyle: 'dashed', borderColor: Colors.borderLight,
   },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center' },
   helperText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, textAlign: 'center' },
-  helperBtn: { paddingHorizontal: 22, paddingVertical: 10, borderRadius: 999 },
+  helperBtn: { paddingHorizontal: 22, paddingVertical: 10, borderRadius: 999, marginTop: 4 },
   helperBtnText: { fontSize: 11, fontWeight: '900', color: '#fff', letterSpacing: 1.2 },
 });

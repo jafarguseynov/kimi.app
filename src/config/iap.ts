@@ -23,3 +23,15 @@ export const IS_IOS = Platform.OS === 'ios';
  * - iOS: yalnız-məlumat Premium səhifəsi (PremiumBenefits → qiymət/CTA yoxdur).
  */
 export const PREMIUM_ENTRY_ROUTE = PAYMENTS_ENABLED ? Routes.Plans : Routes.PremiumBenefits;
+
+/**
+ * Rola uyğun premium səhifəsi.
+ *
+ * Müəllim HƏR İKİ platformada `PremiumBenefits`-ə gedir — orada rola görə
+ * müəllim satış səhifəsi (paket seçimi daxil) render olunur. Ümumi `Plans`
+ * ekranı şagird dilində danışır (limitsiz imtahan, AI mentor), müəllimin isə
+ * paketdən aldığı şey şagird sorğularıdır.
+ * Şagird/valideyn üçün davranış DƏYİŞMİR.
+ */
+export const premiumRouteFor = (role?: string | null) =>
+  role === 'teacher' ? Routes.PremiumBenefits : PREMIUM_ENTRY_ROUTE;

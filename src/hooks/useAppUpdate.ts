@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Platform, Linking, AppState } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import { APP_VERSION_URL } from '../constants/config';
-import { useExamStore } from '../store/exam.store';
 
 // expo-updates native modulu (ExpoUpdates) yalnız EAS build-də mövcuddur.
 // Dev / run:ios build-ində olmaya bilər — statik import açılışda crash verir,
@@ -57,7 +56,6 @@ export function useAppUpdate() {
   const [otaReady, setOtaReady] = useState(false);
   const [storeUpdate, setStoreUpdate] = useState<StoreUpdate | null>(null);
   const [dismissed, setDismissed] = useState(false);
-  const otaReadyRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,28 +68,21 @@ export function useAppUpdate() {
         if (check.isAvailable) {
           await Updates.fetchUpdateAsync();
           // Yeni bundle endi → banner göstər (istifadəçi dərhal toxuna bilər).
-          if (!cancelled) { otaReadyRef.current = true; setOtaReady(true); }
+          if (!cancelled) setOtaReady(true);
         }
       } catch {
         // sükutla keç — update mexanizmi UX-i bloklamamalıdır
       }
     })();
 
-    // 1b) Qəza-TƏHLÜKƏSİZ avtomatik tətbiq: tətbiq FONDAN ÖNƏ qayıdanda hazır
-    //     OTA-nı reloadAsync ilə tətbiq et. Bu, cold-start anı DEYİL (surface artıq
-    //     qurulub) — banner-ə toxunmaqla eyni təhlükəsiz andır, "startSurface failed"
-    //     qəzası vermir. Beləcə istifadəçi banner gözləmədən yeni versiyanı alır.
-    let prevState = AppState.currentState;
-    const appSub = AppState.addEventListener('change', (next) => {
-      const cameFromBackground = prevState === 'background' || prevState === 'inactive';
-      prevState = next;
-      if (next !== 'active' || !cameFromBackground) return;
-      if (!otaReadyRef.current || !Updates?.reloadAsync) return;
-      // İmtahan gedirsə reload etmə (gedişatı kəsməsin).
-      const ex = useExamStore.getState();
-      if (ex.examId && ex.questions.length > 0) return;
-      Updates.reloadAsync().catch(() => {});
-    });
+    // 1b) ⚠️ AVTOMATİK reloadAsync QƏSDƏN SİLİNDİ (versionCode 115).
+    //     Əvvəl tətbiq fondan qayıdanda hazır OTA-nı özü tətbiq edirdi. İki problemi
+    //     vardı: (a) istifadəçi/Play yoxlayıcısı üçün tətbiq gözlənilmədən "özü-özünə
+    //     yenidən başlayır" — Play bunu anormal davranış sayır; (b) endirilən bundle
+    //     nasazdırsa, hər ön plana qayıdış onu təkrar yükləyib qəza döngəsi yaradır
+    //     (Play 113-ün rədd səbəbi: «app doesn't open or load»).
+    //     Yeni davranış: banner göstərilir (istifadəçi istəsə dərhal tətbiq edir),
+    //     əks halda expo-updates onsuz da növbəti SOYUQ başlanğıcda özü tətbiq edir.
 
     // 2) Store versiyası (server-idarəli statik JSON)
     (async () => {
@@ -115,7 +106,6 @@ export function useAppUpdate() {
 
     return () => {
       cancelled = true;
-      appSub.remove();
     };
   }, []);
 

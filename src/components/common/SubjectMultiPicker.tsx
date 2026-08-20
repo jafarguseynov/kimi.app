@@ -8,7 +8,7 @@ import {
   ScrollView,
   TextInput,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Colors } from '../../constants/colors';
 
@@ -57,7 +57,8 @@ export default function SubjectMultiPicker({ options, selected, onToggle, placeh
       </TouchableOpacity>
 
       {/* Modal */}
-      <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
+      <Modal visible={open} animationType="slide" statusBarTranslucent onRequestClose={() => setOpen(false)}>
+        <SafeAreaProvider>
         <SafeAreaView style={styles.modal} edges={['top', 'bottom']}>
           <View style={styles.header}>
             <Text style={styles.headerTitle} numberOfLines={1}>{title || 'Fən seç'}</Text>
@@ -106,6 +107,7 @@ export default function SubjectMultiPicker({ options, selected, onToggle, placeh
             )}
           </ScrollView>
         </SafeAreaView>
+        </SafeAreaProvider>
       </Modal>
     </>
   );

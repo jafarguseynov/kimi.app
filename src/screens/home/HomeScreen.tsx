@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,27 +8,31 @@ import {
   Alert,
   Image,
   RefreshControl,
+  LayoutAnimation,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { shortName } from '../../utils/name';
 import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
-import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
+import { premiumRouteFor } from '../../config/iap';
 import { getUserStats } from '../../api/dashboard.api';
-import { getTeachers, getTeacherAnalytics, ensureProfileReminder, getMe } from '../../api/user.api';
+import { getTeachers, ensureProfileReminder, getMe } from '../../api/user.api';
 import { getGlobalLeaderboard } from '../../api/leaderboard.api';
 import { getPendingDuelInvite } from '../../api/duel.api';
-import { getTeacherBookings } from '../../api/booking.api';
 import { listOpenRequests, expressInterest, type PublicLessonRequest } from '../../api/lessonRequest.api';
-import { getQuestions } from '../../api/marketplace.api';
-import { getMissions, type DailyMission } from '../../api/engagement.api';
 import { getTopicStats } from '../../api/topicStats.api';
+import { getSpecializations } from '../../api/specialization.api';
+import { getDailyChallenge, startDailyChallenge } from '../../api/dailyChallenge.api';
+import DailyChallengeCard from '../../components/home/DailyChallengeCard';
+import { useExamStore } from '../../store/exam.store';
 import { useOnboardingStore } from '../../store/onboarding.store';
 import { useGetStartedStore } from '../../store/getStarted.store';
 import GetStartedCard, { type GetStartedStep } from './GetStartedCard';
@@ -38,6 +42,9 @@ import { getPermissionStatus } from '../../utils/push';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import UpdateBanner from '../../components/UpdateBanner';
 import BannerSlider from '../../components/BannerSlider';
+import Skeleton from '../../components/common/Skeleton';
+import TeacherWorkspace from '../../components/home/TeacherWorkspace';
+import ExamHighlights from '../../components/home/ExamHighlights';
 import PartnersSection from '../../components/PartnersSection';
 import { LanguageFlagButton } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
@@ -50,14 +57,115 @@ type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.HomeMain>;
 };
 
-const TEACHER_QUICK_ACTIONS = [
-  { icon: 'create-outline', labelKey: 'home.qa.editProfile', target: 'editProfile' as const },
-  { icon: 'help-circle-outline', labelKey: 'home.qa.requests', target: 'requests' as const },
-  { icon: 'document-text-outline', labelKey: 'home.qa.lessonRequest', target: 'lessonRequest' as const },
-  { icon: 'megaphone-outline', labelKey: 'home.qa.openRequests', target: 'openRequests' as const },
-  { icon: 'chatbubble-outline', labelKey: 'home.qa.chat', target: 'chat' as const },
-  { icon: 'stats-chart-outline', labelKey: 'home.qa.stats', target: 'dashboard' as const },
-] as const;
+// ── İxtisaslar (müəllim fənləri) ───────────────────────────────────────────
+// Kartlardan gələn REAL fənlərlə doldurulur; siyahını doldurmaq üçün aşağıdakı
+// standart fənlər əlavə olunur.
+//
+// İkonlar: dizayn maketindəki təmiz xətt üslubuna uyğun olaraq MaterialCommunityIcons
+// (`@expo/vector-icons` — layihədə onsuz da var, ƏLAVƏ ASSET FAYLI TƏLƏB ETMİR).
+// İstisna: DİL fənləri — maketdə də bayraq göstərilir, bayrağı vektor ikonla əvəz
+// etmək mənanı itirir, ona görə onlar emoji olaraq qalır.
+type SubjectIcon = { mci: string } | { emoji: string };
+
+const SUBJECT_ICONS: Record<string, SubjectIcon> = {
+  // Dillər — bayraq (emoji)
+  'azərbaycan dili': { emoji: '🇦🇿' },
+  'ingilis dili': { emoji: '🇬🇧' },
+  'rus dili': { emoji: '🇷🇺' },
+  'alman dili': { emoji: '🇩🇪' },
+  'fransız dili': { emoji: '🇫🇷' },
+  // Digər fənlər — vektor ikon. Bütün dairələr eyni görünsün deyə
+  // mümkün olan yerdə `-outline` (xətt) variantı seçilib.
+  'ədəbiyyat': { mci: 'book-open-page-variant-outline' },
+  'tarix': { mci: 'bank-outline' },
+  'coğrafiya': { mci: 'earth' },
+  'kimya': { mci: 'flask-outline' },
+  'riyaziyyat': { mci: 'calculator-variant-outline' },
+  'cəbr': { mci: 'math-integral' },
+  'həndəsə': { mci: 'math-compass' },
+  'fizika': { mci: 'atom' },
+  'biologiya': { mci: 'dna' },
+  'informatika': { mci: 'laptop' },
+  'musiqi': { mci: 'music-clef-treble' },
+  'rəsm': { mci: 'palette-outline' },
+};
+
+// ⚠️ Azərbaycan əlifbası: JS-də 'İ'.toLowerCase() sadə 'i' vermir — 'i' + U+0307
+// (combining dot above) qaytarır. Ona görə 'İngilis dili' → 'i̇ngilis dili' olurdu və
+// yuxarıdakı 'ingilis dili' açarı ilə HEÇ VAXT uyğunlaşmırdı → hamısı 📚 fallback alırdı.
+// Həmin birləşən nöqtəni silirik ki, bütün İ-li fənlər düzgün ikon alsın.
+const normSubject = (s: string) => s.trim().toLowerCase().replace(/̇/g, '');
+
+// Fənn adları sərbəst mətndir (müəllim/admin yazır: "İbtidai sinif (1-4)"), ona görə
+// dəqiq açar uyğunluğu kifayət etmir — sonra bu substring qaydaları yoxlanılır.
+const SUBJECT_ICONS_FUZZY: [RegExp, SubjectIcon][] = [
+  [/məktəbəqədər/, { mci: 'baby-face-outline' }],
+  [/ibtidai/, { mci: 'pencil-ruler' }],
+  // "hazırlıq" / "hazırlığı" — Azərbaycan dilində sonluq q↔ğ dəyişir.
+  [/hazırlı[qğ]/, { mci: 'target' }],
+  // Tanımadığımız "... dili" fənləri (yapon, yunan, ərəb...) — ümumi tərcümə ikonu.
+  [/\bdili\b/, { mci: 'translate' }],
+];
+
+const subjectIcon = (s: string): SubjectIcon => {
+  const key = normSubject(s);
+  const exact = SUBJECT_ICONS[key];
+  if (exact) return exact;
+  const fuzzy = SUBJECT_ICONS_FUZZY.find(([re]) => re.test(key));
+  return fuzzy ? fuzzy[1] : { mci: 'book-open-variant' };
+};
+
+/**
+ * Fənn dairəsinin içi. Prioritet:
+ *   1. Admin paneldən yüklənmiş ikon şəkli (`iconUrl`) — tam idarə səndədir.
+ *   2. Şəkil yoxdursa/yüklənməsə → daxili vektor ikon (dillərdə bayraq emojisi).
+ * Şəkil xətası (silinmiş fayl, internet yoxdur) dairəni BOŞ qoymur — fallback işə düşür.
+ */
+function SubjectIconView({ subject, iconUrl }: { subject: string; iconUrl?: string | null }) {
+  const [failed, setFailed] = useState(false);
+
+  if (iconUrl && !failed) {
+    return (
+      <Image
+        source={{ uri: iconUrl }}
+        style={styles.specImage}
+        resizeMode="contain"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  const icon = subjectIcon(subject);
+  if ('emoji' in icon) return <Text style={styles.specEmoji}>{icon.emoji}</Text>;
+  return <MaterialCommunityIcons name={icon.mci as any} size={30} color={Colors.primary} />;
+}
+
+/**
+ * Toxumla idarə olunan qarışdırma (Fisher–Yates + mulberry32).
+ * `Math.random()` işlətsək hər render-də sıra dəyişərdi (siyahı gözün qarşısında
+ * titrəyərdi); toxum sabit qaldıqca nəticə də sabitdir — sıra YALNIZ toxum
+ * dəyişəndə (ekrana qayıdış / yeniləmə) yenilənir.
+ */
+function seededShuffle<T>(arr: T[], seed: number): T[] {
+  let a = seed * 1664525 + 1013904223;
+  const rand = () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const out = [...arr];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+const FALLBACK_SUBJECTS = [
+  'Azərbaycan dili', 'Ədəbiyyat', 'Tarix', 'Coğrafiya', 'Kimya',
+  'Riyaziyyat', 'Fizika', 'Biologiya', 'İngilis dili', 'İnformatika',
+];
 
 // ── Test Category Accordion ────────────────────────────────────────────────
 type TestCategoryProps = {
@@ -231,6 +339,10 @@ export default function HomeScreen({ navigation }: Props) {
   const isNewUser = !createdAtMs || Date.now() - createdAtMs < 14 * 24 * 60 * 60 * 1000;
   const profileHasGrade = !!((user as any)?.profile?.grade || (user as any)?.grade);
   const examDone = (stats?.totalExams ?? 0) > 0;
+  // İmtahan kartlarının fərdiləşdirilməsi üçün profil məlumatı (əlavə sorğu yoxdur).
+  const myGrade: string | undefined =
+    (me as any)?.profile?.grade ?? (me as any)?.grade ?? (user as any)?.profile?.grade;
+  const myGoal: string | undefined = (me as any)?.profile?.goal ?? (me as any)?.goal;
   const getStartedSteps: GetStartedStep[] = useMemo(() => {
     const goExams = () => (navigation.getParent() as any)?.navigate('Exams');
     return [
@@ -280,14 +392,117 @@ export default function HomeScreen({ navigation }: Props) {
   // İlk açılış turu — bildiriş priming addımı həll olunandan sonra bir dəfə.
   const showTour =
     isStudent && isNewUser && getStarted.hydrated && !getStarted.hasSeenHomeTour && primingSeen;
-  const { data: teachers = [] } = useQuery({ queryKey: ['teachers-home'], queryFn: () => getTeachers({ limit: 3 }), enabled: !isTeacher && !isParent });
+  // Backend `limit` parametrini nəzərə almır — bütün müəllim siyahısını qaytarır.
+  // Onu HOVUZ kimi saxlayıb kartların sırasını özümüz qarışdırırıq.
+  // Müəllim ana səhifəsində də "Müəllimlər" zolağı göstərilir (istifadəçi istəyi),
+  // ona görə bu sorğu artıq müəllim üçün də açıqdır.
+  const { data: teacherPool = [], isLoading: teachersLoading } = useQuery({ queryKey: ['teachers-home'], queryFn: () => getTeachers(), enabled: !isParent });
+
+  // Hər dəfə ekrana qayıdanda / pull-to-refresh-də toxum artır → yeni sıra.
+  const [teacherShuffleSeed, setTeacherShuffleSeed] = useState(() => Date.now());
+  useFocusEffect(
+    useCallback(() => {
+      setTeacherShuffleSeed(Date.now());
+    }, []),
+  );
+
+  // Sıra təsadüfidir, LAKİN keyfiyyət pillələri qorunur (istifadəçi qərarı) —
+  // əks halda şəkli/qiyməti olmayan yarımçıq profillər ana səhifədə birinci çıxır:
+  //   1) ödənişli "featured" (yerini pulla alıb — aşağı düşməməlidir)
+  //   2) tam doldurulmuş profillər (`isComplete`)
+  //   3) yarımçıq profillər
+  // Hər pillənin İÇİNDƏ tam qarışdırma var, ona görə sıra yenə dəyişir.
+  //
+  // ⚠️ Nəzərə al: ana səhifədə görünən müxtəliflik 2-ci pillənin ölçüsündən asılıdır.
+  // Nə qədər çox müəllim profilini TAM doldursa, bir o qədər çox fərqli müəllim
+  // birinci kartda görünəcək (yarımçıq profillər siyahının sonunda qalır).
+  const teachers = useMemo(() => {
+    const featured = teacherPool.filter((t: any) => t.isFeatured);
+    const complete = teacherPool.filter((t: any) => !t.isFeatured && t.isComplete);
+    const partial = teacherPool.filter((t: any) => !t.isFeatured && !t.isComplete);
+    return [
+      ...seededShuffle(featured, teacherShuffleSeed),
+      ...seededShuffle(complete, teacherShuffleSeed + 1),
+      ...seededShuffle(partial, teacherShuffleSeed + 2),
+    ];
+  }, [teacherPool, teacherShuffleSeed]);
+  // İxtisaslar zolağı — əvvəlcə müəllimlərin REAL fənləri (tez-tez rast gəlinən öndə),
+  // sonra siyahını doldurmaq üçün standart fənlər.
+  const specializations = useMemo(() => {
+    const freq = new Map<string, number>();
+    // Qarışdırılmış `teachers` deyil, sabit `teacherPool` — fənn dairələrinin
+    // sırası hər ekrana qayıdışda dəyişməsin.
+    teacherPool.forEach((tch) => {
+      (tch.subjects ?? []).forEach((s) => {
+        const name = (s ?? '').trim();
+        if (!name) return;
+        freq.set(name, (freq.get(name) ?? 0) + 1);
+      });
+    });
+    const real = [...freq.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name);
+    const seen = new Set(real.map(normSubject));
+    const filler = FALLBACK_SUBJECTS.filter((s) => !seen.has(normSubject(s)));
+    return [...real, ...filler].slice(0, 12);
+  }, [teacherPool]);
+
+  // Admin paneldə ixtisaslara yüklənmiş ikonlar. Sorğu uğursuz olsa belə ekran
+  // pozulmur — sadəcə daxili vektor ikonlar göstərilir.
+  // ── ⚡ Günün çağırışı ──────────────────────────────────────────────────
+  // Məzmun tam serverdən gəlir (daily_challenges cədvəli) — kartda sabit yazılmış
+  // sual sayı/müddət/xal YOXDUR.
+  // Yalnız şagird funksiyasıdır — müəllim/valideyn üçün sorğu göndərilmir.
+  const { data: dailyChallenge, isLoading: dcLoading } = useQuery({
+    queryKey: ['daily-challenge'],
+    queryFn: getDailyChallenge,
+    enabled: !isTeacher && !isParent,
+    staleTime: 5 * 60 * 1000,
+  });
+  const [dcStarting, setDcStarting] = useState(false);
+  const { setSession, setSubmissionType, setCollectionId, setDailyChallenge } = useExamStore();
+
+  const goToExams = () => (navigation.getParent() as any)?.navigate('Exams' as never);
+
+  const startChallenge = async () => {
+    if (dcStarting) return;
+    setDcStarting(true);
+    try {
+      const data = await startDailyChallenge();
+      // Adi imtahanla EYNİ sessiya formatıdır — mövcud ExamSession ekranı
+      // dəyişmədən işləyir (ayrıca test mühərriki yazılmadı).
+      setCollectionId(null);
+      setSubmissionType('practice');
+      setSession(data.sessionId, data.exam.id, data.questions, data.exam.duration * 60, {
+        subject: data.exam.subject,
+        difficulty: data.exam.difficulty,
+        title: data.exam.title,
+      });
+      setDailyChallenge(true);
+      (navigation.getParent() as any)?.navigate('Exams', { screen: Routes.ExamSession });
+    } catch (e: any) {
+      Alert.alert(
+        t('marketplace.errorTitle'),
+        e?.response?.data?.message || t('home.student.dcStartFail'),
+      );
+    } finally {
+      setDcStarting(false);
+    }
+  };
+
+  const { data: adminSpecs = [] } = useQuery({
+    queryKey: ['specialization-icons'],
+    queryFn: getSpecializations,
+    enabled: !isTeacher && !isParent,
+    staleTime: 30 * 60 * 1000,
+  });
+  const specIconMap = useMemo(() => {
+    const m = new Map<string, string>();
+    adminSpecs.forEach((sp) => {
+      if (sp.iconUrl) m.set(normSubject(sp.name), sp.iconUrl);
+    });
+    return m;
+  }, [adminSpecs]);
   const { data: leaderboard = [] } = useQuery({ queryKey: ['leaderboard-home'], queryFn: getGlobalLeaderboard, enabled: !isTeacher && !isParent });
   // Bugünkü tapşırıqlar — real günlük missiyalar
-  const { data: homeMissions = [] } = useQuery<DailyMission[]>({
-    queryKey: ['missions'],
-    queryFn: () => getMissions().catch(() => []),
-    enabled: !isTeacher && !isParent,
-  });
   // AI Tədris Planı preview — real zəif/güclü fənlər
   const { data: homeTopicStats } = useQuery({
     queryKey: ['topicStats'],
@@ -302,14 +517,10 @@ export default function HomeScreen({ navigation }: Props) {
     retry: false,
     refetchInterval: 60000,
   });
-  const { data: analytics } = useQuery({ queryKey: ['teacher-analytics'], queryFn: getTeacherAnalytics, enabled: isTeacher });
-  const { data: teacherBookings = [] } = useQuery({ queryKey: ['teacher-bookings-home'], queryFn: getTeacherBookings, enabled: isTeacher });
-  const { data: marketQuestions = [] } = useQuery({
-    queryKey: ['market-questions-home'],
-    queryFn: () => getQuestions().catch(() => []),
-    enabled: isTeacher,
-  });
-  const openQuestionCount = marketQuestions.filter((q) => !q.isResolved).length;
+  // ⚠️ §24 — müəllim üçün `teacher-analytics`, `teacher-bookings-home` və
+  // `market-questions-home` sorğuları BURADAN ÇIXARILIB. Qazanc/statistika
+  // dashboard-da göstərilmir; lazım olan yeganə sorğuları `TeacherWorkspace`
+  // özü (yalnız müəllim görünüşü qurulduqda) çəkir.
   const { data: openRequestsData } = useQuery<PublicLessonRequest[]>({
     queryKey: ['openLessonRequests'],
     queryFn: () => listOpenRequests().catch(() => [] as PublicLessonRequest[]),
@@ -328,9 +539,13 @@ export default function HomeScreen({ navigation }: Props) {
   // Pull-to-refresh: bütün ana səhifə sorğularını yenidən çək.
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  // Sürətli keçidlər: ilkin halda yalnız ilk 4 qısayol görünür.
+  const [quickExpanded, setQuickExpanded] = useState(false);
   const [interestSuccessVisible, setInterestSuccessVisible] = useState(false);
   const onRefresh = async () => {
     setRefreshing(true);
+    // Yeni müəllim sırası — məlumat eyni qalsa belə istifadəçi dəyişiklik görsün.
+    setTeacherShuffleSeed(Date.now());
     try {
       await queryClient.invalidateQueries();
     } finally {
@@ -338,8 +553,6 @@ export default function HomeScreen({ navigation }: Props) {
     }
   };
 
-  const pendingBookings = teacherBookings.filter((b) => b.status === 'pending').slice(0, 3);
-  const confirmedBookings = teacherBookings.filter((b) => b.status === 'confirmed').slice(0, 3);
   const topStudents = leaderboard.slice(0, 3);
 
   const renderOpenRequests = () => {
@@ -347,16 +560,23 @@ export default function HomeScreen({ navigation }: Props) {
     return (
       <View style={openReqStyles.section}>
         <View style={openReqStyles.sectionHeader}>
+          <LinearGradient colors={['#EC4899', '#DB2777']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={openReqStyles.headIconChip}>
+            <Ionicons name="megaphone" size={14} color="#fff" />
+          </LinearGradient>
+          {/* PRO nişanı ALT sətirdədir: başlıq sətrində 4 element olanda
+              (müəllim görünüşü) başlıq kəsilirdi. */}
           <View style={{ flex: 1 }}>
-            <Text style={openReqStyles.sectionTitle}>{t('home.openReq.title')}</Text>
-            <Text style={openReqStyles.sectionSub}>{t('home.openReq.sub')}</Text>
-          </View>
-          {isTeacher && (
-            <View style={openReqStyles.proPill}>
-              <Ionicons name="star" size={11} color="#fff" />
-              <Text style={openReqStyles.proPillText}>PRO</Text>
+            <Text style={openReqStyles.sectionTitle} numberOfLines={1}>{t('home.openReq.title')}</Text>
+            <View style={openReqStyles.titleRow}>
+              <Text style={openReqStyles.sectionSub} numberOfLines={1}>{t('home.openReq.sub')}</Text>
+              {isTeacher && (
+                <LinearGradient colors={['#FBBF24', '#F59E0B']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={openReqStyles.proPill}>
+                  <Ionicons name="star" size={11} color="#fff" />
+                  <Text style={openReqStyles.proPillText}>PRO</Text>
+                </LinearGradient>
+              )}
             </View>
-          )}
+          </View>
           <TouchableOpacity
             style={openReqStyles.seeAllBtn}
             activeOpacity={0.7}
@@ -369,6 +589,7 @@ export default function HomeScreen({ navigation }: Props) {
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, paddingRight: 20 }}>
           {openRequests.map((r) => (
             <View key={r.id} style={openReqStyles.card}>
+              <LinearGradient colors={['#0EA5E9', '#6366F1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={openReqStyles.cardAccent} />
               <View style={openReqStyles.cardTopRow}>
                 <View style={openReqStyles.subjectChip}>
                   <Text style={openReqStyles.subjectChipText}>{r.subject}</Text>
@@ -381,23 +602,158 @@ export default function HomeScreen({ navigation }: Props) {
                 <Text style={openReqStyles.cardMetaText} numberOfLines={1}>{r.studentName}</Text>
               </View>
               <View style={openReqStyles.cardMeta}>
-                <Ionicons name="people-outline" size={12} color={Colors.textMuted} />
-                <Text style={openReqStyles.cardMetaText}>{t('home.openReq.interested', { n: r.interestedCount })}</Text>
+                <Ionicons name="people" size={12} color="#10B981" />
+                <Text style={[openReqStyles.cardMetaText, { color: '#059669', fontWeight: '700' }]}>{t('home.openReq.interested', { n: r.interestedCount })}</Text>
               </View>
               <TouchableOpacity
-                style={openReqStyles.interestBtn}
-                activeOpacity={0.85}
+                activeOpacity={0.88}
                 onPress={() => handleInterest(r.id)}
               >
-                <Ionicons name={isTeacher ? 'hand-right-outline' : 'eye-outline'} size={14} color="#fff" />
-                <Text style={openReqStyles.interestBtnText}>
-                  {isTeacher ? t('home.openReq.actTeacher') : t('home.openReq.actStudent')}
-                </Text>
+                <LinearGradient colors={[Colors.gradientStart, Colors.gradientEnd]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={openReqStyles.interestBtn}>
+                  <Ionicons name={isTeacher ? 'hand-right' : 'eye'} size={14} color="#fff" />
+                  <Text style={openReqStyles.interestBtnText}>
+                    {isTeacher ? t('home.openReq.actTeacher') : t('home.openReq.actStudent')}
+                  </Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           ))}
         </ScrollView>
       </View>
+    );
+  };
+
+  /**
+   * "Müəllimlər" zolağı — həm şagird, həm müəllim ana səhifəsində göstərilir.
+   * JSX student budağından OLDUĞU KİMİ çıxarılıb (kart dizaynı, naviqasiya və
+   * qarışdırma məntiqi dəyişməyib), sadəcə iki yerdən çağırıla bilsin deyə
+   * funksiyaya alınıb.
+   */
+  const renderTeachersSection = () => {
+    // Yüklənərkən başlıq + kart skeletonları göstərilir: əvvəl bölmə tamam
+    // görünmürdü və data gələndə səhifə aşağı "tullanırdı".
+    if (teachers.length === 0 && teachersLoading) {
+      return (
+        <>
+          <View style={styles.sectionRow}>
+            <Text style={styles.sectionTitle}>{t('home.student.recommendedTeachers')}</Text>
+          </View>
+          <View style={styles.teachersSkeletonRow}>
+            {[0, 1].map((i) => (
+              <View key={i} style={styles.teacherCardRich}>
+                <Skeleton width={'100%'} height={104} radius={0} />
+                <View style={styles.teacherCardBody}>
+                  <Skeleton width={'70%'} height={14} />
+                  <Skeleton width={'50%'} height={11} />
+                  <Skeleton width={'40%'} height={13} />
+                </View>
+              </View>
+            ))}
+          </View>
+        </>
+      );
+    }
+    if (teachers.length === 0) return null;
+    return (
+      <>
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>{t('home.student.recommendedTeachers')}</Text>
+          <TouchableOpacity
+            onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherList } as never)}
+            activeOpacity={0.7}
+            style={styles.seeAllRow}
+          >
+            <Text style={styles.seeAll}>{t('home.student.seeAll')}</Text>
+            <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.teachersRow}
+          style={{ marginHorizontal: -24 }}
+        >
+          {teachers.map((tch) => {
+            const hasRating = typeof tch.rating === 'number' && tch.rating > 0;
+            // Fənlər — kartın alt sətrində (nümunədəki kimi vergüllə).
+            const subjectLabel = tch.subjects?.length
+              ? tch.subjects.slice(0, 2).join(', ')
+              : t('home.student.variousSubjects');
+            const reviewCount = (tch as any).ratingCount ?? (tch as any).reviewCount ?? 0;
+            const rate = typeof tch.hourlyRate === 'number' && tch.hourlyRate > 0 ? tch.hourlyRate : null;
+            const avatarUrl = (tch as any).avatarUrl as string | undefined;
+            const gnd = ((tch as any).gender ?? '').toLowerCase();
+            const genderIcon = gnd === 'female' ? 'woman' : gnd === 'male' ? 'man' : 'person';
+            const genderGrad: [string, string] = gnd === 'female' ? ['#F472B6', '#DB2777'] : gnd === 'male' ? ['#38BDF8', '#0077b6'] : [Colors.gradientStart, Colors.gradientEnd];
+            const goToTeacher = () => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherProfile, params: { teacher: tch } } as never);
+            return (
+              <TouchableOpacity
+                key={tch.id}
+                style={styles.teacherCardRich}
+                activeOpacity={0.9}
+                onPress={goToTeacher}
+              >
+                {/* Şəkil — kartın yuxarı hissəsi. Şəkil TAM görünür (contain),
+                    yanlarda ağ boşluq qalmasın deyə arxada həmin şəklin bulanıq
+                    surəti fon kimi çəkilir. */}
+                {avatarUrl ? (
+                  <View style={styles.teacherPhoto}>
+                    <Image
+                      source={{ uri: avatarUrl }}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
+                      blurRadius={14}
+                    />
+                    <Image
+                      source={{ uri: avatarUrl }}
+                      style={styles.teacherPhotoImg}
+                      resizeMode="contain"
+                    />
+                  </View>
+                ) : (
+                  <LinearGradient
+                    colors={genderGrad}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.teacherPhoto}
+                  >
+                    <Ionicons name={genderIcon as any} size={44} color="rgba(255,255,255,0.95)" />
+                  </LinearGradient>
+                )}
+
+                <View style={styles.teacherCardBody}>
+                  {/* Ad + təsdiq nişanı, sağda reytinq və rəy sayı */}
+                  <View style={styles.teacherTopRow}>
+                    <Text style={styles.teacherNameRich} numberOfLines={1}>{shortName(tch.name)}</Text>
+                    {(tch as any).verified && (
+                      <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />
+                    )}
+                    <View style={{ flex: 1 }} />
+                    <View style={styles.teacherMetric}>
+                      <Ionicons name="star" size={12} color={Colors.primary} />
+                      <Text style={styles.teacherMetricText}>
+                        {hasRating ? tch.rating!.toFixed(1) : ((tch as any).isNew ? t('home.student.newTeacher') : '—')}
+                      </Text>
+                    </View>
+                    <View style={styles.teacherMetric}>
+                      <Ionicons name="chatbubble" size={11} color={Colors.primary} />
+                      <Text style={styles.teacherMetricText}>{reviewCount}</Text>
+                    </View>
+                  </View>
+
+                  {/* Fənlər + saatlıq qiymət */}
+                  <View style={styles.teacherBottomRow}>
+                    <Text style={styles.teacherSubjectRich} numberOfLines={1}>{subjectLabel}</Text>
+                    {rate != null && (
+                      <Text style={styles.teacherPrice}>{rate.toFixed(2)} ₼</Text>
+                    )}
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </>
     );
   };
 
@@ -420,7 +776,7 @@ export default function HomeScreen({ navigation }: Props) {
           t('home.interest.premiumMsg'),
           [
             { text: t('home.interest.decline'), style: 'cancel' },
-            { text: t('home.interest.buyPlan'), onPress: () => navigation.navigate(PREMIUM_ENTRY_ROUTE) },
+            { text: t('home.interest.buyPlan'), onPress: () => navigation.navigate(premiumRouteFor('teacher')) },
           ],
         );
       } else {
@@ -455,13 +811,6 @@ export default function HomeScreen({ navigation }: Props) {
           <TouchableOpacity
             style={styles.notifBtn}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate(Routes.Search)}
-          >
-            <Ionicons name="search-outline" size={22} color={Colors.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.notifBtn}
-            activeOpacity={0.7}
             onPress={() => navigation.navigate(Routes.Notifications)}
           >
             <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
@@ -480,237 +829,28 @@ export default function HomeScreen({ navigation }: Props) {
         {/* Reklam bannerləri (admin idarəli slayder) */}
         <BannerSlider placement="home" />
         {isTeacher ? (
-          // ════════════════ TEACHER VIEW ════════════════
+          // ════════════════ MÜƏLLİM İŞ PANELİ ════════════════
+          // Bütün məzmun `TeacherWorkspace` komponentindədir (§26 FAZA 2-6).
+          // Salamlama, qazanc kartı, statistik KPI kartları və sabit AI mətni
+          // BURADAN ÇIXARILIB — qazanc/statistika Profil bölməsindədir.
           <>
-            {/* Greeting */}
-            <View style={styles.greetSection}>
-              <Text style={styles.greetSmall}>{t('home.greetTeacherSmall')}</Text>
-              <Text style={styles.greetTitle}>{t('home.greetTeacher', { name: firstName })}</Text>
+            {/* "Müəllimlər" zolağı sürətli keçidlərin DƏRHAL altındadır —
+                ona görə iş panelinin içinə prop kimi ötürülür. */}
+            <TeacherWorkspace
+              navigation={navigation}
+              afterQuickActions={renderTeachersSection()}
+            />
+
+            {/* 🔥 Şagirdlərin sevdiyi imtahanlar — müəllim üçün CTA
+                «İmtahana bax» (başlatma yoxdur). */}
+            <ExamHighlights navigation={navigation} role="teacher" />
+
+            {/* ⚠️ "Günün çağırışı" kartı burada GÖSTƏRİLMİR — o, şagird
+                funksiyasıdır (gündəlik imtahan + xal). Yalnız şagird
+                görünüşündə qalır. */}
+            <View style={styles.sharedSections}>
+              {renderOpenRequests()}
             </View>
-
-            {/* Earnings Card */}
-            <LinearGradient
-              colors={[Colors.gradientStart, Colors.gradientEnd]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.earningsCard}
-            >
-              <View style={styles.earningsTop}>
-                <View>
-                  <Text style={styles.earningsLabel}>{t('home.teacher.monthlyEarnings')}</Text>
-                  <Text style={styles.earningsAmount}>{analytics?.monthlyEarnings ?? 0} AZN</Text>
-                </View>
-                <View style={styles.premiumBadge}>
-                  <Ionicons name="star" size={11} color="#fff" />
-                  <Text style={styles.premiumText}>{t('home.teacher.premium')}</Text>
-                </View>
-              </View>
-              <View style={styles.earningsTrend}>
-                <Ionicons name="trending-up" size={14} color="rgba(255,255,255,0.9)" />
-                <Text style={styles.earningsTrendText}>{t('home.teacher.trend')}</Text>
-              </View>
-              <View style={styles.earningsGlow} />
-            </LinearGradient>
-
-            {/* Quick Actions — 5 icon buttons */}
-            <View style={styles.quickActions}>
-              {TEACHER_QUICK_ACTIONS.map((a, i) => (
-                <TouchableOpacity
-                  key={i}
-                  style={styles.quickActionItem}
-                  activeOpacity={0.7}
-                  onPress={() => {
-                    const parent = navigation.getParent() as any;
-                    switch (a.target) {
-                      case 'editProfile':
-                        // Home stack-in ÖZ EditProfile ekranını aç (HomeNavigator-da qeydiyyatdadır)
-                        // ki, geri düyməsi Home-a qayıtsın. Cross-tab (Profile) keçid EditProfile-i
-                        // Profile tabında "initial route" edir → geri Profil səhifəsinə atırdı.
-                        navigation.navigate(Routes.EditProfile);
-                        break;
-                      case 'requests':
-                        parent?.navigate('Booking', { screen: Routes.BookingHistory });
-                        break;
-                      case 'lessonRequest':
-                        // "Tələblər" → açıq dərs sorğuları siyahısı (Home stack daxilində)
-                        navigation.navigate(Routes.AllOpenRequests);
-                        break;
-                      case 'openRequests':
-                        // "Açıq sorğular" → şagirdlərin yaratdığı ümumi dərs sorğuları
-                        navigation.navigate(Routes.AllOpenRequests);
-                        break;
-                      case 'chat':
-                        parent?.navigate('Chat');
-                        break;
-                      case 'dashboard':
-                        parent?.navigate(Routes.Profile, { screen: Routes.Dashboard });
-                        break;
-                    }
-                  }}
-                >
-                  <View style={styles.quickActionIcon}>
-                    <Ionicons name={a.icon} size={22} color={Colors.primary} />
-                    {((a.target === 'chat' && badges.messages > 0) ||
-                      ((a.target === 'requests' || a.target === 'lessonRequest') && badges.requests > 0)) && (
-                      <UnreadDot count={1} style={{ position: 'absolute', top: -2, right: -2 }} />
-                    )}
-                  </View>
-                  <Text style={styles.quickActionLabel}>{t(a.labelKey)}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* Stats row */}
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{analytics?.totalStudents ?? 0}</Text>
-                <Text style={styles.statLabel}>{t('home.teacher.activeStudents')}</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{analytics?.profileViews ?? 0}</Text>
-                <Text style={styles.statLabel}>{t('home.teacher.profileViews')}</Text>
-              </View>
-              <View style={styles.statCard}>
-                <View style={styles.ratingWrap}>
-                  <Text style={styles.statValue}>{analytics?.rating?.toFixed(1) ?? '—'}</Text>
-                  <Ionicons name="star" size={14} color="#f59e0b" />
-                </View>
-                <Text style={styles.statLabel}>{t('home.teacher.rating')}</Text>
-              </View>
-            </View>
-
-            {/* AI Insight */}
-            <View style={styles.aiCard}>
-              <View style={styles.aiIconWrap}>
-                <Ionicons name="hardware-chip-outline" size={22} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.aiTitle}>{t('home.teacher.aiTitle')}</Text>
-                <Text style={styles.aiText}>{t('home.teacher.aiText')}</Text>
-              </View>
-            </View>
-
-            {/* Sinif Qiymət Kalkulyatoru */}
-            <TouchableOpacity
-              style={styles.calcCard}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate(Routes.ClassGradeCalc)}
-            >
-              <LinearGradient
-                colors={[Colors.gradientStart, Colors.gradientEnd]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.calcIconWrap}
-              >
-                <Ionicons name="calculator" size={24} color="#fff" />
-              </LinearGradient>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.calcTitle}>{t('home.teacher.calcTitle')}</Text>
-                <Text style={styles.calcSub}>{t('home.teacher.calcSub')}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
-            {/* Sual Bazarı */}
-            <TouchableOpacity
-              style={styles.calcCard}
-              activeOpacity={0.9}
-              onPress={() => (navigation.getParent() as any)?.navigate('Marketplace' as never)}
-            >
-              <View style={[styles.calcIconWrap, styles.questionsIconWrap]}>
-                <Ionicons name="chatbubbles" size={24} color="#059669" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.calcTitle}>{t('home.teacher.questionsTitle')}</Text>
-                <Text style={styles.calcSub}>{t('home.teacher.questionsSub')}</Text>
-                {openQuestionCount > 0 && (
-                  <View style={styles.questionsCountPill}>
-                    <Text style={styles.questionsCountText}>{t('home.teacher.questionsOpen', { n: openQuestionCount })}</Text>
-                  </View>
-                )}
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={Colors.textSecondary} />
-            </TouchableOpacity>
-
-            {/* New Requests */}
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>{t('home.teacher.newRequests')}</Text>
-              <TouchableOpacity onPress={() => (navigation.getParent() as any)?.navigate('Booking', { screen: Routes.BookingHistory })}>
-                <Text style={styles.seeAll}>{t('home.teacher.seeAll')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.requestList}>
-              {pendingBookings.length === 0 ? (
-                <View style={styles.requestCard}>
-                  <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>{t('home.teacher.noRequests')}</Text>
-                </View>
-              ) : (
-                pendingBookings.map((b) => {
-                  const name = b.student?.name ?? t('home.teacher.student');
-                  const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
-                  return (
-                    <View key={b.id} style={styles.requestCard}>
-                      <View style={styles.requestLeft}>
-                        <View style={styles.requestAvatar}>
-                          <Text style={styles.requestInitials}>{initials}</Text>
-                        </View>
-                        <View>
-                          <Text style={styles.requestName}>{name}</Text>
-                          <Text style={styles.requestDetail}>{b.subject ?? t('home.teacher.generalLesson')}</Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity style={styles.requestChevron} onPress={() => (navigation.getParent() as any)?.navigate('Booking', { screen: Routes.BookingHistory })}>
-                        <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })
-              )}
-            </View>
-
-            {/* Upcoming Lessons */}
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>{t('home.teacher.upcoming')}</Text>
-              <TouchableOpacity onPress={() => (navigation.getParent() as any)?.navigate('Booking', { screen: Routes.BookingHistory })}>
-                <Text style={styles.seeAll}>{t('home.teacher.calendar')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.lessonList}>
-              {confirmedBookings.length === 0 ? (
-                <View style={styles.lessonItem}>
-                  <Text style={{ color: Colors.textSecondary, fontSize: 13 }}>{t('home.teacher.noPlanned')}</Text>
-                </View>
-              ) : (
-                confirmedBookings.map((b, i) => {
-                  const d = new Date(b.scheduledAt);
-                  const dayNum = d.getDate().toString();
-                  const dayLabel = d.toLocaleDateString('az-AZ', { weekday: 'short' });
-                  const timeStr = d.toLocaleTimeString('az-AZ', { hour: '2-digit', minute: '2-digit' });
-                  const studentName = b.student?.name ?? t('home.teacher.student');
-                  return (
-                    <View key={b.id} style={[styles.lessonItem, i < confirmedBookings.length - 1 && styles.lessonItemBorder]}>
-                      <View style={styles.lessonLeft}>
-                        <View style={styles.lessonDateBox}>
-                          <Text style={styles.lessonDayLabel}>{dayLabel}</Text>
-                          <Text style={styles.lessonDayNum}>{dayNum}</Text>
-                        </View>
-                        <View>
-                          <Text style={styles.lessonTitle}>{t('home.teacher.lessonWith', { name: studentName })}</Text>
-                          <View style={styles.lessonTimeRow}>
-                            <Ionicons name="time-outline" size={11} color={Colors.textMuted} />
-                            <Text style={styles.lessonTime}>{timeStr}</Text>
-                          </View>
-                        </View>
-                      </View>
-                      <Ionicons name="ellipsis-vertical" size={18} color={Colors.textMuted} />
-                    </View>
-                  );
-                })
-              )}
-            </View>
-
-            {/* Açıq dərs sorğuları (Teacher) */}
-            {renderOpenRequests()}
           </>
         ) : isParent ? (
           // ════════════════ PARENT VIEW ════════════════
@@ -792,59 +932,142 @@ export default function HomeScreen({ navigation }: Props) {
         ) : (
           // ════════════════ STUDENT VIEW ════════════════
           <>
-            {/* Greeting */}
-            <View style={styles.greetSection}>
-              <Text style={styles.greetTitle}>{t('home.greetStudent', { name: firstName })}</Text>
-              <Text style={styles.greetSub}>{t('home.greetStudentSub')}</Text>
-            </View>
-
             {/* Başlanğıc yol xəritəsi — yeni istifadəçini ilk addımlara yönləndirir */}
             {showGetStarted && (
               <GetStartedCard steps={getStartedSteps} onDismiss={getStarted.dismiss} />
             )}
 
-            {/* Hero Card */}
-            <LinearGradient
-              colors={['#00476b', '#0077b6', '#4cc9f0']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.heroCard}
+            {/* İxtisaslar — fənn üzrə müəllim filtri (öz başlığı ilə ayrıca bölmə) */}
+            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{t('home.student.specializations')}</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.specRow}
+              style={{ marginHorizontal: -24 }}
             >
-              <View style={styles.heroOrb1} pointerEvents="none" />
-              <View style={styles.heroOrb2} pointerEvents="none" />
-              <Ionicons name="rocket" size={128} color="rgba(255,255,255,0.10)" style={styles.heroWatermark} />
-              <View style={styles.heroContentZ}>
-                <View style={styles.heroBadge}>
-                  <Ionicons name="flash" size={12} color="#fff" />
-                  <Text style={styles.heroBadgeText}>{t('home.student.heroBadge')}</Text>
-                </View>
-                <Text style={styles.heroTitle}>{t('home.student.heroTitle')}</Text>
-                <Text style={styles.heroSub}>{t('home.student.heroSub')}</Text>
+              {specializations.map((subj) => (
                 <TouchableOpacity
-                  style={styles.heroBtn}
-                  activeOpacity={0.85}
-                  onPress={() => (navigation.getParent() as any)?.navigate('Exams' as never)}
+                  key={subj}
+                  style={styles.specItem}
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    (navigation.getParent() as any)?.navigate('Booking' as never, {
+                      screen: Routes.TeacherList,
+                      params: { subject: subj },
+                    } as never)
+                  }
                 >
-                  <Ionicons name="play-circle" size={20} color={Colors.primary} />
-                  <Text style={styles.heroBtnText}>{t('home.student.startExam')}</Text>
-                  <Ionicons name="arrow-forward" size={16} color={Colors.primary} />
+                  <View style={styles.specCircle}>
+                    <SubjectIconView subject={subj} iconUrl={specIconMap.get(normSubject(subj))} />
+                  </View>
+                  <Text
+                    style={styles.specLabel}
+                    numberOfLines={2}
+                    // Uzun fənn adları ("Məktəbəqədər hazırlıq") dar sütunda
+                    // sözün ORTASINDAN qırılmasın deyə yalnız həmin etiketlər
+                    // bir az kiçilir; qısa adlar 11px ölçüsündə qalır.
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.8}
+                  >
+                    {subj}
+                  </Text>
                 </TouchableOpacity>
-              </View>
-            </LinearGradient>
+              ))}
+            </ScrollView>
+
+            {renderTeachersSection()}
+
+            {/* ⚡ Günün çağırışı — köhnə böyük "Biliklərini yoxlamağa hazırsan?"
+                bannerinin yerinə. Kompaktdır, məzmunu serverdən gəlir. */}
+            <DailyChallengeCard
+              loading={dcLoading}
+              challenge={dailyChallenge?.challenge ?? null}
+              result={dailyChallenge?.result ?? null}
+              starting={dcStarting}
+              onStart={startChallenge}
+              onSeeExams={goToExams}
+            />
+
+            {/* 🎯 Sənin üçün + 🔥 Populyar imtahanlar + 🏆 Reytinqini yüksəlt.
+                Seçim serverdə edilir (sinif · zəif fənn · hədəf · populyarlıq),
+                ana səhifə bütün imtahanları YÜKLƏMİR. */}
+            <ExamHighlights
+              navigation={navigation}
+              role="student"
+              grade={myGrade}
+              goal={myGoal}
+            />
 
             {/* Quick Actions */}
             <View style={styles.quickSectionHeader}>
               <Ionicons name="flash-outline" size={20} color={Colors.primary} />
               <Text style={styles.sectionTitle}>{t('home.student.quickLinks')}</Text>
+              {/* İkinci sıranı aç/bağla — qapalı halda o sıra ümumiyyətlə render olunmur */}
               <TouchableOpacity
-                style={{ marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                style={styles.quickToggle}
                 activeOpacity={0.7}
-                onPress={() => navigation.navigate(Routes.SmartFeed as never)}
+                onPress={() => {
+                  LayoutAnimation.configureNext(
+                    LayoutAnimation.create(180, LayoutAnimation.Types.easeInEaseOut, LayoutAnimation.Properties.opacity),
+                  );
+                  setQuickExpanded((v) => !v);
+                }}
               >
-                <Ionicons name="sparkles" size={14} color={Colors.primary} />
-                <Text style={{ fontSize: 12, fontWeight: '700', color: Colors.primary }}>{t('home.student.forYou')}</Text>
+                <Text style={styles.quickToggleText}>
+                  {quickExpanded ? t('home.student.showLess') : t('home.student.seeAll')}
+                </Text>
+                <Ionicons name={quickExpanded ? 'chevron-up' : 'arrow-forward'} size={13} color={Colors.primary} />
               </TouchableOpacity>
             </View>
+            {/* Əsas 4 qısayol — imtahan/AI/müəllim onsuz da banner və alt naviqasiyada var */}
+            <View style={styles.quickRow}>
+              <TouchableOpacity
+                style={styles.quickItem}
+                activeOpacity={0.8}
+                onPress={() => (navigation.getParent() as any)?.navigate('Marketplace' as never)}
+              >
+                <LinearGradient colors={['#ea580c', '#fb923c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#ea580c' }]}>
+                  <Ionicons name="help-circle" size={28} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.quickItemLabel}>{t('home.student.qMarket')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickItem}
+                activeOpacity={0.8}
+                onPress={() => (navigation.getParent() as any)?.navigate('Learn' as never)}
+              >
+                <LinearGradient colors={['#2563eb', '#60a5fa']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#2563eb' }]}>
+                  <Ionicons name="book" size={24} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.quickItemLabel}>{t('home.student.qLearn')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickItem}
+                activeOpacity={0.8}
+                onPress={() => (navigation.getParent() as any)?.navigate('Calculators' as never)}
+              >
+                <LinearGradient colors={['#d97706', '#fbbf24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#d97706' }]}>
+                  <Ionicons name="calculator" size={24} color="#fff" />
+                </LinearGradient>
+                <Text style={styles.quickItemLabel}>{t('home.student.qCalc')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickItem}
+                activeOpacity={0.8}
+                onPress={() => (navigation.getParent() as any)?.navigate('Chat' as never)}
+              >
+                <LinearGradient colors={['#4f46e5', '#818cf8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#4f46e5' }]}>
+                  <Ionicons name="chatbubbles" size={24} color="#fff" />
+                  {badges.messages > 0 && (
+                    <UnreadDot count={1} style={{ position: 'absolute', top: -2, right: -2 }} />
+                  )}
+                </LinearGradient>
+                <Text style={styles.quickItemLabel}>{t('home.student.qMessage')}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* İkinci dərəcəli qısayollar — yalnız "Hamısına bax" açılanda render olunur */}
+            {quickExpanded && (
             <View style={styles.quickRow}>
               <TouchableOpacity
                 style={styles.quickItem}
@@ -879,40 +1102,6 @@ export default function HomeScreen({ navigation }: Props) {
               <TouchableOpacity
                 style={styles.quickItem}
                 activeOpacity={0.8}
-                onPress={() => (navigation.getParent() as any)?.navigate('Calculators' as never)}
-              >
-                <LinearGradient colors={['#d97706', '#fbbf24']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#d97706' }]}>
-                  <Ionicons name="calculator" size={24} color="#fff" />
-                </LinearGradient>
-                <Text style={styles.quickItemLabel}>{t('home.student.qCalc')}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Quick Actions — second row */}
-            <View style={styles.quickRow}>
-              <TouchableOpacity
-                style={styles.quickItem}
-                activeOpacity={0.8}
-                onPress={() => (navigation.getParent() as any)?.navigate('Learn' as never)}
-              >
-                <LinearGradient colors={['#2563eb', '#60a5fa']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#2563eb' }]}>
-                  <Ionicons name="book" size={24} color="#fff" />
-                </LinearGradient>
-                <Text style={styles.quickItemLabel}>{t('home.student.qLearn')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickItem}
-                activeOpacity={0.8}
-                onPress={() => (navigation.getParent() as any)?.navigate('Marketplace' as never)}
-              >
-                <LinearGradient colors={['#ea580c', '#fb923c']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#ea580c' }]}>
-                  <Ionicons name="help-circle" size={28} color="#fff" />
-                </LinearGradient>
-                <Text style={styles.quickItemLabel}>{t('home.student.qMarket')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickItem}
-                activeOpacity={0.8}
                 onPress={() => (navigation.getParent() as any)?.navigate('Bookmarks' as never)}
               >
                 <LinearGradient colors={['#db2777', '#f472b6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#db2777' }]}>
@@ -920,18 +1109,120 @@ export default function HomeScreen({ navigation }: Props) {
                 </LinearGradient>
                 <Text style={styles.quickItemLabel}>{t('home.student.qSaved')}</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.quickItem}
-                activeOpacity={0.8}
-                onPress={() => (navigation.getParent() as any)?.navigate('Chat' as never)}
+            </View>
+            )}
+
+            {/* Spin Wheel - Hədiyyə Çarxı */}
+            <TouchableOpacity
+              style={styles.spinBanner}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate(Routes.SpinWheel)}
+            >
+              <LinearGradient
+                colors={[Colors.gradientStart, Colors.gradientEnd]}
+                style={styles.spinBannerGrad}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
               >
-                <LinearGradient colors={['#4f46e5', '#818cf8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.quickItemIcon, { shadowColor: '#4f46e5' }]}>
-                  <Ionicons name="chatbubbles" size={24} color="#fff" />
-                  {badges.messages > 0 && (
-                    <UnreadDot count={1} style={{ position: 'absolute', top: -2, right: -2 }} />
-                  )}
-                </LinearGradient>
-                <Text style={styles.quickItemLabel}>{t('home.student.qMessage')}</Text>
+                <View style={styles.spinBannerIcon}>
+                  <Ionicons name="gift" size={26} color="#fff" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.spinBannerTitle}>{t('home.student.spinTitle')}</Text>
+                  <Text style={styles.spinBannerSub}>{t('home.student.spinSub')}</Text>
+                </View>
+                <View style={styles.spinBannerPill}>
+                  <Text style={styles.spinBannerPillText}>{t('home.student.new')}</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* AI Teaching Plan */}
+            <TouchableOpacity
+              style={styles.aiPlanCard}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate(Routes.AIStudyPath)}
+            >
+              <View style={styles.aiPlanHeader}>
+                <Ionicons name="sparkles" size={18} color={Colors.primary} />
+                <Text style={styles.aiPlanTitle}>{t('home.student.aiPlanTitle')}</Text>
+                <View style={{ flex: 1 }} />
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </View>
+              {aiWeakName || aiStrongName ? (
+                <View style={styles.aiPlanGrid}>
+                  <View style={[styles.aiTopicCard, { borderBottomColor: aiWeakName ? '#fca5a5' : Colors.border }]}>
+                    <Text style={styles.aiTopicBadgeWeak}>{t('home.student.weakTopic')}</Text>
+                    <Text style={styles.aiTopicName} numberOfLines={1}>{aiWeakName ?? '—'}</Text>
+                    <View style={styles.aiProgressTrack}>
+                      <View style={[styles.aiProgressFill, { width: `${aiWeakName ? (aiPctOf(aiWeakName) ?? 0) : 0}%` as any, backgroundColor: aiWeakName ? '#f87171' : Colors.border }]} />
+                    </View>
+                  </View>
+                  <View style={[styles.aiTopicCard, { borderBottomColor: aiStrongName ? '#6ee7b7' : Colors.border }]}>
+                    <Text style={styles.aiTopicBadgeStrong}>{t('home.student.strongTopic')}</Text>
+                    <Text style={styles.aiTopicName} numberOfLines={1}>{aiStrongName ?? '—'}</Text>
+                    <View style={styles.aiProgressTrack}>
+                      <View style={[styles.aiProgressFill, { width: `${aiStrongName ? (aiPctOf(aiStrongName) ?? 0) : 0}%` as any, backgroundColor: aiStrongName ? Colors.tertiary : Colors.border }]} />
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <Text style={styles.aiPlanEmpty}>{t('home.student.aiPlanEmpty')}</Text>
+              )}
+            </TouchableOpacity>
+
+            {/* Açıq dərs sorğuları — AI tədris planından sonra */}
+            {renderOpenRequests()}
+
+            {/* ⚠️ Köhnə "Yarışlar" kartı (sabit "Riyaziyyat Olimpiadası ·
+                son qeydiyyat 25 iyun" mətni) BURADAN ÇIXARILDI — bazada belə
+                bir yarış yox idi, uydurma məzmun idi. Onun yerini yuxarıdakı
+                «🏆 Reytinqini yüksəlt» bölməsi tutur: o, yalnız REAL, aktiv
+                imtahan sessiyası (aylıq / respublika) olduqda görünür. */}
+
+            {/* Leaderboard */}
+            <View style={styles.leaderRow}>
+              <TouchableOpacity
+                style={styles.leaderCard}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate(Routes.Leaderboard)}
+              >
+                <Text style={styles.leaderTitle}>{t('home.student.topStudents')}</Text>
+                {topStudents.length === 0 ? (
+                  <Text style={[styles.leaderName, { color: Colors.textMuted }]}>{t('home.student.noData')}</Text>
+                ) : (
+                  topStudents.map((s) => (
+                    <View key={s.userId} style={styles.leaderItem}>
+                      <Text
+                        style={[
+                          styles.leaderRank,
+                          s.rank === 1 && { color: '#f59e0b' },
+                          s.rank === 3 && { color: '#f97316' },
+                        ]}
+                      >
+                        {s.rank}
+                      </Text>
+                      {s.avatarUrl ? (
+                        <Image source={{ uri: s.avatarUrl }} style={styles.leaderAvatar} />
+                      ) : (
+                        <View style={styles.leaderAvatar} />
+                      )}
+                      <Text style={styles.leaderName} numberOfLines={1}>{s.name.split(' ')[0]}</Text>
+                    </View>
+                  ))
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.leaderCard}
+                activeOpacity={0.85}
+                onPress={() => navigation.navigate(Routes.SchoolRanking)}
+              >
+                <Text style={styles.leaderTitle}>{t('home.student.topSchools')}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                  <Ionicons name="school-outline" size={16} color={Colors.primary} />
+                  <Text style={[styles.leaderName, { color: Colors.primary, fontWeight: '600' }]}>{t('home.student.viewRanking')}</Text>
+                </View>
               </TouchableOpacity>
             </View>
 
@@ -1019,277 +1310,6 @@ export default function HomeScreen({ navigation }: Props) {
 
               </View>
             )}
-            {/* Spin Wheel - Hədiyyə Çarxı */}
-            <TouchableOpacity
-              style={styles.spinBanner}
-              activeOpacity={0.9}
-              onPress={() => navigation.navigate(Routes.SpinWheel)}
-            >
-              <LinearGradient
-                colors={[Colors.gradientStart, Colors.gradientEnd]}
-                style={styles.spinBannerGrad}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.spinBannerIcon}>
-                  <Ionicons name="gift" size={26} color="#fff" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.spinBannerTitle}>{t('home.student.spinTitle')}</Text>
-                  <Text style={styles.spinBannerSub}>{t('home.student.spinSub')}</Text>
-                </View>
-                <View style={styles.spinBannerPill}>
-                  <Text style={styles.spinBannerPillText}>{t('home.student.new')}</Text>
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            {/* Daily Missions shortcut */}
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>{t('home.student.todayTasks')}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate(Routes.DailyMissions)}>
-                <Text style={styles.seeAll}>{t('home.student.seeAll')}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.todayTaskList}>
-              {homeMissions.length === 0 ? (
-                <View style={styles.todayTaskCard}>
-                  <View style={styles.todayTaskLeft}>
-                    <View style={[styles.todayTaskIconWrap, { backgroundColor: Colors.primaryLight }]}>
-                      <Ionicons name="checkmark-done-outline" size={20} color={Colors.primary} />
-                    </View>
-                    <View style={styles.todayTaskInfo}>
-                      <Text style={styles.todayTaskTitle}>{t('missions.empty')}</Text>
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                homeMissions.slice(0, 3).map((m) => {
-                  const icon = m.type === 'question' ? 'chatbubble-ellipses-outline' : 'document-text-outline';
-                  const dest = m.type === 'question' ? 'Marketplace' : 'Exams';
-                  return (
-                    <TouchableOpacity
-                      key={m.id}
-                      style={[styles.todayTaskCard, m.completed && styles.todayTaskDone]}
-                      activeOpacity={0.85}
-                      onPress={() => (navigation.getParent() as any)?.navigate(dest)}
-                    >
-                      <View style={styles.todayTaskLeft}>
-                        <View style={[styles.todayTaskIconWrap, { backgroundColor: m.completed ? Colors.tertiaryContainer + '33' : Colors.primaryLight }]}>
-                          <Ionicons name={(m.completed ? 'checkmark' : icon) as any} size={20} color={m.completed ? Colors.tertiary : Colors.primary} />
-                        </View>
-                        <View style={styles.todayTaskInfo}>
-                          <Text style={styles.todayTaskTitle}>{m.title}</Text>
-                          <Text style={styles.todayTaskSub}>{m.progress}/{m.target} · {t('missions.rewardCoins', { n: m.reward })}</Text>
-                        </View>
-                      </View>
-                      <Ionicons name="chevron-forward" size={22} color={m.completed ? Colors.primary : Colors.outlineVariant} />
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </View>
-
-            {/* AI Teaching Plan */}
-            <TouchableOpacity
-              style={styles.aiPlanCard}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate(Routes.AIStudyPath)}
-            >
-              <View style={styles.aiPlanHeader}>
-                <Ionicons name="sparkles" size={18} color={Colors.primary} />
-                <Text style={styles.aiPlanTitle}>{t('home.student.aiPlanTitle')}</Text>
-                <View style={{ flex: 1 }} />
-                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
-              </View>
-              {aiWeakName || aiStrongName ? (
-                <View style={styles.aiPlanGrid}>
-                  <View style={[styles.aiTopicCard, { borderBottomColor: aiWeakName ? '#fca5a5' : Colors.border }]}>
-                    <Text style={styles.aiTopicBadgeWeak}>{t('home.student.weakTopic')}</Text>
-                    <Text style={styles.aiTopicName} numberOfLines={1}>{aiWeakName ?? '—'}</Text>
-                    <View style={styles.aiProgressTrack}>
-                      <View style={[styles.aiProgressFill, { width: `${aiWeakName ? (aiPctOf(aiWeakName) ?? 0) : 0}%` as any, backgroundColor: aiWeakName ? '#f87171' : Colors.border }]} />
-                    </View>
-                  </View>
-                  <View style={[styles.aiTopicCard, { borderBottomColor: aiStrongName ? '#6ee7b7' : Colors.border }]}>
-                    <Text style={styles.aiTopicBadgeStrong}>{t('home.student.strongTopic')}</Text>
-                    <Text style={styles.aiTopicName} numberOfLines={1}>{aiStrongName ?? '—'}</Text>
-                    <View style={styles.aiProgressTrack}>
-                      <View style={[styles.aiProgressFill, { width: `${aiStrongName ? (aiPctOf(aiStrongName) ?? 0) : 0}%` as any, backgroundColor: aiStrongName ? Colors.tertiary : Colors.border }]} />
-                    </View>
-                  </View>
-                </View>
-              ) : (
-                <Text style={styles.aiPlanEmpty}>{t('home.student.aiPlanEmpty')}</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Recommended Teachers */}
-            <View style={styles.sectionRow}>
-              <Text style={styles.sectionTitle}>{t('home.student.recommendedTeachers')}</Text>
-              <TouchableOpacity
-                onPress={() => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherList } as never)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.seeAll}>{t('home.student.all')}</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.teachersRow}
-              style={{ marginHorizontal: -24 }}
-            >
-              {teachers.map((tch) => {
-                const initials = tch.name?.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
-                const hasRating = typeof tch.rating === 'number' && tch.rating > 0;
-                const subject = tch.subjects?.[0] || t('home.student.variousSubjects');
-                const experience = (tch as any).experienceYears;
-                const avatarUrl = (tch as any).avatarUrl as string | undefined;
-                const gnd = ((tch as any).gender ?? '').toLowerCase();
-                const genderIcon = gnd === 'female' ? 'woman' : gnd === 'male' ? 'man' : 'person';
-                const genderGrad: [string, string] = gnd === 'female' ? ['#F472B6', '#DB2777'] : gnd === 'male' ? ['#38BDF8', '#0077b6'] : [Colors.gradientStart, Colors.gradientEnd];
-                const goToTeacher = () => (navigation.getParent() as any)?.navigate('Booking' as never, { screen: Routes.TeacherProfile, params: { teacher: tch } } as never);
-                return (
-                  <TouchableOpacity
-                    key={tch.id}
-                    style={styles.teacherCardRich}
-                    activeOpacity={0.9}
-                    onPress={goToTeacher}
-                  >
-                    {/* Premium başlıq zolağı */}
-                    <LinearGradient
-                      colors={[Colors.gradientStart, Colors.gradientEnd]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                      style={styles.teacherCardBanner}
-                    >
-                      {hasRating && (
-                        <View style={styles.teacherRatingChip}>
-                          <Ionicons name="star" size={11} color="#f59e0b" />
-                          <Text style={styles.teacherRatingChipText}>{tch.rating!.toFixed(1)}</Text>
-                        </View>
-                      )}
-                    </LinearGradient>
-
-                    {/* Avatar (zolağın üstünə düşür) */}
-                    <View style={styles.teacherAvatarWrap}>
-                      {avatarUrl ? (
-                        <Image source={{ uri: avatarUrl }} style={styles.teacherAvatarRichImg} />
-                      ) : (
-                        <LinearGradient
-                          colors={genderGrad}
-                          start={{ x: 0, y: 0 }}
-                          end={{ x: 1, y: 1 }}
-                          style={styles.teacherAvatarRichImg}
-                        >
-                          <Ionicons name={genderIcon as any} size={34} color="#fff" />
-                        </LinearGradient>
-                      )}
-                      {(tch as any).verified && (
-                        <View style={styles.teacherVerifiedBadge}>
-                          <Ionicons name="checkmark" size={10} color="#fff" />
-                        </View>
-                      )}
-                    </View>
-
-                    <View style={styles.teacherCardBody}>
-                      <Text style={styles.teacherNameRich} numberOfLines={1}>{shortName(tch.name)}</Text>
-                      <Text style={styles.teacherSubjectRich} numberOfLines={1}>
-                        {subject}{experience ? ` • ${t('home.student.expYears', { n: experience })}` : ''}
-                      </Text>
-                      <View style={styles.teacherStatsRow}>
-                        <Ionicons name="star" size={12} color="#f59e0b" />
-                        <Text style={styles.teacherStatsText}>
-                          {hasRating ? tch.rating!.toFixed(1) : ((tch as any).isNew ? t('home.student.newTeacher') : t('home.student.noReviews'))}
-                        </Text>
-                      </View>
-                    </View>
-
-                    {/* Diqqətçəkən müraciət düyməsi */}
-                    <LinearGradient
-                      colors={[Colors.gradientStart, Colors.gradientEnd]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.teacherApplyBtn}
-                    >
-                      <Text style={styles.teacherApplyBtnText}>{t('home.student.applyTeacher')}</Text>
-                      <Ionicons name="arrow-forward" size={14} color="#fff" />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* Açıq dərs sorğuları — visible after teachers */}
-            {renderOpenRequests()}
-
-            {/* Competitions */}
-            <Text style={[styles.sectionTitle, { marginBottom: 12 }]}>{t('home.student.competitions')}</Text>
-            <View style={styles.competitionCard}>
-              <View style={styles.compLeft}>
-                <View style={styles.compIcon}>
-                  <Ionicons name="trophy-outline" size={20} color="#d97706" />
-                </View>
-                <View>
-                  <Text style={styles.compTitle}>{t('home.student.olympiad')}</Text>
-                  <Text style={styles.compSub}>{t('home.student.lastReg')}</Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                style={styles.joinBtn}
-                activeOpacity={0.85}
-                onPress={() => {
-                  const parent = navigation.getParent() as any;
-                  if (parent?.navigate) parent.navigate('Exams');
-                  else navigation.navigate(Routes.Leaderboard);
-                }}
-              >
-                <Text style={styles.joinBtnText}>{t('home.student.join')}</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Leaderboard */}
-            <View style={styles.leaderRow}>
-              <TouchableOpacity
-                style={styles.leaderCard}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate(Routes.Leaderboard)}
-              >
-                <Text style={styles.leaderTitle}>{t('home.student.topStudents')}</Text>
-                {topStudents.length === 0 ? (
-                  <Text style={[styles.leaderName, { color: Colors.textMuted }]}>{t('home.student.noData')}</Text>
-                ) : (
-                  topStudents.map((s) => (
-                    <View key={s.userId} style={styles.leaderItem}>
-                      <Text
-                        style={[
-                          styles.leaderRank,
-                          s.rank === 1 && { color: '#f59e0b' },
-                          s.rank === 3 && { color: '#f97316' },
-                        ]}
-                      >
-                        {s.rank}
-                      </Text>
-                      <View style={styles.leaderAvatar} />
-                      <Text style={styles.leaderName} numberOfLines={1}>{s.name.split(' ')[0]}</Text>
-                    </View>
-                  ))
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.leaderCard}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate(Routes.SchoolRanking)}
-              >
-                <Text style={styles.leaderTitle}>{t('home.student.topSchools')}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 }}>
-                  <Ionicons name="school-outline" size={16} color={Colors.primary} />
-                  <Text style={[styles.leaderName, { color: Colors.primary, fontWeight: '600' }]}>{t('home.student.viewRanking')}</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
           </>
         )}
 
@@ -1378,6 +1398,10 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
 
+  // İş panelindən sonra gələn ortaq bölmələr (Müəllimlər / Günün çağırışı /
+  // Açıq sorğular) — panelin son kartı ilə arasında aydın ayırıcı boşluq.
+  sharedSections: { marginTop: 28 },
+
   // ── Shared Section Header ──────────────────────────────────────────────
   sectionRow: {
     flexDirection: 'row',
@@ -1392,15 +1416,12 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   seeAll: { fontSize: 12, fontWeight: '600', color: Colors.primary },
+  seeAllRow: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+
+  // ── Teacher: Empty states ──────────────────────────────────────────────
 
   // ── Greeting ───────────────────────────────────────────────────────────
   greetSection: { marginBottom: 20 },
-  greetSmall: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: Colors.textSecondary,
-    marginBottom: 2,
-  },
   greetTitle: {
     fontSize: 26,
     fontWeight: '800',
@@ -1411,306 +1432,21 @@ const styles = StyleSheet.create({
   greetSub: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },
 
   // ── Teacher: Earnings Card ─────────────────────────────────────────────
-  earningsCard: {
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 24,
-    overflow: 'hidden',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.2,
-    shadowRadius: 32,
-    elevation: 8,
-  },
-  earningsTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 20,
-  },
-  earningsLabel: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: '500',
-    marginBottom: 4,
-  },
-  earningsAmount: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  premiumText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#fff',
-    letterSpacing: 1,
-  },
-  earningsTrend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  earningsTrendText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: '500',
-  },
-  earningsGlow: {
-    position: 'absolute',
-    right: -48,
-    bottom: -48,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
 
   // ── Teacher: Quick Actions ─────────────────────────────────────────────
-  quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  quickActionItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 8,
-  },
-  quickActionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 13,
-    backgroundColor: Colors.surfaceLowest,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  quickActionLabel: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    textAlign: 'center',
-    lineHeight: 13,
-  },
 
   // ── Teacher: Stats ─────────────────────────────────────────────────────
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 20,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: Colors.surfaceLow,
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: Colors.primary,
-    letterSpacing: -0.3,
-  },
-  statLabel: {
-    fontSize: 10,
-    color: Colors.textSecondary,
-    fontWeight: '500',
-    marginTop: 4,
-  },
   ratingWrap: { flexDirection: 'row', alignItems: 'center', gap: 3 },
 
   // ── Teacher: AI Insight ────────────────────────────────────────────────
-  aiCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    backgroundColor: Colors.primaryLight,
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: Colors.primaryFixed + '33',
-  },
-  aiIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.primaryFixed + '33',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  aiTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
-    marginBottom: 4,
-  },
-  aiText: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    lineHeight: 18,
-  },
 
   // ── Teacher: Sinif Qiymət Kalkulyatoru kartı ───────────────────────────
-  calcCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: Colors.surfaceLowest,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 24,
-    borderWidth: 1,
-    borderColor: Colors.borderLight,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.06,
-    shadowRadius: 14,
-    elevation: 2,
-  },
-  calcIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  calcTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
-  calcSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 3, lineHeight: 17 },
 
   // ── Teacher: Sual Bazarı kartı ─────────────────────────────────────────
-  questionsIconWrap: { backgroundColor: '#d1fae5' },
-  questionsCountPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#ecfdf5',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    marginTop: 6,
-  },
-  questionsCountText: { fontSize: 11, fontWeight: '700', color: '#059669' },
 
   // ── Teacher: Requests ──────────────────────────────────────────────────
-  requestList: { gap: 10, marginBottom: 24 },
-  requestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: Colors.surfaceLowest,
-    borderRadius: 14,
-    padding: 14,
-    borderLeftWidth: 4,
-    borderLeftColor: Colors.primary,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  requestLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  requestAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.secondaryContainer,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  requestInitials: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.secondary,
-  },
-  requestName: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-  },
-  requestDetail: {
-    fontSize: 11,
-    color: Colors.textSecondary,
-    marginTop: 2,
-  },
-  requestChevron: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 
   // ── Teacher: Lessons ───────────────────────────────────────────────────
-  lessonList: {
-    backgroundColor: Colors.surfaceLowest,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 1,
-  },
-  lessonItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  lessonItemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.surfaceContainer,
-  },
-  lessonLeft: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  lessonDateBox: {
-    minWidth: 50,
-    alignItems: 'center',
-    backgroundColor: Colors.surfaceContainer,
-    borderRadius: 12,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  lessonDayLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  lessonDayNum: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: Colors.primary,
-    marginTop: 1,
-  },
-  lessonTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: 3,
-  },
-  lessonTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  lessonTime: { fontSize: 10, color: Colors.textMuted },
 
   // ── Student: Hero Card ─────────────────────────────────────────────────
   heroCard: {
@@ -1930,62 +1666,56 @@ const styles = StyleSheet.create({
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingText: { fontSize: 11, fontWeight: '700', color: Colors.textPrimary },
 
-  // Rich teacher card (premium redesign — used on home)
+  // ── İxtisaslar zolağı ──────────────────────────────────────────────────
+  // marginBottom 28 → aşağıdakı "Müəllimlər" bölməsi ilə bitişik görünməsin.
+  // Dairələr arası REAL məsafə = (specItem.width - specCircle 64) + specRow.gap.
+  // Əvvəl (84-64)+14 = 34dp idi — dairənin yarısı qədər boşluq. İndi gap 0 → 20dp.
+  // `width: 84` saxlanılır, çünki daraltsaq "Məktəbəqədər" etiketi sözün ORTASINDAN
+  // qırılır; boşluğu eni deyil, gap-ı azaltmaqla yığırıq.
+  specRow: { paddingHorizontal: 24, paddingBottom: 4, gap: 0, marginBottom: 28 },
+  specItem: { width: 84, alignItems: 'center', gap: 6 },
+  specCircle: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: Colors.surface,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  specEmoji: { fontSize: 30 },
+  // Admin ikonu — dairənin içində, kəsilmədən (contain) yerləşir.
+  specImage: { width: 36, height: 36 },
+  specLabel: { fontSize: 11, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center' },
+
+  // ── Müəllim kartı (böyük şəkil + ad/reytinq + fənn/qiymət) ─────────────
+  teachersSkeletonRow: { flexDirection: 'row', gap: 12, overflow: 'hidden' },
   teacherCardRich: {
     width: 200,
     backgroundColor: Colors.surface,
-    borderRadius: 20,
-    paddingBottom: 14,
+    borderRadius: 18,
+    paddingBottom: 12,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: Colors.borderLight,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 18,
-    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 14,
+    elevation: 3,
   },
-  teacherCardBanner: {
-    height: 56,
-    paddingHorizontal: 12,
-    paddingTop: 10,
-    alignItems: 'flex-end',
-  },
-  teacherRatingChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.92)',
-    borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  teacherRatingChipText: { fontSize: 11, fontWeight: '800', color: Colors.textPrimary },
-  teacherAvatarWrap: {
-    marginTop: -32, marginLeft: 16, marginBottom: 4,
-    width: 64, height: 64,
-  },
-  teacherAvatarRichImg: {
-    width: 64, height: 64, borderRadius: 32,
+  teacherPhoto: {
+    width: '100%', height: 104,
     backgroundColor: Colors.surfaceHigh,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 3, borderColor: Colors.surface,
+    overflow: 'hidden',
   },
-  teacherVerifiedBadge: {
-    position: 'absolute', right: -2, bottom: 2,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#22c55e',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.surface,
-  },
-  teacherAvatarInitial: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  teacherCardBody: { paddingHorizontal: 16, gap: 2 },
-  teacherNameRich: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
-  teacherSubjectRich: { fontSize: 12, color: Colors.textMuted },
-  teacherStatsRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
-  teacherStatsText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
-  teacherApplyBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    marginHorizontal: 16, marginTop: 12,
-    borderRadius: 12, paddingVertical: 10,
-  },
-  teacherApplyBtnText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  teacherPhotoImg: { width: '100%', height: '100%' },
+  teacherCardBody: { paddingHorizontal: 12, paddingTop: 10, gap: 6 },
+  teacherTopRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  teacherNameRich: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary, flexShrink: 1 },
+  teacherMetric: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  teacherMetricText: { fontSize: 11, fontWeight: '700', color: Colors.textPrimary },
+  teacherBottomRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  teacherSubjectRich: { flex: 1, fontSize: 12, color: Colors.textSecondary },
+  teacherPrice: { fontSize: 13, fontWeight: '800', color: Colors.textPrimary },
 
   // Empty state for teachers
   teachersEmpty: {
@@ -2002,36 +1732,8 @@ const styles = StyleSheet.create({
   teachersEmptyTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   teachersEmptySub: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
 
-  // ── Student: Competition ───────────────────────────────────────────────
-  competitionCard: {
-    backgroundColor: Colors.surfaceHighest,
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderLeftWidth: 4,
-    borderLeftColor: '#fbbf24',
-    marginBottom: 24,
-  },
-  compLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
-  compIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#fef3c7',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  compTitle: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
-  compSub: { fontSize: 10, color: Colors.textSecondary, marginTop: 2 },
-  joinBtn: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-  },
-  joinBtnText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  // ⚠️ «Yarışlar» kartının stilləri silindi — kartın özü (uydurma olimpiada
+  // mətni) çıxarıldı, yerini `ExamHighlights`-dakı real yarış bölməsi tutdu.
 
   // ── Parent: Bento Row ──────────────────────────────────────────────────
   parentBentoRow: { flexDirection: 'row', gap: 12, marginBottom: 20 },
@@ -2265,6 +1967,8 @@ const styles = StyleSheet.create({
 
   // ── Student: Quick Actions row ─────────────────────────────────────────
   quickSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 14 },
+  quickToggle: { flexDirection: 'row', alignItems: 'center', gap: 3, marginLeft: 'auto' },
+  quickToggleText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   quickRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 28 },
   quickItem: { flex: 1, alignItems: 'center', gap: 8 },
   quickItemIcon: {
@@ -2274,18 +1978,6 @@ const styles = StyleSheet.create({
   quickItemLabel: { fontSize: 9, fontWeight: '600', color: Colors.textPrimary, textAlign: 'center', lineHeight: 13 },
 
   // ── Student: Today's Tasks ─────────────────────────────────────────────
-  todayTaskList: { gap: 12, marginBottom: 24 },
-  todayTaskCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
-  },
-  todayTaskDone: { borderLeftWidth: 4, borderLeftColor: Colors.primary },
-  todayTaskLeft: { flexDirection: 'row', alignItems: 'center', gap: 14, flex: 1 },
-  todayTaskIconWrap: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  todayTaskInfo: { flex: 1, gap: 2 },
-  todayTaskTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  todayTaskSub: { fontSize: 12, color: Colors.textMuted },
 
   // ── Student: AI Teaching Plan ──────────────────────────────────────────
   aiPlanCard: { backgroundColor: Colors.surfaceLow, borderRadius: 16, padding: 18, marginBottom: 28 },
@@ -2354,34 +2046,43 @@ const styles = StyleSheet.create({
 
 const openReqStyles = StyleSheet.create({
   section: { paddingLeft: 20, paddingTop: 20, paddingBottom: 4, gap: 12 },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', paddingRight: 20 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingRight: 20 },
+  headIconChip: {
+    width: 30, height: 30, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#EC4899', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 7, elevation: 3,
+  },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
-  sectionSub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
+  sectionSub: { fontSize: 11, color: Colors.textSecondary, flexShrink: 1 },
   proPill: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: '#f59e0b', borderRadius: 999, paddingHorizontal: 8, paddingVertical: 3,
-    marginRight: 8,
+    borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4,
+    shadowColor: '#F59E0B', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.35, shadowRadius: 6, elevation: 3,
   },
-  proPillText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.6 },
+  proPillText: { fontSize: 9, fontWeight: '900', color: '#fff', letterSpacing: 0.6 },
   seeAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 2 },
   seeAllBtnText: { fontSize: 12, fontWeight: '700', color: Colors.primary },
   card: {
-    width: 240, backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 14, gap: 8,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 2,
+    width: 240, backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 14, paddingTop: 18, gap: 8,
+    overflow: 'hidden',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 18, elevation: 3,
     borderWidth: 1, borderColor: Colors.borderLight,
   },
+  cardAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 5 },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   subjectChip: { backgroundColor: Colors.primaryLight, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
   subjectChipText: { fontSize: 10, fontWeight: '800', color: Colors.primary, letterSpacing: 0.4 },
   gradeText: { fontSize: 11, fontWeight: '600', color: Colors.textMuted },
-  cardTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary, lineHeight: 20, minHeight: 40 },
+  cardTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary, lineHeight: 20, minHeight: 40 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   cardMetaText: { fontSize: 11, fontWeight: '500', color: Colors.textSecondary, flex: 1 },
   interestBtn: {
     marginTop: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: Colors.primary, borderRadius: 12, paddingVertical: 10,
+    borderRadius: 12, paddingVertical: 11,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.28, shadowRadius: 9, elevation: 3,
   },
-  interestBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  interestBtnText: { fontSize: 13, fontWeight: '800', color: '#fff' },
 });
 
 const perfStyles = StyleSheet.create({

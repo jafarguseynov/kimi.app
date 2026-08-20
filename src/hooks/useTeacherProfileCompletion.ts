@@ -1,39 +1,64 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useUserStore } from '../store/user.store';
+import {
+  getTeacherCompletion,
+  type TeacherCompletionState,
+  type CompletionField,
+} from '../api/teacherProfile.api';
 
-export interface CompletionItem {
-  key: string;
-  label: string;
-  done: boolean;
-}
+export type CompletionItem = CompletionField & { key: string; label: string; done: boolean };
 
 export interface TeacherProfileCompletion {
   pct: number;
   items: CompletionItem[];
+  /** Yalnız məcburi + tamamlanmamış (§6 "çatışmayan məlumatlar"). */
+  missing: CompletionItem[];
   nextStep?: CompletionItem;
   complete: boolean;
+  state: TeacherCompletionState | null;
+  isLoading: boolean;
+  refresh: () => void;
 }
 
+export const TEACHER_COMPLETION_KEY = ['teacher-profile-completion'] as const;
+
 /**
- * Müəllim profilinin tamamlanma vəziyyəti — backend `computeCompletion` ilə eyni
- * 6 self-fillable element üzərində (verified admin-asılı olduğu üçün daxil deyil).
- * Tək mənbə: ProfileScreen, Home gate və setup ekranı bunu işlədir.
+ * Müəllim profilinin tamamlanma vəziyyəti.
+ *
+ * ⚠️ Hesablama SERVERDƏDİR — mobil, veb və admin eyni rəqəmi görür (§25).
+ * Əvvəllər bu hook 6 sahəni özü sayırdı və backend qaydası dəyişəndə
+ * mobil fərqli faiz göstərirdi; indi tək mənbə `/teacher-profile/completion`.
  */
 export function useTeacherProfileCompletion(): TeacherProfileCompletion {
-  const u = useUserStore((s) => s.user) as any;
-  const items: CompletionItem[] = [
-    { key: 'subjects', label: 'Fənlər', done: !!u?.subjects?.length },
-    { key: 'hourlyRate', label: 'Dərs qiyməti', done: Number(u?.hourlyRate ?? 0) > 0 },
-    { key: 'headline', label: 'Qısa təqdimat', done: !!u?.headline },
-    { key: 'bio', label: 'Haqqımda', done: !!u?.bio },
-    { key: 'introVideoUrl', label: 'Təqdimat videosu', done: !!u?.introVideoUrl },
-    { key: 'offersFreeDemo', label: 'Pulsuz demo dərs', done: !!u?.offersFreeDemo },
-  ];
-  const doneCount = items.filter((i) => i.done).length;
-  const pct = Math.round((doneCount / items.length) * 100);
+  const user = useUserStore((s) => s.user);
+  const qc = useQueryClient();
+  const isTeacher = user?.role === 'teacher';
+
+  const { data, isLoading } = useQuery({
+    queryKey: TEACHER_COMPLETION_KEY,
+    queryFn: getTeacherCompletion,
+    enabled: isTeacher,
+    staleTime: 30_000,
+  });
+
+  const items = (data?.fields ?? []) as CompletionItem[];
+  const missing = (data?.missing ?? []) as CompletionItem[];
+
   return {
-    pct,
+    pct: data?.pct ?? 0,
     items,
-    nextStep: items.find((i) => !i.done),
-    complete: doneCount === items.length,
+    missing,
+    nextStep: (data?.nextStep ?? undefined) as CompletionItem | undefined,
+    // Məlumat gəlməyibsə "tam" saymırıq — yanlış 100% göstərməkdənsə
+    // kartı göstərmək daha az zərərlidir.
+    complete: data?.complete ?? false,
+    state: data ?? null,
+    isLoading,
+    refresh: () => { qc.invalidateQueries({ queryKey: TEACHER_COMPLETION_KEY }); },
   };
+}
+
+/** Profil dəyişdikdən sonra faizi dərhal yeniləmək üçün (§33). */
+export function invalidateTeacherCompletion(qc: ReturnType<typeof useQueryClient>) {
+  qc.invalidateQueries({ queryKey: TEACHER_COMPLETION_KEY });
 }

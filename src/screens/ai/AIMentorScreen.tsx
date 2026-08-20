@@ -19,6 +19,8 @@ import { useUserStore } from '../../store/user.store';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import Paywall from '../../components/Paywall';
+import { asPaywallError, PaywallError } from '../../api/monetization.api';
 
 interface Message { id: string; role: 'user' | 'ai'; text: string; isWelcome?: boolean; }
 
@@ -63,6 +65,9 @@ export default function AIMentorScreen() {
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const didInit = useRef(false);
+  // Free gündəlik AI limiti dolduqda göstərilən paywall.
+  const [paywall, setPaywall] = useState<PaywallError | null>(null);
+
   const { mutate, isPending } = useMutation({
     mutationFn: (vars: { message: string; conversationId: string | null }) =>
       sendAiMessage(vars.message, vars.conversationId),
@@ -156,6 +161,9 @@ export default function AIMentorScreen() {
         refetchConversations();
       },
       onError: (err: any) => {
+        // Gündəlik AI limiti dolubsa çat "xəta" göstərmir — paywall açılır (§10).
+        const pw = asPaywallError(err);
+        if (pw) { setPaywall(pw); return; }
         const detail = err?.response?.data?.message;
         appendAi(detail ? t('aiMentor.errorPrefix', { detail }) : t('aiMentor.connectError'));
       },
@@ -467,6 +475,7 @@ export default function AIMentorScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      <Paywall visible={!!paywall} error={paywall} onClose={() => setPaywall(null)} />
     </SafeAreaView>
   );
 }

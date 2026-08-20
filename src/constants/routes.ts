@@ -17,6 +17,9 @@ export const Routes = {
   Favorites: 'Favorites',
   RecentlyViewed: 'RecentlyViewed',
   Profile: 'Profile',
+  // Müəllim tabları (§20) — yalnız müəllim rolunda tab bar-da görünür
+  TeacherRequests: 'TeacherRequests',
+  TeacherStats: 'TeacherStats',
 
   // Exam stack
   ExamList: 'ExamList',
@@ -145,6 +148,7 @@ export const Routes = {
   Friends: 'Friends',
 
   // Gamification screens
+  XpHistory: 'XpHistory',
   Leaderboard: 'Leaderboard',
   LeaderboardDetail: 'LeaderboardDetail',
   LiveActivity: 'LiveActivity',
@@ -217,6 +221,7 @@ export const Routes = {
   TwoFactor: 'TwoFactor',
   BlockedUsers: 'BlockedUsers',
   TermsOfService: 'TermsOfService',
+  PrivacyPolicy: 'PrivacyPolicy',
   Support: 'Support',
   HelpCenter: 'HelpCenter',
   ReportProblem: 'ReportProblem',

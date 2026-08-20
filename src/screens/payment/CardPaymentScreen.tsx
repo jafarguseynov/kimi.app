@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  KeyboardAvoidingView, Platform,
+  KeyboardAvoidingView, Platform, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,7 +12,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
-import { subscribeTeacher, subscribeByPlan } from '../../api/subscription.api';
+import { startCheckout } from '../../api/monetization.api';
 import { validatePromo, getMyPromo, PromoPreview } from '../../api/promo.api';
 import { useTranslation } from '../../i18n';
 import { PAYMENTS_ENABLED } from '../../config/iap';
@@ -26,7 +26,10 @@ export default function CardPaymentScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
   const route = useRoute();
-  const params = (route.params ?? {}) as { amount?: number; months?: number; isTeacherSub?: boolean; planName?: string; planKey?: string };
+  const params = (route.params ?? {}) as {
+    amount?: number; months?: number; isTeacherSub?: boolean; planName?: string;
+    planKey?: string; productKey?: string; paywallSource?: any;
+  };
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [cardNumber, setCardNumber] = useState('');
@@ -71,27 +74,71 @@ export default function CardPaymentScreen() {
   const amountLabel = `${finalAmount.toFixed(2)} `;
   const appliedCode = preview?.valid ? promo.trim() : undefined;
 
-  const { mutate: activateSub, isPending: activating } = useMutation({
-    // Paket key-i varsa onunla abunə ol (müəllim & şagird üçün eyni axın, qiymət/müddət serverdə);
-    // əks halda köhnə müəllim months-əsaslı axın (məs. abunəlik yeniləmə).
-    mutationFn: () => (params.planKey ? subscribeByPlan(params.planKey, appliedCode) : subscribeTeacher(params.months ?? 1)),
-    onSuccess: () => {
+  /**
+   * ⚠️ ÖDƏNİŞ AXINI DƏYİŞDİ (monetizasiya sistemi).
+   *
+   * Əvvəl bu ekran birbaşa `subscribeByPlan()` çağırır və server heç bir ödəniş
+   * yoxlamadan premium verirdi — yəni kart forması dekorativ idi. İndi:
+   *   checkout → provayder → SERVER doğrulaması → premium.
+   * Ödəniş uğursuz olarsa premium AÇILMIR (§13, §30).
+   *
+   * `idempotencyKey` sifariş başına sabitdir: düymə iki dəfə basılsa da
+   * ikinci sorğu YENİ sifariş yaratmır, mövcudunu qaytarır.
+   */
+  const idempotencyKey = React.useMemo(
+    () => `co-${params.planKey ?? params.productKey ?? 'sub'}-${Date.now()}`,
+    [params.planKey, params.productKey],
+  );
+
+  const { mutate: pay, isPending: activating } = useMutation({
+    mutationFn: async () => {
+      const res = await startCheckout({
+        kind: params.productKey ? 'extra_product' : 'subscription',
+        planKey: params.planKey,
+        productKey: params.productKey,
+        promoCode: appliedCode,
+        paywallSource: params.paywallSource ?? 'profile',
+        idempotencyKey,
+      });
+
+      // Hosted checkout: provayder xarici səhifə istəyir → brauzerdə aç,
+      // qayıdışda status serverdən soruşulur (müştəri "ödədim" deyə bilmir).
+      if (res.redirectUrl) {
+        await Linking.openURL(res.redirectUrl);
+        return { ...res, pendingExternal: true };
+      }
+      return { ...res, pendingExternal: false };
+    },
+    onSuccess: (res: any) => {
       queryClient.invalidateQueries({ queryKey: ['subscriptionStatus'] });
       queryClient.invalidateQueries({ queryKey: ['entitlements'] });
       queryClient.invalidateQueries({ queryKey: ['teacherAnalytics'] });
       queryClient.invalidateQueries({ queryKey: ['me'] });
-      navigation.navigate(Routes.PaymentSuccess, params);
+
+      if (res.success) {
+        navigation.navigate(Routes.PaymentSuccess, { ...params, orderId: res.orderId });
+        return;
+      }
+      if (res.pendingExternal) {
+        // Xarici ödəniş davam edir — nəticəni server webhook/verify ilə təyin edəcək.
+        navigation.navigate(Routes.PaymentMethod, { ...params, orderId: res.orderId, awaiting: true });
+        return;
+      }
+      navigation.navigate(Routes.PaymentFailed, {
+        ...params,
+        orderId: res.orderId,
+        reason: res.failureReason ?? t('pay.subActivateFailed'),
+      });
     },
     onError: (err: any) => {
-      Alert.alert(t('pay.errorTitle'), err?.response?.data?.message ?? t('pay.subActivateFailed'));
+      const data = err?.response?.data;
+      Alert.alert(t('pay.errorTitle'), data?.message ?? t('pay.subActivateFailed'));
     },
   });
 
   const onPay = () => {
     if (activating) return;
-    // Paket key-i və ya müəllim abunəliyidirsə real olaraq aktivləşdir; əks halda mock axın.
-    if (params.planKey || params.isTeacherSub) activateSub();
-    else navigation.navigate(Routes.PaymentSuccess, params);
+    pay();
   };
 
   return (

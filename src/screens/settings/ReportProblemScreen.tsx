@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
+import Constants from 'expo-constants';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { createSupportTicket } from '../../api/support.api';
+import { uploadImage } from '../../api/media.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -25,9 +29,56 @@ export default function ReportProblemScreen() {
   const [titleFocused, setTitleFocused] = useState(false);
   const [descFocused, setDescFocused] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
+  const [attachment, setAttachment] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
 
   const selectedType = PROBLEM_TYPES.find(pt => pt.value === problemType);
   const selectedLabel = selectedType ? t(selectedType.labelKey) : t('reportProblem.typePlaceholder');
+
+  /** Şəkil seçimi — sənəd (PDF) dəstəklənmir, ona görə yalnız qalereya şəkli. */
+  const pickAttachment = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert(t('reportProblem.permTitle'), t('reportProblem.permBody'));
+      return;
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+    });
+    if (!res.canceled && res.assets?.[0]) setAttachment(res.assets[0].uri);
+  };
+
+  const submit = async () => {
+    if (!problemType) { Alert.alert(t('reportProblem.validTitle'), t('reportProblem.validType')); return; }
+    if (!title.trim()) { Alert.alert(t('reportProblem.validTitle'), t('reportProblem.validSubject')); return; }
+    if (description.trim().length < 10) { Alert.alert(t('reportProblem.validTitle'), t('reportProblem.validDesc')); return; }
+
+    setSending(true);
+    try {
+      // Şəkil yüklənmirsə müraciəti bloklamırıq — şəkilsiz göndərilir.
+      let attachmentUrl: string | null = null;
+      if (attachment) attachmentUrl = await uploadImage(attachment).catch(() => null);
+
+      await createSupportTicket({
+        type: problemType,
+        subject: title.trim(),
+        description: description.trim(),
+        attachmentUrl,
+        appVersion: Constants.expoConfig?.version ?? null,
+        platform: Platform.OS,
+      });
+
+      Alert.alert(t('reportProblem.doneTitle'), t('reportProblem.doneBody'), [
+        { text: t('reportProblem.ok'), onPress: () => navigation.goBack() },
+      ]);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message;
+      Alert.alert(t('reportProblem.failTitle'), typeof msg === 'string' ? msg : t('reportProblem.failBody'));
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -111,21 +162,37 @@ export default function ReportProblemScreen() {
           {/* File upload */}
           <View style={styles.field}>
             <Text style={styles.fieldLabel}>{t('reportProblem.uploadLabel')}</Text>
-            <TouchableOpacity style={styles.uploadZone} activeOpacity={0.85}>
-              <View style={styles.uploadIconWrap}>
-                <Ionicons name="cloud-upload-outline" size={28} color={Colors.primary} />
+            {attachment ? (
+              <View style={styles.attachRow}>
+                <Image source={{ uri: attachment }} style={styles.attachThumb} />
+                <Text style={styles.attachName} numberOfLines={1}>{t('reportProblem.attachAdded')}</Text>
+                <TouchableOpacity onPress={() => setAttachment(null)} hitSlop={10}>
+                  <Ionicons name="close-circle" size={22} color={Colors.textMuted} />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.uploadTitle}>{t('reportProblem.uploadTitle')}</Text>
-              <Text style={styles.uploadSub}>{t('reportProblem.uploadSub')}</Text>
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity style={styles.uploadZone} activeOpacity={0.85} onPress={pickAttachment}>
+                <View style={styles.uploadIconWrap}>
+                  <Ionicons name="cloud-upload-outline" size={28} color={Colors.primary} />
+                </View>
+                <Text style={styles.uploadTitle}>{t('reportProblem.uploadTitle')}</Text>
+                <Text style={styles.uploadSub}>{t('reportProblem.uploadSub')}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
         {/* Submit */}
-        <TouchableOpacity activeOpacity={0.85} style={styles.submitWrap}>
-          <LinearGradient colors={GRADIENT} style={styles.submitBtn} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-            <Text style={styles.submitText}>{t('reportProblem.submit')}</Text>
-            <Ionicons name="send-outline" size={18} color="#fff" />
+        <TouchableOpacity activeOpacity={0.85} style={styles.submitWrap} onPress={submit} disabled={sending}>
+          <LinearGradient colors={GRADIENT} style={[styles.submitBtn, sending && { opacity: 0.7 }]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            {sending ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.submitText}>{t('reportProblem.submit')}</Text>
+                <Ionicons name="send-outline" size={18} color="#fff" />
+              </>
+            )}
           </LinearGradient>
         </TouchableOpacity>
       </ScrollView>
@@ -199,6 +266,14 @@ const styles = StyleSheet.create({
   },
   uploadTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
   uploadSub: { fontSize: 12, color: Colors.outlineVariant },
+
+  attachRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 12,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 20, elevation: 1,
+  },
+  attachThumb: { width: 48, height: 48, borderRadius: 12, backgroundColor: Colors.surfaceLow },
+  attachName: { flex: 1, fontSize: 13, fontWeight: '600', color: Colors.textPrimary },
 
   submitWrap: { borderRadius: 999, overflow: 'hidden' },
   submitBtn: {

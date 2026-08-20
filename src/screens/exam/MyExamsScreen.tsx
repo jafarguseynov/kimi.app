@@ -34,9 +34,7 @@ export default function MyExamsScreen({ navigation }: Props) {
           </View>
           <Text style={styles.headerTitle}>{t('myExams.title')}</Text>
         </View>
-        <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>

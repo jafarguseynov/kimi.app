@@ -1,20 +1,39 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { linkChild } from '../../api/parent.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function EnterChildCodeScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [studentId, setStudentId] = useState('');
   const [focused, setFocused] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const handleLink = async () => {
+    const identifier = studentId.trim();
+    if (!identifier || loading) return;
+    setLoading(true);
+    try {
+      const child: any = await linkChild(identifier);
+      await queryClient.invalidateQueries({ queryKey: ['myChildren'] });
+      navigation.navigate(Routes.ConnectionSuccess, { childName: child?.name });
+    } catch (e: any) {
+      Alert.alert(t('enterChildCode.errorTitle'), e?.response?.data?.message || t('enterChildCode.errorMsg'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -56,7 +75,9 @@ export default function EnterChildCodeScreen() {
               onChangeText={setStudentId}
               placeholder={t('enterChildCode.placeholder')}
               placeholderTextColor={Colors.outlineVariant}
-              autoCapitalize="characters"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="email-address"
               onFocus={() => setFocused(true)}
               onBlur={() => setFocused(false)}
             />
@@ -66,8 +87,8 @@ export default function EnterChildCodeScreen() {
         {/* CTA */}
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={() => navigation.navigate(Routes.ConnectionPending)}
-          disabled={studentId.trim().length === 0}
+          onPress={handleLink}
+          disabled={studentId.trim().length === 0 || loading}
         >
           <LinearGradient
             colors={studentId.trim().length === 0 ? [Colors.surfaceHigh, Colors.surfaceHigh] : GRADIENT}
@@ -75,7 +96,11 @@ export default function EnterChildCodeScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={styles.primaryBtnText}>{t('enterChildCode.connect')}</Text>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.primaryBtnText}>{t('enterChildCode.connect')}</Text>
+            )}
           </LinearGradient>
         </TouchableOpacity>
 

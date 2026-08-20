@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   Animated,
   Alert,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,74 +19,34 @@ import { RouteProp } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { useStartExam, useExamList } from '../../hooks/useExams';
-import { useUserStore } from '../../store/user.store';
-import { useTranslation, translate } from '../../i18n';
-import type { AppLanguage } from '../../store/settings.store';
+import { useStartExam, useExam } from '../../hooks/useExams';
+import { useTranslation } from '../../i18n';
+import Paywall from '../../components/Paywall';
+import { asPaywallError, PaywallError } from '../../api/monetization.api';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.ExamDetail>;
   route: RouteProp<ExamStackParamList, typeof Routes.ExamDetail>;
 };
 
-const DIFFICULTY_TKEY: Record<string, string> = {
-  easy: 'examList.diff.easy', medium: 'examList.diff.medium', hard: 'examList.diff.hard',
-};
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: Colors.tertiary, medium: Colors.primary, hard: Colors.danger,
-};
-
-// Sinif nömrəsi → Azərbaycan dilində sıra şəkilçili ad (yalnız az dili üçün)
-const GRADE_LABELS: Record<number, string> = {
-  1: '1-ci', 2: '2-ci', 3: '3-cü', 4: '4-cü', 5: '5-ci', 6: '6-cı',
-  7: '7-ci', 8: '8-ci', 9: '9-cu', 10: '10-cu', 11: '11-ci',
-};
-
-// İmtahanın sinfini tapır: əvvəl `grade` sahəsi, sonra başlıqdan ("7-ci sinif").
-function detectGrade(gradeRaw?: string | null, title?: string): number {
-  const fromField = parseInt(String(gradeRaw ?? '').match(/\d+/)?.[0] ?? '', 10);
-  if (fromField >= 1 && fromField <= 11) return fromField;
-  // Başlıqda "7-ci sinif" / "6-cı sinif" formasını axtar
-  const m = String(title ?? '').match(/(\d{1,2})\s*-?\s*(?:ci|cı|cu|cü)?\s*sin[fi]/i);
-  const fromTitle = m ? parseInt(m[1], 10) : NaN;
-  return fromTitle >= 1 && fromTitle <= 11 ? fromTitle : 0;
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
-// İmtahanın sinfinə uyğun standart müddət qaydası (1-8 → 120, 9-11 → 180).
-function buildDurationRule(lang: AppLanguage, gradeRaw?: string | null, title?: string) {
-  const gradeNum = detectGrade(gradeRaw, title);
-  const text =
-    gradeNum >= 1 && gradeNum <= 11
-      ? translate(lang, 'examDetail.durationGraded', {
-          grade: lang === 'az' ? GRADE_LABELS[gradeNum] : String(gradeNum),
-          min: gradeNum <= 8 ? 120 : 180,
-        })
-      : translate(lang, 'examDetail.durationGeneric');
-  return { icon: 'time-outline' as keyof typeof Ionicons.glyphMap, titleKey: 'examDetail.durationTitle', text };
-}
-
-const EXAM_RULES: { icon: keyof typeof Ionicons.glyphMap; titleKey: string; textKey: string }[] = [
-  { icon: 'sync-outline', titleKey: 'examDetail.rule1Title', textKey: 'examDetail.rule1Text' },
-  { icon: 'bar-chart-outline', titleKey: 'examDetail.rule2Title', textKey: 'examDetail.rule2Text' },
-  { icon: 'save-outline', titleKey: 'examDetail.rule3Title', textKey: 'examDetail.rule3Text' },
-  { icon: 'create-outline', titleKey: 'examDetail.rule4Title', textKey: 'examDetail.rule4Text' },
-];
 
 export default function ExamDetailScreen({ navigation, route }: Props) {
-  const { t, language } = useTranslation();
+  const { t } = useTranslation();
   const { examId, title } = route.params;
   const { mutate, isPending } = useStartExam();
-  const { user } = useUserStore();
-  const { data: exams = [] } = useExamList();
-  const exam = exams.find((e) => e.id === examId);
+  // Rəqəmlər birbaşa imtahanın özündən gəlir (əvvəl siyahıdan axtarılırdı və
+  // imtahan siyahıda olmadıqda ekranda «?» görünürdü).
+  const { data: exam } = useExam(examId);
 
-  const initials = (user?.name ?? 'K')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  const questionCount = exam?.questionCount ?? route.params.questionCount ?? null;
+  const duration = exam?.duration ?? route.params.duration ?? null;
+  const displayTitle = exam?.title ?? title ?? t('examDetail.titleFallback');
 
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [paywall, setPaywall] = useState<PaywallError | null>(null);
   const loadAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -100,6 +63,11 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
     }
   }, [isPending]);
 
+  const toggleRules = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setRulesOpen((v) => !v);
+  };
+
   const onStart = () => {
     if (!examId) {
       Alert.alert(t('examDetail.errorTitle'), t('examDetail.noId'));
@@ -108,6 +76,9 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
     mutate(examId, {
       onSuccess: () => navigation.navigate(Routes.ExamSession),
       onError: (err: any) => {
+        // Pulsuz limit dolubsa server 403 (LIMIT_REACHED) qaytarır → paywall
+        const pw = asPaywallError(err);
+        if (pw) { setPaywall(pw); return; }
         const msg = err?.code === 'ECONNABORTED'
           ? t('examDetail.timeout')
           : err?.response?.data?.message ?? err?.message ?? t('examDetail.startFailed');
@@ -162,9 +133,19 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
     );
   }
 
-  const diffKey = DIFFICULTY_TKEY[exam?.difficulty ?? ''];
-  const diffLabel = diffKey ? t(diffKey) : (exam?.difficulty ?? t('examList.diff.medium'));
-  const diffColor = DIFFICULTY_COLORS[exam?.difficulty ?? ''] ?? Colors.primary;
+  // Qaydalar — ilk iki bənd imtahanın REAL parametrindən qurulur
+  const rules: string[] = [
+    questionCount ? t('examDetail.ruleQuestions', { n: questionCount }) : '',
+    duration ? t('examDetail.ruleDuration', { n: duration }) : '',
+    t('examDetail.ruleChange'),
+    t('examDetail.ruleResult'),
+    t('examDetail.ruleTimer'),
+  ].filter(Boolean);
+
+  const summary = [
+    questionCount ? t('catExams.questions', { n: questionCount }) : null,
+    duration ? t('catExams.minutes', { n: duration }) : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -175,51 +156,19 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
           </TouchableOpacity>
           <Text style={styles.logoText}>Kimi.az</Text>
         </View>
-        <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={styles.settingsBtn}
-            onPress={() => navigation.navigate(Routes.ExamSettings, { examId, title: exam?.title ?? title })}
-            activeOpacity={0.7}
-            hitSlop={8}
-          >
-            <Ionicons name="settings-outline" size={20} color={Colors.primary} />
-          </TouchableOpacity>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>{initials}</Text>
-          </View>
-        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
-          <Text style={styles.heroTitle}>{exam?.title ?? title ?? t('examDetail.titleFallback')}</Text>
-          <Text style={styles.heroSub}>
-            {t('examDetail.heroSub')}
-          </Text>
-        </View>
-
-        {/* Info cards grid */}
-        <View style={styles.infoGrid}>
-          <View style={styles.infoCard}>
-            <Ionicons name="help-circle-outline" size={26} color={Colors.primary} />
-            <Text style={styles.infoValue}>{exam?.questionCount ?? '?'}</Text>
-            <Text style={styles.infoLabel}>{t('examDetail.qCount')}</Text>
-          </View>
-          <View style={styles.infoCard}>
-            <Ionicons name="time-outline" size={26} color={Colors.secondary} />
-            <Text style={styles.infoValue}>{exam?.duration ?? '?'}</Text>
-            <Text style={styles.infoLabel}>{t('examDetail.minutes')}</Text>
-          </View>
-          <View style={styles.infoCard}>
-            <Ionicons name="bar-chart-outline" size={26} color={diffColor} />
-            <Text style={[styles.infoValue, { color: diffColor }]}>{diffLabel}</Text>
-            <Text style={styles.infoLabel}>{t('examDetail.difficulty')}</Text>
-          </View>
-          <View style={styles.infoCard}>
-            <Ionicons name="book-outline" size={26} color={Colors.tertiary} />
-            <Text style={styles.infoValue} numberOfLines={1}>{exam?.subject ?? '—'}</Text>
-            <Text style={styles.infoLabel}>{t('examDetail.subject')}</Text>
-          </View>
+          <Text style={styles.heroKicker}>{t('examDetail.readyKicker')}</Text>
+          <Text style={styles.heroTitle}>{displayTitle}</Text>
+          <Text style={styles.heroSub}>{t('examDetail.heroSub')}</Text>
+          {!!summary && (
+            <View style={styles.summaryPill}>
+              <Ionicons name="documents-outline" size={14} color={Colors.primary} />
+              <Text style={styles.summaryText}>{summary}</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.insightCard}>
@@ -227,28 +176,26 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
             <Ionicons name="bulb-outline" size={18} color={Colors.primary} />
             <Text style={styles.insightTitle}>{t('examDetail.insightTitle')}</Text>
           </View>
-          <Text style={styles.insightText}>
-            {t('examDetail.insightText')}
-          </Text>
+          <Text style={styles.insightText}>{t('examDetail.insightText')}</Text>
         </View>
 
-        {/* Test Qaydaları */}
+        {/* İmtahan qaydaları — açılıb-bağlanan */}
         <View style={styles.rulesCard}>
-          <View style={styles.rulesHeader}>
-            <Ionicons name="warning-outline" size={22} color={Colors.secondary} />
+          <TouchableOpacity style={styles.rulesHeader} activeOpacity={0.75} onPress={toggleRules}>
+            <Ionicons name="clipboard-outline" size={20} color={Colors.primary} />
             <Text style={styles.rulesTitle}>{t('examDetail.rulesTitle')}</Text>
-          </View>
-          {[buildDurationRule(language, (exam as any)?.grade, exam?.title ?? title), ...EXAM_RULES].map((r) => (
-            <View key={r.titleKey} style={styles.ruleRow}>
-              <View style={styles.ruleIconBubble}>
-                <Ionicons name={r.icon} size={18} color={Colors.primary} />
-              </View>
-              <View style={styles.ruleTextWrap}>
-                <Text style={styles.ruleTitle}>{t(r.titleKey)}</Text>
-                <Text style={styles.ruleText}>{'text' in r ? r.text : t(r.textKey)}</Text>
-              </View>
+            <Ionicons name={rulesOpen ? 'chevron-up' : 'chevron-down'} size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+          {rulesOpen && (
+            <View style={styles.rulesBody}>
+              {rules.map((r) => (
+                <View key={r} style={styles.ruleRow}>
+                  <View style={styles.ruleDot} />
+                  <Text style={styles.ruleText}>{r}</Text>
+                </View>
+              ))}
             </View>
-          ))}
+          )}
         </View>
 
         <View style={{ height: 24 }} />
@@ -262,6 +209,7 @@ export default function ExamDetailScreen({ navigation, route }: Props) {
           </LinearGradient>
         </TouchableOpacity>
       </View>
+      <Paywall visible={!!paywall} error={paywall} onClose={() => setPaywall(null)} />
     </SafeAreaView>
   );
 }
@@ -278,28 +226,22 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   backBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   logoText: { fontSize: 20, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  settingsBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
-  avatarCircle: { width: 38, height: 38, borderRadius: 19, backgroundColor: Colors.primaryFixed, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 28, paddingBottom: 16 },
+  scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 16 },
 
-  hero: { marginBottom: 28 },
-  heroTitle: { fontSize: 30, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.8, marginBottom: 8, lineHeight: 38 },
-  heroSub: { fontSize: 15, color: Colors.textSecondary, lineHeight: 22 },
-
-  infoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
-  infoCard: {
-    flex: 1, minWidth: '45%', backgroundColor: Colors.surfaceLowest, borderRadius: 20,
-    padding: 20, alignItems: 'center', gap: 8,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 1,
+  hero: { marginBottom: 22, gap: 6 },
+  heroKicker: { fontSize: 11, fontWeight: '800', color: Colors.primary, letterSpacing: 1.2, textTransform: 'uppercase' },
+  heroTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.6, lineHeight: 33 },
+  heroSub: { fontSize: 14, color: Colors.textSecondary, lineHeight: 21 },
+  summaryPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    backgroundColor: Colors.primaryLight, borderRadius: 999,
+    paddingHorizontal: 12, paddingVertical: 6, marginTop: 4,
   },
-  infoValue: { fontSize: 22, fontWeight: '800', color: Colors.textPrimary },
-  infoLabel: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 },
+  summaryText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 
   insightCard: {
-    borderRadius: 16, padding: 20,
+    borderRadius: 16, padding: 18,
     borderWidth: 1, borderColor: Colors.primaryFixed + '30',
     backgroundColor: Colors.primaryLight,
   },
@@ -307,23 +249,18 @@ const styles = StyleSheet.create({
   insightTitle: { fontSize: 13, fontWeight: '700', color: Colors.primary },
   insightText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 
-  // Test Qaydaları
   rulesCard: {
-    marginTop: 20, borderRadius: 20, padding: 20,
+    marginTop: 16, borderRadius: 16, paddingHorizontal: 18,
     backgroundColor: Colors.surfaceLowest,
     borderWidth: 1, borderColor: Colors.borderLight,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 1,
+    overflow: 'hidden',
   },
-  rulesHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  rulesTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
-  ruleRow: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  ruleIconBubble: {
-    width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  ruleTextWrap: { flex: 1, gap: 2 },
-  ruleTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  ruleText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19 },
+  rulesHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 18 },
+  rulesTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+  rulesBody: { paddingBottom: 18, gap: 12 },
+  ruleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  ruleDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.primary, marginTop: 7 },
+  ruleText: { flex: 1, fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 
   bottomBar: {
     paddingHorizontal: 20, paddingVertical: 16, paddingBottom: 24,

@@ -24,6 +24,7 @@ import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { loginSchema, LoginFormData } from '../../utils/validation';
 import { useLogin } from '../../hooks/useAuth';
+import { requestOtp } from '../../api/auth.api';
 import Input from '../../components/common/Input';
 import { useTranslation } from '../../i18n';
 import { LanguageFlagButton } from '../../components/LanguageSwitch';
@@ -61,7 +62,15 @@ export default function LoginScreen({ navigation }: Props) {
   const onSubmit = (data: LoginFormData) => {
     mutate(data, {
       onError: (err: any) => {
-        Alert.alert(t('login.errorTitle'), err?.response?.data?.message || t('login.loginError'));
+        const res = err?.response?.data;
+        // Nömrə OTP ilə təsdiqlənməyibsə (istifadəçi qeydiyyatı yarımçıq qoyub) →
+        // sadəcə xəta göstərmə; təsdiq kodunu göndər və OTP ekranına yönləndir.
+        if (res?.code === 'PHONE_NOT_VERIFIED' && res?.phone) {
+          requestOtp(res.phone).catch(() => {});
+          navigation.navigate(Routes.OTP, { phone: res.phone });
+          return;
+        }
+        Alert.alert(t('login.errorTitle'), res?.message || t('login.loginError'));
       },
     });
   };

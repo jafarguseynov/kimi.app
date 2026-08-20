@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
 
 // expo-updates yalnız real build-də var → təhlükəsiz require.
@@ -13,6 +14,13 @@ let Updates: any = null;
 try { Updates = require('expo-updates'); } catch { Updates = null; }
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
+
+/** Mağaza səhifəsi — «Tətbiqi qiymətləndir» keçidi üçün. */
+const STORE_URL = Platform.select({
+  ios: 'https://apps.apple.com/app/id6756714254',
+  android: 'https://play.google.com/store/apps/details?id=com.jafarstudio.kimi',
+  default: 'https://kimi.az/yukle',
+}) as string;
 
 // Cari işləyən bundle göstəricisi (diaqnoz üçün): tarix + qısa id, yoxdursa "embedded".
 function otaInfo(): string {
@@ -39,11 +47,11 @@ const FEATURES: Feature[] = [
   { icon: 'people-outline', titleKey: 'aboutApp.featCommunityTitle', descKey: 'aboutApp.featCommunityDesc' },
 ];
 
-const LINKS: LinkItem[] = [
-  { icon: 'document-text-outline', labelKey: 'aboutApp.linkTerms' },
-  { icon: 'shield-outline', labelKey: 'aboutApp.linkPrivacy' },
-  { icon: 'mail-outline', labelKey: 'aboutApp.linkContact' },
-  { icon: 'star-outline', labelKey: 'aboutApp.linkRate' },
+// Keçidlər: `route` varsa ekrana aparır, `url` varsa xaricə açır.
+// (Əvvəl bu sətirlərin heç biri işləmirdi — sadəcə görünürdü.)
+const LINKS: (LinkItem & { route?: string; url?: string })[] = [
+  { icon: 'mail-outline', labelKey: 'aboutApp.linkContact', url: 'mailto:destek@kimi.az' },
+  { icon: 'star-outline', labelKey: 'aboutApp.linkRate', url: STORE_URL },
 ];
 
 export default function AboutAppScreen() {
@@ -101,6 +109,10 @@ export default function AboutAppScreen() {
                 key={idx}
                 style={[styles.listRow, idx === LINKS.length - 1 && styles.listRowLast]}
                 activeOpacity={0.7}
+                onPress={() => {
+                  if (link.route) navigation.navigate(link.route as never);
+                  else if (link.url) Linking.openURL(link.url).catch(() => {});
+                }}
               >
                 <View style={styles.linkIconWrap}>
                   <Ionicons name={link.icon} size={18} color={Colors.primary} />

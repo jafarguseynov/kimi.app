@@ -14,6 +14,8 @@ import { getExamResult } from '../../api/certificate.api';
 import Confetti from '../../components/effects/Confetti';
 import { playSuccess, playSoft } from '../../utils/sound';
 import { useTranslation } from '../../i18n';
+import { useQueryClient } from '@tanstack/react-query';
+import { completeDailyChallenge } from '../../api/dailyChallenge.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
@@ -27,7 +29,8 @@ function formatTime(seconds: number): string {
 
 export default function ExamResultScreen({ navigation, route }: Props) {
   const { t } = useTranslation();
-  const { result, pending, examId: storeExamId, resetExam } = useExamStore();
+  const qc = useQueryClient();
+  const { result, pending, examId: storeExamId, resetExam, isDailyChallenge } = useExamStore();
   const user = useUserStore((s) => s.user);
   const paramExamId = route.params?.examId;
   const examId = paramExamId ?? storeExamId;
@@ -41,6 +44,24 @@ export default function ExamResultScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!fromHistory) return () => { resetExam(); };
   }, [fromHistory]);
+
+  // ⚡ Günün çağırışı: nəticə hazır olan kimi serverə bir dəfə göndər.
+  // Xalı SERVER verir (unikal (challenge,user) indeksi ilə) — burada təkrar
+  // göndərilsə belə ikinci dəfə xal yazılmır, yəni "sonsuz xal" mümkün deyil.
+  const dcReportedRef = useRef(false);
+  useEffect(() => {
+    if (fromHistory || !isDailyChallenge || !result || dcReportedRef.current) return;
+    dcReportedRef.current = true;
+    completeDailyChallenge(result.score, result.total)
+      .then(() => {
+        qc.invalidateQueries({ queryKey: ['daily-challenge'] });
+        qc.invalidateQueries({ queryKey: ['user-stats'] });
+      })
+      .catch(() => {
+        // Şəbəkə yoxdursa səssiz keç — istifadəçi nəticəsini onsuz da görür,
+        // növbəti açılışda kart serverdəki həqiqi vəziyyəti göstərəcək.
+      });
+  }, [fromHistory, isDailyChallenge, result, qc]);
 
   // İmtahan sonu təntənəsi — yalnız təzə təqdimdən sonra (köhnə nəticəyə baxışda yox),
   // bir dəfə: yaxşı nəticədə aşağıdan konfeti + səs + titrəyiş, zəif nəticədə yumşaq səs.

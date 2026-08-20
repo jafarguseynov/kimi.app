@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Routes } from '../constants/routes';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
+import XpHistoryScreen from '../screens/profile/XpHistoryScreen';
 import VerificationStartScreen from '../screens/profile/VerificationStartScreen';
 import VerificationDocumentsScreen from '../screens/profile/VerificationDocumentsScreen';
 import VerificationPendingScreen from '../screens/profile/VerificationPendingScreen';
@@ -25,6 +26,7 @@ import TeacherDashboardScreen from '../screens/profile/TeacherDashboardScreen';
 import SettingsScreen from '../screens/profile/SettingsScreen';
 import NotificationSettingsScreen from '../screens/settings/NotificationSettingsScreen';
 import TermsOfServiceScreen from '../screens/settings/TermsOfServiceScreen';
+import PrivacyPolicyScreen from '../screens/settings/PrivacyPolicyScreen';
 import SupportScreen from '../screens/settings/SupportScreen';
 import HelpCenterScreen from '../screens/settings/HelpCenterScreen';
 import ReportProblemScreen from '../screens/settings/ReportProblemScreen';
@@ -38,6 +40,9 @@ import AccountDeactivatedScreen from '../screens/settings/AccountDeactivatedScre
 import DeleteAccountConfirmScreen from '../screens/settings/DeleteAccountConfirmScreen';
 import LogoutConfirmScreen from '../screens/settings/LogoutConfirmScreen';
 import AchievementsScreen from '../screens/home/AchievementsScreen';
+import DailyMissionsScreen from '../screens/home/DailyMissionsScreen';
+import PerformanceSummaryScreen from '../screens/home/PerformanceSummaryScreen';
+import QuestionActivityScreen from '../screens/home/QuestionActivityScreen';
 import CertificateListScreen from '../screens/exam/CertificateListScreen';
 import CertificatePreviewScreen from '../screens/exam/CertificatePreviewScreen';
 import ExamHistoryScreen from '../screens/exam/ExamHistoryScreen';
@@ -48,6 +53,7 @@ import TeacherStudentsScreen from '../screens/profile/TeacherStudentsScreen';
 import TeacherBoostScreen from '../screens/profile/TeacherBoostScreen';
 import TeacherClassScreen from '../screens/profile/TeacherClassScreen';
 import JoinTeacherScreen from '../screens/profile/JoinTeacherScreen';
+import MyTeachersScreen from '../screens/profile/MyTeachersScreen';
 import ClassGradeCalculatorScreen from '../screens/calculators/ClassGradeCalculatorScreen';
 
 const Stack = createNativeStackNavigator();
@@ -57,6 +63,7 @@ export default function ProfileNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
       <Stack.Screen name={Routes.ProfileHome} component={ProfileScreen} />
       <Stack.Screen name={Routes.EditProfile} component={EditProfileScreen} />
+      <Stack.Screen name={Routes.XpHistory} component={XpHistoryScreen} />
       <Stack.Screen name={Routes.VerificationStart} component={VerificationStartScreen} />
       <Stack.Screen name={Routes.VerificationDocuments} component={VerificationDocumentsScreen} />
       <Stack.Screen name={Routes.VerificationPending} component={VerificationPendingScreen} />
@@ -80,10 +87,12 @@ export default function ProfileNavigator() {
       <Stack.Screen name={Routes.TeacherBoost} component={TeacherBoostScreen} />
       <Stack.Screen name={Routes.TeacherClass} component={TeacherClassScreen} />
       <Stack.Screen name={Routes.JoinTeacher} component={JoinTeacherScreen} />
+      <Stack.Screen name={Routes.MyTeachers} component={MyTeachersScreen} />
       <Stack.Screen name={Routes.ClassGradeCalc} component={ClassGradeCalculatorScreen} />
       <Stack.Screen name={Routes.Settings} component={SettingsScreen} />
       <Stack.Screen name={Routes.NotificationSettings} component={NotificationSettingsScreen} />
       <Stack.Screen name={Routes.TermsOfService} component={TermsOfServiceScreen} />
+      <Stack.Screen name={Routes.PrivacyPolicy} component={PrivacyPolicyScreen} />
       <Stack.Screen name={Routes.Support} component={SupportScreen} />
       <Stack.Screen name={Routes.HelpCenter} component={HelpCenterScreen} />
       <Stack.Screen name={Routes.ReportProblem} component={ReportProblemScreen} />
@@ -97,6 +106,9 @@ export default function ProfileNavigator() {
       <Stack.Screen name={Routes.DeleteAccountConfirm} component={DeleteAccountConfirmScreen} />
       <Stack.Screen name={Routes.LogoutConfirm} component={LogoutConfirmScreen} options={{ presentation: 'transparentModal' }} />
       <Stack.Screen name={Routes.Achievements} component={AchievementsScreen} />
+      <Stack.Screen name={Routes.PerformanceSummary} component={PerformanceSummaryScreen} />
+      <Stack.Screen name={Routes.QuestionActivity} component={QuestionActivityScreen} />
+      <Stack.Screen name={Routes.DailyMissions} component={DailyMissionsScreen as any} />
       <Stack.Screen name={Routes.CertificateList} component={CertificateListScreen} />
       <Stack.Screen name={Routes.CertificatePreview} component={CertificatePreviewScreen as any} />
       <Stack.Screen name={Routes.ExamHistory} component={ExamHistoryScreen} />

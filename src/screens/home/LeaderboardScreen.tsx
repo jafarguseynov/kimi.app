@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,6 +19,7 @@ import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboa
 import { useUserStore } from '../../store/user.store';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { useReturnTab } from '../../hooks/useReturnTab';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 type Scope = 'students' | 'schools' | 'friends' | 'me';
@@ -35,8 +37,11 @@ const TAB_OPTIONS: { key: Scope; labelKey: string }[] = [
   { key: 'me', labelKey: 'leaderboard.tabMe' },
 ];
 
-function Avatar({ initial, size, gradient = false, border, borderColor }: { initial: string; size: number; gradient?: boolean; border?: number; borderColor?: string }) {
-  const inner = (
+function Avatar({ initial, size, gradient = false, border, borderColor, avatarUrl }: { initial: string; size: number; gradient?: boolean; border?: number; borderColor?: string; avatarUrl?: string | null }) {
+  // Profil şəkli varsa onu göstər; yoxdursa gradient + ad baş hərfi (köhnə davranış).
+  const inner = avatarUrl ? (
+    <Image source={{ uri: avatarUrl }} style={{ width: size, height: size, borderRadius: size / 2 }} resizeMode="cover" />
+  ) : (
     <LinearGradient
       colors={GRADIENT}
       style={{ width: size, height: size, borderRadius: size / 2, alignItems: 'center', justifyContent: 'center' }}
@@ -73,6 +78,8 @@ function Avatar({ initial, size, gradient = false, border, borderColor }: { init
 export default function LeaderboardScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
+  // Profil/İmtahanlar tabından açılıbsa geri həmin taba qayıt.
+  useReturnTab();
   const [scope, setScope] = useState<Scope>('students');
   const [data, setData] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -243,7 +250,7 @@ export default function LeaderboardScreen() {
                 {/* Rank 2 */}
                 <View style={styles.podiumCol}>
                   <View>
-                    <Avatar initial={initial(top3[1].name)} size={56} border={4} borderColor={Colors.surfaceHighest} />
+                    <Avatar initial={initial(top3[1].name)} size={56} border={4} borderColor={Colors.surfaceHighest} avatarUrl={top3[1].avatarUrl} />
                     <View style={[styles.podiumPill, { backgroundColor: '#CBD5E1' }]}>
                       <Text style={[styles.podiumPillText, { color: '#1E293B' }]}>2</Text>
                     </View>
@@ -258,7 +265,7 @@ export default function LeaderboardScreen() {
                     <View style={styles.crown}>
                       <Ionicons name="ribbon" size={28} color="#F59E0B" />
                     </View>
-                    <Avatar initial={initial(top3[0].name)} size={84} gradient />
+                    <Avatar initial={initial(top3[0].name)} size={84} gradient avatarUrl={top3[0].avatarUrl} />
                     <View style={styles.podiumPillFirst}>
                       <Text style={styles.podiumPillFirstText}>1</Text>
                     </View>
@@ -270,7 +277,7 @@ export default function LeaderboardScreen() {
                 {/* Rank 3 */}
                 <View style={styles.podiumCol}>
                   <View>
-                    <Avatar initial={initial(top3[2].name)} size={56} border={4} borderColor={Colors.surfaceHighest} />
+                    <Avatar initial={initial(top3[2].name)} size={56} border={4} borderColor={Colors.surfaceHighest} avatarUrl={top3[2].avatarUrl} />
                     <View style={[styles.podiumPill, { backgroundColor: '#FED7AA' }]}>
                       <Text style={[styles.podiumPillText, { color: '#9A3412' }]}>3</Text>
                     </View>
@@ -324,7 +331,7 @@ export default function LeaderboardScreen() {
                   <React.Fragment key={s.userId}>
                     <View style={[styles.studentRow, i < list.length - 1 && styles.studentRowBorder]}>
                       <Text style={styles.studentRank}>{s.rank}</Text>
-                      <Avatar initial={initial(s.name)} size={40} />
+                      <Avatar initial={initial(s.name)} size={40} avatarUrl={s.avatarUrl} />
                       <View style={{ flex: 1 }}>
                         <Text style={styles.studentName} numberOfLines={1}>{s.userId === user?.id ? t('leaderboard.you') : s.name}</Text>
                         <Text style={styles.studentSub} numberOfLines={1}>{t('leaderboard.examMeta', { count: s.examCount, pct: s.avgPercentage })}</Text>

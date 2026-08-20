@@ -18,6 +18,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useCalcRecordsStore } from '../../store/calcRecords.store';
+import SaveResultButton from '../../components/calculators/SaveResultButton';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -51,11 +53,14 @@ export default function SemesterCalculatorScreen() {
   const [ksq, setKsq] = useState<string[]>(['', '', '']);
   const [bsq, setBsq] = useState('');
   const [result, setResult] = useState<Result | null>(null);
+  const [recordId, setRecordId] = useState<string | null>(null);
+  const addRecord = useCalcRecordsStore((s) => s.addRecord);
 
   const goToInput = () => {
     setKsq(Array(ksqCount).fill(''));
     setBsq('');
     setResult(null);
+    setRecordId(null);
     setStep('input');
   };
 
@@ -90,16 +95,31 @@ export default function SemesterCalculatorScreen() {
       const bsq60 = bsqNum * 0.6;
       const final = Math.min(100, ksq40 + bsq60);
       setResult({ ksqAvg, ksq40, bsq60, final, grade: getGrade(final, t) });
+      record(final, filled.length, true);
     } else {
       // No BSQ: semester grade = KSQ average
       setResult({ ksqAvg, ksq40: ksqAvg, bsq60: 0, final: ksqAvg, grade: getGrade(ksqAvg, t) });
+      record(ksqAvg, filled.length, false);
     }
+  };
+
+  /** Nəticəni tarixçəyə yaz (§15 — "Yadda saxla" bu qeydi sancaqlayır). */
+  const record = (final: number, ksqUsed: number, withBsq: boolean) => {
+    setRecordId(
+      addRecord({
+        calcId: 'semester',
+        value: final.toFixed(1),
+        unitKey: 'calc.balUnit',
+        note: `${t('calc.ksqN', { n: ksqUsed })} · ${withBsq ? t('calc.bsqYesShort') : t('calc.bsqNoShort')}`,
+      }),
+    );
   };
 
   const reset = () => {
     setKsq(Array(ksqCount).fill(''));
     setBsq('');
     setResult(null);
+    setRecordId(null);
   };
 
   const onBack = () => {
@@ -319,6 +339,7 @@ export default function SemesterCalculatorScreen() {
                     <Text style={styles.gradeFullText}>{result.grade}</Text>
                   </View>
                 </View>
+                <SaveResultButton recordId={recordId} />
               </View>
             )}
           </ScrollView>

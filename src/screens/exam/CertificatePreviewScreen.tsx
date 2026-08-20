@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share, Alert, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -8,33 +8,22 @@ import { RouteProp } from '@react-navigation/native';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { getCertificate, getExamResult, type Certificate } from '../../api/certificate.api';
+import { getCertificate, getExamResult, certificateVerifyUrl, type Certificate } from '../../api/certificate.api';
+import { tierOfCertificate } from '../../utils/certificateTier';
+import CertificatePreview from '../../components/certificate/CertificatePreview';
+import { azOrdinal } from '../../utils/certificateMeta';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-const GOLD = '#D4AF37';
 
 type Props = {
   navigation: NativeStackNavigationProp<ExamStackParamList, typeof Routes.CertificatePreview>;
   route: RouteProp<ExamStackParamList, typeof Routes.CertificatePreview>;
 };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}.${d.getFullYear()}`;
-}
-
-function tierKeyForPct(pct: number): string {
-  if (pct >= 95) return 'cert.tierChampion';
-  if (pct >= 85) return 'cert.tierExcellence';
-  return 'cert.tierSuccess';
-}
-
 export default function CertificatePreviewScreen({ navigation, route }: Props) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { examId } = route.params;
   const [cert, setCert] = useState<Certificate | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,17 +51,37 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
     if (!cert) return;
     try {
       await Share.share({
-        message: t('cert.shareMsg', { title: cert.examTitle, pct: cert.percentage, score: cert.score, total: cert.total }),
+        message: t('cert.shareMsg', {
+          title: cert.examTitle,
+          pct: cert.percentage,
+          score: cert.score,
+          total: cert.total,
+          link: certificateVerifyUrl(cert.id),
+        }),
         title: t('cert.shareTitle'),
       });
     } catch { Alert.alert(t('cert.errorTitle'), t('cert.shareFailed')); }
   };
 
-  const handleDownload = () => {
-    Alert.alert(t('cert.pdfTitle'), t('cert.pdfMsg'), [
-      { text: t('cert.decline'), style: 'cancel' },
-      { text: t('cert.continue'), onPress: handleShare },
-    ]);
+  /**
+   * «Sertifikatı aç» — ictimai yoxlama səhifəsi sistem brauzerində açılır.
+   *
+   * ⚠️ Burada `expo-web-browser` İŞLƏDİLMİR: o, native modul olmasına baxmayaraq
+   * mövcud native buildə daxil deyil (`ios/Podfile.lock`-da ExpoWebBrowser yoxdur) —
+   * import edildikdə ekran «Cannot find native module 'ExpoWebBrowser'» ilə açılmır.
+   * `Linking` React Native nüvəsindədir, yəni OTA ilə gedir və hər buildə var.
+   * (Eyni səbəbdən `useGoogleSignIn` də həmin paketi lazy `require` ilə çağırır.)
+   *
+   * Real PDF yükləmə üçün `expo-print` lazımdır və o, YENİ STORE BUILD tələb edir.
+   */
+  const openVerification = async () => {
+    if (!cert) return;
+    const url = certificateVerifyUrl(cert.id);
+    try {
+      const ok = await Linking.canOpenURL(url);
+      if (!ok) throw new Error('cannot open');
+      await Linking.openURL(url);
+    } catch { Alert.alert(t('cert.errorTitle'), t('cert.openFailed')); }
   };
 
   return (
@@ -98,52 +107,8 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
       ) : (
         <>
           <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-            {/* Certificate Preview Card */}
-            <View style={styles.certCard}>
-              {/* Decorative borders */}
-              <View style={styles.borderOuter} pointerEvents="none" />
-              <View style={styles.borderInner} pointerEvents="none" />
-
-              {/* Soft background blobs */}
-              <View style={styles.blob1} pointerEvents="none" />
-              <View style={styles.blob2} pointerEvents="none" />
-
-              {/* Brand */}
-              <Text style={styles.brandWordmark}>
-                Kimi<Text style={styles.brandAccent}>.az</Text>
-              </Text>
-
-              <Text style={styles.kicker}>{t('cert.diploma')}</Text>
-
-              <Text style={styles.intro}>{t('cert.awardedTo')}</Text>
-              <Text style={styles.name}>{user?.name ?? t('cert.userFallback')}</Text>
-
-              <View style={styles.divider} />
-
-              <Text style={styles.desc}>
-                {t('cert.descPre')}<Text style={styles.descBold}>{cert.examTitle}</Text>{t('cert.descMid')}
-                <Text style={styles.descScore}>{cert.score}/{cert.total}</Text>{t('cert.descPost')}
-              </Text>
-
-              {/* Gold champion badge */}
-              <View style={styles.badgeWrap}>
-                <View style={styles.badgeAura} pointerEvents="none" />
-                <Ionicons name="star" size={68} color={GOLD} />
-                <LinearGradient
-                  colors={GRADIENT}
-                  style={styles.badgePill}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <Text style={styles.badgePillText}>{t(tierKeyForPct(cert.percentage))}</Text>
-                </LinearGradient>
-              </View>
-
-              <View style={styles.dateBlock}>
-                <Text style={styles.dateLabel}>{t('cert.dateLabel')}</Text>
-                <Text style={styles.dateValue}>{formatDate(cert.issuedAt)}</Text>
-              </View>
-            </View>
+            {/* Sertifikatın özü — paylaşıla bilən əsas vizual (komponent) */}
+            <CertificatePreview cert={cert} studentName={user?.name ?? t('cert.userFallback')} />
 
             {/* Ətraflı Məlumat */}
             <Text style={styles.sectionTitle}>{t('cert.details')}</Text>
@@ -155,16 +120,43 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoLabel}>{t('cert.certType')}</Text>
-                  <Text style={styles.infoValue}>{t(tierKeyForPct(cert.percentage))}</Text>
+                  <Text style={styles.infoValue}>{t(tierOfCertificate(cert).labelKey)}</Text>
                 </View>
               </View>
               <View style={styles.infoCard}>
                 <View style={[styles.infoIconBox, { backgroundColor: Colors.tertiary + '1A' }]}>
-                  <Ionicons name="document-text-outline" size={22} color={Colors.tertiary} />
+                  <Ionicons name="stats-chart-outline" size={22} color={Colors.tertiary} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>{t('cert.exam')}</Text>
-                  <Text style={styles.infoValue} numberOfLines={1}>{t('cert.examMock')}</Text>
+                  <Text style={styles.infoLabel}>{t('cert.resultLabel')}</Text>
+                  <Text style={styles.infoValue}>{cert.percentage}% ({cert.score}/{cert.total})</Text>
+                </View>
+              </View>
+              {/* Fənn/sinif YALNIZ backend göndərdikdə — boş sətir yaradılmır. */}
+              {!!(cert.subject || cert.grade) && (
+                <View style={styles.infoCard}>
+                  <View style={[styles.infoIconBox, { backgroundColor: Colors.primary + '1A' }]}>
+                    <Ionicons name="book-outline" size={22} color={Colors.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.infoLabel}>{t('cert.subjectLabel')}</Text>
+                    <Text style={styles.infoValue} numberOfLines={1}>
+                      {[cert.subject, cert.grade ? t('cert.gradeLabel', {
+                        grade: language === 'az' ? azOrdinal(cert.grade) : cert.grade,
+                      }) : null].filter(Boolean).join(' · ')}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              {/* Yoxlama kodu — sertifikatın üzərindəki və ictimai səhifədəki
+                  nömrə ilə EYNİ (xam UUID göstərilmir). */}
+              <View style={styles.infoCard}>
+                <View style={[styles.infoIconBox, { backgroundColor: Colors.tertiary + '1A' }]}>
+                  <Ionicons name="shield-checkmark-outline" size={22} color={Colors.tertiary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>{t('cert.verifyLabel')}</Text>
+                  <Text style={styles.verifyCode} numberOfLines={1}>{cert.certificateNo ?? cert.id}</Text>
                 </View>
               </View>
             </View>
@@ -188,19 +180,19 @@ export default function CertificatePreviewScreen({ navigation, route }: Props) {
 
           {/* Bottom Actions */}
           <View style={styles.footer}>
-            <TouchableOpacity activeOpacity={0.9} style={{ flex: 1 }} onPress={handleDownload}>
+            <TouchableOpacity activeOpacity={0.9} style={{ flex: 1 }} onPress={handleShare}>
               <LinearGradient
                 colors={GRADIENT}
                 style={styles.primaryBtn}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Ionicons name="download-outline" size={20} color="#fff" />
-                <Text style={styles.primaryBtnText}>{t('cert.pdfDownload')}</Text>
+                <Ionicons name="share-social-outline" size={20} color="#fff" />
+                <Text style={styles.primaryBtnText}>{t('cert.shareCta')}</Text>
               </LinearGradient>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={handleShare} activeOpacity={0.85}>
-              <Ionicons name="share-social-outline" size={22} color={Colors.textPrimary} />
+            <TouchableOpacity style={styles.iconBtn} onPress={openVerification} activeOpacity={0.85}>
+              <Ionicons name="open-outline" size={22} color={Colors.textPrimary} />
             </TouchableOpacity>
           </View>
         </>
@@ -228,76 +220,8 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, paddingBottom: 24, gap: 24 },
 
   /* Certificate card */
-  certCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 24,
-    padding: 32, alignItems: 'center', overflow: 'hidden',
-    borderWidth: 1, borderColor: Colors.outlineVariant + '1A',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.08, shadowRadius: 40, elevation: 4,
-  },
-  borderOuter: {
-    position: 'absolute', top: 16, left: 16, right: 16, bottom: 16,
-    borderWidth: 6, borderColor: Colors.primaryFixed + '33', borderRadius: 6,
-  },
-  borderInner: {
-    position: 'absolute', top: 24, left: 24, right: 24, bottom: 24,
-    borderWidth: 1, borderColor: Colors.primary + '1A', borderRadius: 4,
-  },
-  blob1: {
-    position: 'absolute', top: -64, right: -64,
-    width: 192, height: 192, borderRadius: 96,
-    backgroundColor: Colors.primary + '0D',
-  },
-  blob2: {
-    position: 'absolute', bottom: -64, left: -64,
-    width: 192, height: 192, borderRadius: 96,
-    backgroundColor: Colors.primaryFixed + '1A',
-  },
-
-  brandWordmark: {
-    fontSize: 22, fontWeight: '900', color: Colors.primary,
-    letterSpacing: -0.5, marginBottom: 22,
-  },
-  brandAccent: { color: Colors.primaryFixed },
-  kicker: {
-    fontSize: 11, fontWeight: '800', color: Colors.outline,
-    letterSpacing: 3, marginBottom: 22,
-  },
-  intro: { fontSize: 12, color: Colors.textSecondary, marginBottom: 6 },
-  name: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, textAlign: 'center' },
-
-  divider: {
-    width: 80, height: 1,
-    backgroundColor: Colors.surfaceHighest,
-    marginVertical: 24,
-  },
-
-  desc: {
-    fontSize: 13, color: Colors.textSecondary,
-    textAlign: 'center', maxWidth: 280, lineHeight: 22, marginBottom: 28,
-  },
-  descBold: { fontWeight: '700', color: Colors.primary },
-  descScore: { fontWeight: '800', color: Colors.textPrimary },
 
   /* Badge */
-  badgeWrap: {
-    width: 100, height: 100,
-    alignItems: 'center', justifyContent: 'center',
-    position: 'relative', marginBottom: 28,
-  },
-  badgeAura: {
-    position: 'absolute', inset: 0 as any,
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: Colors.primary + '14',
-  },
-  badgePill: {
-    position: 'absolute', bottom: -6,
-    paddingHorizontal: 14, paddingVertical: 4, borderRadius: 999,
-  },
-  badgePillText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' },
-
-  dateBlock: { alignItems: 'center', gap: 2 },
-  dateLabel: { fontSize: 9, fontWeight: '700', color: Colors.outline, letterSpacing: 1.5 },
-  dateValue: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
 
   /* Info section */
   sectionTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3, paddingHorizontal: 4 },
@@ -310,6 +234,7 @@ const styles = StyleSheet.create({
   infoIconBox: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   infoLabel: { fontSize: 11, fontWeight: '600', color: Colors.outline, marginBottom: 2 },
   infoValue: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+  verifyCode: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary, letterSpacing: 0.2 },
 
   /* Hint card */
   hintCard: {

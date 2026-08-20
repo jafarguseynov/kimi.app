@@ -15,16 +15,25 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
-import { Routes } from '../../constants/routes';
 import { createLessonRequest } from '../../api/lessonRequest.api';
+import { getSpecializations } from '../../api/specialization.api';
 import { useTranslation } from '../../i18n';
+import SuccessOverlay from '../../components/common/SuccessOverlay';
+import OptionPicker from '../../components/common/OptionPicker';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-const SUBJECTS = ['Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Fizika', 'Kimya', 'Biologiya', 'Tarix'];
-const GRADES = ['5-ci sinif', '6-cı sinif', '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif', 'Abituriyent', 'Magistratura'];
+// Fənn siyahısı SERVERDƏN gəlir (admin paneldəki "İxtisaslar"). Bu siyahı yalnız
+// server cavab vermədikdə istifadə olunan ehtiyatdır — əvvəllər ƏSAS siyahı idi və
+// cəmi 7 fənn saxlayırdı, ona görə şagird əksər fənləri seçə bilmirdi.
+const FALLBACK_SUBJECTS = ['Riyaziyyat', 'Azərbaycan dili', 'İngilis dili', 'Fizika', 'Kimya', 'Biologiya', 'Tarix'];
+const GRADES = [
+  '1-ci sinif', '2-ci sinif', '3-cü sinif', '4-cü sinif', '5-ci sinif', '6-cı sinif',
+  '7-ci sinif', '8-ci sinif', '9-cu sinif', '10-cu sinif', '11-ci sinif',
+  'Abituriyent', 'Magistratura',
+];
 const FORMATS = ['Online', 'Evdə', 'Kursda'] as const;
 type Format = typeof FORMATS[number];
 const FORMAT_LABEL_KEYS: Record<Format, string> = { Online: 'marketplace.formatOnline', 'Evdə': 'marketplace.formatHome', Kursda: 'marketplace.formatCourse' };
@@ -38,7 +47,20 @@ export default function LessonRequestScreen() {
   const [topic, setTopic] = useState('');
   const [format, setFormat] = useState<Format>('Online');
   const [frequency, setFrequency] = useState(3);
+  // Aylıq büdcə (AZN) — mətn kimi saxlanılır ki, boş qalmasına icazə verilsin.
+  const [budget, setBudget] = useState('');
   const [note, setNote] = useState('');
+  const [sentVisible, setSentVisible] = useState(false);
+  const [subjectPickerOpen, setSubjectPickerOpen] = useState(false);
+  const [gradePickerOpen, setGradePickerOpen] = useState(false);
+
+  // Admin paneldən idarə olunan fən/ixtisas siyahısı (EditProfile ilə eyni mənbə).
+  const { data: specs = [] } = useQuery({
+    queryKey: ['specializations'],
+    queryFn: getSpecializations,
+    staleTime: 1000 * 60 * 30,
+  });
+  const subjectOptions = specs.length ? specs.map((sp) => sp.name) : FALLBACK_SUBJECTS;
 
   const { mutate: submitRequest, isPending } = useMutation({
     mutationFn: () =>
@@ -48,30 +70,27 @@ export default function LessonRequestScreen() {
         topic,
         format: format.toLowerCase(),
         frequency,
+        budget: budget ? parseInt(budget, 10) : undefined,
         note,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['openLessonRequests'] });
       queryClient.invalidateQueries({ queryKey: ['myLessonRequests'] });
-      navigation.navigate(Routes.InterestedTeachers as any, {
-        requestTitle: `${subject} · ${topic}`,
-      });
+      // Əvvəl "Maraqlanan Müəllimlər" ekranına keçirdik, amma sorğu təzəcə
+      // göndərildiyi üçün ora həmişə BOŞ açılırdı ("Hələ sorğu yoxdur") —
+      // istifadəçidə "göndərilmədi" təəssüratı yaradırdı. İndi yaşıl təsdiq
+      // göstərilir, bağlananda əvvəlki ekrana qayıdılır.
+      setSentVisible(true);
     },
     onError: (e: any) =>
       Alert.alert(t('marketplace.errorTitle'), e?.response?.data?.message || t('marketplace.requestFail')),
   });
 
-  const showSubjectPicker = () =>
-    Alert.alert(t('marketplace.selectSubjectTitle'), '', [
-      ...SUBJECTS.map(s => ({ text: s, onPress: () => setSubject(s) })),
-      { text: t('marketplace.cancel'), style: 'cancel' as const, onPress: () => {} },
-    ]);
-
-  const showGradePicker = () =>
-    Alert.alert(t('marketplace.selectGradeTitle'), '', [
-      ...GRADES.map(g => ({ text: g, onPress: () => setGrade(g) })),
-      { text: t('marketplace.cancel'), style: 'cancel' as const, onPress: () => {} },
-    ]);
+  // Əvvəl bunlar `Alert.alert` idi. Alert bir neçə düymə üçün nəzərdə tutulub —
+  // 45 fənlik siyahı iOS-da ekrana sığmır və bir hissəsi görünmür. Ona görə
+  // sürüşən + axtarışlı `OptionPicker` modalına keçirildi.
+  const showSubjectPicker = () => setSubjectPickerOpen(true);
+  const showGradePicker = () => setGradePickerOpen(true);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -172,15 +191,22 @@ export default function LessonRequestScreen() {
               </View>
             </View>
 
-            {/* Time + Frequency */}
+            {/* Büdcə + Tezlik */}
             <View style={styles.row}>
+              {/* Aylıq büdcə — könüllü. Müəllim uyğunlaşdırmasında (§6) istifadə
+                  olunur və müəllimə yalnız doldurulduqda göstərilir.
+                  ⚠️ Əvvəl burada "Vaxt HH:MM" sahəsi vardı: heç bir state-ə
+                  bağlı deyildi və serverə GÖNDƏRİLMİRDİ — yazılan dəyər itirdi. */}
               <View style={styles.halfField}>
-                <Text style={styles.fieldLabel}>{t('marketplace.timeUpper')}</Text>
+                <Text style={styles.fieldLabel}>{t('marketplace.budgetUpper')}</Text>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="HH:MM"
+                  placeholder={t('marketplace.budgetPlaceholder')}
                   placeholderTextColor={Colors.outlineVariant}
                   keyboardType="numeric"
+                  value={budget}
+                  onChangeText={(v) => setBudget(v.replace(/[^0-9]/g, ''))}
+                  maxLength={5}
                 />
               </View>
               <View style={styles.halfField}>
@@ -246,6 +272,34 @@ export default function LessonRequestScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <OptionPicker
+        visible={subjectPickerOpen}
+        title={t('marketplace.selectSubjectTitle')}
+        options={subjectOptions}
+        selected={subject}
+        onSelect={setSubject}
+        onClose={() => setSubjectPickerOpen(false)}
+      />
+
+      <OptionPicker
+        visible={gradePickerOpen}
+        title={t('marketplace.selectGradeTitle')}
+        options={GRADES}
+        selected={grade}
+        onSelect={setGrade}
+        onClose={() => setGradePickerOpen(false)}
+      />
+
+      <SuccessOverlay
+        visible={sentVisible}
+        title={t('marketplace.requestSentTitle')}
+        message={t('marketplace.requestSentMsg')}
+        onClose={() => {
+          setSentVisible(false);
+          navigation.goBack();
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -267,7 +321,12 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
 
-  scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 220 },
+  // paddingBottom 220 idi — forma qısa olduğu üçün altda ~190dp boş ağ sahə qalırdı.
+  // 96dp = alt tab paneli (ScrollView onun ALTINA uzanır) + kiçik nəfəs boşluğu;
+  // "Sorğu göndər" düyməsi və altındakı qeyd tam görünür, artıq boşluq qalmır.
+  // Klaviatura üçün əlavə pad lazım deyil: iOS-da KeyboardAvoidingView (padding),
+  // Android-də adjustResize onsuz da sahəni yuxarı qaldırır.
+  scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 96 },
 
   mascotBanner: {
     backgroundColor: Colors.primary + '18',

@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
   RefreshControl,
-  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,22 +15,29 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
-import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
+import { PREMIUM_ENTRY_ROUTE, premiumRouteFor } from '../../config/iap';
 import { useUserStore } from '../../store/user.store';
+import TeacherCompletionCard from '../../components/profile/TeacherCompletionCard';
+import StudentCompletionCard from '../../components/profile/StudentCompletionCard';
+import ContactUsSection from '../../components/profile/ContactUsSection';
+import HelpFaqSection from '../../components/profile/HelpFaqSection';
+import VerifiedCheck from '../../components/profile/VerifiedCheck';
 import { useTeacherProfileCompletion } from '../../hooks/useTeacherProfileCompletion';
 import { useLogout } from '../../hooks/useAuth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { getUserStats } from '../../api/dashboard.api';
 import { getTeacherAnalytics, TeacherAnalytics, getTeachers, getMe } from '../../api/user.api';
 import { avatarEmoji } from '../../constants/cosmetics';
 import { getWallet } from '../../api/payment.api';
 import { getEntitlements } from '../../api/shop.api';
 import { getExamResults, getCertificates } from '../../api/certificate.api';
-import { UserStats } from '../../types/dashboard.types';
+import { getMyTeachers } from '../../api/collaboration.api';
+import apiClient from '../../api/client';
 import { Switch } from 'react-native';
 import { LanguageChips } from '../../components/LanguageSwitch';
 import { useTranslation } from '../../i18n';
+import ProgressSection from '../../components/progress/ProgressSection';
+import { getGamification } from '../../api/gamification.api';
 import { useBadges } from '../../hooks/useBadges';
 import UnreadDot from '../../components/common/UnreadDot';
 import { useMonetization } from '../../store/featureFlag.store';
@@ -43,13 +49,13 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type MenuTab = 'self' | 'home' | 'exams';
 const BASE_STUDENT_MENU = [
-  { id: 'joinTeacher', icon: 'people-outline', labelKey: 'profileScreen.menuJoinTeacher', subKey: 'profileScreen.menuJoinTeacherSub', tab: 'self' as MenuTab, route: Routes.JoinTeacher },
-  { id: 'results', icon: 'analytics-outline', labelKey: 'profileScreen.menuResults', subKey: 'profileScreen.menuResultsSub', tab: 'self' as MenuTab, route: Routes.ExamHistory },
+  { id: 'joinTeacher', icon: 'people-outline', labelKey: 'profileScreen.menuJoinTeacher', subKey: 'profileScreen.menuJoinTeacherSub', tab: 'self' as MenuTab, route: Routes.MyTeachers },
+  { id: 'results', icon: 'analytics-outline', labelKey: 'profileScreen.menuResults', subKey: 'profileScreen.menuResultsSub', tab: 'self' as MenuTab, route: Routes.PerformanceSummary },
   { id: 'history', icon: 'time-outline', labelKey: 'profileScreen.menuHistory', subKey: 'profileScreen.menuHistorySub', tab: 'self' as MenuTab, route: Routes.ExamHistory },
-  { id: 'questions', icon: 'help-circle-outline', labelKey: 'profileScreen.menuQuestions', subKey: 'profileScreen.menuQuestionsSub', tab: 'self' as MenuTab, route: Routes.Achievements },
+  { id: 'questions', icon: 'help-circle-outline', labelKey: 'profileScreen.menuQuestions', subKey: 'profileScreen.menuQuestionsSub', tab: 'self' as MenuTab, route: Routes.QuestionActivity },
   { id: 'balance', icon: 'wallet-outline', labelKey: 'profileScreen.menuBalance', subKey: '', tab: 'self' as MenuTab, route: Routes.Wallet },
   { id: 'subscription', icon: 'diamond-outline', labelKey: 'profileScreen.menuSubscription', subKey: 'profileScreen.menuSubscriptionSub', tab: 'home' as MenuTab, route: PREMIUM_ENTRY_ROUTE },
-  { id: 'goals', icon: 'flag-outline', labelKey: 'profileScreen.menuGoals', subKey: 'profileScreen.menuGoalsSub', tab: 'home' as MenuTab, route: Routes.DailyMissions },
+  { id: 'goals', icon: 'flag-outline', labelKey: 'profileScreen.menuGoals', subKey: 'profileScreen.menuGoalsSub', tab: 'self' as MenuTab, route: Routes.DailyMissions },
   { id: 'medals', icon: 'trophy-outline', labelKey: 'profileScreen.menuMedals', subKey: '', tab: 'self' as MenuTab, route: Routes.Achievements },
   { id: 'certs', icon: 'ribbon-outline', labelKey: 'profileScreen.menuCerts', subKey: '', tab: 'self' as MenuTab, route: Routes.CertificateList },
   { id: 'rewards', icon: 'gift-outline', labelKey: 'profileScreen.menuRewards', subKey: '', tab: 'self' as MenuTab, route: Routes.RewardHistory },
@@ -72,11 +78,10 @@ function useProfileRefresh() {
   return { refreshing, onRefresh };
 }
 
-function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, avatarId, premiumActive, navigation }: {
+function StudentView({ name, subtitle, logout, walletBalance, avatarUrl, avatarId, premiumActive, navigation }: {
   name: string;
   subtitle?: string;
   logout: () => void;
-  stats?: UserStats;
   walletBalance?: number;
   avatarUrl?: string;
   avatarId?: string | null;
@@ -98,23 +103,39 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
 
   const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
   const { data: certs = [] } = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
+  const { data: myTeachers = [] } = useQuery({ queryKey: ['myTeachers'], queryFn: getMyTeachers });
+  // Menyu alt-yazıları üçün canlı sayğaclar (sabit "3/5" və "5 dost" əvəzinə real dəyər).
+  // Hədəf ekranları ilə eyni queryKey → keş paylaşılır, təkrar sorğu yaranmır.
+  const { data: missions = [] } = useQuery<{ completed?: boolean }[]>({
+    queryKey: ['dailyMissions'],
+    queryFn: () => apiClient.get('/engagement/missions').then((r) => r.data).catch(() => []),
+  });
+  const { data: referralFriends = [] } = useQuery<unknown[]>({
+    queryKey: ['referral-friends'],
+    queryFn: () => apiClient.get('/referral/friends').then((r) => r.data).catch(() => []),
+  });
+  const missionsDone = missions.filter((m) => m?.completed).length;
+  const missionsTotal = missions.length;
+  const referralCount = Array.isArray(referralFriends) ? referralFriends.length : 0;
   const badges = useBadges();
 
-  const totalXp = React.useMemo(() => {
-    const examXp = results.reduce((s, r) => s + r.score * 10, 0);
-    return examXp + certs.length * 100;
-  }, [results, certs]);
-  const level = Math.max(1, Math.floor(totalXp / 2000) + 1);
-  const nextLevelXp = level * 2000;
-  const prevLevelXp = (level - 1) * 2000;
-  const xpProgress = Math.min(1, Math.max(0, (totalXp - prevLevelXp) / (nextLevelXp - prevLevelXp || 1)));
-  const tier = totalXp >= 5000 ? t('profileScreen.tierDiamond')
-    : totalXp >= 2000 ? t('profileScreen.tierPlatinum')
-    : totalXp >= 1000 ? t('profileScreen.tierGold')
-    : totalXp >= 500 ? t('profileScreen.tierSilver')
-    : t('profileScreen.tierBronze');
-  const streak = stats?.streak ?? 0;
-  const rating = 1000 + Math.round((stats?.averageScore ?? 0) * 4);
+  // "Müəllimə qoşul" sətri: qoşulubsa → "Müəllimlərim" + fənn/ad xülasəsi göstərir.
+  const teacherSummary = myTeachers
+    .map((mt) => mt.subject || mt.teacherName)
+    .filter(Boolean)
+    .join(' • ');
+
+  // Səviyyə serverdən gəlir (XP-nin yeganə mənbəyi backend-dir).
+  // Əvvəl burada XP müştəri tərəfində `score × 10 + sertifikat × 100` kimi
+  // uydurulurdu və serverin real XP-si (çağırış, duel, çarx) heç görünmürdü —
+  // bax: components/progress/ProgressSection.
+  const { data: gamification } = useQuery({
+    queryKey: ['gamification'],
+    queryFn: getGamification,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+  const level = gamification?.level ?? 1;
   const { refreshing, onRefresh } = useProfileRefresh();
 
   return (
@@ -156,57 +177,17 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
           </View>
         )}
         {!!subtitle && <Text style={styles.userMeta}>{subtitle}</Text>}
-
-        {/* XP progress */}
-        <View style={styles.xpBarWrap}>
-          <View style={styles.xpBarTrack}>
-            <LinearGradient
-              colors={GRADIENT}
-              style={[styles.xpBarFill, { width: `${xpProgress * 100}%` as any }]}
-              start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-            />
-          </View>
-          <View style={styles.xpBarLabels}>
-            <Text style={styles.xpBarLabel}>{totalXp.toLocaleString()} XP</Text>
-            <Text style={[styles.xpBarLabel, { color: Colors.primary }]}>{nextLevelXp.toLocaleString()} XP</Text>
-          </View>
-        </View>
       </View>
 
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statEmoji}>🔥</Text>
-          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{t('profileScreen.streakDays', { count: streak })}</Text>
-          <Text style={styles.statLabel} numberOfLines={1}>{t('profileScreen.statStreak')}</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statEmoji}>🏆</Text>
-          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{tier}</Text>
-          <Text style={styles.statLabel} numberOfLines={1}>{t('profileScreen.statLeague')}</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statEmoji}>⭐</Text>
-          <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{rating}</Text>
-          <Text style={styles.statLabel} numberOfLines={1}>{t('profileScreen.statRating')}</Text>
-        </View>
-      </View>
+      {/* Profil tamamlanması — faiz + çatışan sahələr (məktəb, sinif, rayon,
+          doğum tarixi, cinsiyyət). Serverdən gəlir; 100%-də kart özü gizlənir. */}
+      <StudentCompletionCard />
 
-      {/* AI card */}
-      <TouchableOpacity
-        style={styles.aiCard}
-        activeOpacity={0.88}
-        onPress={() => (navigation.getParent() as any)?.navigate(Routes.AIMentor)}
-      >
-        <View style={styles.aiIconWrap}>
-          <Ionicons name="sparkles" size={22} color={Colors.tertiary} />
-        </View>
-        <View style={styles.aiCardBody}>
-          <Text style={styles.aiCardTitle}>{t('profileScreen.aiCardTitle')}</Text>
-          <Text style={styles.aiCardSub}>{t('profileScreen.aiCardSub')}</Text>
-        </View>
-        <Ionicons name="chevron-forward" size={20} color={Colors.tertiary} />
-      </TouchableOpacity>
+      {/* ── Sənin irəliləyişin ──
+          XP, səviyyə, streak, liqa, reytinq və bugünkü hədəf.
+          Bütün dəyərlər serverdən (`/gamification/me`) gəlir — burada
+          heç bir hesablama aparılmır. */}
+      <ProgressSection />
 
       {/* Dil — birbaşa dəyiş */}
       <Text style={styles.langSectionLabel}>{t('language.title')}</Text>
@@ -216,8 +197,16 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
       <View style={styles.menuCard}>
         {menu.map((item, i) => {
           const isBalance = item.id === 'balance';
+          const isJoinTeacher = item.id === 'joinTeacher';
+          const hasTeachers = isJoinTeacher && myTeachers.length > 0;
+          const label = hasTeachers ? t('profileScreen.menuMyTeachers') : t(item.labelKey);
           const sub = isBalance && walletBalance !== undefined
             ? t('profileScreen.walletSub', { amount: walletBalance.toFixed(2) })
+            : hasTeachers ? (teacherSummary || t('profileScreen.menuJoinTeacherSub'))
+            : item.id === 'goals' && missionsTotal > 0
+              ? t('profileScreen.menuGoalsSubDyn', { done: missionsDone, total: missionsTotal })
+            : item.id === 'referral' && referralCount > 0
+              ? t('profileScreen.menuReferralSubDyn', { n: referralCount })
             : (item.subKey ? t(item.subKey) : '');
           return (
           <TouchableOpacity
@@ -230,7 +219,14 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
               } else {
                 const parent = navigation.getParent() as any;
                 const target = item.tab === 'home' ? Routes.Home : 'Exams';
-                parent?.navigate(target, { screen: item.route, initial: false });
+                // Başqa tabın stack-inə keçirik — geri basanda həmin tabın kök
+                // ekranında (Ana səhifə) qalmamaq üçün Profilə qayıdış nişanı
+                // ötürülür (bax: useReturnTab).
+                parent?.navigate(target, {
+                  screen: item.route,
+                  params: { returnTab: Routes.Profile },
+                  initial: false,
+                });
               }
             }}
           >
@@ -241,12 +237,17 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
               )}
             </View>
             <View style={styles.menuItemBody}>
-              <Text style={styles.menuItemLabel}>{t(item.labelKey)}</Text>
-              {sub ? <Text style={styles.menuItemSub}>{sub}</Text> : null}
+              <Text style={styles.menuItemLabel}>{label}</Text>
+              {sub ? <Text style={styles.menuItemSub} numberOfLines={1}>{sub}</Text> : null}
             </View>
             {isBalance && walletBalance !== undefined && walletBalance > 0 && (
               <View style={styles.activeBadge}>
                 <Text style={styles.activeBadgeText}>{t('profileScreen.activeBadge')}</Text>
+              </View>
+            )}
+            {hasTeachers && (
+              <View style={styles.activeBadge}>
+                <Text style={styles.activeBadgeText}>{myTeachers.length}</Text>
               </View>
             )}
             <Ionicons name="chevron-forward" size={18} color={Colors.outlineVariant} />
@@ -255,6 +256,8 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
         })}
       </View>
 
+      <HelpFaqSection />
+
       {/* Kimi tip */}
       <View style={styles.tipCard}>
         <Text style={styles.tipTitle}>{t('profileScreen.tipTitle')}</Text>
@@ -262,6 +265,8 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
           {t('profileScreen.tipText', { name: firstName })}
         </Text>
       </View>
+
+      <ContactUsSection />
 
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
         <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
@@ -273,7 +278,7 @@ function StudentView({ name, subtitle, logout, stats, walletBalance, avatarUrl, 
 
 // ─── Teacher ──────────────────────────────────────────────────────────────────
 
-function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, details, navigation }: {
+function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, details, selfTeacher, navigation }: {
   name: string; logout: () => void;
   analytics?: TeacherAnalytics;
   subjects?: string[];
@@ -291,6 +296,8 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
     phone?: string;
     email?: string;
   };
+  /** Öz profilini şagird görünüşündə açmaq üçün minimal müəllim obyekti. */
+  selfTeacher?: { id?: string; [k: string]: any };
   navigation: NativeStackNavigationProp<any>;
 }) {
   const { t } = useTranslation();
@@ -300,25 +307,51 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
   const teacherSubjects = subjects?.length ? subjects : [];
   const teacherBio = bio ?? '';
 
-  const d = details ?? {};
-  const teacherAreas = (d.areaNames?.length ? d.areaNames : (d.areaName ? [d.areaName] : [])).filter(Boolean);
-  const formatLabel = (f: string) =>
-    f === 'online' ? t('editProfile.formatOnline') : f === 'home' ? t('editProfile.formatHome') : f === 'course' ? t('editProfile.formatCourse') : f;
-  const teacherFormats = (d.lessonFormats ?? []).map(formatLabel);
-  const hasExperience = d.experienceYears != null && d.experienceYears > 0;
-  const hasPrice = d.hourlyRate != null && d.hourlyRate > 0;
-  const hasDetails = !!d.headline || hasExperience || hasPrice || teacherAreas.length > 0 || teacherFormats.length > 0 || d.offersFreeDemo || !!d.introVideoUrl;
-  const openIntro = () => { if (d.introVideoUrl) Linking.openURL(d.introVideoUrl).catch(() => {}); };
+  // Profili şagirdin gördüyü ekranda açır (Müəllimlər → müəllim profili).
+  // Detal sətirləri buradan silindiyi üçün `details` yalnız önizləməyə gedir.
+  const openPreview = () =>
+    (navigation.getParent() as any)?.navigate('Booking', {
+      screen: Routes.TeacherProfile,
+      params: { teacher: selfTeacher },
+    });
 
-  // Profil gücü (tamamlama) — ortaq hook (backend ilə eyni 6 element)
-  const { pct: trustPct, nextStep } = useTeacherProfileCompletion();
 
-  const metrics = [
-    { label: t('profileScreen.metricEarnings'), value: analytics?.monthlyEarnings?.toString() ?? '—', unit: 'AZN', primary: true },
-    { label: t('profileScreen.metricStudents'), value: analytics?.totalStudents?.toString() ?? '—', unit: '', primary: false },
-    { label: t('profileScreen.metricViews'), value: analytics?.profileViews?.toString() ?? '—', unit: '', primary: false },
-    { label: t('profileScreen.metricQueries'), value: analytics?.activeQueries?.toString() ?? '—', unit: '', primary: true },
+  // Metrik göstəriciləri — TƏK kart, içində 2×2 sətir.
+  // Əvvəl 4 iri pastel blok idi: çox yer tuturdu və dörd fon rəngi bir-biri ilə
+  // yarışırdı. İndi rəng yalnız kiçik ikonda qalır, rəqəm və etiket sakit tonda.
+  const metrics: {
+    label: string; value: string; unit: string;
+    icon: keyof typeof Ionicons.glyphMap; bg: string; chip: string;
+  }[] = [
+    {
+      label: t('profileScreen.metricEarnings'),
+      value: analytics?.monthlyEarnings?.toString() ?? '—',
+      unit: 'AZN',
+      icon: 'wallet', bg: '#ECFDF5', chip: '#10B981',
+    },
+    {
+      label: t('profileScreen.metricStudents'),
+      value: analytics?.totalStudents?.toString() ?? '—',
+      unit: '',
+      icon: 'people', bg: '#EEF2FF', chip: '#6366F1',
+    },
+    {
+      label: t('profileScreen.metricViews'),
+      value: analytics?.profileViews?.toString() ?? '—',
+      unit: '',
+      icon: 'eye', bg: '#ECFEFF', chip: '#0EA5E9',
+    },
+    {
+      label: t('profileScreen.metricQueries'),
+      value: analytics?.activeQueries?.toString() ?? '—',
+      unit: '',
+      icon: 'mail-unread', bg: '#FDF2F8', chip: '#EC4899',
+    },
   ];
+  // §10 — mavi təsdiq nişanı: profil tam VƏ yayımdadır
+  const { state: completionState } = useTeacherProfileCompletion();
+  const isProfileVerified = completionState?.complete === true && completionState?.status === 'published';
+
   const { refreshing, onRefresh } = useProfileRefresh();
 
   return (
@@ -337,9 +370,9 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
               <Text style={styles.bigAvatarInitial}>{initial}</Text>
             </LinearGradient>
           )}
-          <View style={styles.verifiedBadge}>
-            <Ionicons name="checkmark" size={12} color="#fff" />
-          </View>
+          {/* §10 — mavi təsdiq: yalnız profil 100% və yayımdadırsa.
+              Əvvəllər bu nişan HƏR müəllimə göstərilirdi (mənasız idi). */}
+          <VerifiedCheck visible={isProfileVerified} onAvatar size={16} />
         </View>
         <Text style={styles.userName}>{name}</Text>
         <View style={styles.ratingPill}>
@@ -348,14 +381,29 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
         </View>
       </View>
 
+      {/* Profil tamamlama və yayımlanma — §5: səhifənin YUXARI hissəsində */}
+      <TeacherCompletionCard />
+
       {/* Metrics grid */}
-      <View style={styles.metricsGrid}>
-        {metrics.map((m) => (
-          <View key={m.label} style={styles.metricCard}>
-            <Text style={styles.metricLabel}>{m.label}</Text>
-            <View style={styles.metricValueRow}>
-              <Text style={[styles.metricValue, m.primary && { color: Colors.primary }]}>{m.value}</Text>
-              {m.unit ? <Text style={styles.metricUnit}>{m.unit}</Text> : null}
+      <View style={styles.metricsCard}>
+        {metrics.map((m, i) => (
+          <View
+            key={m.label}
+            style={[
+              styles.metricItem,
+              i % 2 === 0 && styles.metricItemBorderRight,
+              i < 2 && styles.metricItemBorderBottom,
+            ]}
+          >
+            <View style={[styles.metricIcon, { backgroundColor: m.bg }]}>
+              <Ionicons name={m.icon} size={14} color={m.chip} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={styles.metricValueRow}>
+                <Text style={styles.metricValue} numberOfLines={1}>{m.value}</Text>
+                {m.unit ? <Text style={styles.metricUnit}>{m.unit}</Text> : null}
+              </View>
+              <Text style={styles.metricLabel} numberOfLines={1}>{m.label}</Text>
             </View>
           </View>
         ))}
@@ -385,70 +433,21 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
       </View>
       )}
 
-      {/* Boost card */}
-      <TouchableOpacity activeOpacity={0.9} onPress={() => navigation.navigate(Routes.TeacherBoost)}>
-        <LinearGradient colors={GRADIENT} style={styles.premiumCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-          <View style={styles.premiumLeft}>
-            <View style={styles.premiumBadge}>
-              <Text style={styles.premiumBadgeText}>{t('profileScreen.boostBadge')}</Text>
-            </View>
-            <Text style={styles.premiumTitle}>{t('profileScreen.boostTitle')}</Text>
-            <Text style={styles.premiumSub}>
-              {t('profileScreen.boostSub')}
-            </Text>
-          </View>
-          <View style={styles.premiumIconWrap}>
-            <Ionicons name="rocket" size={42} color="#fff" />
-          </View>
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* Profil gücü (tamamlama) */}
-      {trustPct < 100 && (
-        <TouchableOpacity
-          style={trustStyles.card}
-          activeOpacity={0.9}
-          onPress={() => navigation.navigate(Routes.EditProfile)}
-        >
-          <View style={trustStyles.headerRow}>
-            <View style={trustStyles.iconWrap}>
-              <Ionicons name="shield-checkmark" size={18} color={Colors.primary} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={trustStyles.title}>{t('profileScreen.trustTitle')}</Text>
-              <Text style={trustStyles.sub}>{t('profileScreen.trustSub')}</Text>
-            </View>
-            <Text style={trustStyles.pct}>{trustPct}%</Text>
-          </View>
-          <View style={trustStyles.barTrack}>
-            <View style={[trustStyles.barFill, { width: `${trustPct}%` }]} />
-          </View>
-          {nextStep && (
-            <View style={trustStyles.nextRow}>
-              <Ionicons name="add-circle-outline" size={15} color={Colors.primary} />
-              <Text style={trustStyles.nextText}>{t('profileScreen.trustNext', { step: nextStep.label })}</Text>
-              <Ionicons name="chevron-forward" size={15} color={Colors.textSecondary} />
-            </View>
-          )}
-        </TouchableOpacity>
-      )}
+      {/* ⚠️ Köhnə "Profil gücü" kartı silindi — indi eyni məlumat yuxarıdakı
+          <TeacherCompletionCard /> ilə (server hesablaması ilə) göstərilir. */}
 
       {/* Müəllim İnkişafı */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>{t('profileScreen.teacherDevTitle')}</Text>
         <View style={progStyles.list}>
           {[
-            { key: 'subscription', icon: 'diamond' as const, title: t('profileScreen.menuSubscription'), sub: t('profileScreen.menuSubscriptionSub'), route: PREMIUM_ENTRY_ROUTE },
+            { key: 'subscription', icon: 'diamond' as const, title: t('profileScreen.menuSubscription'), sub: t('profileScreen.menuSubscriptionSub'), route: premiumRouteFor('teacher') },
             { key: 'class', icon: 'people-circle' as const, title: t('profileScreen.progClassTitle'), sub: t('profileScreen.progClassSub'), route: Routes.TeacherClass, local: true },
             { key: 'students', icon: 'people' as const, title: t('profileScreen.progStudentsTitle'), sub: t('profileScreen.progStudentsSub'), route: Routes.TeacherStudents, local: true },
-            { key: 'gradeCalc', icon: 'calculator' as const, title: t('profileScreen.progGradeCalcTitle'), sub: t('profileScreen.progGradeCalcSub'), route: Routes.ClassGradeCalc, local: true },
-            { key: 'calculators', icon: 'apps' as const, title: t('profileScreen.progCalculatorsTitle'), sub: t('profileScreen.progCalculatorsSub'), route: Routes.Calculators, tab: 'Calculators' },
+            // ⚠️ «Qiymət Kalkulyatoru» və «Kalkulyatorlar» sətirləri buradan silindi —
+            // hər ikisi ana səhifədəki sürətli keçiddən (→ Kalkulyatorlar tabı) və
+            // aşağı naviqasiyadan onsuz da açılır, burada təkrar idi.
             { key: 'referral', icon: 'share-social' as const, title: t('profileScreen.progReferralTitle'), sub: t('profileScreen.progReferralSub'), route: Routes.Referral, local: true },
-            { key: 'badges', icon: 'ribbon' as const, title: t('profileScreen.progBadgesTitle'), sub: t('profileScreen.progBadgesSub'), route: Routes.TeacherBadges },
-            { key: 'level', icon: 'flash' as const, title: t('profileScreen.progLevelTitle'), sub: t('profileScreen.progLevelSub'), route: Routes.TeacherLevel },
-            { key: 'verified', icon: 'checkmark-done' as const, title: t('profileScreen.progVerifiedTitle'), sub: t('profileScreen.progVerifiedSub'), route: Routes.VerifiedTeacher },
-            { key: 'top', icon: 'trophy' as const, title: t('profileScreen.progTopTitle'), sub: t('profileScreen.progTopSub'), route: Routes.TopTeachersLeaderboard },
-            { key: 'premium', icon: 'person-circle' as const, title: t('profileScreen.progPremiumTitle'), sub: t('profileScreen.progPremiumSub'), route: Routes.TeacherProfilePremium },
           ].filter((it) => it.key !== 'subscription' || subVisible).map((it) => (
             <TouchableOpacity
               key={it.key}
@@ -462,6 +461,7 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
                 } else {
                   (navigation.getParent() as any)?.navigate(Routes.Home, {
                     screen: it.route,
+                    params: { returnTab: Routes.Profile },
                     initial: false,
                   });
                 }
@@ -483,6 +483,8 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
         </View>
       </View>
 
+      <HelpFaqSection />
+
       {/* Subjects */}
       {teacherSubjects.length > 0 && (
         <View style={styles.section}>
@@ -497,57 +499,22 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
         </View>
       )}
 
-      {/* Profil məlumatları (redaktədə doldurulan sahələr) */}
-      {hasDetails && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{t('profileScreen.detailsTitle')}</Text>
-          <View style={styles.bioCard}>
-            {!!d.headline && <Text style={detailStyles.headline}>{d.headline}</Text>}
-
-            {hasExperience && (
-              <View style={detailStyles.row}>
-                <Ionicons name="briefcase-outline" size={18} color={Colors.primary} />
-                <Text style={detailStyles.label}>{t('teacherProfile.metaExperience')}</Text>
-                <Text style={detailStyles.value}>{d.experienceYears} {t('editProfile.yearUnit')}</Text>
-              </View>
-            )}
-            {hasPrice && (
-              <View style={detailStyles.row}>
-                <Ionicons name="pricetag-outline" size={18} color={Colors.primary} />
-                <Text style={detailStyles.label}>{t('editProfile.lessonPrice')}</Text>
-                <Text style={detailStyles.value}>{t('teacherProfile.priceValue', { rate: d.hourlyRate ?? 0 })}</Text>
-              </View>
-            )}
-            {teacherAreas.length > 0 && (
-              <View style={detailStyles.row}>
-                <Ionicons name="location-outline" size={18} color={Colors.primary} />
-                <Text style={detailStyles.label}>{t('editProfile.teachingAreas')}</Text>
-                <Text style={detailStyles.value} numberOfLines={2}>{teacherAreas.join(', ')}</Text>
-              </View>
-            )}
-            {teacherFormats.length > 0 && (
-              <View style={detailStyles.row}>
-                <Ionicons name="easel-outline" size={18} color={Colors.primary} />
-                <Text style={detailStyles.label}>{t('editProfile.lessonFormatShort')}</Text>
-                <Text style={detailStyles.value}>{teacherFormats.join(', ')}</Text>
-              </View>
-            )}
-            {d.offersFreeDemo && (
-              <View style={detailStyles.row}>
-                <Ionicons name="gift-outline" size={18} color={Colors.primary} />
-                <Text style={detailStyles.label}>{t('editProfile.freeDemo')}</Text>
-                <Ionicons name="checkmark-circle" size={18} color={Colors.primary} />
-              </View>
-            )}
-            {!!d.introVideoUrl && (
-              <TouchableOpacity style={detailStyles.row} activeOpacity={0.7} onPress={openIntro}>
-                <Ionicons name="logo-youtube" size={18} color="#e11d48" />
-                <Text style={detailStyles.label}>{t('editProfile.introVideo')}</Text>
-                <Ionicons name="open-outline" size={16} color={Colors.primary} />
-              </TouchableOpacity>
-            )}
+      {/* Profil önizləməsi.
+          Əvvəl burada təcrübə/qiymət/ərazi/format sətirlərindən ibarət uzun
+          siyahı vardı — eyni məlumat onsuz da ictimai profildə göstərilir və
+          burada səliqəsiz görünürdü. İndi tək sətir: müəllim profilini
+          ŞAGİRD GÖZÜ İLƏ açır. (Server öz baxışını saymır — sayğac şişmir.) */}
+      {!!selfTeacher?.id && (
+        <TouchableOpacity style={detailStyles.previewRow} activeOpacity={0.85} onPress={openPreview}>
+          <View style={detailStyles.previewIcon}>
+            <Ionicons name="eye-outline" size={19} color={Colors.primary} />
           </View>
-        </View>
+          <View style={{ flex: 1 }}>
+            <Text style={detailStyles.previewTitle}>{t('profileScreen.previewTitle')}</Text>
+            <Text style={detailStyles.previewSub}>{t('profileScreen.previewSub')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={Colors.textSecondary} />
+        </TouchableOpacity>
       )}
 
       {/* Bio */}
@@ -576,6 +543,8 @@ function TeacherView({ name, logout, analytics, subjects, bio, avatarUrl, detail
           <Text style={styles.editProfileText}>{t('profileScreen.editProfile')}</Text>
         </LinearGradient>
       </TouchableOpacity>
+
+      <ContactUsSection />
 
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
         <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
@@ -791,6 +760,10 @@ function ParentView({ name, logout, childName, childGrade, childSchool, navigati
         </View>
       </View>
 
+      <HelpFaqSection />
+
+      <ContactUsSection />
+
       <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.8}>
         <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
         <Text style={styles.logoutText}>{t('profileScreen.logout')}</Text>
@@ -810,7 +783,6 @@ export default function ProfileScreen() {
   const isTeacher = user?.role === 'teacher';
   const isStudent = !isTeacher && user?.role !== 'parent';
 
-  const { data: stats } = useQuery({ queryKey: ['user-stats'], queryFn: getUserStats, enabled: isStudent });
   const { data: wallet } = useQuery({ queryKey: ['wallet'], queryFn: getWallet, enabled: isStudent });
   const { data: entitlements } = useQuery({ queryKey: ['entitlements'], queryFn: getEntitlements, enabled: isStudent });
   const { data: analytics } = useQuery({ queryKey: ['teacher-analytics'], queryFn: getTeacherAnalytics, enabled: isTeacher });
@@ -867,6 +839,17 @@ export default function ProfileScreen() {
             phone: userAny?.phone,
             email: userAny?.email,
           }}
+          selfTeacher={{
+            id: userAny?.id,
+            name,
+            avatarUrl: userAny?.avatarUrl,
+            subjects: userAny?.subjects,
+            hourlyRate: userAny?.hourlyRate,
+            rating: analytics?.rating,
+            experience: userAny?.experienceYears,
+            gender: userAny?.gender,
+            isVerified: userAny?.isVerified,
+          }}
           navigation={navigation}
         />
       ) : user?.role === 'parent' ? (
@@ -883,7 +866,6 @@ export default function ProfileScreen() {
           name={name}
           subtitle={[userAny?.grade, userAny?.school].filter(Boolean).join(', ') || undefined}
           logout={logout}
-          stats={stats}
           walletBalance={wallet?.balance}
           avatarUrl={userAny?.avatarUrl}
           avatarId={userAny?.avatarId ?? userAny?.profile?.avatarId}
@@ -911,38 +893,21 @@ const progStyles = StyleSheet.create({
   rowSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 });
 
-const trustStyles = StyleSheet.create({
-  card: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 16, gap: 12,
+const detailStyles = StyleSheet.create({
+  // Profil önizləməsi sətri (köhnə detal siyahısının yerinə)
+  previewRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16,
     borderWidth: 1, borderColor: Colors.borderLight,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 2,
+    paddingVertical: 13, paddingHorizontal: 14,
   },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconWrap: {
-    width: 40, height: 40, borderRadius: 12,
+  previewIcon: {
+    width: 38, height: 38, borderRadius: 12,
     backgroundColor: Colors.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
-  title: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
-  sub: { fontSize: 11, color: Colors.textSecondary, marginTop: 2 },
-  pct: { fontSize: 20, fontWeight: '800', color: Colors.primary },
-  barTrack: { height: 8, borderRadius: 4, backgroundColor: Colors.surfaceHighest, overflow: 'hidden' },
-  barFill: { height: 8, borderRadius: 4, backgroundColor: Colors.primary },
-  nextRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  nextText: { flex: 1, fontSize: 12, fontWeight: '600', color: Colors.textPrimary },
-});
-
-const detailStyles = StyleSheet.create({
-  headline: {
-    fontSize: 14, fontWeight: '700', color: Colors.textPrimary, lineHeight: 20,
-    marginBottom: 4,
-  },
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10, borderTopWidth: 1, borderTopColor: Colors.borderLight,
-  },
-  label: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
-  value: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.textPrimary, textAlign: 'right' },
+  previewTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
+  previewSub: { fontSize: 11.5, color: Colors.textSecondary, marginTop: 2, lineHeight: 16 },
 });
 
 const styles = StyleSheet.create({
@@ -1054,23 +1019,6 @@ const styles = StyleSheet.create({
   },
   activeBadgeText: { fontSize: 9, fontWeight: '800', color: Colors.tertiary, letterSpacing: 0.5 },
 
-  // ── AI card (student) ──
-  aiCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: Colors.tertiaryContainer + '22',
-    borderRadius: 18, padding: 18,
-    borderLeftWidth: 4, borderLeftColor: Colors.tertiary,
-    overflow: 'hidden',
-  },
-  aiIconWrap: {
-    width: 44, height: 44, borderRadius: 14,
-    backgroundColor: Colors.tertiaryContainer + '66',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  aiCardBody: { flex: 1 },
-  aiCardTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  aiCardSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-
   // ── Menu (student) ──
   langSectionLabel: { fontSize: 12, fontWeight: '700', color: Colors.textMuted, letterSpacing: 0.5, marginBottom: -8, marginLeft: 4 },
   menuCard: {
@@ -1100,18 +1048,26 @@ const styles = StyleSheet.create({
   tipTitle: { fontSize: 15, fontWeight: '700', color: Colors.primary },
   tipText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 
-  // ── Metrics grid (teacher) ──
-  metricsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  metricCard: {
-    width: '47%', backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 18,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.02, shadowRadius: 12, elevation: 1,
-    gap: 6,
+  // ── Metrics (teacher) — tək kart, 2×2 sətir, incə ayırıcılarla ──
+  metricsCard: {
+    flexDirection: 'row', flexWrap: 'wrap', overflow: 'hidden',
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16,
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
-  metricLabel: { fontSize: 9, fontWeight: '700', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 1 },
-  metricValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
-  metricValue: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary },
-  metricUnit: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  metricItem: {
+    width: '50%', flexDirection: 'row', alignItems: 'center', gap: 9,
+    paddingVertical: 11, paddingHorizontal: 12,
+  },
+  metricItemBorderRight: { borderRightWidth: 1, borderRightColor: Colors.borderLight },
+  metricItemBorderBottom: { borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  metricIcon: {
+    width: 28, height: 28, borderRadius: 9,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  metricValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  metricValue: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
+  metricUnit: { fontSize: 10.5, fontWeight: '700', color: Colors.textSecondary },
+  metricLabel: { fontSize: 10.5, fontWeight: '600', color: Colors.textMuted, marginTop: 1 },
 
   // ── Earnings actions (teacher) ──
   earningsRow: { flexDirection: 'row', gap: 12 },

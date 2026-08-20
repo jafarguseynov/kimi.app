@@ -21,7 +21,6 @@ import client from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
-import { useMonetization } from '../../store/featureFlag.store';
 import { useUserStore } from '../../store/user.store';
 
 interface ReferralData {
@@ -42,7 +41,6 @@ interface ReferralFriend {
 export default function ReferralScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
-  const { payments: payVisible } = useMonetization();
   const me = useUserStore((s) => s.user);
   const [listOpen, setListOpen] = useState(false);
   const { data, isLoading } = useQuery<ReferralData>({
@@ -137,16 +135,6 @@ export default function ReferralScreen() {
                 <Text style={styles.balanceCurrency}>AZN</Text>
               </View>
               <View style={styles.balanceBtnRow}>
-                {payVisible && (
-                  <TouchableOpacity
-                    style={styles.balanceBtnSolid}
-                    activeOpacity={0.85}
-                    onPress={() => navigation.navigate(Routes.Wallet)}
-                  >
-                    <Ionicons name="add-circle" size={16} color={Colors.primary} />
-                    <Text style={styles.balanceBtnSolidText}>{t('referral.increaseBalance')}</Text>
-                  </TouchableOpacity>
-                )}
                 <TouchableOpacity
                   style={styles.balanceBtnGhost}
                   activeOpacity={0.85}

@@ -4,6 +4,7 @@ export interface LeaderboardEntry {
   rank: number;
   userId: string;
   name: string;
+  avatarUrl?: string | null;
   totalScore: number;
   examCount: number;
   avgPercentage: number;
@@ -14,6 +15,7 @@ export interface LeagueEntry {
   rank: number;
   userId: string;
   name: string;
+  avatarUrl?: string | null;
   weeklyScore: number;
   isCurrentUser: boolean;
 }

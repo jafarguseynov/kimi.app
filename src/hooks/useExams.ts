@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getExams, getExamsForUser, startExam, submitExam, generateExam, serveMock, ExamFilters } from '../api/exam.api';
+import { getExam, getExamCounts, getExams, getExamsForUser, startExam, submitExam, generateExam, serveMock, ExamFilters } from '../api/exam.api';
 import { getExamCollections, startCollectionTest, submitCollectionTest } from '../api/examCollection.api';
 import { useExamStore } from '../store/exam.store';
 
@@ -18,6 +18,30 @@ export const useExamListForUser = (filters?: ExamFilters, enabled = true) =>
       const data = query.state.data as unknown[] | undefined;
       return data && data.length === 0 ? 4000 : false;
     },
+  });
+
+/**
+ * Tək imtahanın məlumatı (sual sayı, müddət, çətinlik, fənn).
+ *
+ * Detal və hazırlıq ekranları bunu işlədir — beləcə imtahan hansı siyahıdan
+ * açılmasından asılı olmayaraq real rəqəmlər göstərilir.
+ */
+export const useExam = (examId?: string) =>
+  useQuery({
+    queryKey: ['exam', examId],
+    queryFn: () => getExam(examId as string),
+    enabled: !!examId,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+/** Kateqoriya/alt kateqoriya üzrə hazır imtahan sayları (hub nişanları üçün). */
+export const useExamCounts = () =>
+  useQuery({
+    queryKey: ['exam-counts'],
+    queryFn: getExamCounts,
+    staleTime: 10 * 60 * 1000,
+    retry: false,
   });
 
 export const useGenerateExam = () => {
@@ -52,15 +76,21 @@ export const useStartExam = () => {
 
 export const useSubmitExam = () => {
   const { setResult } = useExamStore();
+  // Sessiya açarı serverdən gəlir və cəhd boyu SABİT qalır → təkrar göndərişdə
+  // (offline→online, ikinci toxunuş) server ikinci nəticə yaratmır, XP təkrarlanmır.
+  const sessionId = useExamStore((s) => s.sessionId);
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: ({ examId, answers, timeSpent, type }: { examId: string; answers: Record<string, string>; timeSpent: number; type?: 'practice' | 'monthly' | 'national' | 'live' }) =>
-      submitExam(examId, answers, timeSpent, type),
+      submitExam(examId, answers, timeSpent, type, sessionId ?? undefined),
     onSuccess: (data) => {
       setResult(data);
       qc.invalidateQueries({ queryKey: ['examResults'] });
       qc.invalidateQueries({ queryKey: ['certificates'] });
+      // XP/streak/hədəf serverdə dəyişdi → bölmə yenilənsin (+XP animasiyası)
+      qc.invalidateQueries({ queryKey: ['gamification'] });
+      qc.invalidateQueries({ queryKey: ['xp-history'] });
     },
   });
 };

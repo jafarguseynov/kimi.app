@@ -36,7 +36,7 @@ class DuelSocketService {
   }
 
   // ─── Matchmaking ───────────────────────────────────────────────
-  joinQueue(p: { subject: string; questionCount: number; stake: number }) {
+  joinQueue(p: { subject: string; questionCount: number; stake: number; inviteCode?: string }) {
     this.socket?.emit('queue:join', p);
   }
   cancelQueue() {

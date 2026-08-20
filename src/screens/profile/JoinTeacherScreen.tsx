@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  Alert, KeyboardAvoidingView, Platform, ActivityIndicator,
+  Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,24 +26,40 @@ export default function JoinTeacherScreen() {
   const queryClient = useQueryClient();
   const [code, setCode] = useState('');
   const [focused, setFocused] = useState(false);
+  // Müəllimin bir neçə fənni varsa: fənn seçim modalı
+  const [subjectOptions, setSubjectOptions] = useState<string[] | null>(null);
+  const [pendingTeacher, setPendingTeacher] = useState('');
 
   const { mutate, isPending } = useMutation({
-    mutationFn: () => joinTeacher(code.trim()),
+    mutationFn: (subject?: string) => joinTeacher(code.trim(), subject),
     onSuccess: (data) => {
+      // Müəllimin bir neçə fənni var → fənn seçdir, üzvlük hələ yaradılmayıb
+      if (data.needsSubject) {
+        setPendingTeacher(data.teacherName);
+        setSubjectOptions(data.subjects ?? []);
+        return;
+      }
+      setSubjectOptions(null);
       queryClient.invalidateQueries({ queryKey: ['me'] });
+      queryClient.invalidateQueries({ queryKey: ['myTeachers'] });
+
+      const subjectLine = data.subject ? `\n\n📘 ${t('joinTeacher.subjectLabel')}: ${data.subject}` : '';
       if (data.alreadyMember) {
-        Alert.alert(t('joinTeacher.alreadyTitle'), t('joinTeacher.alreadyBody', { name: data.teacherName }), [
-          { text: t('joinTeacher.ok'), onPress: () => navigation.goBack() },
-        ]);
+        Alert.alert(
+          t('joinTeacher.alreadyTitle'),
+          t('joinTeacher.alreadyBody', { name: data.teacherName }) + subjectLine,
+          [{ text: t('joinTeacher.ok'), onPress: () => navigation.goBack() }],
+        );
       } else {
         Alert.alert(
           t('joinTeacher.successTitle'),
-          t('joinTeacher.successBody', { name: data.teacherName, days: data.premiumDays ?? 7 }),
+          t('joinTeacher.successBody', { name: data.teacherName, days: data.premiumDays ?? 7 }) + subjectLine,
           [{ text: t('joinTeacher.great'), onPress: () => navigation.goBack() }],
         );
       }
     },
     onError: (err: any) => {
+      setSubjectOptions(null);
       Alert.alert(t('joinTeacher.errorTitle'), err?.response?.data?.message ?? t('joinTeacher.errorBody'));
     },
   });
@@ -51,7 +67,12 @@ export default function JoinTeacherScreen() {
   const onJoin = () => {
     if (!code.trim()) return Alert.alert(t('joinTeacher.codeTitle'), t('joinTeacher.codeEmpty'));
     if (isPending) return;
-    mutate();
+    mutate(undefined);
+  };
+
+  const onPickSubject = (subject: string) => {
+    setSubjectOptions(null);
+    mutate(subject);
   };
 
   return (
@@ -62,7 +83,9 @@ export default function JoinTeacherScreen() {
             <Ionicons name="arrow-back" size={22} color={Colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{t('joinTeacher.headerTitle')}</Text>
-          <View style={styles.headerBtn} />
+          <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('MyTeachers')} activeOpacity={0.7} hitSlop={8}>
+            <Ionicons name="people-circle-outline" size={24} color={Colors.primary} />
+          </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -106,7 +129,37 @@ export default function JoinTeacherScreen() {
               )}
             </LinearGradient>
           </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => navigation.navigate('MyTeachers')} activeOpacity={0.7} style={styles.myTeachersLink}>
+            <Ionicons name="people-circle-outline" size={18} color={Colors.primary} />
+            <Text style={styles.myTeachersLinkText}>{t('joinTeacher.myTeachersLink')}</Text>
+          </TouchableOpacity>
         </ScrollView>
+
+        {/* Fənn seçim modalı — müəllimin bir neçə fənni olduqda */}
+        <Modal visible={!!subjectOptions} transparent animationType="fade" onRequestClose={() => setSubjectOptions(null)}>
+          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setSubjectOptions(null)}>
+            <View style={styles.modalCard} onStartShouldSetResponder={() => true}>
+              <View style={styles.modalHandle} />
+              <Text style={styles.modalTitle}>{t('joinTeacher.pickSubjectTitle')}</Text>
+              <Text style={styles.modalSubtitle}>
+                {t('joinTeacher.pickSubjectSubtitle', { name: pendingTeacher })}
+              </Text>
+              <View style={{ marginTop: 8 }}>
+                {(subjectOptions ?? []).map((s) => (
+                  <TouchableOpacity key={s} style={styles.subjectRow} activeOpacity={0.7} onPress={() => onPickSubject(s)}>
+                    <View style={styles.subjectIcon}><Ionicons name="book-outline" size={18} color={Colors.primary} /></View>
+                    <Text style={styles.subjectText}>{s}</Text>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity style={styles.modalCancel} onPress={() => setSubjectOptions(null)} activeOpacity={0.7}>
+                <Text style={styles.modalCancelText}>{t('joinTeacher.cancel')}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -149,4 +202,26 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 5,
   },
   joinBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
+
+  myTeachersLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 16, paddingVertical: 8 },
+  myTeachersLinkText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalCard: {
+    backgroundColor: Colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 20, paddingBottom: 34,
+  },
+  modalHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: Colors.borderLight, alignSelf: 'center', marginBottom: 14 },
+  modalTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, textAlign: 'center' },
+  modalSubtitle: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', marginTop: 4, lineHeight: 19 },
+  subjectRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginTop: 10,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  subjectIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
+  subjectText: { flex: 1, fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
+  modalCancel: { marginTop: 16, alignItems: 'center', paddingVertical: 10 },
+  modalCancelText: { fontSize: 15, fontWeight: '700', color: Colors.textSecondary },
 });

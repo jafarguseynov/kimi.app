@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +28,9 @@ import Input from '../../components/common/Input';
 import { UserRole } from '../../types/auth.types';
 import { useTranslation } from '../../i18n';
 import { LanguageFlagButton } from '../../components/LanguageSwitch';
+import apiClient from '../../api/client';
+
+type Inviter = { name: string; avatarUrl: string | null; avatarId: string | null; role: string };
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, typeof Routes.Register>;
@@ -76,17 +80,44 @@ export default function RegisterScreen({ navigation, route }: Props) {
   // kimi qeydiyyatdan keçirdi.
   const [role, setRole] = React.useState<Exclude<UserRole, 'admin'> | null>(null);
   const [roleError, setRoleError] = React.useState(false);
+  // İstifadə şərtləri + məxfilik siyasətinin qəbulu (qeydiyyat üçün MƏCBURİ).
+  const [acceptedTerms, setAcceptedTerms] = React.useState(false);
+  const [termsError, setTermsError] = React.useState(false);
   const [grade, setGrade] = React.useState('');
   const [school, setSchool] = React.useState('');
   const [childName, setChildName] = React.useState('');
   // Referal linki ilə açılıbsa (kimiaz://join?ref=KOD və ya kimi.az/join?ref=KOD),
   // dəvət kodu avtomatik doldurulur.
   const [referralCode, setReferralCode] = React.useState(route.params?.ref ?? '');
+  // Dəvət edənin ictimai məlumatı (ad + şəkil) — formanın üstündə "X səni dəvət edir" banneri üçün.
+  const [inviter, setInviter] = React.useState<Inviter | null>(null);
+  // Dəvət kodunun yoxlanma statusu — kod sahəsinin altında sahibi/xəta göstərmək üçün.
+  const [codeStatus, setCodeStatus] = React.useState<'idle' | 'checking' | 'found' | 'notfound'>('idle');
 
   React.useEffect(() => {
     const ref = route.params?.ref;
     if (ref) setReferralCode(ref);
   }, [route.params?.ref]);
+
+  React.useEffect(() => {
+    const ref = (referralCode || '').trim();
+    if (!ref) { setInviter(null); setCodeStatus('idle'); return; }
+    let alive = true;
+    setCodeStatus('checking');
+    // Hər hərfdə sorğu getməsin deyə debounce.
+    const timer = setTimeout(() => {
+      apiClient
+        .get<Inviter>(`/referral/resolve?code=${encodeURIComponent(ref)}`)
+        .then((res) => {
+          if (!alive) return;
+          const data = res.data && (res.data as any).name ? res.data : null;
+          setInviter(data);
+          setCodeStatus(data ? 'found' : 'notfound');
+        })
+        .catch(() => { if (alive) { setInviter(null); setCodeStatus('idle'); } });
+    }, 350);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [referralCode]);
 
   const pickGrade = () =>
     Alert.alert(t('register.pickGrade'), '', [
@@ -104,6 +135,11 @@ export default function RegisterScreen({ navigation, route }: Props) {
       if (!childName.trim()) return Alert.alert(t('register.childTitle'), t('register.childMsg'));
       if (!grade) return Alert.alert(t('register.gradeTitle'), t('register.gradeMsg'));
     }
+    // Razılıq olmadan qeydiyyat getmir — həm burada, həm serverdə qeyd olunur.
+    if (!acceptedTerms) {
+      setTermsError(true);
+      return Alert.alert(t('register.termsRequiredTitle'), t('register.termsRequiredMsg'));
+    }
 
     // Backend tək `name` sahəsi saxlayır — ad və soyadı birləşdirib göndəririk,
     // `surname` payload-a düşməsin deyə ayrıca çıxarılır.
@@ -119,6 +155,8 @@ export default function RegisterScreen({ navigation, route }: Props) {
         grade: role === 'parent' ? grade || undefined : undefined,
         childName: role === 'parent' ? childName || undefined : undefined,
         referralCode: referralCode.trim() || undefined,
+        // Qəbul vaxtını server yazır; redaksiya nömrəsi backend-dəki TERMS_VERSION.
+        acceptedTerms: true,
       },
       {
         onSuccess: (res) => {
@@ -141,9 +179,15 @@ export default function RegisterScreen({ navigation, route }: Props) {
       <View style={styles.langBar}>
         <LanguageFlagButton />
       </View>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
         {/* Logo section */}
@@ -156,51 +200,33 @@ export default function RegisterScreen({ navigation, route }: Props) {
           <Text style={styles.logoSub}>{t('register.logoSub')}</Text>
         </View>
 
+        {/* Dəvət banneri — referal linki ilə açılıbsa dəvət edənin şəkli + adı */}
+        {inviter && (
+          <View style={styles.inviteBanner}>
+            {inviter.avatarUrl ? (
+              <Image source={{ uri: inviter.avatarUrl }} style={styles.inviteAvatar} />
+            ) : (
+              <View style={[styles.inviteAvatar, styles.inviteAvatarFallback]}>
+                <Text style={styles.inviteAvatarInitial}>
+                  {(inviter.name || '?').trim().charAt(0).toLocaleUpperCase('az')}
+                </Text>
+              </View>
+            )}
+            <Text style={styles.inviteText} numberOfLines={2}>
+              <Text style={styles.inviteName}>{inviter.name}</Text>{' '}
+              {t('referral.inviteBannerSuffix')} 🎓
+            </Text>
+          </View>
+        )}
+
         {/* Form card */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('register.cardTitle')}</Text>
           <Text style={styles.cardSub}>{t('register.cardSub')}</Text>
 
           <View style={styles.form}>
-            {/* Role */}
-            <View style={styles.labelWrap}>
-              <Text style={styles.fieldLabel}>{t('register.roleLabel')}</Text>
-            </View>
-            <View style={styles.roleRow}>
-              {ROLE_OPTIONS.map((opt) => {
-                const active = role === opt.id;
-                return (
-                  <TouchableOpacity
-                    key={opt.id}
-                    style={[
-                      styles.roleChip,
-                      roleError && styles.roleChipError,
-                      active && styles.roleChipActive,
-                    ]}
-                    activeOpacity={0.85}
-                    onPress={() => {
-                      setRole(opt.id);
-                      setRoleError(false);
-                    }}
-                  >
-                    <Ionicons
-                      name={opt.icon}
-                      size={18}
-                      color={active ? '#fff' : Colors.primary}
-                    />
-                    <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>
-                      {t(opt.labelKey)}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-            {roleError && (
-              <Text style={styles.roleErrorText}>{t('register.roleHint')}</Text>
-            )}
-
             {/* Name */}
-            <View style={[styles.labelWrap, { marginTop: 16 }]}>
+            <View style={styles.labelWrap}>
               <Text style={styles.fieldLabel}>{t('register.nameLabel')}</Text>
             </View>
             <Controller
@@ -289,6 +315,43 @@ export default function RegisterScreen({ navigation, route }: Props) {
               )}
             />
 
+            {/* Role — şifrədən sonra: "kimsiniz?" statusu ən sonda seçilir */}
+            <View style={[styles.labelWrap, { marginTop: 16 }]}>
+              <Text style={styles.fieldLabel}>{t('register.roleLabel')}</Text>
+            </View>
+            <View style={styles.roleRow}>
+              {ROLE_OPTIONS.map((opt) => {
+                const active = role === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[
+                      styles.roleChip,
+                      roleError && styles.roleChipError,
+                      active && styles.roleChipActive,
+                    ]}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      setRole(opt.id);
+                      setRoleError(false);
+                    }}
+                  >
+                    <Ionicons
+                      name={opt.icon}
+                      size={18}
+                      color={active ? '#fff' : Colors.primary}
+                    />
+                    <Text style={[styles.roleChipText, active && styles.roleChipTextActive]}>
+                      {t(opt.labelKey)}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {roleError && (
+              <Text style={styles.roleErrorText}>{t('register.roleHint')}</Text>
+            )}
+
             {/* Şagird: sinif/məktəb qeydiyyatdan sonra profil bölməsində seçilir */}
             {role === 'student' && (
               <View style={styles.infoNote}>
@@ -342,6 +405,58 @@ export default function RegisterScreen({ navigation, route }: Props) {
               autoCapitalize="characters"
             />
 
+            {/* Dəvət kodunun sahibi — səhv adamın kodu deyilsə əvvəlcədən görünsün */}
+            {codeStatus === 'checking' && (
+              <View style={styles.codeHintRow}>
+                <ActivityIndicator size="small" color={Colors.textSecondary} />
+                <Text style={styles.codeHintMuted}>{t('register.codeChecking')}</Text>
+              </View>
+            )}
+            {codeStatus === 'found' && inviter && (
+              <View style={styles.codeHintRow}>
+                <Ionicons name="checkmark-circle" size={16} color={Colors.success} />
+                <Text style={styles.codeHintOk} numberOfLines={1}>
+                  {t('register.codeOwner', { name: inviter.name })}
+                </Text>
+              </View>
+            )}
+            {codeStatus === 'notfound' && (
+              <View style={styles.codeHintRow}>
+                <Ionicons name="close-circle" size={16} color={Colors.danger} />
+                <Text style={styles.codeHintErr}>{t('register.codeNotFound')}</Text>
+              </View>
+            )}
+
+            {/* Razılıq — istifadə şərtləri + məxfilik siyasəti.
+                Mətnlərin özü toxunulan linklərdir (oxumadan da təsdiq oluna bilər,
+                amma qutu işarələnmədən qeydiyyat getmir). */}
+            <TouchableOpacity
+              style={[styles.consentRow, termsError && styles.consentRowError]}
+              activeOpacity={0.8}
+              onPress={() => { setAcceptedTerms((v) => !v); setTermsError(false); }}
+            >
+              <View style={[styles.checkbox, acceptedTerms && styles.checkboxOn]}>
+                {acceptedTerms && <Ionicons name="checkmark" size={14} color="#fff" />}
+              </View>
+              <Text style={styles.consentText}>
+                {t('register.consentPre')}
+                <Text
+                  style={styles.consentLink}
+                  onPress={() => navigation.navigate(Routes.TermsOfService)}
+                >
+                  {t('register.consentTerms')}
+                </Text>
+                {t('register.consentMid')}
+                <Text
+                  style={styles.consentLink}
+                  onPress={() => navigation.navigate(Routes.PrivacyPolicy)}
+                >
+                  {t('register.consentPrivacy')}
+                </Text>
+                {t('register.consentPost')}
+              </Text>
+            </TouchableOpacity>
+
             {/* Submit */}
             <TouchableOpacity
               onPress={handleSubmit(onSubmit)}
@@ -382,21 +497,15 @@ export default function RegisterScreen({ navigation, route }: Props) {
           </View>
         </View>
 
-        {/* Terms */}
-        <Text style={styles.terms}>
-          {t('register.termsPre')}
-          <Text style={styles.termsLink}>{t('register.termsOfUse')}</Text>
-          {t('register.and')}
-          <Text style={styles.termsLink}>{t('register.privacyPolicy')}</Text>
-          {t('register.termsPost')}
-        </Text>
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
+  flex: { flex: 1 },
   langBar: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
@@ -408,7 +517,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? 16 : 8,
-    paddingBottom: 32,
+    paddingBottom: 120,
     alignItems: 'center',
   },
 
@@ -419,6 +528,30 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   logoSub: { fontSize: 14, color: Colors.textSecondary },
+
+  inviteBanner: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: Colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    gap: 12,
+  },
+  inviteAvatar: { width: 44, height: 44, borderRadius: 22 },
+  inviteAvatarFallback: { backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
+  inviteAvatarInitial: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  inviteText: { flex: 1, fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  inviteName: { fontWeight: '800', color: Colors.textPrimary },
+
+  codeHintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6, paddingHorizontal: 2 },
+  codeHintMuted: { fontSize: 12, color: Colors.textSecondary },
+  codeHintOk: { flex: 1, fontSize: 12, fontWeight: '600', color: Colors.success },
+  codeHintErr: { flex: 1, fontSize: 12, fontWeight: '600', color: Colors.danger },
 
   card: {
     width: '100%',
@@ -462,6 +595,23 @@ const styles = StyleSheet.create({
   infoNoteText: { flex: 1, fontSize: 13, color: Colors.primary, fontWeight: '500', lineHeight: 18 },
 
   roleRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+
+  consentRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    marginTop: 12, paddingVertical: 4,
+  },
+  consentRowError: {
+    borderRadius: 12, padding: 8, marginHorizontal: -8,
+    backgroundColor: '#FEF2F2',
+  },
+  checkbox: {
+    width: 22, height: 22, borderRadius: 7, marginTop: 1,
+    borderWidth: 1.5, borderColor: Colors.outlineVariant,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  checkboxOn: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  consentText: { flex: 1, fontSize: 12.5, color: Colors.textSecondary, lineHeight: 19 },
+  consentLink: { color: Colors.primary, fontWeight: '700', textDecorationLine: 'underline' },
   roleChip: {
     flex: 1,
     flexDirection: 'row',

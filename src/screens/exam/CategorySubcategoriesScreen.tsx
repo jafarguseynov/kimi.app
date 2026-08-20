@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
@@ -10,11 +9,11 @@ import { Colors } from '../../constants/colors';
 import { getSubcategories, SubItem, FOREIGN_LANGUAGES, isForeignLangSubject } from '../../constants/educationTaxonomy';
 import { getStructureSummary } from '../../constants/dimOfficialStructure';
 import { useExamCategories } from '../../hooks/useExamCategories';
+import { useExamCounts } from '../../hooks/useExams';
+import { useMe } from '../../hooks/useUser';
 import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.CategorySubcategories>;
-
-const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type StageSection = { label: string | null; items: SubItem[] };
 
@@ -45,6 +44,8 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
   const { categoryKey, categoryTitle } = route.params;
   const { t } = useTranslation();
   const remote = useExamCategories();
+  const { data: counts } = useExamCounts();
+  const { data: me } = useMe();
   const remoteSubs = remote?.find((c) => c.key === categoryKey)?.children;
   const items: SubItem[] = remoteSubs && remoteSubs.length > 0
     ? remoteSubs.map((s) => ({
@@ -101,33 +102,57 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
   const sections: StageSection[] =
     categoryKey === 'russian' ? buildStageSections(items) : [{ label: null, items }];
 
+  // «Sənə uyğun» — YALNIZ real profil məlumatı ilə: şagirdin sinfi bilinirsə
+  // sinif-əsaslı kateqoriyalarda (Orta Məktəb / Rus bölməsi) həmin sinif işarələnir.
+  // İxtisas qrupu (I–V) üçün profildə uyğun məlumat yoxdur → nişan göstərilmir.
+  const myGrade: string | undefined = (me as any)?.grade ?? (me as any)?.profile?.grade;
+  const myGradeNum = parseInt(String(myGrade ?? '').match(/\d+/)?.[0] ?? '', 10);
+  const isGradeCategory = categoryKey === 'middle' || categoryKey === 'russian';
+  const isRecommended = (item: SubItem) =>
+    isGradeCategory && !!myGradeNum && item.key === String(myGradeNum);
+
+  const hintKey = categoryKey === 'abituriyent' ? 'examCat.pickGroupHintAbit' : 'examCat.pickGroupHint';
+
   const renderCard = (item: SubItem) => {
     const structureSummary = item.structureKey ? getStructureSummary(item.structureKey) : undefined;
+    const n = counts?.subs?.[`${categoryKey}:${item.key}`];
+    const subjectLine = item.subjects && item.subjects.length > 0
+      ? item.subjects.slice(0, 3).join(' · ') + (item.subjects.length > 3 ? ` +${item.subjects.length - 3}` : '')
+      : item.desc;
+    const recommended = isRecommended(item);
     return (
-      <View key={item.key} style={styles.card}>
+      <TouchableOpacity
+        key={item.key}
+        style={[styles.row, recommended && styles.rowRecommended]}
+        activeOpacity={0.75}
+        onPress={() => openItem(item)}
+      >
         <View style={styles.iconBox}>
-          <Text style={{ fontSize: 22 }}>{item.emoji ?? '📂'}</Text>
+          <Text style={{ fontSize: 20 }}>{item.emoji ?? '📂'}</Text>
         </View>
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        {!!item.desc && <Text style={styles.cardDesc}>{item.desc}</Text>}
-        {!!structureSummary && (
-          <View style={styles.structurePill}>
-            <Ionicons name="document-text-outline" size={11} color={Colors.primary} />
-            <Text style={styles.structurePillText}>{structureSummary}</Text>
+        <View style={styles.rowText}>
+          <View style={styles.titleLine}>
+            <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
+            {recommended && (
+              <View style={styles.recBadge}>
+                <Ionicons name="star" size={9} color={Colors.primary} />
+                <Text style={styles.recBadgeText}>{t('examCat.recommended')}</Text>
+              </View>
+            )}
           </View>
-        )}
-        <TouchableOpacity activeOpacity={0.85} onPress={() => openItem(item)}>
-          <LinearGradient
-            colors={GRADIENT}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={styles.cardCta}
-          >
-            <Text style={styles.cardCtaText}>
-              {item.subjects && item.subjects.length > 0 ? 'Fənləri gör' : 'Daxil ol'}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+          {!!subjectLine && <Text style={styles.cardDesc} numberOfLines={1}>{subjectLine}</Text>}
+          <View style={styles.metaLine}>
+            {!!structureSummary && (
+              <View style={styles.structurePill}>
+                <Ionicons name="document-text-outline" size={10} color={Colors.primary} />
+                <Text style={styles.structurePillText}>{structureSummary}</Text>
+              </View>
+            )}
+            {!!n && <Text style={styles.countPill}>{t('examCat.nExams', { n })}</Text>}
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+      </TouchableOpacity>
     );
   };
 
@@ -144,12 +169,14 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.introText}>{t(hintKey)}</Text>
+
         {sections.map((section, si) => {
           // Başlıqsız bölmə (digər kateqoriyalar) — birbaşa göstər, açılma yoxdur.
           if (!section.label) {
             return (
               <View key={`sec-${si}`} style={styles.section}>
-                <View style={styles.grid}>{section.items.map(renderCard)}</View>
+                <View style={styles.list}>{section.items.map(renderCard)}</View>
               </View>
             );
           }
@@ -173,7 +200,7 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
                   />
                 </View>
               </TouchableOpacity>
-              {open && <View style={styles.grid}>{section.items.map(renderCard)}</View>}
+              {open && <View style={styles.list}>{section.items.map(renderCard)}</View>}
             </View>
           );
         })}
@@ -191,8 +218,8 @@ export default function CategorySubcategoriesScreen({ navigation, route }: Props
         <Pressable style={styles.sheetBackdrop} onPress={() => setLangPickerKey(null)}>
           <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
             <View style={styles.sheetHandle} />
-            <Text style={styles.sheetTitle}>Hansı xarici dil?</Text>
-            <Text style={styles.sheetSub}>İmtahan suallarını seçdiyin dil üzrə hazırlayacağıq</Text>
+            <Text style={styles.sheetTitle}>{t('examCat.langTitle')}</Text>
+            <Text style={styles.sheetSub}>{t('examCat.langSub')}</Text>
             <View style={styles.langGrid}>
               {FOREIGN_LANGUAGES.map((lang) => (
                 <TouchableOpacity
@@ -230,9 +257,10 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700', color: Colors.primary, letterSpacing: -0.2 },
   headerSub: { fontSize: 10, fontWeight: '600', color: Colors.textMuted, letterSpacing: 1.2, marginTop: -2 },
 
-  scroll: { padding: 24, gap: 24, paddingBottom: 48 },
+  scroll: { padding: 20, gap: 18, paddingBottom: 40 },
+  introText: { fontSize: 13.5, color: Colors.textSecondary, lineHeight: 19 },
 
-  section: { gap: 14 },
+  section: { gap: 12 },
   sectionHeader: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: Colors.surfaceLowest, borderRadius: 14,
@@ -248,31 +276,40 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, overflow: 'hidden',
   },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-  card: {
-    flex: 1, minWidth: '46%', maxWidth: '48%',
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 20,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.04, shadowRadius: 40, elevation: 2,
+  list: { gap: 10 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
+  rowRecommended: { borderColor: Colors.primary + '55', borderWidth: 1.5 },
   iconBox: {
-    width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginBottom: 14,
+    width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.primary + '14',
   },
-  cardTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, lineHeight: 20, marginBottom: 4 },
-  cardDesc: { fontSize: 11, color: Colors.textSecondary, lineHeight: 16, fontWeight: '500', marginBottom: 10 },
+  rowText: { flex: 1, gap: 3 },
+  titleLine: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  cardTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2, flexShrink: 1 },
+  cardDesc: { fontSize: 12, color: Colors.textSecondary },
+  metaLine: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  recBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: Colors.primary + '14',
+    paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999,
+  },
+  recBadgeText: { fontSize: 9.5, fontWeight: '800', color: Colors.primary, letterSpacing: 0.2 },
   structurePill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999,
     backgroundColor: Colors.primary + '12',
-    marginBottom: 12,
   },
   structurePillText: { fontSize: 10, fontWeight: '700', color: Colors.primary, letterSpacing: 0.2 },
-  cardCta: {
-    paddingVertical: 10, borderRadius: 999, alignItems: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.18, shadowRadius: 14, elevation: 3,
+  countPill: {
+    fontSize: 10.5, fontWeight: '800', color: Colors.textSecondary,
+    backgroundColor: Colors.surfaceHigh,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 999, overflow: 'hidden',
   },
-  cardCtaText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 
   sheetBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   sheet: {

@@ -36,6 +36,7 @@ import HelpCenterScreen from '../screens/settings/HelpCenterScreen';
 import SupportScreen from '../screens/settings/SupportScreen';
 import ReportProblemScreen from '../screens/settings/ReportProblemScreen';
 import TermsOfServiceScreen from '../screens/settings/TermsOfServiceScreen';
+import PrivacyPolicyScreen from '../screens/settings/PrivacyPolicyScreen';
 import AboutAppScreen from '../screens/settings/AboutAppScreen';
 import PaymentMethodScreen from '../screens/payment/PaymentMethodScreen';
 import CardPaymentScreen from '../screens/payment/CardPaymentScreen';
@@ -117,6 +118,7 @@ export default function HomeNavigator() {
       <Stack.Screen name={Routes.Support} component={SupportScreen} />
       <Stack.Screen name={Routes.ReportProblem} component={ReportProblemScreen} />
       <Stack.Screen name={Routes.TermsOfService} component={TermsOfServiceScreen} />
+      <Stack.Screen name={Routes.PrivacyPolicy} component={PrivacyPolicyScreen} />
       <Stack.Screen name={Routes.AboutApp} component={AboutAppScreen} />
       <Stack.Screen name={Routes.PaymentMethod} component={PaymentMethodScreen} />
       <Stack.Screen name={Routes.CardPayment} component={CardPaymentScreen} />

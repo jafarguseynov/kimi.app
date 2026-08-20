@@ -29,10 +29,14 @@ interface ExamState {
   pending: boolean;
   submissionType: ExamSubmissionType | null;
   examMeta: ExamMeta | null;
+  // Bu sessiya "Günün çağırışı"dırmı? Nəticə ekranı buna baxıb serverə
+  // tamamlanma göndərir (xal yalnız bir dəfə verilir — server də qoruyur).
+  isDailyChallenge: boolean;
 
   setSession: (sessionId: string, examId: string, questions: Question[], durationSeconds: number, meta?: ExamMeta | null) => void;
   setCollectionId: (collectionId: string | null) => void;
   setSubmissionType: (type: ExamSubmissionType | null) => void;
+  setDailyChallenge: (v: boolean) => void;
   setAnswer: (questionId: string, optionId: string) => void;
   nextQuestion: () => void;
   previousQuestion: () => void;
@@ -58,6 +62,7 @@ export const useExamStore = create<ExamState>()(
       result: null,
       pending: false,
       submissionType: null,
+      isDailyChallenge: false,
       examMeta: null,
 
       // Yeni sessiya başlayanda collectionId-ni təmizlə (adi imtahan bank endpoint-inə getməsin)
@@ -95,12 +100,15 @@ export const useExamStore = create<ExamState>()(
 
       setResult: (result) => set({ result, pending: false }),
 
+      setDailyChallenge: (v) => set({ isDailyChallenge: v }),
+
       setPending: (pending) => set({ pending }),
 
       resetExam: () => set({
         sessionId: null, examId: null, collectionId: null, questions: [],
         currentIndex: 0, answers: {}, timeRemaining: 0, durationSeconds: 0,
         startedAt: null, result: null, pending: false, submissionType: null, examMeta: null,
+        isDailyChallenge: false,
       }),
     }),
     {
@@ -116,6 +124,7 @@ export const useExamStore = create<ExamState>()(
         answers: s.answers,
         durationSeconds: s.durationSeconds,
         startedAt: s.startedAt,
+        isDailyChallenge: s.isDailyChallenge,
         submissionType: s.submissionType,
         examMeta: s.examMeta,
       }),

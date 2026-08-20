@@ -25,7 +25,11 @@ apiClient.interceptors.response.use(
   (error) => {
     // Şəbəkə xətası (server cavabı yoxdur) → offline işarələ.
     if (!error.response) reportOffline();
-    if (error.response?.status === 401) {
+    // 401 → token etibarsız/bitmiş: yalnız auth-DAN KƏNAR route-larda çıxış et.
+    // Auth route-larının (login/register) 401-i öz xəta mesajını göstərsin (səssiz logout yox).
+    const url = error.config?.url ?? '';
+    const isAuthRoute = /\/auth\//.test(url);
+    if (error.response?.status === 401 && !isAuthRoute) {
       useAuthStore.getState().clearAuth();
       useUserStore.getState().clearUser();
     }

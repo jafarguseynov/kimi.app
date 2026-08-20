@@ -27,6 +27,87 @@ export const getExams = (filters?: ExamFilters) =>
 export const getExamsForUser = (filters?: ExamFilters) =>
   apiClient.get<Exam[]>(`/exam/for-me${buildQuery(filters)}`).then((r) => r.data);
 
+// Tək imtahan — detal/hazırlıq ekranı siyahıdan asılı qalmasın deyə.
+// (Əvvəl ekranlar `useExamList()` içindən `find()` edirdi; imtahan həmin
+// səhifələnmiş siyahıda yoxdursa sual sayı/müddət «?» görünürdü.)
+// Kateqoriya hub-ında «N imtahan» nişanı — server hazır imtahanları sayır
+// (eyni başlığın hovuzdakı variantları bir sayılır).
+export interface ExamCounts {
+  categories: Record<string, number>;
+  /** açar formatı: `${categoryKey}:${subKey}` */
+  subs: Record<string, number>;
+}
+
+export const getExamCounts = () =>
+  apiClient.get<ExamCounts>('/exam/counts').then((r) => r.data);
+
+export const getExam = (id: string) =>
+  apiClient.get<Exam & { categoryKey?: string; subKey?: string; grade?: string }>(`/exam/${id}`).then((r) => r.data);
+
+// ─── 🔥 Populyar imtahanlar ─────────────────────────────────────────────────
+// Sosial sübut rəqəmləri REALDIR: `participants` = imtahanı həqiqətən həll etmiş
+// unikal istifadəçi sayı, `avgPct` = onların ortalama nəticəsi (exam_results
+// aqreqasiyası). İmtahanlar üçün ulduz reytinqi bazada saxlanmır, ona görə
+// ⭐ göstərilmir — uydurma reytinq əvəzinə ortalama nəticə verilir.
+export interface PopularExam {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string | null;
+  difficulty: string;
+  duration: number;
+  categoryKey: string | null;
+  questionCount: number;
+  participants: number;
+  avgPct: number;
+  matchesGrade: boolean;
+}
+
+export const getPopularExams = (params?: { limit?: number; grade?: string }) =>
+  apiClient.get<PopularExam[]>('/exam/popular', { params }).then((r) => r.data);
+
+// ─── 🏠 Ana səhifə imtahan lenti ────────────────────────────────────────────
+// Bütün imtahanlar YÜKLƏNMİR: server yalnız `limit` (default 3) sayda kart
+// qaytarır və uyğunluq balını özü hesablayır (sinif · zəif fənn · hədəf ·
+// populyarlıq · yenilik). Bütün rəqəmlər realdır — `participants` unikal
+// iştirakçı sayı, `maxXp` isə XP qaydalarının eyni düsturudur.
+export interface HomeFeedExam {
+  id: string;
+  title: string;
+  subject: string;
+  grade: string | null;
+  difficulty: string;
+  duration: number;
+  categoryKey: string | null;
+  questionCount: number;
+  participants: number;
+  /** İştirakçıların ortalama nəticəsi (%). İmtahanların ulduz reytinqi bazada YOXDUR. */
+  avgPct: number;
+  /** Bu imtahandan qazanıla biləcək maksimum XP (tamamlama + düzgün cavablar + bonus). */
+  maxXp: number;
+  isNew: boolean;
+  matchesGrade: boolean;
+  matchesWeak: boolean;
+  /** İstifadəçi bu imtahanı əvvəl həll edibmi (§14 — CTA dəyişir). */
+  completed: boolean;
+  lastPct: number | null;
+}
+
+export interface ExamHomeFeed {
+  forYou: HomeFeedExam[];
+  popular: HomeFeedExam[];
+}
+
+export const getExamHomeFeed = (params?: {
+  grade?: string;
+  weak?: string;
+  goal?: string;
+  limit?: number;
+  mode?: 'student' | 'teacher';
+  /** Tətbiq dili — rus bölməsi imtahanları yalnız `ru`-da önə çıxır. */
+  lang?: string;
+}) => apiClient.get<ExamHomeFeed>('/exam/home-feed', { params }).then((r) => r.data);
+
 // ─── Admin paneldən idarə olunan imtahan kateqoriyaları ─────────────────────
 export interface RemoteCategory {
   id: string;
@@ -35,6 +116,10 @@ export interface RemoteCategory {
   description: string | null;
   emoji: string | null;
   bg: string | null;
+  /** kartın alt xətti / "Bax →" rəngi — admin paneldən idarə olunur */
+  accent: string | null;
+  /** hansı başlıq altında göstərilsin: 'level' | 'type' | 'lang' (boşdursa "Digər") */
+  groupKey: string | null;
   subjects: string[] | null;
   sortOrder: number;
   isActive: boolean;
@@ -108,13 +193,37 @@ export const startExam = (examId: string) =>
   // which can exceed the default 15s client timeout.
   apiClient.post<ExamSession>('/exam/start', { examId }, { timeout: 45000 }).then((r) => r.data);
 
+/**
+ * İmtahanı göndər.
+ *
+ * `clientSubmissionId` — bu cəhdin təkrarsız açarı. Şəbəkə kəsilib sorğu
+ * yenidən göndərilsə (offline→online), server eyni açarı görüb İKİNCİ nəticə
+ * yaratmır və təkrar XP vermir. Verilmədikdə avtomatik yaradılır.
+ */
 export const submitExam = (
   examId: string,
   answers: Record<string, string>,
   timeSpent: number,
   type?: 'practice' | 'monthly' | 'national' | 'live',
+  clientSubmissionId?: string,
 ) =>
-  apiClient.post<ExamResult>('/exam/submit', { examId, answers, timeSpent, type }, { timeout: 45000 }).then((r) => r.data);
+  apiClient
+    .post<ExamResult>(
+      '/exam/submit',
+      {
+        examId,
+        answers,
+        timeSpent,
+        type,
+        clientSubmissionId: clientSubmissionId ?? newSubmissionId(),
+      },
+      { timeout: 45000 },
+    )
+    .then((r) => r.data);
+
+/** Sadə təkrarsız açar (crypto.randomUUID hər mühitdə mövcud deyil). */
+export const newSubmissionId = () =>
+  `sub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 
 export interface GenerateExamPayload {
   categoryKey?: string;

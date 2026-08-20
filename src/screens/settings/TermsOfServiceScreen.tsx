@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -80,6 +80,33 @@ export default function TermsOfServiceScreen() {
           </View>
         </View>
 
+        {/* Rollara görə qaydalar — şagird / valideyn / müəllim */}
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <View style={[styles.sectionIconWrap, { backgroundColor: Colors.primaryLight }]}>
+              <Ionicons name="layers-outline" size={18} color={Colors.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>{t('termsOfService.rolesTitle')}</Text>
+          </View>
+          <View style={[styles.sectionCard, styles.shadow]}>
+            {[
+              { icon: 'school-outline' as const, title: t('termsOfService.roleStudentTitle'), desc: t('termsOfService.roleStudentDesc') },
+              { icon: 'people-outline' as const, title: t('termsOfService.roleParentTitle'), desc: t('termsOfService.roleParentDesc') },
+              { icon: 'person-circle-outline' as const, title: t('termsOfService.roleTeacherTitle'), desc: t('termsOfService.roleTeacherDesc') },
+            ].map((r) => (
+              <View key={r.title} style={styles.roleRow}>
+                <View style={styles.roleIcon}>
+                  <Ionicons name={r.icon} size={17} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.roleTitle}>{r.title}</Text>
+                  <Text style={styles.roleDesc}>{r.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
         {/* Section 3 */}
         <View style={styles.section}>
           <View style={styles.sectionHead}>
@@ -107,7 +134,11 @@ export default function TermsOfServiceScreen() {
             <View style={styles.ctaGlow} />
             <Text style={styles.ctaTitle}>{t('termsOfService.ctaTitle')}</Text>
             <Text style={styles.ctaSub}>{t('termsOfService.ctaSub')}</Text>
-            <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={styles.ctaBtn}
+              activeOpacity={0.85}
+              onPress={() => Linking.openURL('mailto:destek@kimi.az').catch(() => {})}
+            >
               <Text style={styles.ctaBtnText}>{t('termsOfService.ctaBtn')}</Text>
             </TouchableOpacity>
           </LinearGradient>
@@ -118,6 +149,14 @@ export default function TermsOfServiceScreen() {
 }
 
 const styles = StyleSheet.create({
+  roleRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', marginBottom: 12 },
+  roleIcon: {
+    width: 32, height: 32, borderRadius: 10, marginTop: 1,
+    alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.primaryLight,
+  },
+  roleTitle: { fontSize: 14, fontWeight: '800', color: Colors.textPrimary },
+  roleDesc: { fontSize: 12.5, color: Colors.textSecondary, lineHeight: 19, marginTop: 2 },
+
   container: { flex: 1, backgroundColor: Colors.background },
 
   header: {

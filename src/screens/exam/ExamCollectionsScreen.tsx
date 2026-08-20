@@ -39,7 +39,7 @@ export default function ExamCollectionsScreen() {
           { text: t('examCollections.decline'), style: 'cancel' },
           {
             text: t('examCollections.plans'),
-            onPress: () => (navigation.getParent() as any)?.navigate(Routes.Home, { screen: PREMIUM_ENTRY_ROUTE, initial: false }),
+            onPress: () => (navigation.getParent() as any)?.navigate(Routes.Home, { screen: PREMIUM_ENTRY_ROUTE, params: { returnTab: 'Exams' }, initial: false }),
           },
         ],
       );

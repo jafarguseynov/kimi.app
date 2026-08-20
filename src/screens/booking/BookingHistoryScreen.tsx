@@ -16,11 +16,11 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
-import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
+import { premiumRouteFor } from '../../config/iap';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getStudentBookings, getTeacherBookings, confirmBooking, cancelBooking, Booking } from '../../api/booking.api';
 import { getOrCreateChat } from '../../api/chat.api';
-import { getSubscriptionStatus } from '../../api/subscription.api';
+import { getTeacherPlanState } from '../../api/teacherPlan.api';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
 import { useMonetization } from '../../store/featureFlag.store';
@@ -64,7 +64,13 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-export default function BookingHistoryScreen() {
+/**
+ * §20 — "Sorğular" tabının içində nested tab kimi göstərildikdə `embedded`
+ * true olur: ekran öz SafeArea + başlıq sətrini çəkmir. Bron/təsdiq/ləğv
+ * məntiqi tamamilə eyni qalır.
+ */
+export default function BookingHistoryScreen({ embedded = false }: { embedded?: boolean } = {}) {
+  const Shell: any = embedded ? View : SafeAreaView;
   const { t, language } = useTranslation();
   const { subscription: subVisible } = useMonetization();
   const [activeTab, setActiveTab] = useState<TabType>('all');
@@ -88,14 +94,17 @@ export default function BookingHistoryScreen() {
   });
 
   const { data: subStatus } = useQuery({
-    queryKey: ['subscriptionStatus'],
-    queryFn: getSubscriptionStatus,
+    // ⚠️ `/subscription/status` YALNIZ `hasSubscription` sahəsinə baxırdı — admin
+    // əl ilə premium verəndə o sahə dolmur və müəllimə səhvən "paket al" deyilirdi.
+    // `/teacher-plan/me` rezervasiya qapısı ilə eyni mənbələri yoxlayır.
+    queryKey: ['teacher-plan'],
+    queryFn: getTeacherPlanState,
     enabled: isTeacher,
   });
   const subscribed = subStatus?.active ?? false;
 
   const goToPlans = () => {
-    (navigation.getParent() as any)?.navigate(Routes.Home, { screen: PREMIUM_ENTRY_ROUTE, initial: false });
+    (navigation.getParent() as any)?.navigate(Routes.Home, { screen: premiumRouteFor('teacher'), params: { returnTab: 'Booking' }, initial: false });
   };
 
   const { mutate: doConfirm, isPending: confirming } = useMutation({
@@ -137,7 +146,8 @@ export default function BookingHistoryScreen() {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <Shell style={styles.container} {...(embedded ? {} : { edges: ['top'] as const })}>
+      {!embedded && (
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} hitSlop={8} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={Colors.primary} />
@@ -147,6 +157,7 @@ export default function BookingHistoryScreen() {
           <Text style={styles.avatarText}>{getInitials(user?.name ?? 'KY')}</Text>
         </View>
       </View>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -332,7 +343,7 @@ export default function BookingHistoryScreen() {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Shell>
   );
 }
 

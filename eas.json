@@ -20,6 +20,14 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6756714254"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./fcm-service-account.json",
+        "track": "production"
+      }
+    }
   }
 }

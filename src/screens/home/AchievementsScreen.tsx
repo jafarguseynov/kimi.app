@@ -10,11 +10,11 @@ import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { getExamResults, getCertificates, type Certificate } from '../../api/certificate.api';
 import { useTranslation } from '../../i18n';
+import { getGamification } from '../../api/gamification.api';
 
 type Props = { navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.Achievements> };
 
 const STREAK_GOAL = 30;
-const XP_PER_LEVEL = 1000;
 const DATE_LOCALE: Record<string, string> = { az: 'az-Latn-AZ', ru: 'ru-RU', en: 'en-US' };
 
 type MedalDef = { id: string; labelKey: string; bg: string; border: string; color: string };
@@ -27,38 +27,26 @@ export default function AchievementsScreen({ navigation }: Props) {
   const { data: results = [] } = useQuery({ queryKey: ['examResults'], queryFn: getExamResults });
   const { data: certs = [] } = useQuery({ queryKey: ['certificates'], queryFn: getCertificates });
 
+  // XP, səviyyə və streak SERVERDƏN gəlir. Əvvəl burada müstəqil (və Profil
+  // ekranından fərqli) düsturlarla hesablanırdı — eyni istifadəçi iki ekranda
+  // iki ayrı XP/səviyyə görürdü. İndi hər yerdə tək mənbə: /gamification/me.
+  const { data: g } = useQuery({ queryKey: ['gamification'], queryFn: getGamification, retry: false });
+
   const stats = useMemo(() => {
     const examCount = results.length;
     const certCount = certs.length;
     const passedCount = results.filter((r) => r.percentage >= 70).length;
     const topCount = results.filter((r) => r.percentage >= 90).length;
-    const xpFromExams = results.reduce((s, r) => s + r.score * 10, 0);
-    const xpFromCerts = certCount * 100;
-    const totalXp = xpFromExams + xpFromCerts;
-    const currentLevel = Math.max(1, Math.floor(totalXp / XP_PER_LEVEL) + 1);
-    const xpInLevel = totalXp % XP_PER_LEVEL;
-    const levelPct = Math.round((xpInLevel / XP_PER_LEVEL) * 100);
 
-    // Real consecutive-day streak from completedAt timestamps.
-    const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-    const days = new Set<string>();
-    for (const r of results) {
-      if (!r.completedAt) continue;
-      const d = new Date(r.completedAt);
-      if (!isNaN(d.getTime())) days.add(dayKey(d));
-    }
-    let streak = 0;
-    if (days.size > 0) {
-      const cursor = new Date();
-      if (!days.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
-      while (days.has(dayKey(cursor))) {
-        streak++;
-        cursor.setDate(cursor.getDate() - 1);
-      }
-    }
+    const totalXp = g?.xp ?? 0;
+    const currentLevel = g?.level ?? 1;
+    const xpInLevel = g?.xpIntoLevel ?? 0;
+    const levelPct = g && g.xpForLevel > 0 ? Math.round((g.xpIntoLevel / g.xpForLevel) * 100) : 0;
+    const streak = g?.streak.current ?? 0;
     const streakPct = Math.min(100, Math.round((streak / STREAK_GOAL) * 100));
+
     return { examCount, certCount, passedCount, topCount, totalXp, currentLevel, xpInLevel, levelPct, streak, streakPct };
-  }, [results, certs]);
+  }, [results, certs, g]);
 
   const medals: MedalDef[] = useMemo(() => {
     const list: MedalDef[] = [];
@@ -257,7 +245,7 @@ export default function AchievementsScreen({ navigation }: Props) {
                     {t('achievements.levelCurrent', { n: stats.currentLevel })}
                   </Text>
                   <Text style={styles.timelineSub}>
-                    {t('achievements.xpOf', { xp: stats.xpInLevel, total: XP_PER_LEVEL })}
+                    {t('achievements.xpOf', { xp: stats.xpInLevel, total: g?.xpForLevel ?? 0 })}
                   </Text>
                 </View>
                 <View style={styles.timelineTrack}>

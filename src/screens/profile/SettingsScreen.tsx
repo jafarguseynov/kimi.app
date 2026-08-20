@@ -6,12 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
@@ -19,14 +21,23 @@ import { useLogout } from '../../hooks/useAuth';
 import { useSettingsStore } from '../../store/settings.store';
 import { requestAndRegister } from '../../utils/push';
 import { savePushToken } from '../../api/notification.api';
+import { getMe } from '../../api/user.api';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 export default function SettingsScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
   const { t } = useTranslation();
+
+  // Profil şəkli (avatarUrl) store-da köhnə/boş ola bilər — serverdən təzələ.
+  const { data: me } = useQuery({ queryKey: ['me'], queryFn: getMe });
+  React.useEffect(() => {
+    if (me) setUser({ ...(user as any), ...(me as any) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [me]);
+  const avatarUrl = (user as any)?.avatarUrl as string | undefined;
   const logout = useLogout();
   const { pushEnabled, emailEnabled, setPushEnabled, setEmailEnabled, language } = useSettingsStore();
 
@@ -52,17 +63,11 @@ export default function SettingsScreen() {
 
   const SECURITY_ITEMS = [
     { icon: 'lock-closed-outline' as const, label: t('profileSettings.secChangePassword'), route: Routes.ChangePassword },
-    { icon: 'shield-checkmark-outline' as const, label: t('profileSettings.secTwoFactor'), route: Routes.TwoFactor },
     { icon: 'ban-outline' as const, label: t('profileSettings.secBlocked'), route: Routes.BlockedUsers },
-    { icon: 'person-remove-outline' as const, label: t('profileSettings.secAccountMgmt'), route: Routes.AccountManagement },
   ];
 
   const HELP_ITEMS = [
-    { icon: 'help-buoy-outline' as const, label: t('profileSettings.helpCenter'), route: Routes.HelpCenter },
-    { icon: 'chatbubbles-outline' as const, label: t('profileSettings.helpSupport'), route: Routes.Support },
     { icon: 'bug-outline' as const, label: t('profileSettings.helpReport'), route: Routes.ReportProblem },
-    { icon: 'document-text-outline' as const, label: t('profileSettings.helpTerms'), route: Routes.TermsOfService },
-    { icon: 'information-circle-outline' as const, label: t('profileSettings.helpAbout'), route: Routes.AboutApp },
   ];
 
   const goEditProfile = () => {
@@ -86,12 +91,18 @@ export default function SettingsScreen() {
         {/* Profile card */}
         <View style={styles.profileCard}>
           <View style={styles.profileRow}>
-            <LinearGradient colors={GRADIENT} style={styles.avatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-              <Text style={styles.avatarInitial}>{initial}</Text>
+            <View style={styles.avatar}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatarImg} resizeMode="cover" />
+              ) : (
+                <LinearGradient colors={GRADIENT} style={styles.avatarImg} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+                  <Text style={styles.avatarInitial}>{initial}</Text>
+                </LinearGradient>
+              )}
               <TouchableOpacity style={styles.editBadge} activeOpacity={0.8} onPress={goEditProfile}>
                 <Ionicons name="pencil" size={12} color="#fff" />
               </TouchableOpacity>
-            </LinearGradient>
+            </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{name}</Text>
               <Text style={styles.profileEmail}>{user?.phone ?? t('profileSettings.defaultAccount')}</Text>
@@ -248,6 +259,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 3, borderColor: '#fff',
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 10, elevation: 3,
+  },
+  avatarImg: {
+    width: '100%', height: '100%', borderRadius: 33,
+    alignItems: 'center', justifyContent: 'center',
   },
   avatarInitial: { fontSize: 28, fontWeight: '800', color: '#fff' },
   editBadge: {

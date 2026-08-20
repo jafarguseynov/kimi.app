@@ -22,6 +22,7 @@ import { RouteProp } from '@react-navigation/native';
 import client from '../../api/client';
 import { sendChatMessage, markChatRead, getChatPresence } from '../../api/chat.api';
 import { reportContent } from '../../api/user.api';
+import { blockUser, unblockUser, getBlockStatus } from '../../api/block.api';
 import { socketService } from '../../services/socket.service';
 import { setActiveChatId } from '../../utils/push';
 import { useChatStore } from '../../store/chat.store';
@@ -247,6 +248,12 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     } as any);
     try {
       const saved = await sendChatMessage(chatId, content, type);
+      // Blok: server mesajı saxlamır — müvəqqətini götür və səbəbi izah et.
+      if ((saved as any)?.blocked) {
+        removeMessage(tempId);
+        Alert.alert(t('chat.blockedSendTitle'), t('chat.blockedSendBody'));
+        return;
+      }
       // Uğur: müvəqqətini real mesajla əvəz et (poll artıq gətiribsə dublikat olmur).
       if (saved?.id) replaceMessage(tempId, saved as any);
       else removeMessage(tempId); // server null qaytardı → poll uzlaşdıracaq
@@ -298,9 +305,39 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     }
   };
 
+  // Blok vəziyyəti — menyu «Blokla»/«Bloku aç» arasında dəyişsin deyə.
+  const { data: blockState } = useQuery({
+    queryKey: ['blockStatus', counterpartId],
+    queryFn: () => getBlockStatus(counterpartId as string),
+    enabled: !!counterpartId,
+  });
+  const isBlocked = !!blockState?.blocked;
+
+  const applyBlock = async (block: boolean) => {
+    if (!counterpartId) return;
+    try {
+      await (block ? blockUser(counterpartId) : unblockUser(counterpartId));
+      queryClient.invalidateQueries({ queryKey: ['blockStatus', counterpartId] });
+      queryClient.invalidateQueries({ queryKey: ['blockedUsers'] });
+      Alert.alert(block ? t('chat.blockDoneTitle') : t('chat.unblockDoneTitle'),
+        block ? t('chat.blockDoneMsg', { name }) : t('chat.unblockDoneMsg', { name }));
+    } catch {
+      Alert.alert(t('booking.reviewNoticeTitle'), t('chat.blockFailed'));
+    }
+  };
+
+  const handleBlock = () => {
+    if (isBlocked) { applyBlock(false); return; }
+    Alert.alert(t('chat.blockConfirmTitle'), t('chat.blockConfirmMsg', { name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('chat.menuBlock'), style: 'destructive', onPress: () => applyBlock(true) },
+    ]);
+  };
+
   const handleMenu = () => {
     Alert.alert(name, undefined, [
       { text: t('chat.menuReport'), style: 'destructive', onPress: handleReport },
+      { text: isBlocked ? t('chat.menuUnblock') : t('chat.menuBlock'), style: isBlocked ? 'default' : 'destructive', onPress: handleBlock },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
   };

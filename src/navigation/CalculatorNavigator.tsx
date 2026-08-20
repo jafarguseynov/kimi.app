@@ -10,6 +10,7 @@ import QualityCalculatorScreen from '../screens/calculators/QualityCalculatorScr
 import DIMCalculatorScreen from '../screens/calculators/DIMCalculatorScreen';
 import CalcHistoryScreen from '../screens/calculators/CalcHistoryScreen';
 import CalcSavedScreen from '../screens/calculators/CalcSavedScreen';
+import ClassGradeCalculatorScreen from '../screens/calculators/ClassGradeCalculatorScreen';
 
 const Stack = createNativeStackNavigator<CalcStackParamList>();
 
@@ -24,6 +25,9 @@ export default function CalculatorNavigator() {
       <Stack.Screen name={Routes.DIMCalc} component={DIMCalculatorScreen} />
       <Stack.Screen name={Routes.CalcHistory} component={CalcHistoryScreen} />
       <Stack.Screen name={Routes.CalcSaved} component={CalcSavedScreen} />
+      {/* Sinif qiymət kalkulyatoru əvvəl yalnız Home/Profil stack-lərində idi —
+          kataloqda görünmürdü. Eyni ekran burada da qeydiyyatdan keçir. */}
+      <Stack.Screen name={Routes.ClassGradeCalc} component={ClassGradeCalculatorScreen} />
     </Stack.Navigator>
   );
 }

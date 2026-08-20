@@ -3,12 +3,15 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
-import { useExamList, useStartExam } from '../../hooks/useExams';
+import { useExam } from '../../hooks/useExams';
+import { useEntitlements } from '../../hooks/useEntitlements';
 import { getCategoryTitle } from '../../constants/educationTaxonomy';
+import { checkBookmark, addBookmark, removeBookmark } from '../../api/bookmark.api';
 import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.ExamInfo>;
@@ -16,56 +19,77 @@ const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const DIFFICULTY_KEY: Record<string, string> = { easy: 'examList.diff.easy', medium: 'examList.diff.medium', hard: 'examList.diff.hard' };
 
-type IconName = keyof typeof Ionicons.glyphMap;
-
-// Fənnə uyğun ikon — bütün imtahanlarda eyni kalkulyator əvəzinə
-const SUBJECT_ICON: { match: string; icon: IconName }[] = [
-  { match: 'riyaz', icon: 'calculator' },
-  { match: 'cəbr', icon: 'calculator' },
-  { match: 'həndəs', icon: 'shapes' },
-  { match: 'fizik', icon: 'flash' },
-  { match: 'kimya', icon: 'flask' },
-  { match: 'biolog', icon: 'leaf' },
-  { match: 'coğraf', icon: 'earth' },
-  { match: 'tarix', icon: 'time' },
-  { match: 'ədəbiy', icon: 'book' },
-  { match: 'dil', icon: 'language' },
-  { match: 'informat', icon: 'laptop' },
-  { match: 'məntiq', icon: 'bulb' },
-];
-function iconForSubject(subject?: string): IconName {
-  const s = (subject ?? '').toLowerCase();
-  return SUBJECT_ICON.find((m) => s.includes(m.match))?.icon ?? 'document-text';
-}
-
 export default function ExamInfoScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const { examId, title } = route.params;
-  const { data: exams = [], isLoading } = useExamList();
-  const exam: any = exams.find((e: any) => e.id === examId);
-  const { mutate: startExamMutate, isPending: isStarting } = useStartExam();
+  // İmtahan birbaşa id ilə gətirilir → hansı siyahıdan gəlməsindən asılı olmayaraq
+  // rəqəmlər realdır. Route parametrləri yalnız ilkin (dərhal görünən) dəyərdir.
+  const { data: exam, isLoading } = useExam(examId);
 
   const displayTitle = exam?.title ?? title ?? t('examInfo.titleFallback');
-  const questionCount = exam?.questionCount ?? route.params.questionCount ?? 20;
-  const duration = exam?.duration ?? route.params.duration ?? 25;
-  const difficulty = t(DIFFICULTY_KEY[exam?.difficulty ?? route.params.difficulty ?? 'medium'] ?? 'examList.diff.medium');
+  const questionCount = exam?.questionCount ?? route.params.questionCount ?? null;
+  const duration = exam?.duration ?? route.params.duration ?? null;
+  const difficultyKey = exam?.difficulty ?? route.params.difficulty ?? 'medium';
+  const difficulty = t(DIFFICULTY_KEY[difficultyKey] ?? 'examList.diff.medium');
   const subject = exam?.subject ?? route.params.subject;
-  const category = getCategoryTitle(exam?.categoryKey ?? route.params.categoryKey) ?? subject ?? t('examInfo.categoryFallback');
-  const heroIcon = iconForSubject(subject ?? displayTitle);
-  const description = (exam as any)?.description ?? t('examInfo.defaultDesc');
+  const category = getCategoryTitle((exam as any)?.categoryKey ?? route.params.categoryKey) ?? subject ?? t('examInfo.categoryFallback');
 
-  const startExam = () => {
+  const { isPremium, limitOf } = useEntitlements();
+  const examLimit = limitOf('exam');
+  const limited = !isPremium && !!examLimit && !examLimit.unlimited;
+  const locked = limited && examLimit.remaining <= 0;
+
+  // «Yadda saxla» — real bookmark API-si (əvvəl düymənin heç bir işi yox idi)
+  const qc = useQueryClient();
+  const { data: bookmark } = useQuery({
+    queryKey: ['bookmark', 'exam', examId],
+    queryFn: () => checkBookmark(examId, 'exam'),
+    enabled: !!examId,
+    retry: false,
+  });
+  const [savingBookmark, setSavingBookmark] = React.useState(false);
+  const saved = !!bookmark?.bookmarked;
+
+  const toggleBookmark = async () => {
+    if (!examId || savingBookmark) return;
+    setSavingBookmark(true);
+    try {
+      if (saved && bookmark?.bookmarkId) await removeBookmark(bookmark.bookmarkId);
+      else await addBookmark(examId, 'exam', displayTitle);
+      qc.invalidateQueries({ queryKey: ['bookmark', 'exam', examId] });
+    } catch {
+      Alert.alert(t('examInfo.errorTitle'), t('examInfo.bookmarkFailed'));
+    } finally {
+      setSavingBookmark(false);
+    }
+  };
+
+  const goPrepare = () => {
     if (!examId) {
       Alert.alert(t('examInfo.errorTitle'), t('examInfo.noId'));
       return;
     }
-    startExamMutate(examId, {
-      onSuccess: () => navigation.navigate(Routes.ExamSession),
-      onError: (err: any) => {
-        Alert.alert(t('examInfo.cantStart'), err?.response?.data?.message ?? err?.message ?? t('examInfo.unknownError'));
-      },
+    navigation.navigate(Routes.ExamDetail, {
+      examId,
+      title: displayTitle,
+      questionCount: questionCount ?? undefined,
+      duration: duration ?? undefined,
+      difficulty: difficultyKey as 'easy' | 'medium' | 'hard',
+      subject,
+      categoryKey: (exam as any)?.categoryKey ?? route.params.categoryKey,
     });
   };
+
+  // «Bu imtahanda nə var?» — ilk üç bənd REAL imtahan məlumatıdır,
+  // qalanları hər imtahanda mövcud olan funksiyalardır.
+  const includes: string[] = [
+    questionCount ? t('examInfo.incQuestions', { n: questionCount }) : '',
+    duration ? t('examInfo.incDuration', { n: duration }) : '',
+    t('examInfo.incLevel', { level: category }),
+    t('examInfo.incResult'),
+    t('examInfo.incMistakes'),
+    t('examInfo.incAi'),
+  ].filter(Boolean);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -84,48 +108,45 @@ export default function ExamInfoScreen({ route, navigation }: Props) {
           </View>
         ) : (
           <>
-            {/* Hero banner */}
-            <LinearGradient
-              colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-              style={styles.hero}
-            >
-              <View style={styles.heroPattern}>
-                <Ionicons name={heroIcon} size={150} color="#fff" />
-              </View>
-              <View style={styles.heroKicker}>
-                <View style={styles.heroDot} />
-                <Text style={styles.heroKickerText}>{t('examInfo.newExam')}</Text>
-              </View>
-              <View style={styles.heroIconCircle}>
-                <Ionicons name={heroIcon} size={40} color="#fff" />
-              </View>
-            </LinearGradient>
-
-            {/* Title */}
-            <View style={{ gap: 8 }}>
+            {/* Başlıq */}
+            <View style={{ gap: 6 }}>
               <Text style={styles.bigTitle}>{displayTitle}</Text>
-              {!!subject && (
-                <View style={styles.subjectRow}>
-                  <Ionicons name="pricetag" size={13} color={Colors.primary} />
-                  <Text style={styles.subjectText}>{subject}</Text>
-                </View>
+              <Text style={styles.categoryText}>{category}</Text>
+              {/* Premium istifadəçidə status nişanı göstərilmir — hər şey açıqdır */}
+              {!isPremium && (
+              <View style={styles.accessRow}>
+                {locked ? (
+                  <View style={[styles.accessChip, styles.accessChipPremium]}>
+                    <Ionicons name="lock-closed" size={12} color="#B45309" />
+                    <Text style={[styles.accessChipText, { color: '#B45309' }]}>{t('catExams.premium')}</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.accessChip, styles.accessChipFree]}>
+                    <Ionicons name="checkmark-circle" size={12} color={Colors.tertiary} />
+                    <Text style={[styles.accessChipText, { color: Colors.tertiary }]}>{t('catExams.free')}</Text>
+                  </View>
+                )}
+                {limited && !locked && (
+                  <Text style={styles.accessNote}>{t('catExams.freeLeft', { n: examLimit.remaining })}</Text>
+                )}
+              </View>
               )}
             </View>
 
-            {/* Bento info grid */}
+            {/* 4 əsas məlumat */}
             <View style={styles.grid}>
               <View style={styles.infoCard}>
                 <View style={styles.infoIcon}><Ionicons name="help-circle" size={18} color={Colors.primary} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoLabel}>{t('examInfo.questionCount')}</Text>
-                  <Text style={styles.infoValue}>{t('examInfo.questionsVal', { n: questionCount })}</Text>
+                  <Text style={styles.infoValue}>{questionCount ? t('examInfo.questionsVal', { n: questionCount }) : '—'}</Text>
                 </View>
               </View>
               <View style={styles.infoCard}>
                 <View style={styles.infoIcon}><Ionicons name="time" size={18} color={Colors.primary} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.infoLabel}>{t('examInfo.time')}</Text>
-                  <Text style={styles.infoValue}>{t('examInfo.minutesVal', { n: duration })}</Text>
+                  <Text style={styles.infoValue}>{duration ? t('examInfo.minutesVal', { n: duration }) : '—'}</Text>
                 </View>
               </View>
               <View style={styles.infoCard}>
@@ -136,49 +157,59 @@ export default function ExamInfoScreen({ route, navigation }: Props) {
                 </View>
               </View>
               <View style={styles.infoCard}>
-                <View style={styles.infoIcon}><Ionicons name="albums" size={18} color={Colors.primary} /></View>
+                <View style={styles.infoIcon}><Ionicons name="book" size={18} color={Colors.primary} /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.infoLabel}>{t('examInfo.category')}</Text>
-                  <Text style={styles.infoValue} numberOfLines={1}>{category}</Text>
+                  <Text style={styles.infoLabel}>{t('examInfo.subject')}</Text>
+                  <Text style={styles.infoValue} numberOfLines={1}>{subject ?? '—'}</Text>
                 </View>
               </View>
             </View>
 
-            {/* Description */}
+            {/* Bu imtahanda nə var? */}
             <View style={{ gap: 12 }}>
-              <Text style={styles.sectionTitle}>{t('examInfo.aboutExam')}</Text>
-              <View style={styles.descCard}>
-                <Text style={styles.descText}>{description}</Text>
+              <Text style={styles.sectionTitle}>{t('examInfo.whatsInside')}</Text>
+              <View style={styles.includeCard}>
+                {includes.map((line) => (
+                  <View key={line} style={styles.includeRow}>
+                    <Ionicons name="checkmark-circle" size={18} color={Colors.tertiary} />
+                    <Text style={styles.includeText}>{line}</Text>
+                  </View>
+                ))}
               </View>
-              <View style={styles.infoHint}>
-                <Ionicons name="information-circle" size={22} color={Colors.primary} />
-                <Text style={styles.infoHintText}>
-                  {t('examInfo.afterHint')}
-                </Text>
+            </View>
+
+            {/* Kimi AI — fərqləndirici funksiya */}
+            <View style={styles.aiCard}>
+              <View style={styles.aiHeader}>
+                <View style={styles.aiIcon}>
+                  <Ionicons name="sparkles" size={18} color={Colors.primary} />
+                </View>
+                <Text style={styles.aiTitle}>{t('examInfo.aiTitle')}</Text>
               </View>
+              <Text style={styles.aiText}>{t('examInfo.aiText')}</Text>
             </View>
           </>
         )}
 
-        <View style={{ height: 32 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
 
-      {/* Bottom action bar */}
+      {/* Aşağı sabit CTA */}
       <View style={styles.actionBar}>
-        <TouchableOpacity style={styles.bookmarkBtn} activeOpacity={0.7}>
-          <Ionicons name="bookmark-outline" size={22} color={Colors.textSecondary} />
-          <Text style={styles.bookmarkText}>{t('examInfo.bookmark')}</Text>
+        <TouchableOpacity style={styles.bookmarkBtn} activeOpacity={0.7} onPress={toggleBookmark} disabled={savingBookmark}>
+          <Ionicons
+            name={saved ? 'bookmark' : 'bookmark-outline'}
+            size={22}
+            color={saved ? Colors.primary : Colors.textSecondary}
+          />
+          <Text style={[styles.bookmarkText, saved && { color: Colors.primary }]}>
+            {saved ? t('examInfo.bookmarked') : t('examInfo.bookmark')}
+          </Text>
         </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.85} onPress={startExam} style={styles.startBtnWrap} disabled={isStarting}>
+        <TouchableOpacity activeOpacity={0.85} onPress={goPrepare} style={styles.startBtnWrap}>
           <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-            {isStarting ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="play" size={18} color="#fff" />
-                <Text style={styles.startBtnText}>{t('examInfo.startExam')}</Text>
-              </>
-            )}
+            <Ionicons name="play" size={18} color="#fff" />
+            <Text style={styles.startBtnText}>{t('examInfo.startExam')}</Text>
           </LinearGradient>
         </TouchableOpacity>
       </View>
@@ -198,32 +229,21 @@ const styles = StyleSheet.create({
   headerBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: Colors.textPrimary, marginHorizontal: 12, letterSpacing: -0.2 },
 
-  scroll: { padding: 20, paddingBottom: 120, gap: 22 },
+  scroll: { padding: 20, paddingBottom: 130, gap: 22 },
 
-  /* Hero */
-  hero: {
-    height: 150, borderRadius: 20, padding: 18,
-    justifyContent: 'space-between', overflow: 'hidden',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.18, shadowRadius: 24, elevation: 6,
-  },
-  heroPattern: { position: 'absolute', right: -30, bottom: -40, opacity: 0.12 },
-  heroKicker: {
-    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999,
-  },
-  heroDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  heroKickerText: { fontSize: 10, fontWeight: '800', color: '#fff', letterSpacing: 1.2 },
-  heroIconCircle: {
-    width: 56, height: 56, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.16)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  /* Title */
+  /* Başlıq */
   bigTitle: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, lineHeight: 30 },
-  subjectRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  subjectText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+  categoryText: { fontSize: 14, fontWeight: '700', color: Colors.primary },
+
+  accessRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2, flexWrap: 'wrap' },
+  accessChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
+  },
+  accessChipFree: { backgroundColor: '#DCFCE7' },
+  accessChipPremium: { backgroundColor: '#FEF3C7' },
+  accessChipText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.2 },
+  accessNote: { fontSize: 11, color: Colors.textMuted, flexShrink: 1 },
 
   /* Grid */
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
@@ -232,7 +252,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 14,
     borderWidth: 1, borderColor: Colors.borderLight,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
   },
   infoIcon: {
     width: 36, height: 36, borderRadius: 11,
@@ -242,35 +261,45 @@ const styles = StyleSheet.create({
   infoLabel: { fontSize: 11, color: Colors.textSecondary, fontWeight: '600' },
   infoValue: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2, marginTop: 1 },
 
-  /* Description */
+  /* Bu imtahanda nə var */
   sectionTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.2 },
-  descCard: { backgroundColor: Colors.surfaceLow, padding: 16, borderRadius: 14 },
-  descText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
-  infoHint: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: Colors.primary + '0F',
-    borderLeftWidth: 4, borderLeftColor: Colors.primary,
-    padding: 16, borderRadius: 12,
+  includeCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16, gap: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
   },
-  infoHintText: { flex: 1, fontSize: 12, fontWeight: '500', color: Colors.primary, lineHeight: 18 },
+  includeRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  includeText: { flex: 1, fontSize: 13, color: Colors.textPrimary, lineHeight: 19 },
+
+  /* Kimi AI */
+  aiCard: {
+    borderRadius: 16, padding: 18, gap: 8,
+    backgroundColor: Colors.primaryLight,
+    borderWidth: 1, borderColor: Colors.primary + '2E',
+  },
+  aiHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  aiIcon: {
+    width: 32, height: 32, borderRadius: 10, backgroundColor: '#fff',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  aiTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: Colors.primary, letterSpacing: -0.2 },
+  aiText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
 
   /* Action bar */
   actionBar: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 24, paddingTop: 16, paddingBottom: 32,
+    paddingHorizontal: 20, paddingTop: 14, paddingBottom: 28,
     backgroundColor: '#fff',
     borderTopWidth: 1, borderTopColor: Colors.borderLight,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: -20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 12,
     gap: 12,
   },
-  bookmarkBtn: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+  bookmarkBtn: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   bookmarkText: { fontSize: 10, fontWeight: '600', color: Colors.textSecondary, marginTop: 4 },
   startBtnWrap: { flex: 1 },
   startBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 14, borderRadius: 999,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 18, elevation: 6,
+    paddingVertical: 15, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 16, elevation: 5,
   },
-  startBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  startBtnText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
 });

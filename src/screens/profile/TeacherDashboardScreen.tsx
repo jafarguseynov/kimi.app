@@ -8,9 +8,11 @@ import { useNavigation } from '@react-navigation/native';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { levelMeta } from '../../constants/teacherLevel';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
 import { useMonetization } from '../../store/featureFlag.store';
+import { getTeacherLevelProgress, TeacherLevelProgress } from '../../api/user.api';
 
 interface Analytics {
   totalBookings: number;
@@ -19,6 +21,14 @@ interface Analytics {
   monthlyRevenue: number;
   rating: number;
   hourlyRate: number;
+  // §14 — bu göstəricilər ANA SƏHİFƏDƏN buraya köçürüldü.
+  // Backend onları onsuz da qaytarırdı, sadəcə burada istifadə olunmurdu.
+  totalStudents?: number;
+  profileViews?: number;
+  activeQueries?: number;
+  monthlyEarnings?: number;
+  /** Ötən aya nisbətən qazanc dəyişikliyi (%). null = hesablana bilmir. */
+  earningsDeltaPct?: number | null;
 }
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -34,19 +44,31 @@ export default function TeacherDashboardScreen() {
     queryFn: () => api.get('/user/teacher/analytics').then((r) => r.data),
   });
 
-  const balance = analytics?.monthlyRevenue ?? 0;
+  const { data: levelProgress } = useQuery<TeacherLevelProgress | null>({
+    queryKey: ['teacherLevelProgress'],
+    queryFn: () => getTeacherLevelProgress(),
+  });
+
+  const balance = analytics?.monthlyRevenue ?? analytics?.monthlyEarnings ?? 0;
   const answersCount = analytics?.confirmedBookings ?? 0;
   const acceptanceRate = analytics?.totalBookings
     ? Math.round((analytics.confirmedBookings / analytics.totalBookings) * 100)
     : 0;
-  const lastMonthDelta = 15;
+  // §9 — əvvəl burada `const lastMonthDelta = 15;` yazılmışdı: sistemdə heç bir
+  // sübutu olmayan sabit rəqəm hər müəllimə "bu ay 15% çox qazandın" deyirdi.
+  // İndi fərq SERVERDƏ real ay-ay qazancdan hesablanır; hesablana bilmirsə
+  // (ötən ay 0-dırsa) faiz ÜMUMİYYƏTLƏ göstərilmir.
+  const earningsDelta = analytics?.earningsDeltaPct ?? null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          {/* Bu ekran həm Profil stack-indən açılır, həm də gizli "Statistika"
+              tabının kökü kimi (ana səhifə qısayolundan). Tab kökündə geri
+              getmək yeri olmadığı üçün ana səhifəyə qayıdılır. */}
           <TouchableOpacity
-            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate('Home'))}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : (navigation.getParent() as any)?.navigate(Routes.Home))}
             activeOpacity={0.7}
             hitSlop={8}
           >
@@ -116,6 +138,38 @@ export default function TeacherDashboardScreen() {
             <Text style={styles.statValue}>{acceptanceRate}%</Text>
             <Text style={styles.statLabel}>{t('teacherDashboard.acceptedLabel')}</Text>
           </View>
+
+          {/* ── §14: dashboard-dan köçürülən şəxsi göstəricilər ── */}
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBox, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="people" size={20} color="#4F46E5" />
+            </View>
+            <Text style={styles.statValue}>{analytics?.totalStudents ?? analytics?.uniqueStudents ?? 0}</Text>
+            <Text style={styles.statLabel}>{t('teacherDashboard.activeStudents')}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBox, { backgroundColor: '#ECFEFF' }]}>
+              <Ionicons name="eye" size={20} color="#0284C7" />
+            </View>
+            <Text style={styles.statValue}>{analytics?.profileViews ?? 0}</Text>
+            <Text style={styles.statLabel}>{t('teacherDashboard.profileViews')}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBox, { backgroundColor: '#FDF2F8' }]}>
+              <Ionicons name="mail-unread" size={20} color="#DB2777" />
+            </View>
+            <Text style={styles.statValue}>{analytics?.activeQueries ?? 0}</Text>
+            <Text style={styles.statLabel}>{t('teacherDashboard.studentRequests')}</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconBox, { backgroundColor: '#FFFBEB' }]}>
+              <Ionicons name="star" size={20} color="#D97706" />
+            </View>
+            <Text style={styles.statValue}>
+              {analytics?.rating ? analytics.rating.toFixed(1) : '—'}
+            </Text>
+            <Text style={styles.statLabel}>{t('teacherDashboard.ratingLabel')}</Text>
+          </View>
         </View>
 
         {/* Actions — qazanc çıxarma admin monetizasiya bağlasa gizlənir */}
@@ -148,6 +202,61 @@ export default function TeacherDashboardScreen() {
         </>
         )}
 
+        {/* Müəllim səviyyəsi (level) irəliləyişi */}
+        {levelProgress && levelProgress.enabled && (() => {
+          const cur = levelMeta(levelProgress.level);
+          const curLabel = cur ? t(`teacherTier.${cur.key}Teacher`) : t('teacherTier.newTeacher');
+          const curBg = cur?.bg ?? '#F1F5F9';
+          const curFg = cur?.fg ?? '#64748B';
+          const nx = levelProgress.next;
+          const nxMeta = nx ? levelMeta(nx.level) : null;
+          const rem = nx?.remaining;
+          const chips: string[] = [];
+          if (nx && rem) {
+            if (rem.lessons > 0) chips.push(t('teacherTier.needLessons', { n: rem.lessons }));
+            if (rem.reviews > 0) chips.push(t('teacherTier.needReviews', { n: rem.reviews }));
+            if (rem.favorites > 0) chips.push(t('teacherTier.needFavorites', { n: rem.favorites }));
+            if (!rem.ratingOk) chips.push(t('teacherTier.needRating', { r: nx.need.rating, cur: levelProgress.current.rating.toFixed(1) }));
+            if (!rem.completeOk) chips.push(t('teacherTier.needComplete'));
+          }
+          return (
+            <View style={styles.levelCard}>
+              <View style={styles.levelHeaderRow}>
+                <Ionicons name="trophy-outline" size={18} color={Colors.primary} />
+                <Text style={styles.levelCardTitle}>{t('teacherTier.progressTitle')}</Text>
+              </View>
+              <View style={styles.levelCurrentRow}>
+                <Text style={styles.levelCurrentLabel}>{t('teacherTier.yourLevel')}:</Text>
+                <View style={[styles.levelPill, { backgroundColor: curBg }]}>
+                  {cur && <Ionicons name={cur.icon} size={13} color={curFg} />}
+                  <Text style={[styles.levelPillText, { color: curFg }]}>{curLabel}</Text>
+                </View>
+              </View>
+              {nx ? (
+                <>
+                  <Text style={styles.levelToReach}>
+                    {t('teacherTier.toReach', { level: nxMeta ? t(`teacherTier.${nxMeta.key}Teacher`) : '' })}
+                  </Text>
+                  {chips.length > 0 ? (
+                    <View style={styles.levelChips}>
+                      {chips.map((c, i) => (
+                        <View key={i} style={styles.levelChip}>
+                          <Ionicons name="checkmark-circle-outline" size={12} color={Colors.textSecondary} />
+                          <Text style={styles.levelChipText}>{c}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={styles.levelAllMet}>{t('teacherTier.allMet')}</Text>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.levelAllMet}>{t('teacherTier.maxLevel')}</Text>
+              )}
+            </View>
+          );
+        })()}
+
         {/* AI Insight */}
         <View style={styles.insightCard}>
           <View style={styles.insightBar} />
@@ -156,9 +265,20 @@ export default function TeacherDashboardScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.insightTitle}>{t('teacherDashboard.aiInsight')}</Text>
-            <Text style={styles.insightBody}>
-              {t('teacherDashboard.insightPre')}<Text style={styles.insightHighlight}>{t('teacherDashboard.insightHighlight', { delta: lastMonthDelta })}</Text>{t('teacherDashboard.insightPost')}
-            </Text>
+            {earningsDelta != null && earningsDelta !== 0 ? (
+              <Text style={styles.insightBody}>
+                {t('teacherDashboard.insightPre')}
+                <Text style={styles.insightHighlight}>
+                  {t(earningsDelta > 0 ? 'teacherDashboard.insightHighlight' : 'teacherDashboard.insightHighlightDown', {
+                    delta: Math.abs(earningsDelta),
+                  })}
+                </Text>
+                {t('teacherDashboard.insightPost')}
+              </Text>
+            ) : (
+              /* Müqayisə üçün real məlumat yoxdursa faiz ÜMUMİYYƏTLƏ göstərilmir (§9). */
+              <Text style={styles.insightBody}>{t('teacherDashboard.insightNeutral')}</Text>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -191,6 +311,29 @@ const styles = StyleSheet.create({
 
   scroll: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 60, gap: 22 },
 
+  levelCard: {
+    backgroundColor: Colors.surfaceLowest, borderRadius: 20, padding: 18,
+    borderWidth: 1, borderColor: Colors.borderLight, gap: 12,
+  },
+  levelHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  levelCardTitle: { fontSize: 15, fontWeight: '800', color: Colors.textPrimary },
+  levelCurrentRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  levelCurrentLabel: { fontSize: 13, color: Colors.textSecondary, fontWeight: '600' },
+  levelPill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16,
+  },
+  levelPillText: { fontSize: 13, fontWeight: '900', letterSpacing: 0.3 },
+  levelToReach: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  levelChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  levelChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: Colors.surfaceLow, borderRadius: 10,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  levelChipText: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
+  levelAllMet: { fontSize: 13, fontWeight: '700', color: Colors.primary },
+
   titleBlock: { gap: 4 },
   bigTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.6 },
   bigSub: { fontSize: 13, color: Colors.textSecondary },
@@ -220,10 +363,10 @@ const styles = StyleSheet.create({
   },
   verifiedChipText: { fontSize: 12, fontWeight: '600', color: '#fff' },
 
-  statsGrid: { flexDirection: 'row', gap: 14 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
   statCard: {
-    flex: 1, backgroundColor: Colors.surfaceLowest,
-    borderRadius: 20, padding: 22, alignItems: 'center', gap: 4,
+    flexGrow: 1, flexBasis: '44%', backgroundColor: Colors.surfaceLowest,
+    borderRadius: 20, padding: 18, alignItems: 'center', gap: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 12, elevation: 1,
   },
   statIconBox: {

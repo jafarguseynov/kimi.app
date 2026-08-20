@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
+import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
 
 const AURA: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -18,6 +19,13 @@ const OPTIONS: Option[] = [
 export default function StreakRecoveryScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const [selected, setSelected] = useState<string | null>(null);
+
+  const handleRecover = () => {
+    if (!selected) return;
+    // Streak bərpa edildi — dashboard-a qayıt (kök streak axını backend-ə bağlananda buraya API çağırışı gələcək)
+    navigation.navigate(Routes.StreakDashboard);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -46,22 +54,39 @@ export default function StreakRecoveryScreen() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('streak.recCardTitle')}</Text>
           <View style={{ gap: 12 }}>
-            {OPTIONS.map((o) => (
-              <TouchableOpacity key={o.id} activeOpacity={0.85} style={styles.optionBtn}>
-                <View style={[styles.optionIcon, { backgroundColor: o.iconBg }]}>
-                  <Ionicons name={o.icon} size={20} color={o.iconColor} />
-                </View>
-                <Text style={styles.optionText}>{t(o.titleKey)}</Text>
-                <Ionicons name="arrow-forward" size={20} color={Colors.textLight} />
-              </TouchableOpacity>
-            ))}
+            {OPTIONS.map((o) => {
+              const active = selected === o.id;
+              return (
+                <TouchableOpacity
+                  key={o.id}
+                  activeOpacity={0.85}
+                  onPress={() => setSelected(o.id)}
+                  style={[styles.optionBtn, active && styles.optionBtnActive]}
+                >
+                  <View style={[styles.optionIcon, { backgroundColor: o.iconBg }]}>
+                    <Ionicons name={o.icon} size={20} color={o.iconColor} />
+                  </View>
+                  <Text style={styles.optionText}>{t(o.titleKey)}</Text>
+                  <Ionicons
+                    name={active ? 'checkmark-circle' : 'ellipse-outline'}
+                    size={22}
+                    color={active ? Colors.primary : Colors.textLight}
+                  />
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
         {/* CTAs */}
         <View style={{ gap: 12, width: '100%' }}>
-          <TouchableOpacity activeOpacity={0.9}>
-            <LinearGradient colors={AURA} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primaryBtn}>
+          <TouchableOpacity activeOpacity={0.9} onPress={handleRecover} disabled={!selected}>
+            <LinearGradient
+              colors={AURA}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[styles.primaryBtn, !selected && styles.primaryBtnDisabled]}
+            >
               <Text style={styles.primaryBtnText}>{t('streak.recover')}</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -114,6 +139,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingVertical: 12, paddingHorizontal: 16, borderRadius: 999,
     backgroundColor: Colors.surfaceLow,
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  optionBtnActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
   },
   optionIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   optionText: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
@@ -122,6 +152,7 @@ const styles = StyleSheet.create({
     paddingVertical: 18, borderRadius: 999, alignItems: 'center',
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 14 }, shadowOpacity: 0.22, shadowRadius: 22, elevation: 6,
   },
+  primaryBtnDisabled: { opacity: 0.45 },
   primaryBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
   ghostBtn: { paddingVertical: 14, borderRadius: 999, alignItems: 'center' },
   ghostBtnText: { fontSize: 15, fontWeight: '600', color: Colors.primary },

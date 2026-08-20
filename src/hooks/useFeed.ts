@@ -6,6 +6,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from '../api/notification.api';
+import { setBadgeCount, clearBadge } from '../utils/push';
 
 export const useFeed = () =>
   useQuery({ queryKey: ['feed'], queryFn: getFeed });
@@ -20,9 +21,11 @@ export const useMarkRead = () => {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: markNotificationRead,
-    onSuccess: () => {
+    onSuccess: async () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ['notifCount'] });
+      // App ikon nişanını qalan oxunmamış sayla sinxronla.
+      try { setBadgeCount(await getUnreadCount()); } catch { /* no-op */ }
     },
   });
 };
@@ -34,6 +37,7 @@ export const useMarkAllRead = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notifications'] });
       qc.invalidateQueries({ queryKey: ['notifCount'] });
+      clearBadge(); // hamısı oxundu → nişanı sil
     },
   });
 };

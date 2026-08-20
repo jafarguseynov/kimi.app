@@ -248,8 +248,9 @@ function renderCard(e: SchoolExam, navigation: Props['navigation'], t: TFunc) {
               <Text style={styles.primaryBtnText}>{t('schoolExams.buyStart')}</Text>
             </LinearGradient>
           </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.85} style={styles.outlineBtn} onPress={() => navigation.navigate(Routes.ExamDetail, { examId: e.id, title: e.title })}>
-            <Text style={styles.outlineBtnText}>{t('catExams.details')}</Text>
+          {/* «Detallar» → detal ekranı (ExamDetail artıq başlamazdan əvvəlki hazırlıq ekranıdır) */}
+          <TouchableOpacity activeOpacity={0.85} style={styles.outlineBtn} onPress={() => navigation.navigate(Routes.ExamInfo, { examId: e.id, title: e.title })}>
+            <Text style={styles.outlineBtnText}>{t('catExams.tapDetails')}</Text>
           </TouchableOpacity>
         </View>
       ) : isFree ? (

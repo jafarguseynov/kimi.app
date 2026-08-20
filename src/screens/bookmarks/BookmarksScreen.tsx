@@ -91,6 +91,11 @@ export default function BookmarksScreen() {
     }
   }, [subTab, mainTab, fetchBookmarks]);
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('Home');
+  };
+
   const handleRefresh = () => {
     if (mainTab === 'saved') {
       setRefreshing(true);
@@ -209,7 +214,23 @@ export default function BookmarksScreen() {
             </View>
             <TouchableOpacity
               style={styles.viewBtn}
-              onPress={() => navigation.getParent()?.navigate('Booking', { screen: Routes.TeacherList })}
+              onPress={() =>
+                navigation.navigate('Booking', {
+                  screen: Routes.TeacherProfile,
+                  params: {
+                    teacher: {
+                      id: bm.targetId,
+                      name: teacher.name,
+                      avatarUrl: teacher.avatarUrl,
+                      subjects: teacher.subject ? [teacher.subject] : [],
+                      hourlyRate: teacher.hourlyRate,
+                      rating: teacher.rating,
+                      experience: teacher.experience,
+                      isVerified: teacher.isVerified,
+                    },
+                  },
+                })
+              }
             >
               <Text style={styles.viewBtnText}>{t('bookmarks.viewProfile')}</Text>
             </TouchableOpacity>
@@ -324,7 +345,7 @@ export default function BookmarksScreen() {
         style={styles.recentCard}
         activeOpacity={0.85}
         onPress={() =>
-          navigation.getParent()?.navigate('Booking', {
+          navigation.navigate('Booking', {
             screen: Routes.TeacherProfile,
             params: { teacher },
           })
@@ -365,17 +386,14 @@ export default function BookmarksScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <TouchableOpacity style={styles.backBtn} onPress={handleBack} hitSlop={8}>
+            <Ionicons name="arrow-back" size={22} color={Colors.primary} />
+          </TouchableOpacity>
           <View style={styles.avatarCircle}>
             <Ionicons name="bookmark" size={18} color={Colors.primary} />
           </View>
           <Text style={styles.headerTitle}>{t('bookmarks.header')}</Text>
         </View>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => navigation.getParent()?.navigate('Home', { screen: Routes.Notifications })}
-        >
-          <Ionicons name="notifications-outline" size={22} color={Colors.textSecondary} />
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -493,7 +511,7 @@ export default function BookmarksScreen() {
             <TouchableOpacity
               style={bmExtraStyles.card}
               activeOpacity={0.85}
-              onPress={() => navigation.getParent()?.navigate('Home', { screen: Routes.Favorites })}
+              onPress={() => navigation.navigate('Home', { screen: Routes.Favorites })}
             >
               <View style={[bmExtraStyles.iconWrap, { backgroundColor: '#FEE2E2' }]}>
                 <Ionicons name="heart" size={20} color="#DC2626" />
@@ -504,7 +522,7 @@ export default function BookmarksScreen() {
             <TouchableOpacity
               style={bmExtraStyles.card}
               activeOpacity={0.85}
-              onPress={() => navigation.getParent()?.navigate('Home', { screen: Routes.RecentlyViewed })}
+              onPress={() => navigation.navigate('Home', { screen: Routes.RecentlyViewed })}
             >
               <View style={[bmExtraStyles.iconWrap, { backgroundColor: Colors.primaryLight }]}>
                 <Ionicons name="time" size={20} color={Colors.primary} />
@@ -533,7 +551,7 @@ export default function BookmarksScreen() {
           </Text>
           <TouchableOpacity
             style={styles.aiHeroBtn}
-            onPress={() => navigation.getParent()?.navigate(Routes.AIMentor)}
+            onPress={() => navigation.navigate(Routes.AIMentor)}
             activeOpacity={0.85}
           >
             <Text style={styles.aiHeroBtnText}>{t('bookmarks.askKimi')}</Text>
@@ -571,18 +589,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.9)',
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.surfaceLow,
+  },
   avatarCircle: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: Colors.primaryLight,
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: { fontSize: 20, fontWeight: '800', color: Colors.primary, letterSpacing: -0.3 },
-  headerBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: Colors.surfaceLow,
-  },
 
   scroll: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 32 },
 

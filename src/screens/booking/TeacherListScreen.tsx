@@ -17,10 +17,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import api from '../../api/client';
 import { Colors } from '../../constants/colors';
+import VerifiedCheck from '../../components/profile/VerifiedCheck';
 import { Routes } from '../../constants/routes';
 import { shortName } from '../../utils/name';
 import { levelMeta } from '../../constants/teacherLevel';
@@ -45,6 +46,7 @@ interface Teacher {
   age?: number;
   isNew?: boolean; // hesab ≤7 gün — "Yeni" nişanı üçün
   verified?: boolean; // ADMIN tərəfindən təsdiqlənmiş müəllim (yaşıl nişan)
+  isComplete?: boolean; // profil 100% tamamlanıb (mavi təsdiq nişanı)
   experienceYears?: number; // müəllimin təcrübə ili (kartda göstərilir)
   isFeatured?: boolean;
   isPremium?: boolean;   // premium abunəçi müəllim (backend)
@@ -108,12 +110,24 @@ const SkeletonCard = () => (
 
 export default function TeacherListScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
+  // Ana səhifədəki "İxtisaslar" zolağından fənn ötürülə bilər — o zaman siyahı
+  // birbaşa həmin fənnə filtrlənmiş açılır.
+  const route = useRoute<RouteProp<Record<string, { subject?: string } | undefined>, string>>();
+  const initialSubject = route.params?.subject;
   const { t } = useTranslation();
   const chipLabel = (item: string) =>
     item === 'Hamısı' ? t('teacherList.all') : item === 'Sevimlilərim' ? t('teacherList.favorites') : item;
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounced(search, 350);
-  const [activeFilter, setActiveFilter] = useState('Hamısı');
+  const [activeFilter, setActiveFilter] = useState(initialSubject ?? 'Hamısı');
+  // Gələn fənn standart çiplərdə yoxdursa, seçilmiş halda görünsün deyə əlavə et.
+  const filterChips = useMemo(
+    () =>
+      initialSubject && !FILTER_CHIPS.includes(initialSubject)
+        ? [FILTER_CHIPS[0], FILTER_CHIPS[1], initialSubject, ...FILTER_CHIPS.slice(2)]
+        : FILTER_CHIPS,
+    [initialSubject],
+  );
   const [filterOpen, setFilterOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'rating' | 'priceAsc' | 'priceDesc' | 'reviews'>('rating');
   const [formatFilter, setFormatFilter] = useState<'all' | 'online' | 'in-person'>('all');
@@ -309,6 +323,8 @@ export default function TeacherListScreen() {
           {item.isPremium && <Ionicons name="star" size={13} color="#D4901F" />}
           <Text style={[styles.cardName, item.isPremium && styles.cardNamePremium]} numberOfLines={1}>{shortName(item.name)}</Text>
           {isVerified && <Ionicons name="checkmark-circle" size={14} color={Colors.primary} />}
+          {/* §10 — tam profil: şagird siyahıda da mavi təsdiqi görür */}
+          <VerifiedCheck visible={!!item.isComplete} size={14} />
         </View>
         <Text style={styles.cardSubject} numberOfLines={1}>{subjectLabel}</Text>
 
@@ -337,7 +353,7 @@ export default function TeacherListScreen() {
             <>
               <Text style={styles.cityDot}>·</Text>
               <Ionicons name="briefcase-outline" size={11} color={Colors.textMuted} />
-              <Text style={styles.cityText}>{t('teacherList.expYears', { n: item.experienceYears })}</Text>
+              <Text style={[styles.cityText, { flexShrink: 0 }]} numberOfLines={1}>{t('teacherList.expYears', { n: item.experienceYears })}</Text>
             </>
           )}
         </View>
@@ -492,7 +508,7 @@ export default function TeacherListScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.chipList}
         >
-          {FILTER_CHIPS.map((item) => {
+          {filterChips.map((item) => {
             const isActive = activeFilter === item;
             const isFavChip = item === 'Sevimlilərim';
             const favCount = favoriteIds.size;

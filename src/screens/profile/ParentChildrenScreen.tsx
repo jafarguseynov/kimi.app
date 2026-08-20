@@ -1,57 +1,30 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { useUserStore } from '../../store/user.store';
+import { getMyChildren, ChildItem } from '../../api/parent.api';
 
-type BadgeIcon = 'flame-outline' | 'trophy-outline';
-
-interface ChildData {
-  initials: string;
-  name: string;
-  grade: string;
-  school: string;
-  online: boolean;
-  badge: { icon: BadgeIcon; text: string; bg: string; color: string };
-  progress: number;
-  progressColor: string;
-  progressLabel: string;
-  progressLabelColor: string;
+function initialsOf(name?: string | null): string {
+  if (!name) return '?';
+  return name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || '?';
 }
-
-const CHILDREN: ChildData[] = [
-  {
-    initials: 'CY',
-    name: 'Cəfər Yusifov',
-    grade: '7-ci sinif',
-    school: '23 nömrəli məktəb',
-    online: true,
-    badge: { icon: 'flame-outline', text: '5 GÜN', bg: Colors.warningLight, color: Colors.warning },
-    progress: 0.85,
-    progressColor: Colors.primary,
-    progressLabel: '85%',
-    progressLabelColor: Colors.primary,
-  },
-  {
-    initials: 'AY',
-    name: 'Aysel Yusifova',
-    grade: '5-ci sinif',
-    school: '23 nömrəli məktəb',
-    online: false,
-    badge: { icon: 'trophy-outline', text: 'TOP 10', bg: Colors.successLight + '40', color: Colors.tertiary },
-    progress: 0.92,
-    progressColor: Colors.tertiary,
-    progressLabel: '92%',
-    progressLabelColor: Colors.tertiary,
-  },
-];
 
 export default function ParentChildrenScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const parentName = useUserStore((s) => (s.user as any)?.name) ?? '';
+
+  const { data, isLoading, refetch, isRefetching } = useQuery<ChildItem[]>({
+    queryKey: ['myChildren'],
+    queryFn: () => getMyChildren().catch(() => [] as ChildItem[]),
+  });
+  const children: ChildItem[] = Array.isArray(data) ? data : [];
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -65,72 +38,92 @@ export default function ParentChildrenScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} colors={[Colors.primary]} />}
+      >
         {/* Hero */}
         <View style={styles.heroSection}>
           <Text style={styles.heroLabel}>{t('parentChildren.heroLabel')}</Text>
-          <Text style={styles.heroName}>Elnur bəy</Text>
+          <Text style={styles.heroName}>{parentName || t('parentChildren.headerTitle')}</Text>
           <Text style={styles.heroSubtitle}>
             {t('parentChildren.heroSubtitle')}
           </Text>
         </View>
 
         {/* Children list */}
-        <View style={styles.childrenList}>
-          {CHILDREN.map((child, idx) => (
-            <View key={idx} style={styles.childCard}>
-              <View style={styles.childCardTop}>
-                <View style={styles.childLeft}>
-                  <View style={styles.avatarWrap}>
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{child.initials}</Text>
+        {isLoading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 8 }} />
+        ) : children.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="people-outline" size={44} color={Colors.textMuted} />
+            <Text style={styles.emptyTitle}>{t('parentChildren.emptyTitle')}</Text>
+            <Text style={styles.emptySub}>{t('parentChildren.emptySub')}</Text>
+          </View>
+        ) : (
+          <View style={styles.childrenList}>
+            {children.map((child) => {
+              const pct = Math.max(0, Math.min(100, child.avgScore || 0));
+              const progress = pct / 100;
+              return (
+                <View key={child.linkId} style={styles.childCard}>
+                  <View style={styles.childCardTop}>
+                    <View style={styles.childLeft}>
+                      <View style={styles.avatarWrap}>
+                        <View style={styles.avatar}>
+                          {child.avatarUrl ? (
+                            <Image source={{ uri: child.avatarUrl }} style={styles.avatarImg} resizeMode="cover" />
+                          ) : (
+                            <Text style={styles.avatarText}>{initialsOf(child.name)}</Text>
+                          )}
+                        </View>
+                        {child.online && <View style={styles.onlineDot} />}
+                      </View>
+                      <View style={styles.childInfo}>
+                        <Text style={styles.childName}>{child.name}</Text>
+                        <View style={styles.childMeta}>
+                          {!!child.grade && <Text style={styles.childMetaText}>{child.grade}</Text>}
+                          {!!child.grade && !!child.school && <View style={styles.metaDot} />}
+                          {!!child.school && <Text style={styles.childMetaText}>{child.school}</Text>}
+                          {!child.grade && !child.school && (
+                            <Text style={styles.childMetaText}>{child.online ? t('parentChildren.online') : t('parentChildren.offline')}</Text>
+                          )}
+                        </View>
+                      </View>
                     </View>
-                    {child.online && <View style={styles.onlineDot} />}
-                  </View>
-                  <View style={styles.childInfo}>
-                    <Text style={styles.childName}>{child.name}</Text>
-                    <View style={styles.childMeta}>
-                      <Text style={styles.childMetaText}>{child.grade}</Text>
-                      <View style={styles.metaDot} />
-                      <Text style={styles.childMetaText}>{child.school}</Text>
+                    <View style={[styles.badgeChip, { backgroundColor: Colors.primaryLight }]}>
+                      <Ionicons name="document-text-outline" size={14} color={Colors.primary} />
+                      <Text style={[styles.badgeText, { color: Colors.primary }]}>{t('parentChildren.examsCount', { n: child.attempts })}</Text>
                     </View>
                   </View>
-                </View>
-                <View style={[styles.badgeChip, { backgroundColor: child.badge.bg }]}>
-                  <Ionicons name={child.badge.icon} size={14} color={child.badge.color} />
-                  <Text style={[styles.badgeText, { color: child.badge.color }]}>{child.badge.text}</Text>
-                </View>
-              </View>
 
-              <View style={styles.progressSection}>
-                <View style={styles.progressHeader}>
-                  <Text style={styles.progressLabelText}>{t('parentChildren.monthlyGoal')}</Text>
-                  <Text style={[styles.progressPct, { color: child.progressLabelColor }]}>
-                    {child.progressLabel}
-                  </Text>
-                </View>
-                <View style={styles.progressTrack}>
-                  <View
-                    style={[
-                      styles.progressFill,
-                      { flex: child.progress, backgroundColor: child.progressColor },
-                    ]}
-                  />
-                  <View style={{ flex: 1 - child.progress }} />
-                </View>
-              </View>
+                  {child.attempts > 0 && (
+                    <View style={styles.progressSection}>
+                      <View style={styles.progressHeader}>
+                        <Text style={styles.progressLabelText}>{t('parentChildren.avgScore')}</Text>
+                        <Text style={[styles.progressPct, { color: Colors.primary }]}>{pct}%</Text>
+                      </View>
+                      <View style={styles.progressTrack}>
+                        <View style={[styles.progressFill, { flex: progress, backgroundColor: Colors.primary }]} />
+                        <View style={{ flex: 1 - progress }} />
+                      </View>
+                    </View>
+                  )}
 
-              <TouchableOpacity
-                style={styles.viewBtn}
-                activeOpacity={0.85}
-                onPress={() => navigation.navigate(Routes.ChildAcademicReport, { childName: child.name })}
-              >
-                <Text style={styles.viewBtnText}>{t('parentChildren.viewProgress')}</Text>
-                <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
-              </TouchableOpacity>
-            </View>
-          ))}
-        </View>
+                  <TouchableOpacity
+                    style={styles.viewBtn}
+                    activeOpacity={0.85}
+                    onPress={() => navigation.navigate(Routes.ChildAcademicReport, { childName: child.name, childId: child.id })}
+                  >
+                    <Text style={styles.viewBtnText}>{t('parentChildren.viewProgress')}</Text>
+                    <Ionicons name="arrow-forward" size={18} color={Colors.primary} />
+                  </TouchableOpacity>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* Add child */}
         <TouchableOpacity
@@ -184,6 +177,10 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   avatarText: { fontSize: 16, fontWeight: '700', color: Colors.primary },
+  avatarImg: { width: '100%', height: '100%', borderRadius: 13 },
+  empty: { alignItems: 'center', gap: 8, paddingVertical: 32 },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  emptySub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 24, lineHeight: 19 },
   onlineDot: {
     position: 'absolute', bottom: -2, right: -2,
     width: 14, height: 14, borderRadius: 7,

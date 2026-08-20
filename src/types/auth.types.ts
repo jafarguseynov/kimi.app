@@ -22,6 +22,8 @@ export interface RegisterPayload {
   goal?: string;
   childName?: string;
   referralCode?: string;
+  /** İstifadə şərtləri + məxfilik siyasətinin qəbulu (qeydiyyatda məcburi). */
+  acceptedTerms?: boolean;
 }
 
 export interface LoginPayload {

@@ -17,10 +17,12 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { respondDuelInvite } from '../../api/duel.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 type Params = {
+  inviteId?: string;
   challengerName?: string;
   challengerLevel?: number;
   challengerSchool?: string;
@@ -86,10 +88,16 @@ export default function DuelInviteScreen() {
   }, []);
 
   const decline = () => {
+    // Real dəvətdirsə serverə imtina bildir (best-effort).
+    if (p.inviteId) respondDuelInvite(p.inviteId, false).catch(() => {});
     if (navigation.canGoBack()) navigation.goBack();
   };
 
-  const accept = () => {
+  const accept = async () => {
+    // Real dəvətdirsə serverdə qəbul et; sonra xüsusi növbəyə (inviteCode) qoşul.
+    if (p.inviteId) {
+      try { await respondDuelInvite(p.inviteId, true); } catch { /* yenə də matça cəhd et */ }
+    }
     navigation.replace(Routes.DuelMatch, {
       mode: 'live',
       opponentName: challengerName,
@@ -98,6 +106,7 @@ export default function DuelInviteScreen() {
       questionCount,
       prize: stake * 2,
       stake,
+      inviteCode: p.inviteId,
     });
   };
 

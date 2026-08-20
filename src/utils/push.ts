@@ -53,7 +53,8 @@ function getMod(): NotificationsModule | null {
             shouldShowBanner: !muteThisChat,
             shouldShowList: true,
             shouldPlaySound: !muteThisChat,
-            shouldSetBadge: false,
+            // Push payload-dakı `badge` (oxunmamış say) app ikonuna tətbiq olunsun.
+            shouldSetBadge: true,
           };
         },
       });
@@ -94,6 +95,23 @@ async function fetchExpoTokenWithRetry(N: NotificationsModule, attempts = 3): Pr
     if (i < attempts - 1) await new Promise((r) => setTimeout(r, 1500));
   }
   return null;
+}
+
+// App ikonundakı qırmızı nişan sayını təyin et (oxunmamış bildiriş sayı).
+// n<=0 → nişan tamamilə silinir. Dəstəklənməyən runtime-da təhlükəsiz no-op.
+export async function setBadgeCount(n: number): Promise<void> {
+  try {
+    const N = getMod();
+    if (!N) return;
+    await N.setBadgeCountAsync(Math.max(0, Math.floor(n || 0)));
+  } catch {
+    /* badge dəstəklənmir — kritik deyil */
+  }
+}
+
+// Nişanı tamamilə təmizlə (istifadəçi bildirişləri oxuyanda).
+export async function clearBadge(): Promise<void> {
+  return setBadgeCount(0);
 }
 
 export type PushPermissionStatus = 'granted' | 'denied' | 'undetermined' | 'unsupported';
@@ -215,21 +233,72 @@ export async function ensureNotificationChannels(): Promise<void> {
 
 type Sub = { remove: () => void };
 
+// expo-notifications: adi "toxunma" (özəl action düyməsi deyil) action id-si.
+// Həm Android, həm iOS bu sabiti göndərir.
+export const DEFAULT_ACTION_IDENTIFIER = 'expo.modules.notifications.actions.DEFAULT';
+
+/**
+ * Bildiriş cavabının XAM `data`-sı deyil, tam kimliyi. `identifier` vacibdir:
+ * eyni cavabın təkrar emal olunmasının qarşısını yalnız onunla almaq olar
+ * (bax: utils/notificationRouting.ts).
+ */
+export type NotificationResponseInfo = {
+  /** Bildirişin unikal id-si (Android: FCM message id). Yoxdursa → real bildiriş deyil. */
+  identifier: string | null;
+  /** Toxunma növü: default toxunma, yoxsa özəl action düyməsi. */
+  actionIdentifier: string | null;
+  data: Record<string, any>;
+};
+
+function toResponseInfo(response: any): NotificationResponseInfo {
+  return {
+    identifier: response?.notification?.request?.identifier ?? null,
+    actionIdentifier: response?.actionIdentifier ?? null,
+    data: (response?.notification?.request?.content?.data ?? {}) as Record<string, any>,
+  };
+}
+
 // İstifadəçi bildirişə toxunduqda çağırılır (app açıq/arxa planda/bağlı).
 // Qaytarılan abunəliyi useEffect cleanup-da remove() ilə ləğv et.
+// ⚠️ Bu hadisə Android-də TƏKRAR emit oluna bilər (bax: notificationRouting.ts) —
+// naviqasiyadan əvvəl mütləq `claimNotificationResponse()` ilə süz.
 export function addNotificationResponseListener(
-  handler: (data: Record<string, any>) => void,
+  handler: (res: NotificationResponseInfo) => void,
 ): Sub | null {
   try {
     const N = getMod();
     if (!N) return null;
     const sub = N.addNotificationResponseReceivedListener((response: any) => {
-      const data = response?.notification?.request?.content?.data ?? {};
-      handler(data as Record<string, any>);
+      handler(toResponseInfo(response));
     });
     return sub as Sub;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Tətbiq bildirişə toxunularaq açılıbsa, nativ tərəfdə saxlanan SONUNCU cavabı oxu.
+ * Cavab JS dinləyicisi qurulmazdan əvvəl emit oluna bilər — soyuq başlanğıcda bu
+ * lazımdır. Təkrar emal `claimNotificationResponse()` ilə bloklanır.
+ */
+export function getLastNotificationResponseInfo(): NotificationResponseInfo | null {
+  try {
+    const N = getMod();
+    const r = (N as any)?.getLastNotificationResponse?.();
+    return r ? toResponseInfo(r) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Emal edilmiş cavabı nativ keşdən sil — proses daxilində təkrar verilməsin. */
+export function clearLastNotificationResponse(): void {
+  try {
+    const N = getMod();
+    (N as any)?.clearLastNotificationResponse?.();
+  } catch {
+    /* köhnə runtime — kritik deyil */
   }
 }
 

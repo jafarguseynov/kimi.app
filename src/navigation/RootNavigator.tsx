@@ -12,6 +12,7 @@ import { useSettingsStore } from '../store/settings.store';
 import { useFeatureFlagStore } from '../store/featureFlag.store';
 import { useSpinWheelStore } from '../store/spinWheel.store';
 import { useSpinStreakStore } from '../store/spinStreak.store';
+import { useCalcRecordsStore } from '../store/calcRecords.store';
 import { getToken } from '../utils/token';
 import { getMe } from '../api/user.api';
 import { Colors } from '../constants/colors';
@@ -30,10 +31,15 @@ export default function RootNavigator() {
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
   const hydrateSpinWheel = useSpinWheelStore((s) => s.hydrate);
   const hydrateSpinStreak = useSpinStreakStore((s) => s.hydrate);
+  const hydrateCalcRecords = useCalcRecordsStore((s) => s.hydrate);
   const loadFlags = useFeatureFlagStore((s) => s.loadFlags);
   const [bootstrapping, setBootstrapping] = useState(true);
 
   useEffect(() => {
+    // Mühafizə: açılış heç bir halda 10 saniyədən çox logo ekranında qalmasın.
+    // SecureStore/şəbəkə gözlənilməz şəkildə ilişsə belə istifadəçi ekranı görür
+    // (ilişmiş splash = Play üçün «app doesn't load»).
+    const watchdog = setTimeout(() => setBootstrapping(false), 10000);
     (async () => {
       try {
         hydrateFavorites();
@@ -45,6 +51,7 @@ export default function RootNavigator() {
         hydrateSettings();
         hydrateSpinWheel();
         hydrateSpinStreak();
+        hydrateCalcRecords();
         const saved = await getToken();
         if (saved) {
           await setToken(saved);
@@ -60,9 +67,11 @@ export default function RootNavigator() {
       } catch {
         try { await clearAuth(); } catch {}
       } finally {
+        clearTimeout(watchdog);
         setBootstrapping(false);
       }
     })();
+    return () => clearTimeout(watchdog);
   }, []);
 
   // Fresh login-dən sonra (token dəyişəndə) açarları yenilə.

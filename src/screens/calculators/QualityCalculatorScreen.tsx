@@ -15,6 +15,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useCalcRecordsStore } from '../../store/calcRecords.store';
+import SaveResultButton from '../../components/calculators/SaveResultButton';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -30,22 +32,32 @@ export default function QualityCalculatorScreen() {
   const [grade4, setGrade4] = useState('');
   const [grade5, setGrade5] = useState('');
   const [result, setResult] = useState<Result | null>(null);
+  const [recordId, setRecordId] = useState<string | null>(null);
+  const addRecord = useCalcRecordsStore((s) => s.addRecord);
 
   const calculate = () => {
     const g2 = Number(grade2) || 0;
     const g3 = Number(grade3) || 0;
     const g4 = Number(grade4) || 0;
     const g5 = Number(grade5) || 0;
-    const t = Number(total) || g2 + g3 + g4 + g5;
-    if (t === 0) return;
-    const muveffaqiyyat = Math.round(((g3 + g4 + g5) / t) * 1000) / 10;
-    const keyfiyyat = Math.round(((g4 + g5) / t) * 1000) / 10;
+    const count = Number(total) || g2 + g3 + g4 + g5;
+    if (count === 0) return;
+    const muveffaqiyyat = Math.round(((g3 + g4 + g5) / count) * 1000) / 10;
+    const keyfiyyat = Math.round(((g4 + g5) / count) * 1000) / 10;
     setResult({ muveffaqiyyat, keyfiyyat });
+    setRecordId(
+      addRecord({
+        calcId: 'quality',
+        value: `${keyfiyyat}%`,
+        note: `${t('calc.successPct')}: ${muveffaqiyyat}%`,
+      }),
+    );
   };
 
   const reset = () => {
     setTotal(''); setGrade2(''); setGrade3(''); setGrade4(''); setGrade5('');
     setResult(null);
+    setRecordId(null);
   };
 
   const GRADE_ROWS: { label: string; value: string; set: (v: string) => void; dot: string }[][] = [
@@ -175,6 +187,8 @@ export default function QualityCalculatorScreen() {
               </View>
             </View>
           </View>
+
+          {result && <SaveResultButton recordId={recordId} />}
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>

@@ -4,22 +4,51 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getContactLinks, type ContactLink } from '../../api/contactLink.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
-const SUPPORT_EMAIL = 'support@kimi.az';
+
+/**
+ * Kanal görünüşü — ikon, brend rəngi və standart ad.
+ * Siyahının ÖZÜ serverdən gəlir (admin idarəli); burada yalnız hansı kanalın
+ * necə göründüyü saxlanılır. Naməlum kanal üçün ümumi keçid ikonu işlədilir.
+ */
+const CHANNELS: Record<string, { icon: keyof typeof Ionicons.glyphMap; color: string; name: string }> = {
+  instagram: { icon: 'logo-instagram', color: '#E1306C', name: 'Instagram' },
+  whatsapp:  { icon: 'logo-whatsapp',  color: '#25D366', name: 'WhatsApp' },
+  tiktok:    { icon: 'logo-tiktok',    color: '#111111', name: 'TikTok' },
+  telegram:  { icon: 'paper-plane',    color: '#229ED9', name: 'Telegram' },
+  x:         { icon: 'logo-x',         color: '#111111', name: 'X' },
+  website:   { icon: 'globe-outline',  color: Colors.primary, name: 'Veb sayt' },
+  facebook:  { icon: 'logo-facebook',  color: '#1877F2', name: 'Facebook' },
+  youtube:   { icon: 'logo-youtube',   color: '#FF0000', name: 'YouTube' },
+  email:     { icon: 'mail-outline',   color: '#0EA5E9', name: 'E-poçt' },
+  phone:     { icon: 'call-outline',   color: '#10B981', name: 'Telefon' },
+};
+const channelOf = (p: string) =>
+  CHANNELS[p] ?? { icon: 'link-outline' as const, color: Colors.primary, name: p };
 
 export default function SupportScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
+  // Əlaqə kanalları — admin paneldən idarə olunur (Əlaqə linkləri).
+  // Xəta/boş cavabda bölmə sadəcə göstərilmir (uydurma link yaradılmır).
+  const { data: links = [] } = useQuery<ContactLink[]>({
+    queryKey: ['contactLinks'],
+    queryFn: () => getContactLinks().catch(() => [] as ContactLink[]),
+    staleTime: 10 * 60 * 1000,
+  });
+
   const openChat = () => {
     const parent = navigation.getParent() as any;
     parent?.navigate('Chat', { screen: Routes.ChatList });
   };
-  const openEmail = () => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Kimi.az%20Dəstək`);
+  const openLink = (url: string) => Linking.openURL(url).catch(() => {});
   const openReport = () => navigation.navigate(Routes.ReportProblem);
   const openFaq = () => navigation.navigate(Routes.HelpCenter);
 
@@ -76,16 +105,25 @@ export default function SupportScreen() {
             <Ionicons name="chevron-forward" size={20} color={Colors.outlineVariant} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.contactCard} activeOpacity={0.85} onPress={openEmail}>
-            <View style={[styles.contactIconBox, { backgroundColor: Colors.surfaceLow }]}>
-              <Ionicons name="mail-outline" size={24} color={Colors.primary} />
-            </View>
-            <View style={styles.contactInfo}>
-              <Text style={styles.contactTitle}>{t('support.emailSupport')}</Text>
-              <Text style={styles.contactSub}>{t('support.emailSupportSub')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={Colors.outlineVariant} />
-          </TouchableOpacity>
+          {/* Admin paneldən gələn kanallar (Instagram, WhatsApp, TikTok,
+              Telegram, X, veb sayt…). Sıra və görünürlük də orada təyin olunur. */}
+          {links.map((l) => {
+            const c = channelOf(l.platform);
+            return (
+              <TouchableOpacity key={l.id} style={styles.contactCard} activeOpacity={0.85} onPress={() => openLink(l.url)}>
+                <View style={[styles.contactIconBox, { backgroundColor: c.color + '18' }]}>
+                  <Ionicons name={c.icon} size={24} color={c.color} />
+                </View>
+                <View style={styles.contactInfo}>
+                  <Text style={styles.contactTitle}>{l.label || c.name}</Text>
+                  <Text style={styles.contactSub} numberOfLines={1}>
+                    {l.subtitle || l.url.replace(/^https?:\/\//, '').replace(/^mailto:|^tel:/, '')}
+                  </Text>
+                </View>
+                <Ionicons name="open-outline" size={18} color={Colors.outlineVariant} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* Problem report */}

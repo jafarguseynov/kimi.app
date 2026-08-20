@@ -16,6 +16,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useCalcRecordsStore } from '../../store/calcRecords.store';
+import SaveResultButton from '../../components/calculators/SaveResultButton';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -37,20 +39,30 @@ export default function ScoreCalculatorScreen() {
   const [maxScore, setMaxScore] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [hasError, setHasError] = useState(false);
+  const [recordId, setRecordId] = useState<string | null>(null);
+  const addRecord = useCalcRecordsStore((s) => s.addRecord);
 
   const calculate = () => {
-    const t = Number(totalQ), c = Number(correct), w = Number(wrong), m = Number(maxScore);
-    if (!totalQ || !correct || !maxScore || isNaN(t) || isNaN(c) || isNaN(w) || isNaN(m) || t === 0 || c + w > t) {
+    const q = Number(totalQ), c = Number(correct), w = Number(wrong), m = Number(maxScore);
+    if (!totalQ || !correct || !maxScore || isNaN(q) || isNaN(c) || isNaN(w) || isNaN(m) || q === 0 || c + w > q) {
       setHasError(true);
       return;
     }
     setHasError(false);
-    const pointPerQ = m / t;
+    const pointPerQ = m / q;
     const earnedScore = c * pointPerQ;
     const deduction = w * pointPerQ * 0.25;
     const final = Math.max(0, earnedScore - deduction);
     const percent = Math.round((final / m) * 100);
     setResult({ pointPerQ, earnedScore, deduction, final, percent });
+    setRecordId(
+      addRecord({
+        calcId: 'score',
+        value: final.toFixed(1),
+        unitKey: 'calc.balUnit',
+        note: `${c}/${q} · ${percent}%`,
+      }),
+    );
   };
 
   const reset = () => {
@@ -60,6 +72,7 @@ export default function ScoreCalculatorScreen() {
     setMaxScore('');
     setResult(null);
     setHasError(false);
+    setRecordId(null);
   };
 
   if (hasError) {
@@ -255,6 +268,8 @@ export default function ScoreCalculatorScreen() {
               </LinearGradient>
             </View>
           </View>
+
+          {result && <SaveResultButton recordId={recordId} />}
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>

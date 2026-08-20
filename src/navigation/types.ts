@@ -9,6 +9,8 @@ export type AuthStackParamList = {
   [Routes.RoleSelect]: undefined;
   [Routes.ProfileSetup]: undefined;
   [Routes.AIOnboarding]: undefined;
+  [Routes.TermsOfService]: undefined;
+  [Routes.PrivacyPolicy]: undefined;
 };
 
 export type ExamStackParamList = {
@@ -42,7 +44,17 @@ export type ExamStackParamList = {
     questionType?: 'test' | 'open' | 'both';
     examType?: 'practice' | 'monthly' | 'national' | 'live';
   } | undefined;
-  [Routes.ExamDetail]: { examId: string; title: string };
+  // Hazırlıq ekranı — əlavə sahələr məlumdursa ötürülür (dərhal göstərilsin
+  // deyə); məlum deyilsə ekran özü `useExam(examId)` ilə gətirir.
+  [Routes.ExamDetail]: {
+    examId: string;
+    title: string;
+    questionCount?: number;
+    duration?: number;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    subject?: string;
+    categoryKey?: string;
+  };
   [Routes.ExamSession]: undefined;
   [Routes.ExamResult]: { examId?: string } | undefined;
   [Routes.ExamReview]: { examId: string; filter?: 'all' | 'wrong' | 'correct' | 'unanswered' };
@@ -78,13 +90,16 @@ export type MarketplaceStackParamList = {
 
 export type ProfileStackParamList = {
   [Routes.ProfileHome]: undefined;
-  [Routes.EditProfile]: { role?: 'teacher' | 'student' | 'parent' } | undefined;
+  // `focusField` — profil tamamlama kartındakı "Əlavə et →" düyməsi ilə
+  // birbaşa həmin sahəyə sürüşmək üçün (§7 ağıllı yönləndirmə).
+  [Routes.EditProfile]: { role?: 'teacher' | 'student' | 'parent'; focusField?: string } | undefined;
   [Routes.Dashboard]: undefined;
   [Routes.Wallet]: undefined;
   [Routes.ReferralBalance]: undefined;
   [Routes.Settings]: undefined;
   [Routes.NotificationSettings]: undefined;
   [Routes.TermsOfService]: undefined;
+  [Routes.PrivacyPolicy]: undefined;
   [Routes.Support]: undefined;
   [Routes.HelpCenter]: undefined;
   [Routes.ReportProblem]: undefined;
@@ -132,7 +147,9 @@ export type HomeStackParamList = {
   [Routes.SchoolDetail]: { schoolName?: string };
   [Routes.Notifications]: undefined;
   [Routes.Settings]: undefined;
-  [Routes.EditProfile]: { role?: 'teacher' | 'student' | 'parent' } | undefined;
+  // `focusField` — profil tamamlama kartındakı "Əlavə et →" düyməsi ilə
+  // birbaşa həmin sahəyə sürüşmək üçün (§7 ağıllı yönləndirmə).
+  [Routes.EditProfile]: { role?: 'teacher' | 'student' | 'parent'; focusField?: string } | undefined;
   [Routes.ClassGradeCalc]: undefined;
   [Routes.NotificationSettings]: undefined;
   [Routes.SmartFeed]: undefined;
@@ -146,6 +163,7 @@ export type HomeStackParamList = {
   [Routes.Support]: undefined;
   [Routes.ReportProblem]: undefined;
   [Routes.TermsOfService]: undefined;
+  [Routes.PrivacyPolicy]: undefined;
   [Routes.AboutApp]: undefined;
   [Routes.PaymentMethod]: undefined;
   [Routes.CardPayment]: undefined;
@@ -198,6 +216,8 @@ export type AppTabParamList = {
   Booking: undefined;
   [Routes.Profile]: undefined;
   Calculators: undefined;
+  [Routes.TeacherRequests]: undefined;
+  [Routes.TeacherStats]: undefined;
 };
 
 export type CalcStackParamList = {
@@ -209,4 +229,5 @@ export type CalcStackParamList = {
   [Routes.DIMCalc]: undefined;
   [Routes.CalcHistory]: undefined;
   [Routes.CalcSaved]: undefined;
+  [Routes.ClassGradeCalc]: undefined;
 };

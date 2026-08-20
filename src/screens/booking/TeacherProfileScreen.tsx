@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  ActivityIndicator,
   ScrollView,
   Dimensions,
   Alert,
@@ -19,10 +18,11 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { getTeacherSlots, getTeacherReviews, getStudentBookings, TeacherSlot, Review } from '../../api/booking.api';
+import { getTeacherReviews, getStudentBookings, Review } from '../../api/booking.api';
 import { getOrCreateChat } from '../../api/chat.api';
 import { recordTeacherView, reportContent } from '../../api/user.api';
 import { Colors } from '../../constants/colors';
+import VerifiedCheck from '../../components/profile/VerifiedCheck';
 import { Routes } from '../../constants/routes';
 import { levelMeta } from '../../constants/teacherLevel';
 import { useRecentTeachersStore } from '../../store/recentTeachers.store';
@@ -55,7 +55,6 @@ function relativeTime(iso: string, t: TFn): string {
 export default function TeacherProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
-  const DAY_LABELS = t('teacherProfile.dayShort').split('|');
   const route = useRoute<any>();
   const teacher = route.params?.teacher;
   const teacherId: string | undefined = teacher?.id;
@@ -91,12 +90,6 @@ export default function TeacherProfileScreen() {
     }
   }, [teacher?.id]);
 
-  const { data: slotsData, isLoading, refetch: refetchSlots } = useQuery<TeacherSlot[]>({
-    queryKey: ['teacherSlots', teacherId],
-    queryFn: () => getTeacherSlots(teacherId as string).catch(() => [] as TeacherSlot[]),
-    enabled: !!teacherId,
-  });
-
   const { data: reviewsData, refetch: refetchReviews } = useQuery<Review[]>({
     queryKey: ['teacherReviews', teacherId],
     queryFn: () => getTeacherReviews(teacherId as string).catch(() => [] as Review[]),
@@ -113,11 +106,11 @@ export default function TeacherProfileScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await Promise.all([refetchSlots(), refetchReviews(), refetchBookings()]);
+      await Promise.all([refetchReviews(), refetchBookings()]);
     } finally {
       setRefreshing(false);
     }
-  }, [refetchSlots, refetchReviews, refetchBookings]);
+  }, [refetchReviews, refetchBookings]);
 
   const handleWriteReview = () => {
     if (!teacherId) return;
@@ -184,9 +177,7 @@ export default function TeacherProfileScreen() {
     ]);
   };
 
-  const slots: TeacherSlot[] = Array.isArray(slotsData) ? slotsData : [];
   const reviews: Review[] = Array.isArray(reviewsData) ? reviewsData : [];
-  const displaySlots = slots.slice(0, 4);
   const reviewCount = reviews.length;
   const avgRating = reviewCount > 0
     ? reviews.reduce((s, r) => s + r.rating, 0) / reviewCount
@@ -202,9 +193,22 @@ export default function TeacherProfileScreen() {
   const areaLabel = (Array.isArray(teacher?.areaNames) && teacher.areaNames.length)
     ? teacher.areaNames.join(', ')
     : (teacher?.areaName || teacher?.city || t('teacherProfile.notSpecified'));
+  // Dərs formatı — müəllimin seçdiyi formatlardan (statik deyil, real seçim).
+  const formatLabel = (() => {
+    const lf: string[] = Array.isArray(teacher?.lessonFormats) ? teacher.lessonFormats : [];
+    const map: Record<string, string> = {
+      online: t('editProfile.formatOnline'),
+      home: t('editProfile.formatHome'),
+      student_home: t('editProfile.formatStudentHome'),
+      course: t('editProfile.formatCourse'),
+    };
+    const labels = lf.map((f) => map[f]).filter(Boolean);
+    return labels.length ? labels.join(', ') : t('teacherProfile.notSpecified');
+  })();
+  // Əlaqə nömrəsi — yalnız müəllim özü göstərməyi seçibsə (backend showPhone-a görə qaytarır).
+  const contactPhone: string | null = teacher?.showPhone && teacher?.phone ? String(teacher.phone) : null;
   // Profil baxış sayı (canlı: açılışda +1 olunmuş dəyər, yoxsa siyahıdan gələn).
   const viewsCount = liveViews ?? teacher?.profileViews ?? 0;
-  const DATE_FALLBACK_DAY = t('teacherProfile.dayFallback');
 
   if (!teacher) {
     return (
@@ -271,8 +275,12 @@ export default function TeacherProfileScreen() {
           <View style={styles.heroInfo}>
             <View style={styles.heroNameRow}>
               <Text style={[styles.heroName, teacher?.isPremium && styles.heroNamePremium]}>{teacher?.name ?? t('booking.defaultTeacher')}</Text>
-              {teacher?.isComplete && <Ionicons name="checkmark-circle" size={22} color="#1DA1F2" />}
+              {/* §10 — tam profil: Instagram tipli mavi təsdiq nişanı */}
+              <VerifiedCheck visible={!!teacher?.isComplete} size={22} />
             </View>
+            {!!teacher?.headline?.trim() && (
+              <Text style={styles.heroHeadline} numberOfLines={2}>{teacher.headline.trim()}</Text>
+            )}
             {(teacher?.isPremium || levelMeta(teacher?.level)) && (
               <View style={styles.heroBadgeRow}>
                 {teacher?.isPremium && (
@@ -303,6 +311,18 @@ export default function TeacherProfileScreen() {
                 <Text style={styles.viewsInlineText}>{viewsCount}</Text>
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* Subjects */}
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>{t('teacherProfile.subjectsLabel')}</Text>
+          <View style={styles.subjectsRow}>
+            {(teacher?.subjects?.length ? teacher.subjects : [subject, 'Cəbr', 'Həndəsə']).map((s: string) => (
+              <View key={s} style={styles.subjectChip}>
+                <Text style={styles.subjectChipText}>{s}</Text>
+              </View>
+            ))}
           </View>
         </View>
 
@@ -344,7 +364,7 @@ export default function TeacherProfileScreen() {
             </View>
             <View style={styles.infoTextWrap}>
               <Text style={styles.infoMeta}>{t('teacherProfile.metaFormat')}</Text>
-              <Text style={styles.infoVal}>{t('teacherProfile.formatValue')}</Text>
+              <Text style={styles.infoVal}>{formatLabel}</Text>
             </View>
           </View>
           <View style={styles.infoDivider} />
@@ -367,18 +387,25 @@ export default function TeacherProfileScreen() {
               <Text style={styles.infoVal}>{teacher?.age != null ? t('teacherProfile.ageValue', { age: teacher.age }) : t('teacherProfile.notSpecified')}</Text>
             </View>
           </View>
-        </View>
-
-        {/* Subjects */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>{t('teacherProfile.subjectsLabel')}</Text>
-          <View style={styles.subjectsRow}>
-            {(teacher?.subjects?.length ? teacher.subjects : [subject, 'Cəbr', 'Həndəsə']).map((s: string) => (
-              <View key={s} style={styles.subjectChip}>
-                <Text style={styles.subjectChipText}>{s}</Text>
-              </View>
-            ))}
-          </View>
+          {contactPhone && (
+            <>
+              <View style={styles.infoDivider} />
+              <TouchableOpacity
+                style={styles.infoRow}
+                activeOpacity={0.7}
+                onPress={() => Linking.openURL(`tel:${contactPhone}`).catch(() => {})}
+              >
+                <View style={[styles.infoIconBox, { backgroundColor: '#E7F8F0' }]}>
+                  <Ionicons name="call" size={18} color="#0a8f5f" />
+                </View>
+                <View style={styles.infoTextWrap}>
+                  <Text style={styles.infoMeta}>{t('teacherProfile.metaPhone')}</Text>
+                  <Text style={[styles.infoVal, { color: '#0a8f5f' }]}>{contactPhone}</Text>
+                </View>
+                <Ionicons name="call-outline" size={18} color="#0a8f5f" />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* Biography */}
@@ -429,45 +456,6 @@ export default function TeacherProfileScreen() {
             )}
           </View>
         )}
-
-        {/* Schedule */}
-        <View style={styles.section}>
-          <View style={styles.scheduleHeader}>
-            <Text style={styles.sectionLabel}>{t('teacherProfile.availableHours')}</Text>
-            <View style={styles.weekBadge}>
-              <Text style={styles.weekBadgeText}>{t('teacherProfile.currentWeek')}</Text>
-            </View>
-          </View>
-          {isLoading ? (
-            <ActivityIndicator color={Colors.primary} />
-          ) : (
-            <View style={styles.slotsGrid}>
-              {(displaySlots.length > 0 ? displaySlots : [
-                { id: '1', dayOfWeek: 1, startTime: '14:00', endTime: '15:00', isAvailable: true },
-                { id: '2', dayOfWeek: 3, startTime: '16:00', endTime: '17:00', isAvailable: true },
-                { id: '3', dayOfWeek: 5, startTime: '—', endTime: '', isAvailable: false },
-                { id: '4', dayOfWeek: 6, startTime: '11:00', endTime: '12:00', isAvailable: true },
-              ] as (TeacherSlot & { isAvailable?: boolean })[]).map((slot) => {
-                const avail = slot.isAvailable !== false;
-                return (
-                  <TouchableOpacity
-                    key={slot.id}
-                    style={[styles.slotBtn, !avail && styles.slotBtnDisabled]}
-                    activeOpacity={avail ? 0.7 : 1}
-                    onPress={() => avail && navigation.navigate(Routes.BookingConfirm, { teacher, slot })}
-                  >
-                    <Text style={[styles.slotDay, !avail && styles.slotTextDisabled]}>
-                      {DAY_LABELS[slot.dayOfWeek] ?? DATE_FALLBACK_DAY}
-                    </Text>
-                    <Text style={[styles.slotTime, !avail && styles.slotTextDisabled]}>
-                      {avail ? slot.startTime : t('teacherProfile.full')}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-        </View>
 
         {/* Reviews */}
         <View style={styles.reviewsSection}>
@@ -644,6 +632,7 @@ const styles = StyleSheet.create({
   heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   heroName: { fontSize: 24, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3 },
   heroNamePremium: { color: '#9A6A12' },
+  heroHeadline: { fontSize: 14, fontWeight: '500', color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, paddingHorizontal: 8 },
   premiumBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
@@ -778,23 +767,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
 
-  scheduleHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },
-  weekBadge: { backgroundColor: Colors.primaryLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  weekBadgeText: { fontSize: 11, fontWeight: '700', color: Colors.primary },
-
-  slotsGrid: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
-  slotBtn: {
-    flex: 1, minWidth: '20%',
-    backgroundColor: Colors.surface, borderRadius: 16,
-    paddingVertical: 12, alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03, shadowRadius: 8, elevation: 1,
-    borderWidth: 1, borderColor: Colors.borderLight,
-  },
-  slotBtnDisabled: { backgroundColor: Colors.surfaceLow, borderColor: Colors.borderLight },
-  slotDay: { fontSize: 9, fontWeight: '800', color: Colors.textSecondary, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
-  slotTime: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  slotTextDisabled: { color: Colors.textMuted },
 
   reviewsSection: { width: '100%', gap: 12 },
   reviewsHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 4 },

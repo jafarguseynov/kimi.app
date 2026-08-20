@@ -1,46 +1,56 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { useTranslation } from '../../i18n';
+import { getBlockedUsers, unblockUser, type BlockedUser } from '../../api/block.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface BlockedUser {
-  id: string;
-  name: string;
-  handle: string;
-  avatarUrl?: string;
-}
-
-const INITIAL_BLOCKED: BlockedUser[] = [
-  { id: '1', name: 'Leyla Məmmədova', handle: '@leyla_mem' },
-  { id: '2', name: 'Anar Qasımov',    handle: '@anar_q' },
-  { id: '3', name: 'Nigar Əliyeva',   handle: '@nigar_al' },
-  { id: '4', name: 'Eltun Hüseynov',  handle: '@eltun_h' },
-];
-
 const initials = (n: string) => n.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+
+/** @handle əvəzinə rol yazılır — istifadəçi adları sistemdə yoxdur. */
+const roleLabel = (role: string, t: (k: string) => string) =>
+  role === 'teacher'
+    ? t('blockedUsers.roleTeacher')
+    : role === 'parent'
+      ? t('blockedUsers.roleParent')
+      : t('blockedUsers.roleStudent');
 
 export default function BlockedUsersScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const [users, setUsers] = useState<BlockedUser[]>(INITIAL_BLOCKED);
+  const qc = useQueryClient();
   const [query, setQuery] = useState('');
+
+  const { data: users = [], isLoading, isError, refetch } = useQuery<BlockedUser[]>({
+    queryKey: ['blockedUsers'],
+    queryFn: getBlockedUsers,
+  });
+
+  const unblockMut = useMutation({
+    mutationFn: (id: string) => unblockUser(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['blockedUsers'] });
+      qc.invalidateQueries({ queryKey: ['chats'] });
+    },
+    onError: () => Alert.alert(t('blockedUsers.errorTitle'), t('blockedUsers.errorBody')),
+  });
 
   const filtered = useMemo(() => {
     if (!query.trim()) return users;
     const q = query.toLowerCase();
-    return users.filter((u) => u.name.toLowerCase().includes(q) || u.handle.toLowerCase().includes(q));
+    return users.filter((u) => u.name?.toLowerCase().includes(q));
   }, [users, query]);
 
   const unblock = (u: BlockedUser) => {
     Alert.alert(t('blockedUsers.unblockTitle'), t('blockedUsers.unblockBody', { name: u.name }), [
       { text: t('blockedUsers.cancel'), style: 'cancel' },
-      { text: t('blockedUsers.unblock'), onPress: () => setUsers((p) => p.filter((x) => x.id !== u.id)) },
+      { text: t('blockedUsers.unblock'), onPress: () => unblockMut.mutate(u.id) },
     ]);
   };
 
@@ -77,7 +87,18 @@ export default function BlockedUsersScreen() {
           />
         </View>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <ActivityIndicator color={Colors.primary} style={{ paddingVertical: 40 }} />
+        ) : isError ? (
+          <View style={styles.empty}>
+            <Ionicons name="cloud-offline-outline" size={42} color={Colors.textMuted} />
+            <Text style={styles.emptyTitle}>{t('blockedUsers.errorTitle')}</Text>
+            <Text style={styles.emptySub}>{t('blockedUsers.errorBody')}</Text>
+            <TouchableOpacity style={styles.retryBtn} activeOpacity={0.85} onPress={() => refetch()}>
+              <Text style={styles.retryText}>{t('blockedUsers.retry')}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : filtered.length === 0 ? (
           <View style={styles.empty}>
             <Ionicons name="checkmark-circle-outline" size={42} color={Colors.textMuted} />
             <Text style={styles.emptyTitle}>{users.length === 0 ? t('blockedUsers.emptyTitleNone') : t('blockedUsers.emptyTitleNoResult')}</Text>
@@ -106,12 +127,17 @@ export default function BlockedUsersScreen() {
                       <Ionicons name="ban" size={12} color={Colors.danger} />
                     </View>
                   </View>
-                  <View>
-                    <Text style={styles.name}>{u.name}</Text>
-                    <Text style={styles.handle}>{u.handle}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.name} numberOfLines={1}>{u.name}</Text>
+                    <Text style={styles.handle}>{roleLabel(u.role, t)}</Text>
                   </View>
                 </View>
-                <TouchableOpacity style={styles.unblockBtn} activeOpacity={0.85} onPress={() => unblock(u)}>
+                <TouchableOpacity
+                  style={[styles.unblockBtn, unblockMut.isPending && { opacity: 0.5 }]}
+                  activeOpacity={0.85}
+                  disabled={unblockMut.isPending}
+                  onPress={() => unblock(u)}
+                >
                   <Text style={styles.unblockText}>{t('blockedUsers.unblock')}</Text>
                 </TouchableOpacity>
               </View>
@@ -169,6 +195,11 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', gap: 6, paddingVertical: 40 },
   emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginTop: 8 },
   emptySub: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', maxWidth: 260, lineHeight: 18 },
+  retryBtn: {
+    marginTop: 12, paddingHorizontal: 24, paddingVertical: 10,
+    borderRadius: 999, backgroundColor: Colors.surfaceHigh,
+  },
+  retryText: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
 
   /* Card */
   card: {

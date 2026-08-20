@@ -22,6 +22,7 @@ type Params = {
   questionCount?: number;
   prize?: number;
   stake?: number;
+  inviteCode?: string; // adresli dəvət: yalnız bu kodlu rəqiblə qarşılaşır
 };
 
 type LiveQuestion = { index: number; text: string; options: { id: string; text: string }[] };
@@ -45,6 +46,7 @@ export default function DuelMatchScreen() {
   const subject = p.subject ?? 'Azərbaycan Dili';
   const questionCount = p.questionCount ?? 10;
   const stake = p.stake ?? 25;
+  const inviteCode = p.inviteCode;
   const prize = p.prize ?? stake * 2;
   const myName = user?.name?.split(' ')[0] ?? t('duel.me');
   const myLevel = 12;
@@ -84,8 +86,8 @@ export default function DuelMatchScreen() {
     const token = await getToken();
     if (!token) { setPhase('timeout'); return; }
     duelSocket.connect(token);
-    duelSocket.joinQueue({ subject, questionCount, stake });
-  }, [subject, questionCount, stake]);
+    duelSocket.joinQueue({ subject, questionCount, stake, inviteCode });
+  }, [subject, questionCount, stake, inviteCode]);
 
   useEffect(() => {
     if (mode !== 'live') return;

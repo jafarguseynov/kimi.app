@@ -1,16 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useReturnTab } from '../../hooks/useReturnTab';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
-import { getPlans, SubscriptionPlan } from '../../api/subscription.api';
+import { getPremiumPlans, PlanCard, trackMonetizationEvent, startTrial } from '../../api/monetization.api';
+import { useEntitlements, useMonetizationConfig } from '../../hooks/useEntitlements';
 import { PAYMENTS_ENABLED } from '../../config/iap';
 import PaymentUnavailable from '../../components/PaymentUnavailable';
 
@@ -24,22 +26,39 @@ export default function PlansScreen() {
   if (!PAYMENTS_ENABLED) return <PaymentUnavailable />;
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const { t } = useTranslation();
+  // Başqa tabdan (İmtahanlar, Profil, Rezervasiya) açılıbsa geri həmin taba qayıt.
+  useReturnTab();
   const user = useUserStore((s) => s.user);
   // Plans are locked to the current user's role — teachers only see teacher
   // plans, students/parents only see student plans (no cross-role browsing).
   const tab: RoleTab = user?.role === 'teacher' ? 'teacher' : 'student';
 
-  // Paketlər admin paneldən idarə olunur (backend-driven). Audience-ə görə süzülür.
-  const { data: allPlans = [], isLoading } = useQuery({ queryKey: ['subscription-plans'], queryFn: getPlans });
-  const plans = React.useMemo(
-    () =>
-      allPlans
-        .filter((p) => p.isActive && (p.audience === 'all' || p.audience === tab))
-        .sort((a, b) => a.sortOrder - b.sortOrder || a.price - b.price),
-    [allPlans, tab],
-  );
+  // Paketlər SERVERDƏN gəlir: qiymət, aylıq ekvivalent və REAL endirim faizi
+  // orada hesablanır — mobil heç nə uydurmur (§9).
+  const { data: plans = [], isLoading } = useQuery({
+    queryKey: ['premium-plans', tab],
+    queryFn: () => getPremiumPlans(tab),
+  });
+  const { data: config } = useMonetizationConfig();
+  const { trial, refresh } = useEntitlements();
 
-  const selectPlan = (plan: SubscriptionPlan) => {
+  // Premium səhifəsinə baxış → konversiya funnel-i (§21).
+  React.useEffect(() => { trackMonetizationEvent('premium_view'); }, []);
+
+  const trialOffer = config?.trial.enabled && trial?.eligible;
+
+  const beginTrial = async (planKey: string) => {
+    try {
+      await startTrial(planKey, 'profile');
+      refresh();
+      navigation.navigate(Routes.PaymentSuccess, { planName: t('premium.tryFree', { days: config?.trial.days ?? 7 }) });
+    } catch (e: any) {
+      Alert.alert(t('pay.errorTitle'), e?.response?.data?.message ?? t('common.error'));
+    }
+  };
+
+  const selectPlan = (plan: PlanCard) => {
+    trackMonetizationEvent('premium_cta_click', { planKey: plan.key, paywallSource: 'profile' });
     const months = Math.max(1, Math.round(plan.durationDays / 30));
     navigation.navigate(Routes.PaymentMethod, {
       planId: plan.id,
@@ -96,7 +115,7 @@ export default function PlansScreen() {
         ) : (
           <View style={{ gap: 18 }}>
             {plans.map((p) => {
-              const highlight = !!p.badge;
+              const highlight = p.highlighted || !!p.badge;
               return (
                 <View
                   key={p.id}
@@ -115,8 +134,25 @@ export default function PlansScreen() {
                       <Text style={styles.priceOld}>{Number(p.oldPrice)}</Text>
                     )}
                     <Text style={styles.priceNum}>{Number(p.price)}</Text>
-                    <Text style={styles.priceCurrency}>AZN</Text>
+                    <Text style={styles.priceCurrency}>{p.currency}</Text>
                   </View>
+
+                  {/* Aylıq ekvivalent və qənaət SERVERDƏ hesablanır — burada
+                      heç bir faiz uydurulmur (§9: "endirim faizi real olmalıdır"). */}
+                  {p.durationDays > 45 && (
+                    <Text style={styles.pricePerMonth}>
+                      {t('premium.monthlyEquivalent', {
+                        price: p.pricePerMonth.toFixed(2), currency: p.currency,
+                      })}
+                    </Text>
+                  )}
+                  {p.savingsPercent != null && p.savingsPercent > 0 && (
+                    <View style={styles.saveChip}>
+                      <Text style={styles.saveChipText}>
+                        {t('premium.savePercent', { percent: p.savingsPercent })}
+                      </Text>
+                    </View>
+                  )}
                   {!!p.description && <Text style={styles.pricePerMonth}>{p.description}</Text>}
 
                   {(p.features ?? []).length > 0 && (
@@ -131,10 +167,27 @@ export default function PlansScreen() {
                   )}
 
                   <View style={{ gap: 8, marginTop: 18 }}>
+                    {/* Trial açıqdırsa və istifadəçi uyğundursa əvvəl onu təklif et
+                        (§22 — əvvəl dəyəri göstər, sonra ödəniş istə). */}
+                    {trialOffer && p.trialEligible && (
+                      <TouchableOpacity activeOpacity={0.9} onPress={() => beginTrial(p.key)}>
+                        <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+                          <Text style={styles.primaryBtnText}>
+                            {config?.ctaTrial ?? t('premium.tryFree', { days: config?.trial.days ?? 7 })}
+                          </Text>
+                        </LinearGradient>
+                      </TouchableOpacity>
+                    )}
                     <TouchableOpacity activeOpacity={0.9} onPress={() => selectPlan(p)}>
-                      <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
-                        <Text style={styles.primaryBtnText}>{t('pay.selectPackage')}</Text>
-                      </LinearGradient>
+                      {trialOffer && p.trialEligible ? (
+                        <View style={styles.outlineBtn}>
+                          <Text style={styles.outlineBtnText}>{config?.ctaPrimary ?? t('pay.selectPackage')}</Text>
+                        </View>
+                      ) : (
+                        <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.primaryBtn}>
+                          <Text style={styles.primaryBtnText}>{config?.ctaPrimary ?? t('pay.selectPackage')}</Text>
+                        </LinearGradient>
+                      )}
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.ghostBtn} activeOpacity={0.7} onPress={() => navigation.navigate(Routes.PremiumBenefits)}>
                       <Text style={styles.ghostBtnText}>{t('pay.moreDetails')}</Text>
@@ -243,6 +296,19 @@ const styles = StyleSheet.create({
     shadowColor: Colors.primary, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 14, elevation: 4,
   },
   primaryBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
+  outlineBtn: {
+    height: 48, borderRadius: 999, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: Colors.primary,
+  },
+  outlineBtnText: { fontSize: 14, fontWeight: '800', color: Colors.primary },
+
+  /* Real qənaət nişanı — faiz serverdə hesablanır */
+  saveChip: {
+    alignSelf: 'flex-start', marginTop: 8,
+    backgroundColor: Colors.tertiary + '1A',
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
+  },
+  saveChipText: { fontSize: 11, fontWeight: '800', color: Colors.tertiary },
 
   /* Loading / empty */
   stateBox: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 48 },

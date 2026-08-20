@@ -72,7 +72,6 @@ export default function ReferralBalanceScreen() {
   // "Toplam Qazanc" yalnız REAL ÖDƏNMİŞ komissiyadır. Gözləmədəki mükafatlar (dəvət
   // olunan hələ paket almayıb) qazanc sayılmır — yalnız qeydiyyat komissiya vermir.
   const totalEarned = availableBalance;
-  const pendingAmount = friends.filter((f) => !f.rewardPaid).reduce((s, f) => s + f.reward, 0);
   const invitedCount = friends.length;
 
   const sortedFriends = [...friends].sort((a, b) => {
@@ -131,9 +130,8 @@ export default function ReferralBalanceScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.bentoLabel}>{t('referralBalance.totalEarned')}</Text>
                 <Text style={styles.bentoValue}>{totalEarned.toFixed(2)} AZN</Text>
-                {pendingAmount > 0 && (
-                  <Text style={styles.bentoPending}>{t('referralBalance.pendingHint', { amount: pendingAmount.toFixed(2) })}</Text>
-                )}
+                {/* Gözləmədə "məbləğ" göstərilmir — komissiya yalnız dəvət olunan
+                    paket alanda, paketə görə müəyyən olunur (qeydiyyat bonus vermir). */}
               </View>
             </View>
             <View style={styles.bentoCard}>
@@ -199,9 +197,13 @@ export default function ReferralBalanceScreen() {
                         </View>
                       </View>
                     </View>
-                    <Text style={[styles.txAmount, !f.rewardPaid && { color: Colors.textSecondary }]}>
-                      +{f.reward.toFixed(2)} AZN
-                    </Text>
+                    {/* Ödəniş yalnız dəvət olunan paket alanda gəlir — o vaxta qədər
+                        heç bir məbləğ göstərilmir (qeydiyyat bonus vermir). */}
+                    {f.rewardPaid ? (
+                      <Text style={styles.txAmount}>+{f.reward.toFixed(2)} AZN</Text>
+                    ) : (
+                      <Text style={[styles.txAmount, { color: Colors.textSecondary, fontWeight: '600' }]}>—</Text>
+                    )}
                   </View>
                 ))}
               </View>

@@ -22,6 +22,10 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.jafarstudio.kimi",
       "buildNumber": "106",
+      "associatedDomains": [
+        "applinks:kimi.az",
+        "applinks:www.kimi.az"
+      ],
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -29,7 +33,7 @@
     "android": {
       "package": "com.jafarstudio.kimi",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 114,
+      "versionCode": 115,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

@@ -1,14 +1,46 @@
 import client from './client';
+import { API_BASE_URL } from '../constants/config';
 
 export interface Certificate {
   id: string;
   examId: string;
   examTitle: string;
+  /** İmtahan sətrindən gəlir — köhnə backend cavabında olmaya bilər. */
+  subject?: string | null;
+  grade?: string | null;
+  examType?: 'practice' | 'monthly' | 'national' | 'live' | null;
+  categoryKey?: string | null;
   score: number;
   total: number;
   percentage: number;
   issuedAt: string;
+  /** Serverdə admin astanalarına görə hesablanır (certificate_settings). */
+  tier?: { key: string; label: string; min: number } | null;
+  /** İnsan üçün nömrə: KIMI-2026-XXXXXX. */
+  certificateNo?: string | null;
+  /**
+   * `false` → sertifikat mətni «uğurla başa vurdu» DEMƏMƏLİDİR.
+   * (Canlıda 0/20 nəticə üçün məhz belə mətn çıxırdı.)
+   */
+  passed?: boolean;
 }
+
+/**
+ * Paylaşılan sertifikatın ictimai yoxlama ünvanı.
+ *
+ * Serverdə `GET /api/sertifikat/:id` real HTML səhifə qaytarır (OG etiketləri
+ * ilə — WhatsApp/Telegram-da kart kimi görünür). Beləcə paylaşım sadəcə mətn
+ * deyil, yoxlana bilən link olur.
+ */
+export const certificateVerifyUrl = (certificateId: string) =>
+  `${API_BASE_URL}/sertifikat/${certificateId}`;
+
+/**
+ * Sertifikatın QR şəkli — SERVERDƏ yaradılır, mobil sadəcə <Image> göstərir.
+ * ⚠️ Yol uzantısızdır: nginx `.png` ilə bitən sorğuları /api proxy-sinə ötürmür.
+ */
+export const certificateQrUrl = (certificateId: string) =>
+  `${API_BASE_URL}/sertifikat/${certificateId}/qr`;
 
 export type ExamType = 'practice' | 'monthly' | 'national' | 'live';
 

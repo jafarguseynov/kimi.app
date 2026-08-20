@@ -20,11 +20,20 @@ const BENEFITS = [
 export default function TeacherProfileSetupScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const { pct, items } = useTeacherProfileCompletion();
+  const { pct, state, nextStep } = useTeacherProfileCompletion();
 
+  // §18 — onboarding yalnız MƏCBURİ sahələri addım-addım göstərir.
+  // Sıra serverdən gəlir, ona görə admin sahə əlavə edəndə bura da dəyişir.
+  const steps = (state?.fields ?? []).filter((f) => f.required);
+  const doneCount = steps.filter((f) => f.done).length;
+
+  /** Müəllimi düşünməyə məcbur etmə — ilk çatışmayan sahəyə apar (§7). */
   const goEdit = () => {
     navigation.goBack();
-    (navigation.getParent() as any)?.navigate(Routes.Profile, { screen: Routes.EditProfile });
+    (navigation.getParent() as any)?.navigate(Routes.Profile, {
+      screen: Routes.EditProfile,
+      params: nextStep ? { focusField: nextStep.key } : undefined,
+    });
   };
 
   return (
@@ -44,14 +53,17 @@ export default function TeacherProfileSetupScreen() {
         {/* Progress */}
         <View style={styles.progressCard}>
           <View style={styles.progressTop}>
-            <Text style={styles.progressLabel}>{t('teacherProfileSetup.progressLabel')}</Text>
+            <Text style={styles.progressLabel}>
+              {t('teacherProfileSetup.progressLabel')}
+              {steps.length > 0 && <Text style={styles.stepCounter}>  {doneCount} / {steps.length}</Text>}
+            </Text>
             <Text style={styles.progressPct}>{pct}%</Text>
           </View>
           <View style={styles.barTrack}>
             <View style={[styles.barFill, { width: `${pct}%` }]} />
           </View>
           <View style={styles.checklist}>
-            {items.map((it) => (
+            {steps.map((it) => (
               <View key={it.key} style={styles.checkRow}>
                 <Ionicons
                   name={it.done ? 'checkmark-circle' : 'ellipse-outline'}
@@ -110,6 +122,7 @@ const styles = StyleSheet.create({
   },
   progressTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   progressLabel: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  stepCounter: { fontSize: 12, fontWeight: '600', color: Colors.textSecondary },
   progressPct: { fontSize: 20, fontWeight: '800', color: Colors.primary },
   barTrack: { height: 8, borderRadius: 4, backgroundColor: Colors.surfaceHighest, overflow: 'hidden' },
   barFill: { height: 8, borderRadius: 4, backgroundColor: Colors.primary },

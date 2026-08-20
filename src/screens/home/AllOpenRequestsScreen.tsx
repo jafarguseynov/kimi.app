@@ -19,40 +19,39 @@ import { Colors } from '../../constants/colors';
 import { useUserStore } from '../../store/user.store';
 import { HomeStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
-import { PREMIUM_ENTRY_ROUTE } from '../../config/iap';
+import { premiumRouteFor } from '../../config/iap';
 import {
   listOpenRequests,
   expressInterest,
   type PublicLessonRequest,
 } from '../../api/lessonRequest.api';
 import { useTranslation } from '../../i18n';
+import { timeAgo } from '../../utils/timeAgo';
 import SuccessOverlay from '../../components/common/SuccessOverlay';
 
 type Props = {
   navigation: NativeStackNavigationProp<HomeStackParamList, typeof Routes.AllOpenRequests>;
+  /**
+   * §20 — "Sorğular" tabının içində nested tab kimi göstərildikdə true olur:
+   * ekran öz SafeArea + başlıq sətrini çəkmir (kənar ekran onsuz da çəkir).
+   * Siyahı, filtr və müraciət məntiqi tamamilə eyni qalır.
+   */
+  embedded?: boolean;
 };
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 const SUBJECT_FILTERS = ['Hamısı', 'Riyaziyyat', 'Fizika', 'Kimya', 'Biologiya', 'İngilis dili', 'Azərbaycan dili', 'Tarix', 'İbtidai'];
 
-function timeAgo(iso: string, t: (k: string, v?: any) => string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return t('allOpenRequests.timeNow');
-  if (m < 60) return t('allOpenRequests.timeMin', { n: m });
-  const h = Math.floor(m / 60);
-  if (h < 24) return t('allOpenRequests.timeHour', { n: h });
-  const d = Math.floor(h / 24);
-  if (d < 7) return t('allOpenRequests.timeDay', { n: d });
-  return t('allOpenRequests.timeWeek', { n: Math.floor(d / 7) });
-}
+// `timeAgo` müəllim iş panelində də lazım oldu → `utils/timeAgo`-ya çıxarıldı.
 
 function isNew(iso: string): boolean {
   return Date.now() - new Date(iso).getTime() < 60 * 60 * 1000;
 }
 
-export default function AllOpenRequestsScreen({ navigation }: Props) {
+export default function AllOpenRequestsScreen({ navigation, embedded = false }: Props) {
+  // Embedded rejimdə SafeArea kənar ekranda tətbiq olunub — ikiqat boşluq olmasın.
+  const Shell: any = embedded ? View : SafeAreaView;
   const { t } = useTranslation();
   const { user } = useUserStore();
   const isTeacher = user?.role === 'teacher';
@@ -96,7 +95,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
       if (msg === 'SUBSCRIPTION_REQUIRED' || e?.response?.status === 403) {
         Alert.alert(t('allOpenRequests.alertPremiumTitle'), t('allOpenRequests.alertPremiumMsg'), [
           { text: t('allOpenRequests.cancel'), style: 'cancel' },
-          { text: t('allOpenRequests.buyPlan'), onPress: () => navigation.navigate(PREMIUM_ENTRY_ROUTE) },
+          { text: t('allOpenRequests.buyPlan'), onPress: () => navigation.navigate(premiumRouteFor('teacher')) },
         ]);
       } else {
         Alert.alert(t('allOpenRequests.alertErrorTitle'), msg || t('allOpenRequests.alertErrorMsg'));
@@ -109,8 +108,9 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+    <Shell style={styles.container} {...(embedded ? {} : { edges: ['top'] as const })}>
+      {/* Header — embedded rejimdə kənar ekranın başlığı işlədilir */}
+      {!embedded && (
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7} hitSlop={8}>
           <Ionicons name="chevron-back" size={22} color={Colors.textPrimary} />
@@ -129,6 +129,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
           <View style={{ width: 38 }} />
         )}
       </View>
+      )}
 
       {isLoading ? (
         <View style={styles.loadingWrap}>
@@ -215,6 +216,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                     activeOpacity={0.9}
                     onPress={() => navigation.navigate(Routes.LessonRequestDetail, { requestId: r.id })}
                   >
+                    <LinearGradient colors={['#0EA5E9', '#6366F1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cardAccent} />
                     <View style={styles.cardTopRow}>
                       {fresh ? (
                         <View style={[styles.statusPill, styles.newPill]}>
@@ -226,30 +228,35 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                       <Text style={styles.timeText}>{timeAgo(r.createdAt, t)}</Text>
                     </View>
 
-                    <Text style={styles.cardTitle} numberOfLines={2}>
-                      {r.topic || r.subject}
-                    </Text>
+                    <View style={styles.titleRow}>
+                      <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.titleIconChip}>
+                        <Ionicons name="book" size={18} color="#fff" />
+                      </LinearGradient>
+                      <Text style={styles.cardTitle} numberOfLines={2}>
+                        {r.topic || r.subject}
+                      </Text>
+                    </View>
 
                     <View style={styles.metaChipsWrap}>
-                      <View style={styles.metaChip}>
-                        <Ionicons name="book-outline" size={13} color={Colors.textSecondary} />
-                        <Text style={styles.metaChipText}>{r.subject}</Text>
+                      <View style={[styles.metaChip, styles.metaChipPrimary]}>
+                        <Ionicons name="book-outline" size={13} color={Colors.primary} />
+                        <Text style={[styles.metaChipText, styles.metaChipPrimaryText]}>{r.subject}</Text>
                       </View>
                       {!!r.grade && (
                         <View style={styles.metaChip}>
-                          <Ionicons name="school-outline" size={13} color={Colors.textSecondary} />
+                          <Ionicons name="school-outline" size={13} color="#7C3AED" />
                           <Text style={styles.metaChipText}>{r.grade}</Text>
                         </View>
                       )}
                       {!!r.format && (
                         <View style={styles.metaChip}>
-                          <Ionicons name="laptop-outline" size={13} color={Colors.textSecondary} />
+                          <Ionicons name="laptop-outline" size={13} color="#0EA5E9" />
                           <Text style={styles.metaChipText}>{r.format}</Text>
                         </View>
                       )}
                       {!!r.frequency && (
                         <View style={styles.metaChip}>
-                          <Ionicons name="repeat-outline" size={13} color={Colors.textSecondary} />
+                          <Ionicons name="repeat-outline" size={13} color="#F59E0B" />
                           <Text style={styles.metaChipText}>{t('allOpenRequests.freqUnit', { n: r.frequency })}</Text>
                         </View>
                       )}
@@ -269,7 +276,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
                         <Ionicons name="person-circle-outline" size={18} color={Colors.textMuted} />
                         <Text style={styles.studentText} numberOfLines={1}>{r.studentName}</Text>
                         <View style={styles.dotSep} />
-                        <Ionicons name="people-outline" size={13} color={Colors.textMuted} />
+                        <Ionicons name="people" size={13} color="#10B981" />
                         <Text style={styles.interestedText}>{r.interestedCount}</Text>
                       </View>
                       <TouchableOpacity activeOpacity={0.85} onPress={() => handleInterest(r.id)}>
@@ -316,7 +323,7 @@ export default function AllOpenRequestsScreen({ navigation }: Props) {
           </LinearGradient>
         </TouchableOpacity>
       )}
-    </SafeAreaView>
+    </Shell>
   );
 }
 
@@ -377,9 +384,17 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: Colors.surfaceLowest,
-    borderRadius: 18, padding: 18, gap: 12,
+    borderRadius: 18, padding: 18, paddingTop: 20, gap: 12,
+    overflow: 'hidden',
     borderWidth: 1, borderColor: Colors.borderLight,
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.05, shadowRadius: 16, elevation: 2,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 18, elevation: 3,
+  },
+  cardAccent: { position: 'absolute', top: 0, left: 0, right: 0, height: 5 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  titleIconChip: {
+    width: 40, height: 40, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 3,
   },
   cardTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   statusPill: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 },
@@ -388,7 +403,7 @@ const styles = StyleSheet.create({
   statusDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.outlineVariant },
   timeText: { fontSize: 11, color: Colors.textMuted, fontWeight: '600' },
 
-  cardTitle: { fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3, lineHeight: 23 },
+  cardTitle: { flex: 1, fontSize: 17, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.3, lineHeight: 23 },
 
   metaChipsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   metaChip: {
@@ -396,7 +411,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLow,
     borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5,
   },
+  metaChipPrimary: { backgroundColor: Colors.primaryLight },
   metaChipText: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
+  metaChipPrimaryText: { color: Colors.primary, fontWeight: '800' },
 
   noteBox: {
     backgroundColor: Colors.surfaceLow,
@@ -412,7 +429,7 @@ const styles = StyleSheet.create({
   cardFooterLeft: { flexDirection: 'row', alignItems: 'center', gap: 5, flex: 1 },
   studentText: { fontSize: 12, fontWeight: '600', color: Colors.textPrimary, maxWidth: 100 },
   dotSep: { width: 3, height: 3, borderRadius: 1.5, backgroundColor: Colors.outlineVariant, marginHorizontal: 4 },
-  interestedText: { fontSize: 12, fontWeight: '700', color: Colors.textSecondary },
+  interestedText: { fontSize: 12, fontWeight: '800', color: '#059669' },
 
   interestBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,

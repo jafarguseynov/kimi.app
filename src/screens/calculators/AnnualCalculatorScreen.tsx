@@ -15,6 +15,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useCalcRecordsStore } from '../../store/calcRecords.store';
+import SaveResultButton from '../../components/calculators/SaveResultButton';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -43,17 +45,28 @@ export default function AnnualCalculatorScreen() {
   const [sem1, setSem1] = useState('');
   const [sem2, setSem2] = useState('');
   const [result, setResult] = useState<Result | null>(null);
+  const [recordId, setRecordId] = useState<string | null>(null);
+  const addRecord = useCalcRecordsStore((s) => s.addRecord);
 
   const calculate = () => {
     if (!sem1.trim() || !sem2.trim()) return;
     const final = (Number(sem1) + Number(sem2)) / 2;
     setResult({ final, grade: getGrade(final, t), letter: getLetter(final), passed: final >= 51 });
+    setRecordId(
+      addRecord({
+        calcId: 'annual',
+        value: final.toFixed(1),
+        unitKey: 'calc.balUnit',
+        note: getGrade(final, t),
+      }),
+    );
   };
 
   const reset = () => {
     setSem1('');
     setSem2('');
     setResult(null);
+    setRecordId(null);
   };
 
   return (
@@ -167,6 +180,8 @@ export default function AnnualCalculatorScreen() {
               </View>
             )}
           </View>
+
+          {result && <SaveResultButton recordId={recordId} />}
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>

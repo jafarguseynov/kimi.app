@@ -8,6 +8,8 @@ import { ExamStackParamList } from '../../navigation/types';
 import { Routes } from '../../constants/routes';
 import { Colors } from '../../constants/colors';
 import { useExamListForUser } from '../../hooks/useExams';
+import { useEntitlements } from '../../hooks/useEntitlements';
+import { getCategoryTitle } from '../../constants/educationTaxonomy';
 import { useTranslation } from '../../i18n';
 
 type Props = NativeStackScreenProps<ExamStackParamList, typeof Routes.CategoryExams>;
@@ -28,11 +30,32 @@ const BADGE_META: Record<BadgeKind, { bg: string; fg: string; tKey: string }> = 
   live:    { bg: '#DC2626', fg: '#fff',                 tKey: 'catExams.badgeLive' },
 };
 
+/**
+ * Kartın 1 cümləlik faydası — «bu imtahanı niyə həll etməliyəm?».
+ * Mətn imtahanın REAL xüsusiyyətindən seçilir (gündəlik variant / çətinlik),
+ * uydurma statistika göstərilmir.
+ */
+function benefitKey(ex: any, idx: number): string {
+  if (ex.servedDate) return 'catExams.benefitDaily';
+  if (ex.difficulty === 'hard') return 'catExams.benefitHard';
+  if (ex.difficulty === 'easy') return 'catExams.benefitEasy';
+  const rotating = ['catExams.benefitLevel', 'catExams.benefitDim', 'catExams.benefitWeak'];
+  return rotating[idx % rotating.length];
+}
+
 export default function CategoryExamsScreen({ route, navigation }: Props) {
   const { t } = useTranslation();
   const { categoryTitle, categoryKey, subKey, subject } = route.params;
   const [mode, setMode] = useState<Mode>('all');
   const { data: exams = [], isLoading, error, refetch } = useExamListForUser({ categoryKey, subKey, subject, limit: 6 });
+
+  // Pulsuz / Premium statusu — REAL entitlement məlumatı (uydurma nişan yoxdur).
+  // Limit dolubsa kartda «Premium» göstərilir; başlatmaq istəyəndə serverin
+  // 403-ü ilə paywall açılır (§4 — düymə gizlətmək tək müdafiə deyil).
+  const { isPremium, limitOf } = useEntitlements();
+  const examLimit = limitOf('exam');
+  const limited = !isPremium && !!examLimit && !examLimit.unlimited;
+  const locked = limited && (examLimit as any).remaining <= 0;
 
   const filtered = useMemo(() => exams, [exams]);
 
@@ -50,18 +73,10 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={Colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{t('catExams.examsSuffix', { title: categoryTitle })}</Text>
-        <TouchableOpacity style={styles.headerBtn} hitSlop={8}>
-          <Ionicons name="notifications-outline" size={22} color={Colors.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Welcome hero */}
-        <View>
-          <Text style={styles.welcomeTitle}>{t('catExams.welcome')}</Text>
-          <Text style={styles.welcomeSub}>{t('catExams.welcomeSub')}</Text>
-        </View>
-
         {/* Mode tabs (4 options) */}
         <View style={styles.segmented}>
           {([
@@ -144,13 +159,36 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
             </View>
           )
         ) : (
-          <View style={{ gap: 24 }}>
+          <View style={{ gap: 16 }}>
             {filtered.map((ex: any, idx: number) => {
               const badges = badgesFor(idx);
               const isLive = badges.includes('live');
               const diff = DIFFICULTY_META[ex.difficulty] ?? DIFFICULTY_META.medium;
+              const qCount = ex.questionCount ?? ex.totalQuestions ?? 25;
+              const minutes = ex.duration ?? 45;
+              const catLabel = getCategoryTitle(ex.categoryKey ?? categoryKey);
+              // Fənn başlıqda onsuz da varsa təkrar göstərmirik
+              const subj: string | null =
+                ex.subject && !String(ex.title ?? '').toLowerCase().includes(String(ex.subject).toLowerCase())
+                  ? ex.subject
+                  : null;
+              const params = {
+                examId: ex.id,
+                title: ex.title,
+                questionCount: qCount,
+                duration: minutes,
+                difficulty: ex.difficulty,
+                categoryKey: ex.categoryKey ?? categoryKey,
+                subject: ex.subject ?? subject,
+              };
               return (
-                <View key={ex.id} style={styles.card}>
+                <TouchableOpacity
+                  key={ex.id}
+                  style={styles.card}
+                  activeOpacity={0.92}
+                  // Karta toxunmaq = detal ekranı (ikinci dərəcəli hərəkət)
+                  onPress={() => navigation.navigate(Routes.ExamInfo, params)}
+                >
                   {badges.length > 0 && (
                     <View style={styles.badgeRow}>
                       {badges.map((b) => {
@@ -164,7 +202,15 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
                       })}
                     </View>
                   )}
+
                   <Text style={styles.cardTitle} numberOfLines={2}>{ex.title}</Text>
+
+                  {(!!catLabel || !!subj) && (
+                    <Text style={styles.cardSubtitle} numberOfLines={1}>
+                      {[catLabel, subj].filter(Boolean).join(' · ')}
+                    </Text>
+                  )}
+
                   {!!ex.servedDate && (
                     <View style={styles.variantRow}>
                       <Ionicons name="sparkles-outline" size={13} color={Colors.primary} />
@@ -175,47 +221,67 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
                       </Text>
                     </View>
                   )}
+
                   <View style={styles.metaRow}>
                     <View style={styles.metaItem}>
-                      <Ionicons name="help-circle-outline" size={18} color={Colors.primary} />
-                      <Text style={styles.metaText}>{t('catExams.questions', { n: ex.questionCount ?? ex.totalQuestions ?? 30 })}</Text>
+                      <Ionicons name="help-circle-outline" size={16} color={Colors.textSecondary} />
+                      <Text style={styles.metaText}>{t('catExams.questions', { n: qCount })}</Text>
                     </View>
+                    <Text style={styles.metaDot}>·</Text>
                     <View style={styles.metaItem}>
-                      <Ionicons name="time-outline" size={18} color={Colors.primary} />
-                      <Text style={styles.metaText}>{t('catExams.minutes', { n: ex.duration ?? 45 })}</Text>
+                      <Ionicons name="time-outline" size={16} color={Colors.textSecondary} />
+                      <Text style={styles.metaText}>{t('catExams.minutes', { n: minutes })}</Text>
                     </View>
+                    <Text style={styles.metaDot}>·</Text>
                     <View style={styles.metaItem}>
-                      <Ionicons name={diff.icon} size={18} color={diff.color} />
+                      <Ionicons name={diff.icon} size={16} color={diff.color} />
                       <Text style={[styles.metaText, { color: diff.color }]}>{t(diff.tKey)}</Text>
                     </View>
                   </View>
-                  <View style={styles.ctaRow}>
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      style={styles.startBtnWrap}
-                      onPress={() => navigation.navigate(Routes.ExamInfo, {
-                        examId: ex.id,
-                        title: ex.title,
-                        questionCount: ex.questionCount ?? ex.totalQuestions,
-                        duration: ex.duration,
-                        difficulty: ex.difficulty,
-                        categoryKey: ex.categoryKey ?? categoryKey,
-                        subject: ex.subject ?? subject,
-                      })}
-                    >
-                      <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
-                        <Text style={styles.startBtnText}>{isLive ? t('catExams.join') : t('catExams.start')}</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      activeOpacity={0.85}
-                      style={styles.detailsBtn}
-                      onPress={() => navigation.navigate(Routes.ExamDetail, { examId: ex.id, title: ex.title })}
-                    >
-                      <Text style={styles.detailsBtnText}>{t('catExams.details')}</Text>
-                    </TouchableOpacity>
+
+                  <Text style={styles.benefitText}>{t(benefitKey(ex, idx))}</Text>
+
+                  {/* Pulsuz / Premium statusu — premium istifadəçidə göstərilmir (hər şey açıqdır) */}
+                  {!isPremium && (
+                  <View style={styles.accessRow}>
+                    {locked ? (
+                      <View style={[styles.accessChip, styles.accessChipPremium]}>
+                        <Ionicons name="lock-closed" size={12} color="#B45309" />
+                        <Text style={[styles.accessChipText, { color: '#B45309' }]}>{t('catExams.premium')}</Text>
+                      </View>
+                    ) : (
+                      <View style={[styles.accessChip, styles.accessChipFree]}>
+                        <Ionicons name="checkmark-circle" size={12} color={Colors.tertiary} />
+                        <Text style={[styles.accessChipText, { color: Colors.tertiary }]}>{t('catExams.free')}</Text>
+                      </View>
+                    )}
+                    {limited && !locked && (
+                      <Text style={styles.accessNote}>
+                        {t('catExams.freeLeft', { n: (examLimit as any).remaining })}
+                      </Text>
+                    )}
                   </View>
-                </View>
+                  )}
+
+                  <TouchableOpacity
+                    activeOpacity={0.85}
+                    style={styles.startBtnWrap}
+                    // Əsas CTA → qısa hazırlıq ekranı → Exam Runner
+                    onPress={() => navigation.navigate(Routes.ExamDetail, params)}
+                  >
+                    <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.startBtn}>
+                      <Text style={styles.startBtnText}>
+                        {isLive ? t('catExams.join') : locked ? t('catExams.premiumCta') : t('catExams.startCta')}
+                      </Text>
+                      <Ionicons name="arrow-forward" size={17} color="#fff" />
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <View style={styles.detailsHintRow}>
+                    <Text style={styles.detailsHintText}>{t('catExams.tapDetails')}</Text>
+                    <Ionicons name="chevron-forward" size={13} color={Colors.textMuted} />
+                  </View>
+                </TouchableOpacity>
               );
             })}
 
@@ -227,17 +293,7 @@ export default function CategoryExamsScreen({ route, navigation }: Props) {
           </View>
         )}
 
-        {/* Kimi mascot */}
-        <View style={styles.mascotWrap}>
-          <View style={styles.mascotCircle}>
-            <Ionicons name="hardware-chip" size={32} color={Colors.primary} />
-          </View>
-          <View style={styles.mascotPill}>
-            <Text style={styles.mascotPillText}>Kimi AI</Text>
-          </View>
-        </View>
-
-        <View style={{ height: 48 }} />
+        <View style={{ height: 24 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -257,8 +313,6 @@ const styles = StyleSheet.create({
 
   scroll: { padding: 24, gap: 24, paddingBottom: 48 },
 
-  welcomeTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, letterSpacing: -0.5, marginBottom: 4 },
-  welcomeSub: { fontSize: 13, color: Colors.textSecondary, fontWeight: '500', opacity: 0.85 },
 
   segmented: {
     flexDirection: 'row', padding: 6,
@@ -279,36 +333,47 @@ const styles = StyleSheet.create({
   emptySub: { fontSize: 12, color: Colors.textSecondary, textAlign: 'center', maxWidth: 260, lineHeight: 18 },
 
   card: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 24,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 18, padding: 20,
     position: 'relative',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.06, shadowRadius: 40, elevation: 3,
+    borderWidth: 1, borderColor: Colors.borderLight,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 28, elevation: 2,
   },
   badgeRow: { position: 'absolute', top: 16, right: 16, flexDirection: 'row', gap: 6, zIndex: 2 },
   badge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999,
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999,
   },
   livePulseWhite: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.2, textTransform: 'uppercase' },
-  cardTitle: { fontSize: 18, fontWeight: '800', color: Colors.textPrimary, marginBottom: 8, paddingRight: 96, letterSpacing: -0.2 },
-  variantRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 16 },
-  variantText: { fontSize: 12, fontWeight: '600', color: Colors.primary },
-  metaRow: { flexDirection: 'row', gap: 16, marginBottom: 16, flexWrap: 'wrap' },
-  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 1.1, textTransform: 'uppercase' },
+  cardTitle: { fontSize: 19, fontWeight: '800', color: Colors.textPrimary, paddingRight: 92, letterSpacing: -0.3, lineHeight: 25 },
+  cardSubtitle: { fontSize: 13, fontWeight: '600', color: Colors.primary, marginTop: 4 },
+  variantRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
+  variantText: { fontSize: 12, fontWeight: '600', color: Colors.primary, flex: 1 },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   metaText: { fontSize: 13, fontWeight: '500', color: Colors.textSecondary },
+  metaDot: { fontSize: 13, color: Colors.textMuted },
+  benefitText: { fontSize: 13, color: Colors.textSecondary, lineHeight: 19, marginTop: 10 },
 
-  ctaRow: { flexDirection: 'row', gap: 12, paddingTop: 8 },
-  startBtnWrap: { flex: 2 },
+  accessRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' },
+  accessChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
+  },
+  accessChipFree: { backgroundColor: '#DCFCE7' },
+  accessChipPremium: { backgroundColor: '#FEF3C7' },
+  accessChipText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.2 },
+  accessNote: { fontSize: 11, color: Colors.textMuted, flexShrink: 1 },
+
+  startBtnWrap: { marginTop: 16 },
   startBtn: {
-    paddingVertical: 14, borderRadius: 999, alignItems: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 18, elevation: 4,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 15, borderRadius: 999,
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 16, elevation: 4,
   },
-  startBtnText: { fontSize: 14, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
-  detailsBtn: {
-    flex: 1, paddingVertical: 14, borderRadius: 999, alignItems: 'center',
-    backgroundColor: Colors.surfaceHigh,
-  },
-  detailsBtnText: { fontSize: 13, fontWeight: '700', color: Colors.textPrimary },
+  startBtnText: { fontSize: 15, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
+  detailsHintRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, marginTop: 10 },
+  detailsHintText: { fontSize: 12, color: Colors.textMuted },
 
   dashedCard: {
     minHeight: 140, alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -335,18 +400,4 @@ const styles = StyleSheet.create({
     paddingVertical: 15, borderRadius: 999,
   },
   liveCtaBtnText: { fontSize: 14, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
-
-  mascotWrap: { alignItems: 'center', marginTop: 32, opacity: 0.7 },
-  mascotCircle: {
-    width: 88, height: 88, borderRadius: 44,
-    backgroundColor: Colors.primary + '1A',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  mascotPill: {
-    position: 'absolute', top: -6, right: '30%',
-    backgroundColor: '#fff', borderRadius: 999,
-    paddingHorizontal: 12, paddingVertical: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
-  },
-  mascotPillText: { fontSize: 10, fontWeight: '800', color: Colors.primary },
 });

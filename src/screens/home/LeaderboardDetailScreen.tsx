@@ -11,7 +11,6 @@ import { useUserStore } from '../../store/user.store';
 import { getGlobalLeaderboard, type LeaderboardEntry } from '../../api/leaderboard.api';
 import { useTranslation } from '../../i18n';
 
-type Range = 'weekly' | 'monthly';
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
 function Avatar({ initial, size, ringColor, ringWidth = 4 }: { initial: string; size: number; ringColor: string; ringWidth?: number }) {
@@ -36,7 +35,7 @@ function Avatar({ initial, size, ringColor, ringWidth = 4 }: { initial: string; 
 export default function LeaderboardDetailScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
-  const [range, setRange] = useState<Range>('weekly');
+  const [showAll, setShowAll] = useState(false);
   const user = useUserStore((s) => s.user);
 
   const { data: board = [], isLoading } = useQuery({
@@ -46,13 +45,16 @@ export default function LeaderboardDetailScreen() {
 
   const initial = (name: string) => name.charAt(0).toUpperCase();
   const top3 = board.slice(0, 3);
-  const rest = board.slice(3, 9);
+  const rest = showAll ? board.slice(3) : board.slice(3, 9);
+  const hasMore = board.length > 9 && !showAll;
   const me = useMemo(() => board.find((e) => e.userId === user?.id), [board, user?.id]);
-  const myRank = me?.rank ?? 42;
-  const myXP = me?.totalScore ?? 2840;
-  const totalUsers = board.length || 1240;
-  const nextNeeded = 160;
-  const progressPct = 75;
+  const myRank = me?.rank ?? null;
+  const myXP = me?.totalScore ?? 0;
+  const totalUsers = board.length;
+  // Bir üst pillə üçün lazım olan real XP fərqi (varsa).
+  const above = myRank && myRank > 1 ? board.find((e) => e.rank === myRank - 1) : undefined;
+  const nextNeeded = above ? Math.max(0, above.totalScore - myXP) : 0;
+  const progressPct = above && above.totalScore > 0 ? Math.min(100, Math.round((myXP / above.totalScore) * 100)) : 100;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -79,33 +81,6 @@ export default function LeaderboardDetailScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Range segmented */}
-        <View style={styles.segmented}>
-          {(['weekly', 'monthly'] as Range[]).map((r) => {
-            const active = range === r;
-            if (active) {
-              return (
-                <TouchableOpacity key={r} style={styles.segItemWrap} activeOpacity={0.85} onPress={() => setRange(r)}>
-                  <LinearGradient
-                    colors={GRADIENT}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={styles.segItemActive}
-                  >
-                    <Text style={styles.segTextActive}>{r === 'weekly' ? t('leaderboardDetail.weekly') : t('leaderboardDetail.monthly')}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              );
-            }
-            return (
-              <TouchableOpacity key={r} style={styles.segItemWrap} activeOpacity={0.85} onPress={() => setRange(r)}>
-                <View style={styles.segItem}>
-                  <Text style={styles.segText}>{r === 'weekly' ? t('leaderboardDetail.weekly') : t('leaderboardDetail.monthly')}</Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
         {/* My rank hero */}
         <LinearGradient
           colors={GRADIENT}
@@ -116,7 +91,7 @@ export default function LeaderboardDetailScreen() {
             <View>
               <Text style={styles.heroKicker}>{t('leaderboardDetail.myRank')}</Text>
               <View style={styles.heroRankRow}>
-                <Text style={styles.heroRankNum}>#{myRank}</Text>
+                <Text style={styles.heroRankNum}>{myRank ? `#${myRank}` : '—'}</Text>
                 <Text style={styles.heroRankTotal}>/ {totalUsers.toLocaleString('az-AZ')}</Text>
               </View>
             </View>
@@ -135,7 +110,11 @@ export default function LeaderboardDetailScreen() {
               <View style={styles.heroTrack}>
                 <View style={[styles.heroFill, { width: `${progressPct}%` as any }]} />
               </View>
-              <Text style={styles.heroHint}>{t('leaderboardDetail.heroHint', { n: nextNeeded })}</Text>
+              {above ? (
+                <Text style={styles.heroHint}>{t('leaderboardDetail.heroHint', { n: nextNeeded })}</Text>
+              ) : (
+                <Text style={styles.heroHint}>{myRank === 1 ? t('leaderboardDetail.heroTop') : t('leaderboardDetail.heroUnranked')}</Text>
+              )}
             </View>
           </View>
         </LinearGradient>
@@ -190,30 +169,32 @@ export default function LeaderboardDetailScreen() {
               </View>
             )}
 
-            {/* Ranking list */}
+            {/* Ranking list (real data) */}
             <View style={{ gap: 12 }}>
-              {(rest.length ? rest : DEMO_REST).map((s: LeaderboardEntry | DemoRow) => (
-                <View key={'userId' in s ? s.userId : s.name} style={styles.row}>
+              {rest.map((s) => (
+                <View key={s.userId} style={[styles.row, s.userId === user?.id && styles.rowMe]}>
                   <Text style={styles.rowRank}>{s.rank}</Text>
                   <View style={styles.rowAvatar}>
                     <Text style={styles.rowAvatarText}>{initial(s.name)}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.rowName} numberOfLines={1}>{s.name}</Text>
-                    <Text style={styles.rowSub} numberOfLines={1}>{('school' in s ? s.school : t('leaderboardDetail.examMeta', { count: s.examCount, pct: s.avgPercentage }))}</Text>
+                    <Text style={styles.rowName} numberOfLines={1}>{s.userId === user?.id ? t('leaderboardDetail.youLabel') : s.name}</Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>{t('leaderboardDetail.examMeta', { count: s.examCount, pct: s.avgPercentage })}</Text>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <Text style={styles.rowXp}>{('totalScore' in s ? s.totalScore : s.xp).toLocaleString('az-AZ')}</Text>
+                    <Text style={styles.rowXp}>{s.totalScore.toLocaleString('az-AZ')}</Text>
                     <Text style={styles.rowXpUnit}>XP</Text>
                   </View>
                 </View>
               ))}
             </View>
 
-            <TouchableOpacity style={styles.moreBtn} activeOpacity={0.85}>
-              <Text style={styles.moreBtnText}>{t('leaderboardDetail.moreBtn')}</Text>
-              <Ionicons name="chevron-down" size={16} color={Colors.primary} />
-            </TouchableOpacity>
+            {hasMore && (
+              <TouchableOpacity style={styles.moreBtn} activeOpacity={0.85} onPress={() => setShowAll(true)}>
+                <Text style={styles.moreBtnText}>{t('leaderboardDetail.moreBtn')}</Text>
+                <Ionicons name="chevron-down" size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            )}
           </>
         )}
 
@@ -222,13 +203,6 @@ export default function LeaderboardDetailScreen() {
     </SafeAreaView>
   );
 }
-
-type DemoRow = { rank: number; name: string; school: string; xp: number };
-const DEMO_REST: DemoRow[] = [
-  { rank: 4, name: 'Murad Məmmədov', school: 'Bakı Avropa Liseyi', xp: 3420 },
-  { rank: 5, name: 'Nigar Əliyeva', school: '23 nömrəli Məktəb', xp: 3110 },
-  { rank: 6, name: 'Samir Sadıqov', school: 'Modern Məktəb', xp: 2990 },
-];
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
@@ -320,6 +294,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
   },
+  rowMe: { borderWidth: 1.5, borderColor: Colors.primary },
   rowRank: { width: 22, fontSize: 13, fontWeight: '700', color: Colors.textSecondary },
   rowAvatar: {
     width: 40, height: 40, borderRadius: 20,

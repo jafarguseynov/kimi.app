@@ -15,6 +15,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Colors } from '../../constants/colors';
+import { useCalcRecordsStore } from '../../store/calcRecords.store';
+import SaveResultButton from '../../components/calculators/SaveResultButton';
 import { useTranslation } from '../../i18n';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
@@ -52,19 +54,32 @@ export default function DIMCalculatorScreen() {
     riy: empty(), azDili: empty(), xDil: empty(),
   });
   const [total, setTotal] = useState<number | null>(null);
+  // Tarixçəyə yazılan qeydin id-si — "Yadda saxla" düyməsi ona bağlanır.
+  const [recordId, setRecordId] = useState<string | null>(null);
+  const addRecord = useCalcRecordsStore((s) => s.addRecord);
 
   const update = (key: string, field: keyof SubjectScores, val: string) => {
     setScores((prev) => ({ ...prev, [key]: { ...prev[key], [field]: val } }));
   };
 
   const calculate = () => {
-    const t = SUBJECTS.reduce((sum, s) => sum + calcSubject(scores[s.key]), 0);
-    setTotal(Math.round(t * 10) / 10);
+    const sum = SUBJECTS.reduce((acc, s) => acc + calcSubject(scores[s.key]), 0);
+    const value = Math.round(sum * 10) / 10;
+    setTotal(value);
+    setRecordId(
+      addRecord({
+        calcId: 'dim',
+        value: String(value),
+        unitKey: 'calc.balUnit',
+        note: tab === 'buraxilis' ? t('calc.tabBuraxilis') : t('calc.tabBlok'),
+      }),
+    );
   };
 
   const reset = () => {
     setScores({ riy: empty(), azDili: empty(), xDil: empty() });
     setTotal(null);
+    setRecordId(null);
   };
 
   const getResultLabel = (score: number): string => {
@@ -161,6 +176,8 @@ export default function DIMCalculatorScreen() {
               </View>
             )}
           </View>
+
+          {total !== null && <SaveResultButton recordId={recordId} />}
         </ScrollView>
       </SafeAreaView>
     </KeyboardAvoidingView>

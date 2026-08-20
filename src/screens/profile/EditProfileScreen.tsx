@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, KeyboardAvoidingView, Platform, Switch,
@@ -18,6 +18,8 @@ import { getMe, updateUser } from '../../api/user.api';
 import { getMyChildren, unlinkChild, ChildItem } from '../../api/parent.api';
 import { getSpecializations } from '../../api/specialization.api';
 import { uploadImageOrFallback } from '../../api/media.api';
+import { TEACHER_COMPLETION_KEY } from '../../hooks/useTeacherProfileCompletion';
+import { STUDENT_COMPLETION_KEY } from '../../api/studentProfile.api';
 import { selectAvatar, getEntitlements } from '../../api/shop.api';
 import { AVATARS, avatarEmoji } from '../../constants/cosmetics';
 import { useUserStore } from '../../store/user.store';
@@ -32,7 +34,7 @@ type Props = {
   route: RouteProp<ProfileStackParamList, typeof Routes.EditProfile>;
 };
 
-type LessonFormat = 'online' | 'home' | 'course';
+type LessonFormat = 'online' | 'home' | 'student_home' | 'course';
 type Goal = 'university' | 'school' | 'general';
 
 // Admin paneldəki ixtisas siyahısı yüklənmədikdə istifadə olunan ehtiyat siyahı.
@@ -47,12 +49,14 @@ const GRADES = ['1-ci', '2-ci', '3-cü', '4-cü', '5-ci', '6-cı', '7-ci', '8-ci
 const FORMATS: { key: LessonFormat; labelKey: string }[] = [
   { key: 'online', labelKey: 'editProfile.formatOnline' },
   { key: 'home', labelKey: 'editProfile.formatHome' },
+  { key: 'student_home', labelKey: 'editProfile.formatStudentHome' },
   { key: 'course', labelKey: 'editProfile.formatCourse' },
 ];
 
 export default function EditProfileScreen({ navigation, route }: Props) {
   const { user, setUser } = useUserStore();
   const { t } = useTranslation();
+  const completionQc = useQueryClient();
   const role = route.params?.role ?? (user?.role === 'teacher' ? 'teacher' : user?.role === 'parent' ? 'parent' : 'student');
   const userAny = user as any;
 
@@ -138,6 +142,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const [experienceYears, setExperienceYears] = useState(userAny?.experienceYears?.toString() ?? '');
   const [introVideoUrl, setIntroVideoUrl] = useState(userAny?.introVideoUrl ?? '');
   const [offersFreeDemo, setOffersFreeDemo] = useState(!!userAny?.offersFreeDemo);
+  // Profil tamamlanmasının məcburi sahələri (§4)
+  const [education, setEducation] = useState(userAny?.education ?? '');
+  const [gradeLevels, setGradeLevels] = useState<string[]>(userAny?.gradeLevels ?? []);
+  // Əlaqə nömrəsini profildə göstərmək (müəllim özü qərar verir, default gizli)
+  const [showPhone, setShowPhone] = useState(!!userAny?.showPhone);
 
   // şəhər/ərazi — həm şagird, həm müəllim üçün
   const [city, setCity] = useState(userAny?.city ?? userAny?.areaName ?? '');
@@ -184,6 +193,9 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       setExperienceYears(meAny.experienceYears != null ? String(meAny.experienceYears) : '');
       setIntroVideoUrl(meAny.introVideoUrl ?? '');
       setOffersFreeDemo(!!meAny.offersFreeDemo);
+      setEducation(meAny.education ?? '');
+      setGradeLevels(meAny.gradeLevels ?? []);
+      setShowPhone(!!meAny.showPhone);
     }).catch(() => {});
     getEntitlements().then((e) => setOwnsAvatarPack(e.ownedPacks?.includes('avatar') ?? false)).catch(() => {});
   }, []);
@@ -213,6 +225,9 @@ export default function EditProfileScreen({ navigation, route }: Props) {
         data.experienceYears = experienceYears ? parseInt(experienceYears, 10) : 0;
         data.introVideoUrl = introVideoUrl;
         data.offersFreeDemo = offersFreeDemo;
+        data.education = education;
+        data.gradeLevels = gradeLevels;
+        data.showPhone = showPhone;
         data.lessonFormats = lessonFormats;
         data.areaNames = areas;
         if (areas[0]) data.areaName = areas[0];
@@ -229,6 +244,9 @@ export default function EditProfileScreen({ navigation, route }: Props) {
       // Store-u serverdən qayıdan dəyərlərlə yenilə (form dolu qalsın).
       if (updated) setUser({ ...(user as any), ...(updated as any) });
       setSavedVisible(true);
+      // §33 — profil faizi DƏRHAL yenilənsin (profil kartı köhnə rəqəm göstərməsin).
+      completionQc.invalidateQueries({ queryKey: TEACHER_COMPLETION_KEY });
+      completionQc.invalidateQueries({ queryKey: STUDENT_COMPLETION_KEY });
       // İstifadəçi redaktə səhifəsində QALIR — avtomatik geri qayıtma yoxdur.
       // (İstəsə geri düyməsi ilə çıxar; təkrar redaktə + saxlama sərbəst işləyir.)
     },
@@ -253,6 +271,26 @@ export default function EditProfileScreen({ navigation, route }: Props) {
 
   const toggleInterest = (s: string) =>
     setInterests((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
+
+  const toggleGradeLevel = (g: string) =>
+    setGradeLevels((prev) => (prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]));
+
+  // §7 — "Əlavə et →" ilə gələn müəllim birbaşa həmin sahəyə düşür.
+  // Sahə blokları öz mövqeyini bildirir, biz ora sürüşdürürük və qısa müddət
+  // vurğulayırıq ki, hansı sahə olduğu göz qaçırmasın.
+  const focusField: string | undefined = route.params?.focusField;
+  const scrollRef = useRef<ScrollView>(null);
+  const fieldOffsets = useRef<Record<string, number>>({});
+  const scrolledRef = useRef(false);
+  const onFieldLayout = (key: string, y: number) => {
+    fieldOffsets.current[key] = y;
+    if (!focusField || scrolledRef.current || key !== focusField) return;
+    scrolledRef.current = true;
+    // Layout tam oturduqdan sonra sürüşdür (klaviatura/şəkil blokları yerini dəyişir).
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 40), animated: true });
+    }, 350);
+  };
 
   const handleSave = () => {
     // Yalnız yaddaş prosesi gedərkən təkrar çağırışı blokla (ikiqat toxunuş).
@@ -287,7 +325,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
           ) : <View style={{ width: 80 }} />}
         </View>
 
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {/* Avatar */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarRing}>
@@ -368,6 +406,9 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               experienceYears={experienceYears} setExperienceYears={setExperienceYears}
               introVideoUrl={introVideoUrl} setIntroVideoUrl={setIntroVideoUrl}
               offersFreeDemo={offersFreeDemo} setOffersFreeDemo={setOffersFreeDemo}
+              education={education} setEducation={setEducation}
+              gradeLevels={gradeLevels} toggleGradeLevel={toggleGradeLevel}
+              focusField={focusField} onFieldLayout={onFieldLayout}
             />
           ) : role === 'parent' ? (
             <ParentForm
@@ -401,6 +442,7 @@ export default function EditProfileScreen({ navigation, route }: Props) {
               email={email} setEmail={setEmail}
               birthDate={birthDate} setBirthDate={setBirthDate}
               gender={gender} setGender={setGender}
+              role={role} showPhone={showPhone} setShowPhone={setShowPhone}
             />
           )}
 
@@ -431,6 +473,21 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   );
 }
 
+/**
+ * Tədris səviyyələri (§4 "tədris etdiyi siniflər").
+ * Sabit siyahıdır: sinif nömrələri məktəb sistemindən gəlir və admin
+ * konfiqurasiyası tələb etmir; fənlər isə admin paneldən idarə olunur.
+ */
+const GRADE_LEVELS: { key: string; labelKey: string }[] = [
+  { key: 'preschool', labelKey: 'editProfile.gradePreschool' },
+  { key: '1-4', labelKey: 'editProfile.gradePrimary' },
+  { key: '5-9', labelKey: 'editProfile.gradeMiddle' },
+  { key: '10-11', labelKey: 'editProfile.gradeHigh' },
+  { key: 'abiturient', labelKey: 'editProfile.gradeAbiturient' },
+  { key: 'university', labelKey: 'editProfile.gradeUniversity' },
+  { key: 'adult', labelKey: 'editProfile.gradeAdult' },
+];
+
 // ─── Teacher Form ────────────────────────────────────────────────────────────
 function TeacherForm({
   firstName, setFirstName, lastName, setLastName,
@@ -438,6 +495,8 @@ function TeacherForm({
   lessonFormats, toggleFormat, bio, setBio,
   headline, setHeadline, experienceYears, setExperienceYears,
   introVideoUrl, setIntroVideoUrl, offersFreeDemo, setOffersFreeDemo,
+  education, setEducation, gradeLevels, toggleGradeLevel,
+  focusField, onFieldLayout,
 }: {
   firstName: string; setFirstName: (v: string) => void;
   lastName: string; setLastName: (v: string) => void;
@@ -451,12 +510,24 @@ function TeacherForm({
   experienceYears: string; setExperienceYears: (v: string) => void;
   introVideoUrl: string; setIntroVideoUrl: (v: string) => void;
   offersFreeDemo: boolean; setOffersFreeDemo: (v: boolean) => void;
+  education: string; setEducation: (v: string) => void;
+  gradeLevels: string[]; toggleGradeLevel: (v: string) => void;
+  focusField?: string;
+  onFieldLayout: (key: string, y: number) => void;
 }) {
   const { t } = useTranslation();
+  // Kartın "Əlavə et" düyməsindən gələn sahə qısa müddət vurğulanır (§7).
+  const anchor = (key: string) => ({
+    onLayout: (e: any) => onFieldLayout(key, e.nativeEvent.layout.y),
+    style: focusField === key ? [styles.fieldBlock, styles.fieldFocused] : styles.fieldBlock,
+  });
   return (
     <View style={styles.formSection}>
       {/* Name */}
-      <View style={styles.nameRow}>
+      <View
+        style={[styles.nameRow, focusField === 'fullName' && styles.fieldFocused]}
+        onLayout={(e) => onFieldLayout('fullName', e.nativeEvent.layout.y)}
+      >
         <View style={styles.nameField}>
           <Text style={styles.fieldLabel}>{t('editProfile.firstName')}</Text>
           <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} placeholder={t('editProfile.firstNamePlaceholder')} placeholderTextColor={Colors.textMuted} />
@@ -468,7 +539,7 @@ function TeacherForm({
       </View>
 
       {/* Subjects */}
-      <View style={styles.fieldBlock}>
+      <View {...anchor('subjects')}>
         <Text style={styles.fieldLabel}>{t('editProfile.teachingSubjects')}</Text>
         <SubjectMultiPicker
           options={subjectOptions}
@@ -479,8 +550,34 @@ function TeacherForm({
         />
       </View>
 
+      {/* Tədris etdiyi siniflər — profil tamamlanmasının məcburi sahəsi */}
+      <View {...anchor('gradeLevels')}>
+        <Text style={styles.fieldLabel}>{t('editProfile.gradeLevels')}</Text>
+        <Text style={styles.fieldHint}>{t('editProfile.gradeLevelsHint')}</Text>
+        <View style={styles.chipsWrap}>
+          {GRADE_LEVELS.map((g) => {
+            const active = gradeLevels.includes(g.key);
+            return (
+              <TouchableOpacity
+                key={g.key}
+                style={[styles.gradeChip, active && styles.gradeChipActive]}
+                activeOpacity={0.8}
+                onPress={() => toggleGradeLevel(g.key)}
+              >
+                <Text style={[styles.gradeChipText, active && styles.gradeChipTextActive]}>
+                  {t(g.labelKey)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+
       {/* Bento: experience + price + city */}
-      <View style={styles.bentoGrid}>
+      <View
+        style={[styles.bentoGrid, focusField === 'experienceYears' && styles.fieldFocused]}
+        onLayout={(e) => onFieldLayout('experienceYears', e.nativeEvent.layout.y)}
+      >
         <View style={[styles.bentoCard, styles.bentoHalf]}>
           <Text style={styles.bentoLabel}>{t('editProfile.experience')}</Text>
           <View style={styles.bentoRow}>
@@ -506,7 +603,7 @@ function TeacherForm({
       </View>
 
       {/* Dərs keçdiyi ərazilər (bir neçə) */}
-      <View style={styles.fieldBlock}>
+      <View {...anchor('location')}>
         <Text style={styles.fieldLabel}>{t('editProfile.teachingAreas')}</Text>
         {areas.length > 0 && (
           <View style={[styles.chipsWrap, { marginBottom: 8 }]}>
@@ -526,7 +623,7 @@ function TeacherForm({
       </View>
 
       {/* Lesson format — bir neçə seçilə bilər */}
-      <View style={styles.fieldBlock}>
+      <View {...anchor('lessonFormats')}>
         <Text style={styles.fieldLabel}>{t('editProfile.lessonFormat')}</Text>
         <View style={styles.formatWrap}>
           {FORMATS.map((f) => {
@@ -544,7 +641,7 @@ function TeacherForm({
       </View>
 
       {/* Headline */}
-      <View style={styles.fieldBlock}>
+      <View {...anchor('headline')}>
         <Text style={styles.fieldLabel}>{t('editProfile.headline')}</Text>
         <TextInput
           style={styles.input} value={headline} onChangeText={setHeadline}
@@ -555,7 +652,7 @@ function TeacherForm({
       </View>
 
       {/* Bio */}
-      <View style={styles.fieldBlock}>
+      <View {...anchor('bio')}>
         <Text style={styles.fieldLabel}>{t('editProfile.about')}</Text>
         <TextInput
           style={styles.textarea} value={bio} onChangeText={setBio}
@@ -563,10 +660,22 @@ function TeacherForm({
           placeholder={t('editProfile.aboutPlaceholder')}
           placeholderTextColor={Colors.textMuted}
         />
+        <Text style={styles.fieldHint}>{t('editProfile.aboutHint', { count: bio.trim().length })}</Text>
+      </View>
+
+      {/* Təhsil — məcburi sahə */}
+      <View {...anchor('education')}>
+        <Text style={styles.fieldLabel}>{t('editProfile.education')}</Text>
+        <TextInput
+          style={styles.textarea} value={education} onChangeText={setEducation}
+          multiline textAlignVertical="top" numberOfLines={3}
+          placeholder={t('editProfile.educationPlaceholder')}
+          placeholderTextColor={Colors.textMuted}
+        />
       </View>
 
       {/* Intro video */}
-      <View style={styles.fieldBlock}>
+      <View {...anchor('introVideoUrl')}>
         <Text style={styles.fieldLabel}>{t('editProfile.introVideo')}</Text>
         <View style={styles.inputIconWrap}>
           <Ionicons name="logo-youtube" size={18} color="#e11d48" style={styles.inputIcon} />
@@ -892,11 +1001,13 @@ function ParentForm({
 // ─── Contact Fields (müəllim + şagird) ────────────────────────────────────────
 function ContactFields({
   phone, setPhone, email, setEmail, birthDate, setBirthDate, gender, setGender,
+  role, showPhone, setShowPhone,
 }: {
   phone: string; setPhone: (v: string) => void;
   email: string; setEmail: (v: string) => void;
   birthDate: string; setBirthDate: (v: string) => void;
   gender: string; setGender: (v: string) => void;
+  role?: string; showPhone?: boolean; setShowPhone?: (v: boolean) => void;
 }) {
   const { t } = useTranslation();
   // Doğum tarixini GG.AA.İİİİ formatında avtomatik nöqtələ.
@@ -964,6 +1075,24 @@ function ContactFields({
             autoCapitalize="none"
           />
         </View>
+        {role === 'teacher' && setShowPhone && (
+          <TouchableOpacity
+            style={styles.showPhoneRow}
+            activeOpacity={0.8}
+            onPress={() => setShowPhone(!showPhone)}
+          >
+            <View style={styles.showPhoneTextWrap}>
+              <Text style={styles.showPhoneTitle}>{t('editProfile.showPhone')}</Text>
+              <Text style={styles.showPhoneHint}>{t('editProfile.showPhoneHint')}</Text>
+            </View>
+            <Switch
+              value={!!showPhone}
+              onValueChange={setShowPhone}
+              trackColor={{ false: Colors.borderLight, true: Colors.primary }}
+              thumbColor="#fff"
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={styles.fieldBlock}>
@@ -1003,6 +1132,15 @@ const styles = StyleSheet.create({
   genderBtnActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   genderText: { fontSize: 14, fontWeight: '600', color: Colors.textPrimary },
   genderTextActive: { color: '#fff' },
+  showPhoneRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    marginTop: 10, paddingHorizontal: 12, paddingVertical: 10,
+    backgroundColor: Colors.surfaceSecondary, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
+  showPhoneTextWrap: { flex: 1 },
+  showPhoneTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
+  showPhoneHint: { fontSize: 12, color: Colors.textMuted, marginTop: 2 },
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
@@ -1054,6 +1192,21 @@ const styles = StyleSheet.create({
   },
   fieldBlock: { gap: 10 },
   fieldBlockCard: { gap: 8 },
+  // Profil kartındakı "Əlavə et →" ilə gəlinən sahə vurğulanır (§7).
+  fieldFocused: {
+    borderWidth: 1.5, borderColor: Colors.primary, borderRadius: 14,
+    padding: 10, marginHorizontal: -10, backgroundColor: Colors.primaryLight + '30',
+  },
+  fieldHint: { fontSize: 11.5, color: Colors.textMuted, lineHeight: 16 },
+
+  // Tədris səviyyələri
+  gradeChip: {
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: 999,
+    backgroundColor: Colors.surfaceHigh, borderWidth: 1, borderColor: 'transparent',
+  },
+  gradeChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  gradeChipText: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary },
+  gradeChipTextActive: { color: '#fff', fontWeight: '700' },
 
   input: {
     backgroundColor: Colors.surfaceLowest, borderRadius: 14,

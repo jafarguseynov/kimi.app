@@ -69,3 +69,29 @@ export const boostTeacher = (days: number) =>
 // Yarımçıq profil üçün xatırlatma bildirişi yaradır (72h idempotent — backend tərəfdə)
 export const ensureProfileReminder = () =>
   apiClient.post<{ created: boolean; complete?: boolean; pct?: number }>('/user/teacher/profile-reminder').then((r) => r.data);
+
+// ─── Favorit müəllimlər (server tərəfli) ───
+// Qeyd: burada xətanı UDMURUQ — çağıran (store) 401/şəbəkə xətasında lokal keşi
+// boş siyahı ilə əvəz etməsin deyə uğursuzluğu ayırd etməlidir.
+export const getFavoriteTeacherIds = () =>
+  apiClient.get<string[]>('/user/teachers/favorites').then((r) => r.data);
+
+export const toggleFavoriteTeacher = (teacherId: string) =>
+  apiClient.post<{ favorited: boolean }>(`/user/teachers/${teacherId}/favorite`, {}).then((r) => r.data);
+
+// ─── Müəllim səviyyəsi (level) irəliləyişi (müəllimin öz paneli) ───
+export interface TeacherLevelProgress {
+  level: number;
+  levelKey: string;
+  overridden: boolean;
+  enabled: boolean;
+  current: { completedLessons: number; rating: number; reviews: number; favorites: number; complete: boolean };
+  next: {
+    level: number;
+    levelKey: string;
+    need: { lessons: number; rating: number; reviews: number; favorites: number; requireComplete: boolean };
+    remaining: { lessons: number; reviews: number; favorites: number; ratingOk: boolean; completeOk: boolean };
+  } | null;
+}
+export const getTeacherLevelProgress = () =>
+  apiClient.get<TeacherLevelProgress>('/teacher-level/progress').then((r) => r.data).catch(() => null);

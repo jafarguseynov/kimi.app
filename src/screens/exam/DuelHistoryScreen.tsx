@@ -1,45 +1,48 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
+import { useQuery } from '@tanstack/react-query';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
 import { useTranslation } from '../../i18n';
+import { getDuelHistory, getDuelStats, DuelHistoryItem } from '../../api/duel.api';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-interface DuelEntry {
-  id: string;
-  opponentName: string;
-  initials: string;
-  subject: string;
-  time: string;
-  date: string;
-  myScore: number;
-  oppScore: number;
-  result: 'win' | 'loss';
+// Addan baş hərflər (maks 2).
+function initialsOf(name?: string | null): string {
+  if (!name) return '?';
+  return name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || '?';
 }
-
-const HISTORY: DuelEntry[] = [
-  { id: '1', opponentName: 'Nicat Qurbanov', initials: 'NQ', subject: 'Riyaziyyat', time: '14:20', date: '12 Oktyabr', myScore: 8, oppScore: 5, result: 'win' },
-  { id: '2', opponentName: 'Aysel Məmmədova', initials: 'AM', subject: 'Tarix', time: '11:45', date: '10 Oktyabr', myScore: 3, oppScore: 7, result: 'loss' },
-  { id: '3', opponentName: 'Kənan Əliyev', initials: 'KƏ', subject: 'İngilis dili', time: '19:30', date: '08 Oktyabr', myScore: 10, oppScore: 2, result: 'win' },
-  { id: '4', opponentName: 'Elvin Vəliyev', initials: 'EV', subject: 'Fizika', time: '09:15', date: '05 Oktyabr', myScore: 6, oppScore: 4, result: 'win' },
-];
 
 export default function DuelHistoryScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
 
+  const { data: historyData, isLoading, refetch, isRefetching } = useQuery<DuelHistoryItem[]>({
+    queryKey: ['duelHistory'],
+    queryFn: () => getDuelHistory(50).catch(() => [] as DuelHistoryItem[]),
+  });
+  const { data: statsData } = useQuery({
+    queryKey: ['duelStats'],
+    queryFn: () => getDuelStats().catch(() => null),
+  });
+
+  const history: DuelHistoryItem[] = Array.isArray(historyData) ? historyData : [];
+
   const stats = useMemo(() => {
-    const wins = HISTORY.filter((h) => h.result === 'win').length;
-    const losses = HISTORY.length - wins;
-    const total = HISTORY.length;
-    const winRate = total > 0 ? Math.round((wins / total) * 100) : 0;
-    return { wins, losses, winRate };
-  }, []);
+    if (statsData) {
+      const wins = statsData.wins ?? 0;
+      const total = statsData.total ?? 0;
+      return { wins, losses: Math.max(total - wins, 0), winRate: statsData.winRate ?? 0 };
+    }
+    const wins = history.filter((h) => h.result === 'win').length;
+    const total = history.length;
+    return { wins, losses: total - wins, winRate: total > 0 ? Math.round((wins / total) * 100) : 0 };
+  }, [statsData, history]);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -51,7 +54,11 @@ export default function DuelHistoryScreen() {
         <View style={styles.headerBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} colors={[Colors.primary]} />}
+      >
         {/* Hero stats */}
         <LinearGradient colors={GRADIENT} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hero}>
           <View style={styles.heroTop}>
@@ -84,46 +91,61 @@ export default function DuelHistoryScreen() {
         </View>
 
         {/* History */}
-        <View style={{ gap: 12 }}>
-          {HISTORY.map((d) => {
-            const isWin = d.result === 'win';
-            return (
-              <View key={d.id} style={styles.card}>
-                <View style={styles.cardTop}>
-                  <View style={styles.cardTopLeft}>
-                    <View style={[styles.avatar, isWin ? styles.avatarWin : styles.avatarLoss]}>
-                      <Text style={[styles.avatarText, { color: isWin ? Colors.primary : Colors.danger }]}>
-                        {d.initials}
+        {isLoading ? (
+          <ActivityIndicator color={Colors.primary} style={{ marginTop: 12 }} />
+        ) : history.length === 0 ? (
+          <View style={styles.empty}>
+            <Ionicons name="flash-outline" size={44} color={Colors.textMuted} />
+            <Text style={styles.emptyTitle}>{t('duel.emptyHistTitle')}</Text>
+            <Text style={styles.emptySub}>{t('duel.emptyHistSub')}</Text>
+          </View>
+        ) : (
+          <View style={{ gap: 12 }}>
+            {history.map((d) => {
+              const isWin = d.result === 'win';
+              const isDraw = d.result === 'draw';
+              const dt = new Date(d.createdAt);
+              const time = isNaN(dt.getTime()) ? '' : dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+              const date = isNaN(dt.getTime()) ? '' : dt.toLocaleDateString([], { day: '2-digit', month: 'short', year: 'numeric' });
+              const accent = isWin ? Colors.primary : isDraw ? Colors.textSecondary : Colors.danger;
+              return (
+                <View key={d.id} style={styles.card}>
+                  <View style={styles.cardTop}>
+                    <View style={styles.cardTopLeft}>
+                      <View style={[styles.avatar, isWin ? styles.avatarWin : styles.avatarLoss]}>
+                        <Text style={[styles.avatarText, { color: accent }]}>
+                          {initialsOf(d.opponentName)}
+                        </Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.opponent}>{d.opponentName ?? '—'}</Text>
+                        <Text style={styles.meta}>{d.subject}{time ? ` • ${time}` : ''}</Text>
+                      </View>
+                    </View>
+                    <View style={[styles.badge, isWin ? styles.badgeWin : styles.badgeLoss]}>
+                      <Text style={[styles.badgeText, { color: isWin ? Colors.success : isDraw ? Colors.textSecondary : Colors.danger }]}>
+                        {isWin ? t('duel.win') : isDraw ? t('duel.drawShort') : t('duel.loss')}
                       </Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.opponent}>{d.opponentName}</Text>
-                      <Text style={styles.meta}>{d.subject} • {d.time}</Text>
-                    </View>
                   </View>
-                  <View style={[styles.badge, isWin ? styles.badgeWin : styles.badgeLoss]}>
-                    <Text style={[styles.badgeText, { color: isWin ? Colors.success : Colors.danger }]}>
-                      {isWin ? t('duel.win') : t('duel.loss')}
-                    </Text>
-                  </View>
-                </View>
 
-                <View style={styles.cardBottom}>
-                  <View style={styles.scoreRow}>
-                    <Text style={[styles.scoreMain, { color: isWin ? Colors.primary : Colors.textMuted }]}>
-                      {d.myScore}
-                    </Text>
-                    <Text style={styles.scoreDash}>—</Text>
-                    <Text style={[styles.scoreSecond, { color: isWin ? Colors.textMuted : Colors.danger }]}>
-                      {d.oppScore}
-                    </Text>
+                  <View style={styles.cardBottom}>
+                    <View style={styles.scoreRow}>
+                      <Text style={[styles.scoreMain, { color: isWin ? Colors.primary : Colors.textMuted }]}>
+                        {d.myScore}
+                      </Text>
+                      <Text style={styles.scoreDash}>—</Text>
+                      <Text style={[styles.scoreSecond, { color: isWin ? Colors.textMuted : Colors.danger }]}>
+                        {d.opponentScore}
+                      </Text>
+                    </View>
+                    {!!date && <Text style={styles.date}>{date}</Text>}
                   </View>
-                  <Text style={styles.date}>{d.date}, 2026</Text>
                 </View>
-              </View>
-            );
-          })}
-        </View>
+              );
+            })}
+          </View>
+        )}
 
         <TouchableOpacity
           activeOpacity={0.9}
@@ -213,6 +235,10 @@ const styles = StyleSheet.create({
   scoreDash: { fontSize: 16, color: Colors.outlineVariant },
   scoreSecond: { fontSize: 20, fontWeight: '700' },
   date: { fontSize: 11, fontWeight: '600', color: Colors.textSecondary },
+
+  empty: { alignItems: 'center', gap: 8, paddingVertical: 32 },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: Colors.textPrimary },
+  emptySub: { fontSize: 13, color: Colors.textSecondary, textAlign: 'center', paddingHorizontal: 24, lineHeight: 19 },
 
   cta: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,

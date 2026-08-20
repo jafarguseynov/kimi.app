@@ -1,62 +1,128 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Linking } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { Colors } from '../../constants/colors';
 import { Routes } from '../../constants/routes';
+import { useUserStore } from '../../store/user.store';
 import { useTranslation } from '../../i18n';
-
-const SUPPORT_EMAIL = 'support@kimi.az';
 
 const GRADIENT: [string, string] = [Colors.gradientStart, Colors.gradientEnd];
 
-type FaqIcon = 'wallet-outline' | 'school-outline' | 'checkmark-circle-outline';
-
-interface FaqItem {
-  icon: FaqIcon;
-  iconBg: string;
-  iconColor: string;
-  titleKey: string;
-  descKey: string;
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const FAQS: FaqItem[] = [
+/**
+ * TEZ-TEZ VERİLƏN SUALLAR (FAQ)
+ *
+ * Sual/cavab mətnləri i18n-dədir (`helpCenter.q<id>Q` / `q<id>A`).
+ * Hər bölmə rola bağlıdır: istifadəçi «Ümumi» + öz rolunun bölməsini görür.
+ * Yeni sual əlavə etmək üçün buraya `id` + ikon, i18n-ə isə iki sətir yazmaq kifayətdir.
+ */
+type Section = {
+  key: string;
+  titleKey: string;
+  roles: ('student' | 'teacher' | 'parent')[] | 'all';
+  items: { id: string; icon: keyof typeof Ionicons.glyphMap }[];
+};
+
+const SECTIONS: Section[] = [
   {
-    icon: 'wallet-outline',
-    iconBg: Colors.primaryLight + '1A',
-    iconColor: Colors.primary,
-    titleKey: 'helpCenter.faq1Title',
-    descKey: 'helpCenter.faq1Desc',
+    key: 'basics',
+    titleKey: 'helpCenter.secBasics',
+    roles: 'all',
+    items: [
+      { id: 'Profile', icon: 'person-circle-outline' },
+      { id: 'Lang', icon: 'globe-outline' },
+      { id: 'Password', icon: 'lock-closed-outline' },
+      { id: 'Notif', icon: 'notifications-outline' },
+      { id: 'Block', icon: 'ban-outline' },
+      { id: 'Report', icon: 'bug-outline' },
+    ],
   },
   {
-    icon: 'school-outline',
-    iconBg: Colors.tertiaryContainer + '33',
-    iconColor: Colors.tertiary,
-    titleKey: 'helpCenter.faq2Title',
-    descKey: 'helpCenter.faq2Desc',
+    key: 'student',
+    titleKey: 'helpCenter.secStudent',
+    roles: ['student'],
+    items: [
+      { id: 'Exam', icon: 'document-text-outline' },
+      { id: 'Result', icon: 'ribbon-outline' },
+      { id: 'Market', icon: 'help-buoy-outline' },
+      { id: 'FindTeacher', icon: 'search-outline' },
+      { id: 'Request', icon: 'megaphone-outline' },
+      { id: 'JoinClass', icon: 'key-outline' },
+      { id: 'Duel', icon: 'flash-outline' },
+      { id: 'Spin', icon: 'disc-outline' },
+      { id: 'Xp', icon: 'trophy-outline' },
+    ],
   },
   {
-    icon: 'checkmark-circle-outline',
-    iconBg: Colors.secondaryContainer,
-    iconColor: Colors.secondary,
-    titleKey: 'helpCenter.faq3Title',
-    descKey: 'helpCenter.faq3Desc',
+    key: 'teacher',
+    titleKey: 'helpCenter.secTeacher',
+    roles: ['teacher'],
+    items: [
+      { id: 'TRequests', icon: 'megaphone-outline' },
+      { id: 'TStudents', icon: 'people-outline' },
+      { id: 'TLevel', icon: 'trending-up-outline' },
+      { id: 'TStats', icon: 'stats-chart-outline' },
+      { id: 'TPreview', icon: 'eye-outline' },
+    ],
+  },
+  {
+    key: 'parent',
+    titleKey: 'helpCenter.secParent',
+    roles: ['parent'],
+    items: [
+      { id: 'PLink', icon: 'link-outline' },
+      { id: 'PWatch', icon: 'analytics-outline' },
+    ],
+  },
+  {
+    key: 'money',
+    titleKey: 'helpCenter.secMoney',
+    roles: 'all',
+    items: [
+      { id: 'Premium', icon: 'diamond-outline' },
+      { id: 'Referral', icon: 'gift-outline' },
+      { id: 'Promo', icon: 'pricetag-outline' },
+    ],
   },
 ];
 
 export default function HelpCenterScreen() {
   const navigation = useNavigation<any>();
   const { t } = useTranslation();
+  const user = useUserStore((s) => s.user);
+  const role = (user?.role ?? 'student') as 'student' | 'teacher' | 'parent';
+
   const [search, setSearch] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
 
-  const openChat = () => {
-    const parent = navigation.getParent() as any;
-    parent?.navigate('Chat', { screen: Routes.ChatList });
+  const toggle = (id: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setOpenId((prev) => (prev === id ? null : id));
   };
-  const openEmail = () => Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Kimi.az%20Dəstək`);
+
+  // Rola uyğun bölmələr + axtarış süzgəci (həm sual, həm cavab mətnində axtarır).
+  const sections = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return SECTIONS.filter((s) => s.roles === 'all' || s.roles.includes(role))
+      .map((s) => ({
+        ...s,
+        items: s.items.filter((it) => {
+          if (!q) return true;
+          const question = t(`helpCenter.q${it.id}Q`).toLowerCase();
+          const answer = t(`helpCenter.q${it.id}A`).toLowerCase();
+          return question.includes(q) || answer.includes(q);
+        }),
+      }))
+      .filter((s) => s.items.length > 0);
+  }, [search, role, t]);
+
   const openReport = () => navigation.navigate(Routes.ReportProblem);
 
   return (
@@ -69,7 +135,7 @@ export default function HelpCenterScreen() {
         <View style={styles.headerBtn} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* Hero */}
         <View style={styles.hero}>
           <View style={styles.heroContent}>
@@ -95,53 +161,54 @@ export default function HelpCenterScreen() {
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
           />
+          {!!search && (
+            <TouchableOpacity onPress={() => setSearch('')} hitSlop={10}>
+              <Ionicons name="close-circle" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {/* FAQ */}
-        <View style={styles.faqSection}>
-          <View style={styles.faqHeader}>
-            <Text style={styles.faqHeaderTitle}>{t('helpCenter.faqTitle')}</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text style={styles.faqSeeAll}>{t('helpCenter.faqSeeAll')}</Text>
-            </TouchableOpacity>
+        {sections.length === 0 && (
+          <View style={styles.empty}>
+            <Ionicons name="search-outline" size={38} color={Colors.textMuted} />
+            <Text style={styles.emptyTitle}>{t('helpCenter.noResultTitle')}</Text>
+            <Text style={styles.emptySub}>{t('helpCenter.noResultSub')}</Text>
           </View>
-          <View style={styles.faqList}>
-            {FAQS.map((faq, idx) => (
-              <TouchableOpacity key={idx} style={styles.faqCard} activeOpacity={0.85}>
-                <View style={[styles.faqIconWrap, { backgroundColor: faq.iconBg }]}>
-                  <Ionicons name={faq.icon} size={20} color={faq.iconColor} />
-                </View>
-                <View style={styles.faqContent}>
-                  <Text style={styles.faqTitle}>{t(faq.titleKey)}</Text>
-                  <Text style={styles.faqDesc}>{t(faq.descKey)}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        )}
 
-        {/* Support grid */}
-        <View style={styles.supportSection}>
-          <Text style={styles.supportSectionTitle}>{t('helpCenter.contactTitle')}</Text>
-          <View style={styles.supportGrid}>
-            <TouchableOpacity style={styles.supportCard} activeOpacity={0.85} onPress={openChat}>
-              <View style={styles.supportIconCircle}>
-                <Ionicons name="chatbubbles" size={22} color={Colors.primary} />
-              </View>
-              <Text style={styles.supportCardTitle}>{t('helpCenter.liveChat')}</Text>
-              <Text style={styles.supportCardSub}>{t('helpCenter.liveChatSub')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.supportCard} activeOpacity={0.85} onPress={openEmail}>
-              <View style={styles.supportIconCircle}>
-                <Ionicons name="mail" size={22} color={Colors.primary} />
-              </View>
-              <Text style={styles.supportCardTitle}>{t('helpCenter.email')}</Text>
-              <Text style={styles.supportCardSub}>{t('helpCenter.emailSub')}</Text>
-            </TouchableOpacity>
+        {sections.map((section) => (
+          <View key={section.key} style={styles.faqSection}>
+            <Text style={styles.faqHeaderTitle}>{t(section.titleKey)}</Text>
+            <View style={styles.faqList}>
+              {section.items.map((item) => {
+                const isOpen = openId === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.faqCard, isOpen && styles.faqCardOpen]}
+                    activeOpacity={0.85}
+                    onPress={() => toggle(item.id)}
+                  >
+                    <View style={styles.faqRow}>
+                      <View style={[styles.faqIconWrap, isOpen && styles.faqIconWrapOpen]}>
+                        <Ionicons name={item.icon} size={18} color={isOpen ? '#fff' : Colors.primary} />
+                      </View>
+                      <Text style={styles.faqTitle}>{t(`helpCenter.q${item.id}Q`)}</Text>
+                      <Ionicons
+                        name={isOpen ? 'chevron-up' : 'chevron-down'}
+                        size={18}
+                        color={Colors.textMuted}
+                      />
+                    </View>
+                    {isOpen && <Text style={styles.faqDesc}>{t(`helpCenter.q${item.id}A`)}</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
-        </View>
+        ))}
 
-        {/* CTA */}
+        {/* Cavab tapılmadısa — birbaşa dəstəyə */}
         <View style={styles.ctaWrap}>
           <LinearGradient colors={GRADIENT} style={styles.ctaCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <View style={styles.ctaGlow} />
@@ -181,9 +248,9 @@ const styles = StyleSheet.create({
     borderRadius: 999, paddingHorizontal: 12, paddingVertical: 4,
   },
   heroBadgeText: { fontSize: 10, fontWeight: '700', color: Colors.primary, textTransform: 'uppercase', letterSpacing: 1.2 },
-  heroTitle: { fontSize: 28, fontWeight: '800', color: Colors.textPrimary, lineHeight: 36, letterSpacing: -0.5 },
+  heroTitle: { fontSize: 26, fontWeight: '800', color: Colors.textPrimary, lineHeight: 34, letterSpacing: -0.5 },
   heroIconBox: {
-    width: 80, height: 80, borderRadius: 20,
+    width: 76, height: 76, borderRadius: 20,
     backgroundColor: Colors.primaryLight, alignItems: 'center', justifyContent: 'center',
   },
 
@@ -197,35 +264,26 @@ const styles = StyleSheet.create({
   searchBarFocused: { borderColor: Colors.primaryFixed + '50', backgroundColor: '#fff' },
   searchInput: { flex: 1, fontSize: 15, color: Colors.textPrimary },
 
-  faqSection: { gap: 14 },
-  faqHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  faqHeaderTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  faqSeeAll: { fontSize: 13, fontWeight: '700', color: Colors.primary },
-  faqList: { gap: 12 },
+  empty: { alignItems: 'center', gap: 6, paddingVertical: 32 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary, marginTop: 6 },
+  emptySub: { fontSize: 12.5, color: Colors.textSecondary, textAlign: 'center', maxWidth: 260, lineHeight: 18 },
+
+  faqSection: { gap: 12 },
+  faqHeaderTitle: { fontSize: 17, fontWeight: '700', color: Colors.textPrimary },
+  faqList: { gap: 10 },
   faqCard: {
-    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 16,
-    flexDirection: 'row', alignItems: 'flex-start', gap: 14,
+    backgroundColor: Colors.surfaceLowest, borderRadius: 16, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.02, shadowRadius: 20, elevation: 1,
   },
-  faqIconWrap: { width: 40, height: 40, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
-  faqContent: { flex: 1, gap: 4 },
-  faqTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  faqDesc: { fontSize: 13, color: Colors.textSecondary, lineHeight: 20 },
-
-  supportSection: { gap: 14 },
-  supportSectionTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary },
-  supportGrid: { flexDirection: 'row', gap: 12 },
-  supportCard: {
-    flex: 1, backgroundColor: Colors.surfaceLow, borderRadius: 16, padding: 20,
-    alignItems: 'center', gap: 10,
+  faqCardOpen: { backgroundColor: '#fff' },
+  faqRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  faqIconWrap: {
+    width: 36, height: 36, borderRadius: 12, flexShrink: 0,
+    backgroundColor: Colors.primaryLight + '33', alignItems: 'center', justifyContent: 'center',
   },
-  supportIconCircle: {
-    width: 48, height: 48, borderRadius: 24,
-    backgroundColor: Colors.surfaceLowest, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
-  },
-  supportCardTitle: { fontSize: 14, fontWeight: '700', color: Colors.textPrimary },
-  supportCardSub: { fontSize: 11, color: Colors.textMuted },
+  faqIconWrapOpen: { backgroundColor: Colors.primary },
+  faqTitle: { flex: 1, fontSize: 14, fontWeight: '700', color: Colors.textPrimary, lineHeight: 19 },
+  faqDesc: { fontSize: 13.5, color: Colors.textSecondary, lineHeight: 21, marginTop: 10, marginLeft: 48 },
 
   ctaWrap: { borderRadius: 20, overflow: 'hidden' },
   ctaCard: { padding: 28, gap: 8, overflow: 'hidden', position: 'relative' },
