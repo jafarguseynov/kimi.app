@@ -3259,6 +3259,7 @@ export const ru = {
     savedTitle: 'Сохранено',
     savedBody: 'Данные профиля обновлены.',
     errorTitle: 'Ошибка',
+    nameRequired: 'Имя не может быть пустым. Пожалуйста, укажите ваше имя.',
     errorBody: 'Не удалось сохранить. Попробуйте снова.',
     firstName: 'Имя',
     firstNamePlaceholder: 'Ваше имя',

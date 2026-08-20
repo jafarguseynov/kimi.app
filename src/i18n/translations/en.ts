@@ -3259,6 +3259,7 @@ export const en = {
     savedTitle: 'Saved',
     savedBody: 'Profile information updated.',
     errorTitle: 'Error',
+    nameRequired: 'Name cannot be empty. Please enter your name.',
     errorBody: 'Could not save. Please try again.',
     firstName: 'First name',
     firstNamePlaceholder: 'Your first name',

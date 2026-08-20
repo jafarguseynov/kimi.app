@@ -202,7 +202,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
 
   const { mutate: save, isPending: isSaving } = useMutation({
     mutationFn: async () => {
-      const data: any = { name: [firstName, lastName].filter(Boolean).join(' ') };
+      // Ad yalnız DOLUDURSA göndərilir — boş sətir serverdə mövcud adı silirdi
+      // (admin siyahısında adsız hesablar bu yolla yaranmışdı).
+      const fullName = [firstName, lastName].map((x) => (x ?? '').trim()).filter(Boolean).join(' ');
+      const data: any = {};
+      if (fullName) data.name = fullName;
 
       // Yeni şəkil seçilibsə əvvəlcə yüklə (uğursuz olsa lokal URI saxlanır).
       if (avatarDirty && avatarUri) {
@@ -295,6 +299,11 @@ export default function EditProfileScreen({ navigation, route }: Props) {
   const handleSave = () => {
     // Yalnız yaddaş prosesi gedərkən təkrar çağırışı blokla (ikiqat toxunuş).
     if (isSaving) return;
+    // Ad məcburidir — boş adla saxlamaq hesabı "adsız" qoyurdu.
+    if (![firstName, lastName].some((x) => (x ?? '').trim())) {
+      Alert.alert(t('editProfile.errorTitle'), t('editProfile.nameRequired'));
+      return;
+    }
     save();
   };
 

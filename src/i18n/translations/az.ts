@@ -3261,6 +3261,7 @@ export const az = {
     savedTitle: 'Yadda saxlandı',
     savedBody: 'Profil məlumatları yeniləndi.',
     errorTitle: 'Xəta',
+    nameRequired: 'Ad boş ola bilməz. Zəhmət olmasa adınızı yazın.',
     errorBody: 'Saxlanılmadı. Yenidən cəhd edin.',
     firstName: 'Ad',
     firstNamePlaceholder: 'Adınız',
