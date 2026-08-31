@@ -4,6 +4,7 @@ import { deleteToken } from '../utils/token';
 import { useAuthStore } from '../store/auth.store';
 import { useUserStore } from '../store/user.store';
 import { useOnboardingStore } from '../store/onboarding.store';
+import { savePushToken } from '../api/notification.api';
 import { RegisterPayload, LoginPayload, OTPPayload } from '../types/auth.types';
 
 export const useRegister = () => {
@@ -86,6 +87,15 @@ export const useLogout = () => {
   const { clearUser } = useUserStore();
 
   return async () => {
+    // Cihazın push tokenini SERVERDƏ də bu hesabdan ayır. Əks halda hesab
+    // sətrində qalır və istifadəçi çıxandan sonra da köhnə hesaba aid
+    // bildirişlər (məs. "profilini tamamla") bu cihaza gəlirdi.
+    // Token hələ etibarlıdır — sorğu çıxışdan ƏVVƏL göndərilməlidir.
+    try {
+      await savePushToken(null);
+    } catch {
+      /* şəbəkə yoxdur — çıxış yenə də baş tutmalıdır */
+    }
     await clearAuth();
     clearUser();
   };
