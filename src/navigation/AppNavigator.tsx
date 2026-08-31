@@ -35,6 +35,10 @@ const TAB_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   [Routes.TeacherStats]: 'stats-chart',
 };
 
+// Android-in klassik 3 düyməli naviqasiya panelinin standart hündürlüyü (dp).
+// Yalnız cihaz safe-area insetini 0 bildirəndə ehtiyat dəyər kimi işlədilir.
+const ANDROID_NAV_BAR_FALLBACK = 48;
+
 /** Tab bar-da GİZLƏDİLƏN (amma naviqasiya üçün qeydiyyatda qalan) ekranın seçimləri. */
 const HIDDEN = { tabBarItemStyle: { display: 'none' as const }, tabBarButton: () => null };
 
@@ -46,15 +50,26 @@ export default function AppNavigator() {
   // GÖRÜNMÜR, amma qeydiyyatda qalır — ana səhifədəki sürətli keçidlərdən
   // və "Sizin üçün" tövsiyələrindən açılır.
   const insets = useSafeAreaInsets();
-  // Android edge-to-edge (app.json: edgeToEdgeEnabled) rejimində sistem naviqasiya
-  // paneli tətbiqin üzərinə çəkilir. React Navigation normalda tab bar-a
-  // `insets.bottom` özü əlavə edir, LAKİN `tabBarStyle`-da sabit `height`/`paddingBottom`
-  // versən onun hesabını tam əvəz edir (BottomTabBar getTabBarHeight → customHeight).
+  // Sistem çubuğu (Android naviqasiya paneli / iOS home indicator) tətbiqin ÜZƏRİNƏ
+  // çəkilir — Android-də edge-to-edge (app.json: edgeToEdgeEnabled), iOS-da isə
+  // notch-lu cihazlarda həmişə. React Navigation normalda tab bar-a `insets.bottom`
+  // özü əlavə edir, LAKİN `tabBarStyle`-da sabit `height`/`paddingBottom` versən
+  // onun hesabını tam əvəz edir (BottomTabBar getTabBarHeight → customHeight).
   // Ona görə insetı özümüz əlavə edirik: görünən 64dp dizayn olduğu kimi qalır,
   // altına isə cihazın REAL safe-area boşluğu qədər sahə əlavə olunur —
-  // həm jest, həm 3 düymə rejimində düzgün işləyir. iOS-da (inset=0 verilir)
-  // mövcud görünüş dəyişmir.
-  const androidNavInset = Platform.OS === 'android' ? insets.bottom : 0;
+  // Android-də həm jest, həm 3 düymə rejimində, iOS-da isə home indicator üçün.
+  //
+  // ⚠️ Bəzi Android örtüklərində (MIUI/Redmi — 3 düyməli naviqasiya) `insets.bottom`
+  // edge-to-edge rejimində 0 kimi gəlir. Belə cihazda yuxarıdakı hesab heç nə əlavə
+  // etmir və sistem düymələri tab bar yazılarının ÜSTÜNƏ düşür (Redmi Note 10-da
+  // müşahidə olundu). `SafeAreaProvider` uşaqlarını yalnız insetlər hazır olandan
+  // sonra render etdiyi üçün burada 0 = «cihaz həqiqətən 0 bildirir» deməkdir,
+  // yəni ilk kadr yanıb-sönməsi riski yoxdur. Ona görə YALNIZ Android-də 0 gələndə
+  // standart düymə paneli hündürlüyünü ehtiyat kimi götürürük; iOS-un safe-area
+  // dəyərləri etibarlıdır (home indicator ~34dp, köhnə cihazlarda 0) və olduğu
+  // kimi işlədilir.
+  const bottomInset =
+    Platform.OS === 'android' && insets.bottom === 0 ? ANDROID_NAV_BAR_FALLBACK : insets.bottom;
   return (
     <Tab.Navigator
       backBehavior="history"
@@ -65,9 +80,9 @@ export default function AppNavigator() {
         tabBarStyle: {
           backgroundColor: Colors.surface,
           borderTopColor: Colors.border,
-          height: 64 + androidNavInset,
+          height: 64 + bottomInset,
           paddingTop: 6,
-          paddingBottom: 8 + androidNavInset,
+          paddingBottom: 8 + bottomInset,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
